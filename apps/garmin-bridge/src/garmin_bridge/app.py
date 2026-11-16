@@ -1,11 +1,15 @@
 """Internal HTTP service: the only place that talks to Garmin Connect.
 
 No training logic lives here. The Talaria server asks, this service fetches or sends.
+Reads go through Garmin's official Personal API when GARMIN_API_KEY is set, and fall back field by field
+to the unofficial login (python-garminconnect). Writes always use the unofficial login: the official API is read only.
 """
 
 import datetime as dt
 import hmac
+import logging
 import os
+from collections.abc import Callable
 from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response
@@ -18,8 +22,11 @@ from garminconnect import (
     GarminConnectTooManyRequestsError,
 )
 
+from garmin_bridge.official import OfficialApi, get_official
 from garmin_bridge.session import forget_session, get_garmin
 from garmin_bridge.workouts import CamelModel, WorkoutRequest, build_workout
+
+log = logging.getLogger(__name__)
 
 # shortcut: the library does not expose Garmin's Retry-After, so we ask for a fixed pause; read it if it ever does.
 RETRY_AFTER_SECONDS = 300
@@ -34,6 +41,15 @@ def require_secret(x_bridge_secret: str = Header(default="")) -> None:
 
 app = FastAPI(title="garmin-bridge", docs_url=None, redoc_url=None)
 GarminDep = Annotated[Garmin, Depends(get_garmin)]
+OfficialDep = Annotated[OfficialApi | None, Depends(get_official)]
+
+
+def unofficial() -> Callable[[], Garmin]:
+    """Reads log in to the unofficial session only when the official API left a value missing."""
+    return get_garmin
+
+
+LazyGarminDep = Annotated[Callable[[], Garmin], Depends(unofficial)]
 protected = [Depends(require_secret)]
 
 
@@ -127,11 +143,45 @@ def whoami() -> dict[str, bool]:
     return {"authorized": True}
 
 
+def _with_fallback(
+    primary: list[dict[str, Any]] | None, fallback: Callable[[], list[dict[str, Any]]], key: str
+) -> list[dict[str, Any]]:
+    """Official rows first; each missing value is taken from the unofficial rows with the same key."""
+    if primary is not None and all(None not in row.values() for row in primary):
+        return primary
+    try:
+        backup = fallback()
+    except (GarminConnectAuthenticationError, GarminConnectConnectionError, GarminConnectTooManyRequestsError) as error:
+        if primary is None:
+            raise
+        if isinstance(error, GarminConnectAuthenticationError):
+            forget_session()
+        # Partial official data beats an error: the server already handles missing values.
+        log.warning("Complément non officiel impossible (%s), données officielles partielles", type(error).__name__)
+        return primary
+    if primary is None:
+        return backup
+    by_key = {row[key]: row for row in backup}
+    return [{k: v if v is not None else by_key.get(row[key], {}).get(k) for k, v in row.items()} for row in primary]
+
+
 @app.get("/activities", dependencies=protected)
-def recent_activities(garmin: GarminDep, limit: Annotated[int, Query(ge=1, le=100)] = 20) -> list[Activity]:
-    return [_to_activity(raw) for raw in garmin.get_activities(0, limit)]
+def recent_activities(
+    official: OfficialDep, garmin: LazyGarminDep, limit: Annotated[int, Query(ge=1, le=100)] = 20
+) -> list[Activity]:
+    raw = (
+        official.get("/activitylist-service/activities/search/activities", {"start": 0, "limit": limit})
+        if official
+        else None
+    )
+    primary = [_to_activity(a).model_dump() for a in raw] if isinstance(raw, list) else None
+    rows = _with_fallback(
+        primary, lambda: [_to_activity(a).model_dump() for a in garmin().get_activities(0, limit)], "id"
+    )
+    return [Activity(**row) for row in rows]
 
 
+# The Personal API has no lap endpoint (only splitSummaries per activity type): laps stay on the unofficial login.
 @app.get("/activities/{activity_id}/laps", dependencies=protected)
 def activity_laps(garmin: GarminDep, activity_id: int) -> list[Lap]:
     laps = garmin.get_activity_splits(str(activity_id)).get("lapDTOs") or []
@@ -151,11 +201,9 @@ def _vo2max(raw: Any) -> float | None:
     return generic.get("vo2MaxPreciseValue") or generic.get("vo2MaxValue")
 
 
-@app.get("/daily/{day}", dependencies=protected)
-def daily_signals(garmin: GarminDep, day: dt.date) -> DailySignals:
-    iso = day.isoformat()
-    summary = garmin.get_user_summary(iso)
-    sleep = (garmin.get_sleep_data(iso) or {}).get("dailySleepDTO") or {}
+def _daily(day: dt.date, summary: Any, sleep: Any, maxmet: Any) -> dict[str, Any]:
+    summary = summary if isinstance(summary, dict) else {}
+    sleep = sleep if isinstance(sleep, dict) else {}
     score = ((sleep.get("sleepScores") or {}).get("overall") or {}).get("value")
     return DailySignals(
         date=day,
@@ -165,8 +213,33 @@ def daily_signals(garmin: GarminDep, day: dt.date) -> DailySignals:
         stress_avg=summary.get("averageStressLevel"),
         body_battery_at_wake=summary.get("bodyBatteryAtWakeTime"),
         body_battery_highest=summary.get("bodyBatteryHighestValue"),
-        vo2_max=_vo2max(garmin.get_max_metrics(iso)),
+        vo2_max=_vo2max(maxmet),
+    ).model_dump()
+
+
+def _daily_official(official: OfficialApi, day: dt.date) -> dict[str, Any] | None:
+    iso = day.isoformat()
+    parts = (
+        official.get("/usersummary-service/usersummary/daily", {"calendarDate": iso}),
+        # The official sleep endpoint returns the DailySleepDTO itself, not wrapped like the unofficial one.
+        official.get("/sleep-service/sleep/dailySleep", {"date": iso}),
+        # Not in the Swagger, but called by Garmin's own Personal API client (get_daily_vo2_max).
+        official.get(f"/metrics-service/metrics/maxmet/daily/{iso}/{iso}"),
     )
+    return None if all(part is None for part in parts) else _daily(day, *parts)
+
+
+def _daily_unofficial(garmin: Garmin, day: dt.date) -> dict[str, Any]:
+    iso = day.isoformat()
+    sleep = (garmin.get_sleep_data(iso) or {}).get("dailySleepDTO")
+    return _daily(day, garmin.get_user_summary(iso), sleep, garmin.get_max_metrics(iso))
+
+
+@app.get("/daily/{day}", dependencies=protected)
+def daily_signals(official: OfficialDep, garmin: LazyGarminDep, day: dt.date) -> DailySignals:
+    primary = _daily_official(official, day) if official else None
+    (row,) = _with_fallback(None if primary is None else [primary], lambda: [_daily_unofficial(garmin(), day)], "date")
+    return DailySignals(**row)
 
 
 @app.post("/workouts", dependencies=protected, status_code=201)

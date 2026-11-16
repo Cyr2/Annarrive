@@ -343,12 +343,12 @@ source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
     { name = "garminconnect" },
+    { name = "httpx" },
     { name = "uvicorn" },
 ]
 
 [package.dev-dependencies]
 dev = [
-    { name = "httpx" },
     { name = "pytest" },
     { name = "ruff" },
 ]
@@ -357,12 +357,12 @@ dev = [
 requires-dist = [
     { name = "fastapi" },
     { name = "garminconnect" },
+    { name = "httpx" },
     { name = "uvicorn" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "httpx" },
     { name = "pytest" },
     { name = "ruff" },
 ]

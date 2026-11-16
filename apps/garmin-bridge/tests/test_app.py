@@ -10,7 +10,7 @@ from garminconnect import (
 )
 
 from garmin_bridge import session
-from garmin_bridge.app import app
+from garmin_bridge.app import app, unofficial
 from garmin_bridge.session import get_garmin
 
 client = TestClient(app)
@@ -20,8 +20,10 @@ AUTH = {"x-bridge-secret": "s3cret"}
 @pytest.fixture
 def garmin(monkeypatch):
     monkeypatch.setenv("BRIDGE_SECRET", "s3cret")
+    monkeypatch.delenv("GARMIN_API_KEY", raising=False)
     fake = MagicMock()
     app.dependency_overrides[get_garmin] = lambda: fake
+    app.dependency_overrides[unofficial] = lambda: lambda: fake
     yield fake
     app.dependency_overrides.clear()
 
