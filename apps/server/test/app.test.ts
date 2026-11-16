@@ -1,4 +1,4 @@
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { healthSchema } from "@talaria/protocol";
@@ -45,6 +45,18 @@ describe("server", () => {
     const response = await createApp({ services, sessionSecret: SECRET, webDist }).request("/semaine");
     expect(response.status).toBe(200);
     expect(await response.text()).toContain("Talaria");
+  });
+
+  it("serves hashed assets compressed and cached for good", async () => {
+    const webDist = await mkdtemp(join(tmpdir(), "talaria-web-"));
+    await mkdir(join(webDist, "assets"));
+    await writeFile(join(webDist, "assets", "index-abc.js"), "console.log('Talaria');\n".repeat(100));
+    const { services } = setup();
+    const app = createApp({ services, sessionSecret: SECRET, webDist });
+    const response = await app.request("/assets/index-abc.js", { headers: { "accept-encoding": "gzip" } });
+    expect(response.headers.get("content-encoding")).toBe("gzip");
+    expect(response.headers.get("cache-control")).toContain("immutable");
+    expect((await app.request("/semaine")).headers.get("cache-control")).toBeNull();
   });
 });
 

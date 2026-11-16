@@ -268,6 +268,15 @@ describe("http client, reading", () => {
     expect(morning.activity).toBeUndefined();
   });
 
+  it("asks once for a week that Aujourd'hui and the week both need at launch", async () => {
+    const { api, fetcher } = server(reads);
+    await Promise.all([api.today(), api.week(0)]);
+    const weekCalls = () => fetcher.mock.calls.filter(([url]) => String(url) === "/api/weeks/2026-W47").length;
+    expect(weekCalls()).toBe(1);
+    await api.week(0);
+    expect(weekCalls()).toBe(2);
+  });
+
   it("maps a week from its ISO number, with classes, strength and the last timetable read", async () => {
     const { api, fetcher } = server(reads);
     const week = await api.week(0);

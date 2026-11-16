@@ -114,14 +114,27 @@ export function createHttpApi(
     }
     return response;
   }
-  async function call<T>(method: string, path: string, schema: z.ZodType<T>, body?: unknown): Promise<T> {
+  async function read(method: string, path: string, body?: unknown): Promise<unknown> {
     const response = await send(method, path, body);
-    const json: unknown = isJson(response) ? await response.json().catch(() => undefined) : undefined;
+    return isJson(response) ? await response.json().catch(() => undefined) : undefined;
+  }
+  function parse<T>(json: unknown, schema: z.ZodType<T>): T {
     const parsed = schema.safeParse(json);
     if (!parsed.success) throw new ApiError(502, UNEXPECTED);
     return parsed.data;
   }
-  const get = <T>(path: string, schema: z.ZodType<T>) => call("GET", path, schema);
+  const call = async <T>(method: string, path: string, schema: z.ZodType<T>, body?: unknown) =>
+    parse(await read(method, path, body), schema);
+  // Aujourd'hui and its week ask for the same week at the same time: one request answers both.
+  const pending = new Map<string, Promise<unknown>>();
+  const get = async <T>(path: string, schema: z.ZodType<T>) => {
+    let json = pending.get(path);
+    if (!json) {
+      json = read("GET", path).finally(() => pending.delete(path));
+      pending.set(path, json);
+    }
+    return parse(await json, schema);
+  };
   const change = async (method: string, path: string, body?: unknown) =>
     toChange(await call(method, path, changeResponseSchema, body));
   const run = async (method: string, path: string, body?: unknown) => {
