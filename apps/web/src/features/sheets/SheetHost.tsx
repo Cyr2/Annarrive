@@ -1,12 +1,11 @@
 import { type ComponentType, lazy, Suspense } from "react";
 import { type SheetSpec, useSheet } from "./store.ts";
 
-/** What every sheet receives: its spec, whether it is open, and how to close it. */
+/** What every sheet receives: its spec, whether it is open, and how to close it (the store unmounts it after the slide). */
 export type SheetProps<K extends SheetSpec["kind"]> = {
   spec: Extract<SheetSpec, { kind: K }>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onClosed: () => void;
 };
 
 // Each sheet is its own small file, fetched the first time it opens.
@@ -34,11 +33,11 @@ function render<K extends SheetSpec["kind"]>(
 }
 
 export function SheetHost() {
-  const { current, open, close, closed } = useSheet();
+  const { current, open, close } = useSheet();
   if (!current) return null;
   return (
     <Suspense fallback={null}>
-      {render(current, { open, onOpenChange: (next) => (next ? undefined : close()), onClosed: closed })}
+      {render(current, { open, onOpenChange: (next) => (next ? undefined : close()) })}
     </Suspense>
   );
 }

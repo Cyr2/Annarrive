@@ -4,8 +4,6 @@ import { Drawer } from "vaul";
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Called once the closing animation is over, so the caller can unmount the content. */
-  onClosed?: () => void;
   title: string;
   /** Right side of the header, "OK" in the strength sheet. */
   action?: { label: string; onClick: () => void; disabled?: boolean };
@@ -18,16 +16,9 @@ type Props = {
  * Bottom sheet (Vaul): rises without bounce, follows the finger when pulled down, and the screen behind
  * steps back and dims. The header mirrors the mockups: Annuler, centered title, optional action.
  */
-export function Sheet({ open, onOpenChange, onClosed, title, action, cancelLabel = "Annuler", children }: Props) {
+export function Sheet({ open, onOpenChange, title, action, cancelLabel = "Annuler", children }: Props) {
   return (
-    <Drawer.Root
-      open={open}
-      onOpenChange={onOpenChange}
-      onAnimationEnd={(isOpen) => {
-        if (!isOpen) onClosed?.();
-      }}
-      shouldScaleBackground
-    >
+    <Drawer.Root open={open} onOpenChange={onOpenChange} shouldScaleBackground>
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 z-40 bg-scrim" />
         <Drawer.Content
