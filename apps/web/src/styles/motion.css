@@ -1,0 +1,189 @@
+/* Every animation of docs/interactions.md lives here, with its reduced-motion fallback (150 ms fades). */
+
+/* Button press: 96 % while held, back in 120 ms. */
+.press {
+  transition: transform var(--duration-press) var(--ease-out);
+}
+.press:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+/* A choice that becomes selected (segments, options, switches). */
+.select-anim {
+  transition:
+    background-color var(--duration-select) var(--ease-out),
+    box-shadow var(--duration-select) var(--ease-out),
+    opacity var(--duration-select) var(--ease-out),
+    color var(--duration-select) var(--ease-out);
+}
+
+/* Steps: the height opens and the rows fade in, 250 ms. */
+.expand {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows var(--duration-expand) var(--ease-out),
+    opacity var(--duration-expand) var(--ease-out);
+}
+.expand[data-open="true"] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.expand > * {
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* A modified session: the card turns over to its new content. */
+@keyframes flip-in {
+  from {
+    opacity: 0;
+    transform: perspective(800px) rotateX(-14deg);
+  }
+}
+.flip-in {
+  animation: flip-in var(--duration-expand) var(--ease-out) both;
+  transform-origin: top center;
+}
+
+/* Pace digits roll to their new value. */
+@keyframes roll-in {
+  from {
+    opacity: 0;
+    transform: translateY(60%);
+  }
+}
+.roll {
+  display: inline-block;
+  animation: roll-in var(--duration-expand) var(--ease-out) both;
+}
+
+/* Reggie: messages rise 8 px, widgets follow 60 ms later. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.msg {
+  animation: rise var(--duration-message) var(--ease-out) both;
+}
+.msg-widget {
+  animation-delay: var(--delay-widget);
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.typing-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--color-text-faint);
+  animation: blink var(--duration-typing) ease-in-out infinite;
+}
+.typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+/* Tab change: 200 ms cross-fade (view transition), the active pill slides. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--duration-tab);
+  animation-timing-function: var(--ease-out);
+}
+.tab-pill {
+  transition: transform var(--duration-tab) var(--ease-in-out);
+}
+
+/* Week drag: the session lifts to 102 % with a stronger shadow. */
+.lifted {
+  transform: scale(1.02);
+  box-shadow: var(--shadow-lift);
+  transition:
+    transform var(--duration-press) var(--ease-out),
+    box-shadow var(--duration-press) var(--ease-out);
+}
+
+/* Sheets: rise from the bottom without bounce, about 350 ms. */
+:root [data-vaul-drawer][data-vaul-drawer-direction="bottom"] {
+  animation-duration: var(--duration-sheet);
+  animation-timing-function: var(--ease-drawer);
+}
+:root [data-vaul-overlay] {
+  animation-duration: var(--duration-sheet);
+}
+
+/* Undo toast: rises 12 px while fading in. */
+[data-sonner-toaster] [data-sonner-toast][data-y-position="bottom"] {
+  --y: translateY(12px);
+  transition:
+    transform var(--duration-toast) var(--ease-out),
+    opacity var(--duration-toast) var(--ease-out),
+    height var(--duration-toast) var(--ease-out);
+}
+[data-sonner-toaster] [data-sonner-toast][data-mounted="true"] {
+  --y: translateY(0);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .press:active:not(:disabled) {
+    transform: none;
+  }
+  .lifted {
+    transform: none;
+  }
+  .expand {
+    transition: opacity var(--duration-fade) linear;
+  }
+  .flip-in,
+  .roll,
+  .msg {
+    animation: fade-in var(--duration-fade) linear both;
+  }
+  .typing-dot {
+    animation: none;
+    opacity: 0.6;
+  }
+  .tab-pill,
+  .select-anim {
+    transition-duration: var(--duration-fade);
+  }
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: var(--duration-fade);
+  }
+  :root [data-vaul-drawer][data-vaul-drawer-direction="bottom"][data-state="open"] {
+    animation-name: fade-in;
+    animation-duration: var(--duration-fade);
+  }
+  :root [data-vaul-drawer][data-vaul-drawer-direction="bottom"][data-state="closed"] {
+    animation-name: fade-out;
+    animation-duration: var(--duration-fade);
+  }
+  [data-sonner-toaster] [data-sonner-toast][data-y-position="bottom"] {
+    --y: none;
+    transition: opacity var(--duration-fade) linear;
+  }
+}
