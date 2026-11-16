@@ -203,3 +203,47 @@ export const pushUnsubscribeInputSchema = pushSubscriptionInputSchema.pick({ end
 /** Null when the server has no VAPID keys: the app then hides the notifications switch. */
 export const pushKeySchema = z.object({ publicKey: z.string().nullable() });
 export type PushKey = z.infer<typeof pushKeySchema>;
+
+export const painSiteSchema = z.enum(["mollet", "genou", "cheville", "hanche", "pied", "autre"]);
+export type PainSite = z.infer<typeof painSiteSchema>;
+
+/** Anna's health status, shaped like `Health` in algo.md M7. */
+export const healthStatusSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("ok") }),
+  z.object({ kind: z.literal("sick"), since: localDateSchema }),
+  z.object({ kind: z.literal("cold"), since: localDateSchema }),
+  z.object({
+    kind: z.literal("pain"),
+    since: localDateSchema,
+    level: z.number().int().min(0).max(10),
+    where: painSiteSchema,
+    until: localDateSchema.optional(),
+    orientationSent: z.boolean(),
+  }),
+  z.object({ kind: z.literal("recovering"), easyUntil: localDateSchema, qEasierUntil: localDateSchema }),
+]);
+export type HealthStatus = z.infer<typeof healthStatusSchema>;
+
+/** "Pas dispo" (algo.md EV7 to EV12); `until` absent means today only, ignored when sick. */
+export const unavailableSchema = z.intersection(
+  z.discriminatedUnion("reason", [
+    z.object({ reason: z.literal("no_time") }),
+    z.object({ reason: z.literal("tired") }),
+    z.object({ reason: z.literal("sick"), feverOrChest: z.boolean() }),
+    z.object({ reason: z.literal("pain"), where: painSiteSchema, walking0to10: z.number().int().min(0).max(10) }),
+  ]),
+  z.object({ until: localDateSchema.optional() }),
+);
+export type Unavailable = z.infer<typeof unavailableSchema>;
+
+/** "Changer" (algo.md EV2 to EV5). */
+export const changeOptionSchema = z.enum(["shorter", "easier", "equivalent", "jog30"]);
+export type ChangeOption = z.infer<typeof changeOptionSchema>;
+export const changeOptionsSchema = z.object({
+  shorter: plannedSessionSchema,
+  easier: plannedSessionSchema,
+  equivalent: plannedSessionSchema.optional(),
+  jog30: plannedSessionSchema,
+});
+export type ChangeOptions = z.infer<typeof changeOptionsSchema>;
+export const changeSessionInputSchema = z.object({ option: changeOptionSchema });

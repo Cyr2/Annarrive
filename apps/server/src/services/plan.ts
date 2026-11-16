@@ -1,15 +1,19 @@
 import { randomUUID } from "node:crypto";
 import type {
   CalendarEvent,
+  ChangeOption,
+  ChangeOptions,
   ChangeResponse,
   CreateEventInput,
   DeleteEventQuery,
+  HealthStatus,
   MoveSlots,
   PlannedSession,
   Profile,
   ProfilePatch,
   Program,
   Today,
+  Unavailable,
   UpdateEventInput,
   Week,
 } from "@talaria/protocol";
@@ -42,7 +46,30 @@ const eventLabels: Record<CalendarEvent["kind"], string> = {
   unavailable: "Indispo",
 };
 
+const changeLabels: Record<ChangeOption, string> = {
+  shorter: "Séance raccourcie",
+  easier: "Séance passée en allure facile",
+  equivalent: "Séance remplacée par une équivalente",
+  jog30: "Séance remplacée par un footing tranquille",
+};
+
+const unavailableLabels: Record<Unavailable["reason"], string> = {
+  no_time: "Pas le temps : séance passée",
+  tired: "Fatiguée : repos aujourd'hui",
+  sick: "Malade : séances adaptées",
+  pain: "Douleur notée : séances adaptées",
+};
+
+/** What Reggie reads before answering about form or health. */
+export type RecentData = {
+  health: HealthStatus;
+  signals: { id: string; rhr?: number; sleepMin?: number; bodyBatteryWake?: number; stressAvg?: number }[];
+  activities: { id: string; start: string; durMin: number; distM: number; avgHr?: number; feel?: string }[];
+};
+
 const CURRENT = "current";
+/** How far back Reggie looks at signals and runs. */
+const RECENT_DAYS = 14;
 /** The coach replans the current and the next week (algo.md cycle 0.1). */
 const WINDOW_DAYS = 14;
 
@@ -141,11 +168,7 @@ export class PlanService {
 
   moveSession(id: string, start: string): ChangeResponse {
     const before = this.coachState();
-    const session = before.sessions.find((s) => s.id === id);
-    if (!session)
-      throw new NotFoundError("Cette séance est introuvable dans cette semaine ou la suivante : recharge l'écran.");
-    if (session.status !== "planned")
-      throw new ReadOnlyError("Cette séance n'est plus à venir : elle ne se déplace plus.");
+    const session = this.#upcoming(before, id);
     const now = this.#now();
     if (start < now) throw new InvalidInputError("Ce moment est déjà passé : choisis un créneau à venir.");
     if (dateOf(start) >= addDays(mondayOf(dateOf(now)), WINDOW_DAYS)) {
@@ -163,6 +186,46 @@ export class PlanService {
       throw new NotFoundError("Cette séance est introuvable : recharge l'écran.");
     const proposal = this.#coach.proposeMoveSlots(id, state, this.#now());
     return { ...proposal, sideEffects: proposal.sideEffects.map((n) => n.message) };
+  }
+
+  changeOptions(id: string): ChangeOptions {
+    const state = this.coachState();
+    this.#upcoming(state, id);
+    return this.#coach.changeOptions(state, id);
+  }
+
+  changeSession(id: string, option: ChangeOption): ChangeResponse {
+    const before = this.coachState();
+    this.#upcoming(before, id);
+    const result = this.#coach.applyChange(before, id, option, this.#now());
+    return this.#commit(changeLabels[option], [], before, result);
+  }
+
+  reportUnavailable(report: Unavailable): ChangeResponse {
+    const before = this.coachState();
+    const result = this.#coach.reportUnavailable(before, report, this.#now());
+    return this.#commit(unavailableLabels[report.reason], [], before, result);
+  }
+
+  feelBetter(): ChangeResponse {
+    const before = this.coachState();
+    return this.#commit("Retour progressif lancé", [], before, this.#coach.feelBetter(before, this.#now()));
+  }
+
+  health(): HealthStatus {
+    return this.#stores.health.get(CURRENT)?.value ?? { kind: "ok" };
+  }
+
+  recent(): RecentData {
+    const to = this.#now();
+    const from = addDays(dateOf(to), -RECENT_DAYS);
+    return {
+      health: this.health(),
+      signals: this.#stores.dailySignal.overlapping(from, to),
+      activities: this.#stores.activity
+        .overlapping(`${from}T00:00`, to)
+        .map(({ hrSeries: _hr, ...activity }) => activity),
+    };
   }
 
   updateProfile(patch: ProfilePatch): ChangeResponse {
@@ -246,7 +309,16 @@ export class PlanService {
       events: this.#windowEvents(),
       settings: this.profile(),
       program: this.program(),
+      health: this.health(),
     };
+  }
+
+  #upcoming(state: CoachState, id: string): PlannedSession {
+    const session = state.sessions.find((s) => s.id === id);
+    if (!session)
+      throw new NotFoundError("Cette séance est introuvable dans cette semaine ou la suivante : recharge l'écran.");
+    if (session.status !== "planned") throw new ReadOnlyError("Cette séance n'est plus à venir : elle ne change plus.");
+    return session;
   }
 
   #changeEvent(summary: string, id: string, after: CalendarEvent | null): ChangeResponse {
@@ -263,6 +335,11 @@ export class PlanService {
     result: CoachResult,
     movedId?: string,
   ): ChangeResponse {
+    if (result.refusal) throw new InvalidInputError(result.refusal);
+    const healthWrites: PlanWrite[] =
+      JSON.stringify(result.state.health) === JSON.stringify(before.health)
+        ? []
+        : [{ table: "health", id: CURRENT, after: { id: CURRENT, value: result.state.health } }];
     const kept = new Set(result.state.sessions.map((s) => s.id));
     const sessionWrites: PlanWrite[] = [
       ...before.sessions
@@ -272,7 +349,7 @@ export class PlanService {
     ];
     const moved = movedSessions(before, result).filter(([, s]) => s.id !== movedId).length;
     const fullSummary = moved > 0 ? `${summary} · ${movedRunsText(moved)}` : summary;
-    const entry = this.#changes.record(fullSummary, [...writes, ...sessionWrites]);
+    const entry = this.#changes.record(fullSummary, [...writes, ...healthWrites, ...sessionWrites]);
     return {
       change: entry && { id: entry.id, summary: entry.summary },
       warnings: result.warnings.map((w) => w.message),

@@ -32,6 +32,7 @@ export class ChangeService {
       calendar_event: stores.calendarEvent,
       profile: stores.profile,
       program: stores.program,
+      health: stores.health,
     };
   }
 

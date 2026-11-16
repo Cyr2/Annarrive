@@ -1,10 +1,13 @@
 import type { DatabaseSync } from "node:sqlite";
+import { query } from "@anthropic-ai/claude-agent-sdk";
 import type { CoachPort } from "../coach-port.ts";
 import type { BridgeClient } from "../garmin/bridge-client.ts";
+import { createReggie, type ReggieRun } from "../reggie/agent.ts";
 import { createStores } from "../storage/stores.ts";
 import type { Clock } from "../time.ts";
 import { AuthService } from "./auth.ts";
 import { ChangeService } from "./changes.ts";
+import { ChatService } from "./chat.ts";
 import { GarminService } from "./garmin.ts";
 import { NotificationService, type PushSender } from "./notifications.ts";
 import { PlanService } from "./plan.ts";
@@ -18,6 +21,7 @@ export type Services = {
   notifications: NotificationService;
   /** Null when the server has no bridge configured (local development). */
   garmin: GarminService | null;
+  chat: ChatService;
 };
 
 export function createServices(deps: {
@@ -27,6 +31,8 @@ export function createServices(deps: {
   fetchIcs: () => Promise<string>;
   bridge?: BridgeClient | undefined;
   push?: { send: PushSender; publicKey: string } | undefined;
+  /** Defaults to the Agent SDK; tests pass a fake. */
+  reggie?: ReggieRun;
 }): Services {
   const stores = createStores(deps.db);
   const changes = new ChangeService(deps.db, stores, deps.clock);
@@ -35,6 +41,7 @@ export function createServices(deps: {
   return {
     auth: new AuthService(stores, deps.clock),
     changes,
+    chat: new ChatService(stores, plan, deps.reggie ?? createReggie(query), deps.clock),
     plan,
     timetable: new TimetableService(deps.db, stores, plan, deps.clock, deps.fetchIcs),
     notifications,

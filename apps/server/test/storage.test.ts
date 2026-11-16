@@ -40,7 +40,8 @@ describe("database", () => {
     stores.activity.put({ id: "g1", start: "2026-11-16T18:00", durMin: 40, distM: 7000 });
     stores.dailySignal.put({ id: "2026-11-16", rhr: 52, sleepMin: 450 });
     stores.fitnessEstimate.put({ id: "f1", date: "2026-11-16", vdot: 41.2, source: "garmin" });
-    stores.chatMessage.put({ id: "m1", at: "2026-11-16T07:00:00Z", role: "anna", text: "Salut" });
+    stores.chatMessage.put({ id: "m1", at: "2026-11-16T07:00:00Z", role: "anna", text: "Salut", widgets: [] });
+    stores.health.put({ id: "current", value: { kind: "cold", since: "2026-11-16" } });
     stores.pushSubscription.put({ id: "https://push.example/abc", keys: { p256dh: "k", auth: "a" } });
     expect(stores.activity.overlapping("2026-11-16T00:00", "2026-11-17T00:00")).toHaveLength(1);
     expect(stores.dailySignal.list().map((s) => s.id)).toEqual(["2026-11-16"]);

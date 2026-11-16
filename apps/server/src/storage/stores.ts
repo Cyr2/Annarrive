@@ -2,7 +2,9 @@ import type { DatabaseSync } from "node:sqlite";
 import {
   type CalendarEvent,
   calendarEventSchema,
+  chatMessageSchema,
   dailySignalSchema,
+  healthStatusSchema,
   localDateSchema,
   localDateTimeSchema,
   plannedSessionSchema,
@@ -14,7 +16,7 @@ import { addMinutes } from "../time.ts";
 import { DocumentStore } from "./store.ts";
 
 /** Tables a plan change can touch, so the change log can restore them. */
-export const planTables = ["planned_session", "calendar_event", "profile", "program"] as const;
+export const planTables = ["planned_session", "calendar_event", "profile", "program", "health"] as const;
 export type PlanTable = (typeof planTables)[number];
 
 export const changeEntrySchema = z.object({
@@ -45,12 +47,6 @@ export const activitySchema = z.object({
 });
 export type Activity = z.infer<typeof activitySchema>;
 const fitnessEstimateSchema = z.object({ id: z.string(), date: localDateSchema, vdot: z.number(), source: z.string() });
-const chatMessageSchema = z.object({
-  id: z.string(),
-  at: z.string(),
-  role: z.enum(["anna", "reggie"]),
-  text: z.string(),
-});
 const pushSubscriptionSchema = z.object({
   id: z.string().url(),
   keys: z.object({ p256dh: z.string(), auth: z.string() }),
@@ -84,6 +80,7 @@ export function createStores(db: DatabaseSync) {
   return {
     profile: new DocumentStore(db, "profile", single(profileSchema)),
     program: new DocumentStore(db, "program", single(programSchema)),
+    health: new DocumentStore(db, "health", single(healthStatusSchema)),
     plannedSession: new DocumentStore(db, "planned_session", plannedSessionSchema, (s) => [
       s.start,
       addMinutes(s.start, s.durMin),

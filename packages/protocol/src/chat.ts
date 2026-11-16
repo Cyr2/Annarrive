@@ -1,0 +1,75 @@
+import { z } from "zod";
+import { changeOptionSchema, plannedSessionSchema, slotSchema } from "./api.ts";
+
+/** Where the conversation was opened from, so Reggie knows what "cette séance" means. */
+export const chatContextSchema = z.object({
+  screen: z.enum(["today", "week", "program", "after_run", "session"]),
+  sessionId: z.string().min(1).optional(),
+});
+export type ChatContext = z.infer<typeof chatContextSchema>;
+
+/** Tappable widgets under a Reggie message (docs/interactions.md, "Les widgets dans la conversation"). */
+export const chatWidgetSchema = z.discriminatedUnion("type", [
+  /** A closed question: each tap sends its label as Anna's message. */
+  z.object({ type: z.literal("choices"), options: z.array(z.string().min(1).max(40)).min(2).max(5) }),
+  /** Pain or fatigue level, sent as "<n>/10". */
+  z.object({ type: z.literal("slider"), label: z.string().min(1), min: z.literal(0), max: z.literal(10) }),
+  /** Move proposal: up to 3 slots, tap then the change card appears. */
+  z.object({
+    type: z.literal("slots"),
+    sessionId: z.string(),
+    slots: z
+      .array(z.object({ slot: slotSchema, reason: z.string() }))
+      .min(1)
+      .max(3),
+  }),
+  /** Replacement proposal with "Prendre celle-ci". */
+  z.object({
+    type: z.literal("session_preview"),
+    sessionId: z.string(),
+    option: changeOptionSchema,
+    session: plannedSessionSchema,
+  }),
+  /** After any change: Annuler stays active until the next change. */
+  z.object({
+    type: z.literal("change"),
+    changeId: z.string(),
+    summary: z.string(),
+    warnings: z.array(z.string()),
+  }),
+  /** "Je vérifie" while Reggie searches a source; streamed only, never stored. */
+  z.object({ type: z.literal("checking") }),
+]);
+export type ChatWidget = z.infer<typeof chatWidgetSchema>;
+
+export const chatMessageSchema = z.object({
+  id: z.string(),
+  at: z.string(),
+  role: z.enum(["anna", "reggie"]),
+  text: z.string(),
+  widgets: z.array(chatWidgetSchema),
+  context: chatContextSchema.optional(),
+});
+export type ChatMessage = z.infer<typeof chatMessageSchema>;
+
+export const chatRequestSchema = z.object({
+  text: z.string().trim().min(1).max(2000),
+  context: chatContextSchema.optional(),
+});
+export type ChatRequest = z.infer<typeof chatRequestSchema>;
+
+export const chatHistorySchema = z.object({ messages: z.array(chatMessageSchema) });
+export type ChatHistory = z.infer<typeof chatHistorySchema>;
+
+/**
+ * One server-sent event of `POST /api/chat`; the SSE `event` field repeats `type`.
+ * Order: typing, text deltas, widgets, then done (or error).
+ */
+export const chatStreamEventSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("typing") }),
+  z.object({ type: z.literal("text"), delta: z.string() }),
+  z.object({ type: z.literal("widget"), widget: chatWidgetSchema }),
+  z.object({ type: z.literal("done"), message: chatMessageSchema }),
+  z.object({ type: z.literal("error"), error: z.string() }),
+]);
+export type ChatStreamEvent = z.infer<typeof chatStreamEventSchema>;
