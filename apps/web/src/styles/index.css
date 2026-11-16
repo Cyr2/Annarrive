@@ -1,16 +1,198 @@
 @import "tailwindcss";
 @import "./tokens.css";
+@import "./motion.css";
 
-html {
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
-  font-variant-numeric: tabular-nums;
-  -webkit-tap-highlight-color: transparent;
-  -webkit-text-size-adjust: 100%;
+/* In the base layer, so every Tailwind utility and component class can override it. */
+@layer base {
+  html {
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    font-variant-numeric: tabular-nums;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+    /* No pull to refresh or page bounce: they fight the sheets and the week drag. */
+    overscroll-behavior: none;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    overscroll-behavior: none;
+  }
+
+  /* iOS zooms into any field under 16px. */
+  input,
+  textarea,
+  select {
+    font: inherit;
+    font-size: max(16px, 1em);
+  }
+
+  button,
+  a,
+  [role="button"],
+  select,
+  input {
+    touch-action: manipulation;
+  }
+
+  button,
+  [role="button"],
+  [role="tab"],
+  [role="radio"],
+  [role="switch"] {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: default;
+  }
+
+  a {
+    color: var(--color-link);
+    text-decoration: none;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-assistant);
+    outline-offset: 2px;
+  }
 }
 
-body {
-  margin: 0;
-  min-height: 100dvh;
+@layer components {
+  /* Type scale: page 28, section 20, body 17, secondary 15, caption 13, tabs 11. */
+  .t-large {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 34px;
+  }
+  .t-title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 25px;
+  }
+  .t-figure {
+    font-size: 40px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 44px;
+  }
+  .t-num {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 34px;
+  }
+  .t-body {
+    font-size: 17px;
+    font-weight: 400;
+    line-height: 22px;
+  }
+  .t-strong {
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 22px;
+  }
+  .t-sub {
+    font-size: 15px;
+    font-weight: 400;
+    line-height: 20px;
+    color: var(--color-text-secondary);
+  }
+  /* 15 px label in the text color: chips, segments, small buttons. */
+  .t-label {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 20px;
+  }
+  .t-cap {
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 18px;
+    color: var(--color-text-secondary);
+  }
+  .t-tab {
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 13px;
+  }
+
+  .glass {
+    background: var(--color-glass);
+    -webkit-backdrop-filter: var(--blur-glass);
+    backdrop-filter: var(--blur-glass);
+    box-shadow: var(--shadow-glass);
+  }
+  .glass-bar {
+    background: var(--color-glass-bar);
+    -webkit-backdrop-filter: var(--blur-bar);
+    backdrop-filter: var(--blur-bar);
+    box-shadow: var(--shadow-glass-bar);
+  }
+
+  .group {
+    display: flex;
+    flex-direction: column;
+    background: var(--color-surface);
+    border-radius: var(--radius-row);
+  }
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 52px;
+    margin-left: var(--space-gutter);
+    padding-right: var(--space-gutter);
+    color: var(--color-text);
+  }
+  .row + .row {
+    border-top: 0.5px solid var(--color-hairline);
+  }
+
+  .hairline-top {
+    border-top: 0.5px solid var(--color-hairline-strong);
+  }
+
+  /* glisse controls take the app's colors (and stay light: the app has no dark theme yet). */
+  .ui-switch,
+  .ui-slider {
+    --lg-on: var(--color-success);
+    --lg-fill: var(--color-assistant);
+    --lg-track: var(--color-switch-off);
+    --lg-rail: var(--color-fill);
+  }
+
+  .bubble-reggie {
+    border-radius: var(--radius-bubble) var(--radius-bubble) var(--radius-bubble) var(--radius-tail);
+  }
+  .bubble-user {
+    border-radius: var(--radius-bubble) var(--radius-bubble) var(--radius-tail) var(--radius-bubble);
+  }
+
+  .sr-only-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass,
+  .glass-bar {
+    background: var(--color-glass-solid);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
 }

@@ -1,16 +1,160 @@
-/* Values from the validated mockups (design/). Components never hard-code a color. */
-:root {
+/* Values from the validated mockups (design/). Components never hard-code a color, a spacing or a duration.
+   `static` keeps every variable in the output: components also read them from plain CSS. */
+@theme static {
   --color-bg: #f2f2f7;
   --color-surface: #ffffff;
   --color-text: #0a0a0c;
   --color-text-secondary: rgb(10 10 12 / 0.6);
+  --color-text-faint: rgb(10 10 12 / 0.35);
   --color-hairline: rgb(10 10 12 / 0.1);
+  --color-hairline-strong: rgb(10 10 12 / 0.12);
+  --color-fill: rgb(118 118 128 / 0.14);
+  --color-fill-hover: rgb(10 10 12 / 0.07);
+  --color-switch-off: rgb(120 120 128 / 0.24);
+  --color-handle: rgb(10 10 12 / 0.2);
+  --color-dash-line: rgb(10 10 12 / 0.22);
+  --color-scrim: rgb(0 0 0 / 0.32);
+  --color-on-accent: #ffffff;
+
   --color-assistant: #0a7cff;
-  --color-intense: #ff6a2c;
-  --color-intense-ink: #b93a0a;
-  --color-easy: #34b36a;
-  --color-long: #3a82f0;
-  --color-revision: #2ba8b8;
+  /* Text on a filled blue button: #0A7CFF gives 3.9:1 with white, this one 5:1. */
+  --color-action: #0a6ce0;
+  --color-assistant-tint: rgb(10 124 255 / 0.12);
+  --color-assistant-wash: rgb(10 124 255 / 0.08);
   --color-link: #0066cc;
   --color-danger: #d70015;
+  --color-success: #34c759;
+  --color-success-wash: rgb(52 199 89 / 0.16);
+  --color-success-ink: #1e6b35;
+
+  --color-intense: #ff6a2c;
+  --color-intense-ink: #b93a0a;
+  --color-intense-deep: #7a2608;
+  --color-intense-wash: #ffe6da;
+  --color-easy: #34b36a;
+  --color-easy-ink: #1e6b45;
+  --color-easy-deep: #0e4a2a;
+  --color-easy-wash: #ddf5e6;
+  --color-long: #3a82f0;
+  --color-long-ink: #1d5bb8;
+  --color-long-deep: #0f3a73;
+  --color-long-wash: #dcebff;
+  --color-revision: #2ba8b8;
+  --color-revision-ink: #11707c;
+  --color-revision-wash: #ddf3f5;
+  --color-class: #aeaeb2;
+  --color-class-ink: #3a3a3f;
+  --color-class-wash: #ededf0;
+  --color-strength: #0a0a0c;
+  --color-strength-wash: #e6e6ea;
+
+  --color-glass: rgb(255 255 255 / 0.5);
+  --color-glass-bar: rgb(255 255 255 / 0.62);
+  --color-glass-solid: rgb(255 255 255 / 0.96);
+  --color-glass-button: rgb(255 255 255 / 0.6);
+
+  --shadow-glass:
+    inset 0 0 0 0.5px rgb(255 255 255 / 0.75), inset 0 1px 0 rgb(255 255 255 / 0.95), 0 10px 36px rgb(90 40 10 / 0.14);
+  --shadow-glass-bar:
+    inset 0 0 0 0.5px rgb(255 255 255 / 0.8), inset 0 1px 0 rgb(255 255 255 / 0.95), 0 8px 30px rgb(0 0 0 / 0.12);
+  /* Glass rim with a short shadow, for chips inside a horizontal scroller that would clip a long one. */
+  --shadow-glass-flat:
+    inset 0 0 0 0.5px rgb(255 255 255 / 0.75), inset 0 1px 0 rgb(255 255 255 / 0.95), 0 2px 8px rgb(0 0 0 / 0.08);
+  --shadow-accent: inset 0 1px 0 rgb(255 255 255 / 0.35), 0 8px 22px rgb(10 124 255 / 0.35);
+  --shadow-thumb: 0 3px 8px rgb(0 0 0 / 0.12), 0 0 0 0.5px rgb(0 0 0 / 0.04);
+  --shadow-sheet: 0 -8px 30px rgb(0 0 0 / 0.12);
+  --shadow-lift: 0 14px 34px rgb(0 0 0 / 0.18);
+  --shadow-ring: inset 0 0 0 2px var(--color-assistant);
+  --shadow-ring-quiet: inset 0 0 0 1.5px rgb(10 10 12 / 0.25);
+  --shadow-chip: inset 0 0 0 0.5px rgb(10 10 12 / 0.12);
+
+  --blur-glass: blur(24px) saturate(180%);
+  --blur-bar: blur(20px) saturate(180%);
+
+  --radius-tile: 8px;
+  --radius-row: 16px;
+  --radius-thumb: 18px;
+  --radius-seg: 22px;
+  --radius-bubble: 22px;
+  --radius-tail: 6px;
+  --radius-group: 20px;
+  --radius-card: 28px;
+  --radius-sheet: 36px;
+  --radius-pill: 999px;
+
+  --size-target: 44px;
+  --size-action: 60px;
+  --size-tile: 32px;
+  --size-tabbar: 64px;
+  --space-gutter: 16px;
+  --space-tabbar-bottom: 24px;
+  /* Room left under the content so the floating tab bar never hides the last row. */
+  --space-under-tabbar: 128px;
+  /* Bottom of anything floating just above the tab bar: banner, Reggie field. */
+  --space-above-tabbar: 100px;
+
+  --duration-press: 120ms;
+  --duration-select: 180ms;
+  --duration-tab: 200ms;
+  --duration-expand: 250ms;
+  --duration-message: 220ms;
+  --duration-sheet: 350ms;
+  --duration-toast: 400ms;
+  --duration-fade: 150ms;
+  --delay-widget: 60ms;
+  --duration-typing: 1.2s;
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  /* iOS sheet curve: steep start, no overshoot. */
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  /* Spring with a small bounce (bounce 0.2), sampled: used where a drag lets go. */
+  --ease-spring-bounce: linear(
+    0,
+    0.063 2.6%,
+    0.234 5.8%,
+    0.464 9.4%,
+    0.7 13.4%,
+    0.88 17.4%,
+    1.004 21.6%,
+    1.064 25.6%,
+    1.078 29.4%,
+    1.064 33.6%,
+    1.037 38.6%,
+    1.012 44%,
+    0.996 51%,
+    0.993 59%,
+    1 76%,
+    1
+  );
+}
+
+/* Colored backdrops behind the glass, one per mood (warm for intensity, green for rest, blue for Reggie). */
+:root {
+  --backdrop-run:
+    radial-gradient(70% 42% at 12% 6%, rgb(255 118 58 / 0.95) 0%, rgb(255 118 58 / 0) 100%),
+    radial-gradient(60% 38% at 96% 16%, rgb(255 190 96 / 0.9) 0%, rgb(255 190 96 / 0) 100%),
+    radial-gradient(80% 40% at 50% 44%, rgb(255 96 92 / 0.5) 0%, rgb(255 96 92 / 0) 100%);
+  --backdrop-easy:
+    radial-gradient(70% 42% at 12% 6%, rgb(110 206 150 / 0.9) 0%, rgb(110 206 150 / 0) 100%),
+    radial-gradient(60% 38% at 96% 16%, rgb(255 200 120 / 0.75) 0%, rgb(255 200 120 / 0) 100%),
+    radial-gradient(80% 40% at 50% 44%, rgb(186 232 170 / 0.5) 0%, rgb(186 232 170 / 0) 100%);
+  --backdrop-long:
+    radial-gradient(70% 42% at 12% 6%, rgb(90 160 255 / 0.85) 0%, rgb(90 160 255 / 0) 100%),
+    radial-gradient(60% 38% at 96% 16%, rgb(255 190 96 / 0.8) 0%, rgb(255 190 96 / 0) 100%),
+    radial-gradient(80% 40% at 50% 44%, rgb(160 220 255 / 0.5) 0%, rgb(160 220 255 / 0) 100%);
+  --backdrop-rest:
+    radial-gradient(70% 42% at 10% 6%, rgb(120 214 180 / 0.9) 0%, rgb(120 214 180 / 0) 100%),
+    radial-gradient(60% 40% at 95% 14%, rgb(150 206 236 / 0.85) 0%, rgb(150 206 236 / 0) 100%),
+    radial-gradient(80% 40% at 50% 42%, rgb(186 232 170 / 0.55) 0%, rgb(186 232 170 / 0) 100%);
+  --backdrop-done:
+    radial-gradient(70% 42% at 12% 6%, rgb(255 140 80 / 0.8) 0%, rgb(255 140 80 / 0) 100%),
+    radial-gradient(60% 38% at 96% 16%, rgb(255 200 120 / 0.8) 0%, rgb(255 200 120 / 0) 100%);
+  --backdrop-week:
+    radial-gradient(70% 45% at 10% 4%, rgb(255 150 90 / 0.75) 0%, rgb(255 150 90 / 0) 100%),
+    radial-gradient(60% 45% at 96% 10%, rgb(140 200 240 / 0.75) 0%, rgb(140 200 240 / 0) 100%);
+  --backdrop-reggie:
+    radial-gradient(70% 45% at 12% 4%, rgb(90 160 255 / 0.85) 0%, rgb(90 160 255 / 0) 100%),
+    radial-gradient(60% 45% at 96% 12%, rgb(160 220 255 / 0.85) 0%, rgb(160 220 255 / 0) 100%),
+    radial-gradient(70% 40% at 50% 40%, rgb(255 170 120 / 0.35) 0%, rgb(255 170 120 / 0) 100%);
 }
