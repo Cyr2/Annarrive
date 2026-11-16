@@ -56,7 +56,7 @@ Fait par Anna, une seule fois, écrans courts (une question par écran), puis un
 Ce qu'elle renseigne :
 
 1. Sa course : distance et date.
-2. Son chrono visé, facultatif. L'app propose un chrono atteignable, plutôt ambitieux, jamais pessimiste. Elle tranche.
+2. Son chrono visé, facultatif. C'est elle qui le choisit : l'app ne propose pas de chrono, elle indique seulement s'il est atteignable ou ambitieux, sans jamais décourager. Sans chrono, l'objectif est de finir.
 3. Combien de courses par semaine.
 4. Son heure de coucher habituelle.
 5. Ses limites : pas avant, pas après, jours sans course (valeurs proposées par défaut).
