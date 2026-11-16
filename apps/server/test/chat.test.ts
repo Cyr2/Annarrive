@@ -38,7 +38,7 @@ function parseSse(body: string) {
 }
 
 describe("POST /api/chat", () => {
-  it("streams typing, then text, then widgets, then the stored message", async () => {
+  it("streams typing, then only the answer after the last tool call, then widgets, then the stored message", async () => {
     const prompts: string[] = [];
     const t = await ready(scripted(prompts));
     const response = await t.request("POST", "/api/chat", {
@@ -48,12 +48,12 @@ describe("POST /api/chat", () => {
     expect(response.headers.get("content-type")).toContain("text/event-stream");
     const events = parseSse(await response.text());
 
-    expect(events.map((e) => e.type)).toEqual(["typing", "text", "widget", "text", "widget", "done"]);
+    expect(events.map((e) => e.type)).toEqual(["typing", "widget", "text", "widget", "done"]);
     const done = events.at(-1);
     if (done?.type !== "done") throw new Error("done expected");
     expect(done.message).toMatchObject({
       role: "reggie",
-      text: "Je regarde tes créneaux. Mercredi 18:00 marche.",
+      text: "Mercredi 18:00 marche.",
       widgets: [{ type: "slots", sessionId: "tonight" }],
     });
     expect(prompts[0]).toContain(
