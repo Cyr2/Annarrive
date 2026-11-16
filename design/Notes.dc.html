@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Note de chaque élément</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&amp;family=Barlow:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#16161A}a:hover{color:#C2410C}
+</style>
+</helmet>
+<div style="width: 1100px; height: 1230px; box-sizing: border-box; padding: 48px; background: #FFFFFF; color: #16161A; font-family: Barlow, system-ui, sans-serif; display: flex; flex-direction: column; gap: 24px">
+  <div style="display: flex; flex-direction: column; gap: 6px">
+    <h1 style="margin: 0; font-family: 'Barlow Condensed', sans-serif; font-size: 40px; font-weight: 700">Note de chaque élément</h1>
+    <p style="margin: 0; font-size: 16px; color: #5F5E5A">Note sur 5 selon l'utilité pour Anna. 4 et plus : visible. 3 : discret ou au tap. 2 et moins : retiré de l'écran.</p>
+  </div>
+  <div style="display: flex; flex-direction: column">
+    <div style="display: grid; grid-template-columns: 280px 130px 200px minmax(0, 1fr); gap: 16px; padding: 0 0 10px; border-bottom: 2px solid #16161A; font-size: 13px; font-weight: 600; color: #5F5E5A">
+      <span>Élément</span><span>Note</span><span>Où</span><span>Pourquoi</span>
+    </div>
+    <sc-for list="{{rows}}" as="r" hint-placeholder-count="22">
+      <div style="display: grid; grid-template-columns: 280px 130px 200px minmax(0, 1fr); gap: 16px; align-items: center; min-height: 44px; border-bottom: 1px solid #E3E1DA; font-size: 15px; opacity: {{r.op}}">
+        <span style="font-weight: 600">{{r.name}}</span>
+        <span style="display: flex; gap: 4px" role="img" aria-label="{{r.aria}}">
+          <sc-for list="{{r.dots}}" as="d" hint-placeholder-count="5">
+            <span style="width: 12px; height: 12px; border-radius: 6px; background: {{d.c}}"></span>
+          </sc-for>
+        </span>
+        <span><span style="display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 13px; font-weight: 600; background: {{r.tagBg}}; color: {{r.tagFg}}">{{r.where}}</span></span>
+        <span style="color: #3F3E3A">{{r.why}}</span>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1100,"height":1230}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const TAG = {
+      v: ['#FBE3D6', '#9A3412'],
+      t: ['#ECEAE4', '#3F3E3A'],
+      q: ['#DCE6F2', '#1E3A5F'],
+      x: ['#F4F3EF', '#5F5E5A']
+    };
+    const row = (name, score, kind, where, why) => ({
+      name: name,
+      where: where,
+      why: why,
+      aria: score + ' sur 5',
+      op: score <= 2 ? 0.6 : 1,
+      tagBg: TAG[kind][0],
+      tagFg: TAG[kind][1],
+      dots: [1, 2, 3, 4, 5].map((i) => ({ c: i <= score ? '#C2410C' : '#E3E1DA' }))
+    });
+    return {
+      rows: [
+        row('Séance du jour', 5, 'v', 'Visible', 'Type, durée, heure. C’est la raison d’ouvrir l’app.'),
+        row('Allure cible', 5, 'v', 'Visible', 'Ce qu’elle doit tenir, comme sur Garmin.'),
+        row('Écran Repos', 5, 'v', 'Jour sans course', 'Un mot suffit : rien à faire aujourd’hui.'),
+        row('Prochaines séances', 4, 'v', 'Visible', 'Elle voit ce qui arrive sans changer d’onglet.'),
+        row('Accès à Reggie', 4, 'v', 'Visible, en bleu', 'Une seule porte pour poser une question ou tout ajuster.'),
+        row('Raison d’un allègement', 4, 'v', 'Si allégée', 'Sans raison, un changement paraît arbitraire.'),
+        row('Résumé après course', 4, 'v', 'Après synchro', 'Trois chiffres et prévu contre réalisé.'),
+        row('Ressenti en un tap', 4, 'v', 'Après synchro', 'L’algo s’en sert. Sa montre ne le demande sans doute pas.'),
+        row('Barre d’onglets', 4, 'v', 'Visible', 'Aujourd’hui, Semaine, Programme, Reggie.'),
+        row('Déplacer, Changer, Pas dispo', 4, 'v', 'Visible', 'Trois boutons directs sous la séance, à côté de Reggie.'),
+        row('Statut montre', 3, 't', 'Discret', 'Rassure pour une ligne de texte.'),
+        row('Compte à rebours J-62', 3, 't', 'Discret, en haut', 'Rappelle l’objectif, ouvre l’onglet Programme.'),
+        row('Étapes de la séance', 3, 't', 'Au tap', 'La montre la guide pendant la course.'),
+        row('Ma journée', 3, 't', 'Sous la semaine', 'Cours, révision, muscu. Elle voit où la course se glisse.'),
+        row('Fond coloré', 3, 't', 'Derrière la séance', 'Chaud pour l’intensité, vert pour le repos. Le verre en a besoin.'),
+        row('Note libre pour Reggie', 3, 't', 'Après synchro', 'Contexte pour l’algo, facultatif.'),
+        row('Météo', 2, 'x', 'Retiré', 'L’algo corrige l’allure s’il fait chaud.'),
+        row('Sommeil, Body Battery', 2, 'x', 'Retiré', 'L’algo les lit. Les afficher ajoute de la lecture.'),
+        row('Kilomètres de la semaine', 2, 'x', 'Retiré', 'Elle suit un plan, pas un compteur.'),
+        row('VO2max, niveau de forme', 1, 'x', 'Retiré', 'Un chiffre qui bouge et inquiète pour rien.'),
+        row('Courbe de charge', 1, 'x', 'Retiré', 'Utile au coach, pas à elle.'),
+        row('Séries, badges', 1, 'x', 'Retiré', 'Pousse à courir un jour de repos.'),
+        row('Phrase de motivation', 0, 'x', 'Retiré', 'Du bruit.')
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

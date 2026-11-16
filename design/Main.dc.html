@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Aujourd'hui, jour de course</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0066CC;text-decoration:none}a:hover{color:#004C99}
+button{font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.glass{background:rgba(255,255,255,.5);-webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);box-shadow:inset 0 0 0 .5px rgba(255,255,255,.75),inset 0 1px 0 rgba(255,255,255,.95),0 10px 36px rgba(90,40,10,.14)}
+.glass-bar{background:rgba(255,255,255,.62);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);box-shadow:inset 0 0 0 .5px rgba(255,255,255,.8),inset 0 1px 0 rgba(255,255,255,.95),0 8px 30px rgba(0,0,0,.12)}
+.press{transition:transform 120ms ease-out}.press:active{transform:scale(.96)}
+.t-large{margin:0;font-size:28px;font-weight:700;letter-spacing:-0.02em;line-height:34px}
+.t-title{margin:0;font-size:20px;font-weight:700;letter-spacing:-0.01em;line-height:25px}
+.t-figure{font-size:40px;font-weight:700;letter-spacing:-0.03em;line-height:44px}
+.t-body{font-size:17px;font-weight:400;line-height:22px}
+.t-strong{font-size:17px;font-weight:600;line-height:22px}
+.t-sub{font-size:15px;font-weight:400;line-height:20px;color:rgba(10,10,12,.6)}
+.t-cap{font-size:13px;font-weight:500;line-height:18px;color:rgba(10,10,12,.6)}
+.tab{border-radius:26px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;font-weight:600;color:rgba(10,10,12,.6)}
+.tab.on{background:rgba(10,10,12,.07);color:#0A0A0C}
+:focus-visible{outline:2px solid #0A7CFF;outline-offset:2px}
+@media (prefers-reduced-transparency: reduce){.glass,.glass-bar{background:rgba(255,255,255,.96);-webkit-backdrop-filter:none;backdrop-filter:none}}
+@media (prefers-reduced-motion: reduce){.press:active{transform:none}}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #F2F2F7; color: #0A0A0C; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums">
+
+  <div aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 390px; height: 620px; background: radial-gradient(70% 42% at 12% 6%, rgba(255,118,58,.95) 0%, rgba(255,118,58,0) 100%), radial-gradient(60% 38% at 96% 16%, rgba(255,190,96,.9) 0%, rgba(255,190,96,0) 100%), radial-gradient(80% 40% at 50% 44%, rgba(255,96,92,.5) 0%, rgba(255,96,92,0) 100%), #F2F2F7"></div>
+  <div aria-hidden="true" style="position: absolute; left: 0; top: 380px; width: 390px; height: 240px; background: linear-gradient(180deg, rgba(242,242,247,0) 0%, #F2F2F7 100%)"></div>
+
+  <div style="position: relative; height: 844px; overflow-y: auto; box-sizing: border-box; padding: 60px 16px 128px; display: flex; flex-direction: column; gap: 24px">
+
+    <a href="#" class="glass press" style="align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: 22px; font-size: 15px; font-weight: 600; color: #0A0A0C">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"></path></svg>
+      Semi · J-62
+    </a>
+
+    <article class="glass" style="border-radius: 28px; padding: 20px 20px 4px; display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; justify-content: space-between; align-items: center">
+        <span class="t-strong">Ce soir · 18:00</span>
+        <span class="t-cap" style="display: flex; align-items: center; gap: 4px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="3.5"></rect><path d="M9 6V3h6v3M9 18v3h6v-3"></path></svg>
+          Sur ta montre
+        </span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <h1 class="t-large">Fractionné</h1>
+        <span class="t-sub">50 min · 8 km environ</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; padding-top: 16px; border-top: .5px solid rgba(10,10,12,.12)">
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <span class="t-cap">Bloc principal</span>
+          <span class="t-title">6 × 800 m</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-end">
+          <span class="t-cap">Allure cible</span>
+          <span class="t-figure" style="color: #B93A0A">4:55<span class="t-sub" style="letter-spacing: 0"> /km</span></span>
+        </div>
+      </div>
+      <sc-if value="{{open}}" hint-placeholder-val="{{ false }}">
+        <ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column">
+          <sc-for list="{{steps}}" as="st" hint-placeholder-count="4">
+            <li style="display: flex; justify-content: space-between; align-items: center; min-height: 44px; border-top: .5px solid rgba(10,10,12,.08)">
+              <span class="t-body">{{st.name}}</span>
+              <span class="t-strong" style="color: {{st.color}}">{{st.pace}}</span>
+            </li>
+          </sc-for>
+        </ol>
+      </sc-if>
+      <button type="button" onClick="{{toggle}}" aria-expanded="{{expanded}}" class="press t-strong" style="min-height: 48px; border: none; border-top: .5px solid rgba(10,10,12,.12); background: transparent; display: flex; align-items: center; justify-content: center; gap: 8px; color: #0A0A0C">
+        {{toggleLabel}}
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform: {{chevron}}"><path d="M6 9l6 6 6-6"></path></svg>
+      </button>
+    </article>
+
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
+      <sc-for list="{{actions}}" as="a" hint-placeholder-count="4">
+        <button type="button" class="press t-cap" style="border: none; background: transparent; padding: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; color: #0A0A0C; font-weight: 600">
+          <span class="{{a.cls}}" style="width: 60px; height: 60px; border-radius: 30px; display: flex; align-items: center; justify-content: center; background: {{a.bg}}; color: {{a.fg}}; box-shadow: {{a.shadow}}">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{a.icon}}"></path></svg>
+          </span>
+          {{a.label}}
+        </button>
+      </sc-for>
+    </div>
+
+    <section style="display: flex; flex-direction: column; gap: 8px">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 4px">
+        <h2 class="t-title">Cette semaine</h2>
+        <a href="#" class="t-body" style="display: inline-flex; align-items: center; min-height: 44px">Tout voir</a>
+      </div>
+      <div style="background: #FFFFFF; border-radius: 20px; padding: 16px 8px 12px; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr))">
+        <sc-for list="{{week}}" as="d" hint-placeholder-count="7">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 8px">
+            <span class="t-cap">{{d.l}}</span>
+            <span class="t-strong" style="width: 36px; height: 36px; border-radius: 18px; display: flex; align-items: center; justify-content: center; background: {{d.bg}}; color: {{d.fg}}">{{d.n}}</span>
+            <span style="display: flex; gap: 4px; height: 6px">
+              <sc-for list="{{d.dots}}" as="b" hint-placeholder-count="2">
+                <span style="width: 6px; height: 6px; border-radius: 3px; background: {{b.c}}"></span>
+              </sc-for>
+            </span>
+          </div>
+        </sc-for>
+      </div>
+      <div class="t-cap" style="display: flex; gap: 16px; padding: 0 4px">
+        <span style="display: flex; align-items: center; gap: 6px"><span style="width: 6px; height: 6px; border-radius: 3px; background: #FF6A2C"></span>Course</span>
+        <span style="display: flex; align-items: center; gap: 6px"><span style="width: 6px; height: 6px; border-radius: 3px; background: #0A0A0C"></span>Muscu</span>
+        <span style="display: flex; align-items: center; gap: 6px"><span style="width: 6px; height: 6px; border-radius: 3px; background: #2BA8B8"></span>Révision</span>
+        <span style="display: flex; align-items: center; gap: 6px"><span style="width: 6px; height: 6px; border-radius: 3px; background: #AEAEB2"></span>Cours</span>
+      </div>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 8px">
+      <h2 class="t-title" style="padding: 0 4px">Ma journée</h2>
+      <div style="background: #FFFFFF; border-radius: 20px; padding: 4px 0">
+        <sc-for list="{{day}}" as="e" hint-placeholder-count="4">
+          <div style="display: flex; align-items: center; gap: 12px; padding: 0 16px">
+            <span style="width: 32px; height: 32px; border-radius: 8px; flex: none; display: flex; align-items: center; justify-content: center; background: {{e.tile}}; color: {{e.ink}}">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{e.icon}}"></path></svg>
+            </span>
+            <div style="flex: 1; min-height: 60px; display: flex; flex-direction: column; justify-content: center; border-bottom: {{e.sep}}">
+              <span class="{{e.cls}}">{{e.label}}</span>
+              <span class="t-cap">{{e.time}}</span>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+  </div>
+
+  <nav class="glass-bar" aria-label="Navigation principale" style="position: absolute; left: 16px; right: 16px; bottom: 24px; height: 64px; box-sizing: border-box; padding: 6px; border-radius: 32px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px">
+    <a href="#" class="tab on" aria-current="page"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg>Aujourd'hui</a>
+    <a href="#" class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>Semaine</a>
+    <a href="#" class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"></path></svg>Programme</a>
+    <a href="#" class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-10.9 6.7L4 19.5l1.3-4.6A7.5 7.5 0 1 1 20 11.5z"></path></svg>Reggie</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { open: false };
+  }
+  renderVals() {
+    const open = this.state.open;
+    const K = {
+      run: { dot: '#FF6A2C', tile: '#FFE6DA', ink: '#B93A0A', icon: 'M13 4.5a1.5 1.5 0 1 0 0-.01M10 9l3-1 3 3 3 1M13 8l-2 5 3 3-1 5M11 13l-4 1-2 4' },
+      cours: { dot: '#AEAEB2', tile: '#EDEDF0', ink: '#3A3A3F', icon: 'M4 5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2V5zM4 19a2 2 0 0 1 2-2h12' },
+      rev: { dot: '#2BA8B8', tile: '#DDF3F5', ink: '#11707C', icon: 'M15 4l5 5-11 11H4v-5L15 4z' },
+      muscu: { dot: '#0A0A0C', tile: '#E6E6EA', ink: '#0A0A0C', icon: 'M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12' }
+    };
+    const ev = (kind, label, time, last) => ({ label: label, time: time, tile: K[kind].tile, ink: K[kind].ink, icon: K[kind].icon, cls: kind === 'run' ? 't-strong' : 't-body', sep: last ? 'none' : '.5px solid rgba(10,10,12,.1)' });
+    const d = (l, n, kinds, today) => ({ l: l, n: n, bg: today ? '#0A0A0C' : 'transparent', fg: today ? '#FFFFFF' : '#0A0A0C', dots: kinds.map((k) => ({ c: K[k].dot })) });
+    const act = (label, icon, main) => ({ label: label, icon: icon, cls: main ? '' : 'glass', bg: main ? '#0A7CFF' : '', fg: main ? '#FFFFFF' : '#0A0A0C', shadow: main ? 'inset 0 1px 0 rgba(255,255,255,.35), 0 8px 22px rgba(10,124,255,.35)' : '' });
+    return {
+      open: open,
+      expanded: open ? 'true' : 'false',
+      toggleLabel: open ? 'Masquer les étapes' : 'Voir les étapes',
+      chevron: open ? 'rotate(180deg)' : 'none',
+      toggle: () => this.setState({ open: !open }),
+      steps: [
+        { name: 'Échauffement 15 min', pace: '6:20 /km', color: '#0A0A0C' },
+        { name: '6 × 800 m', pace: '4:55 /km', color: '#B93A0A' },
+        { name: 'Récup 2 min en trottinant', pace: 'libre', color: 'rgba(10,10,12,.6)' },
+        { name: 'Retour au calme 10 min', pace: '6:30 /km', color: '#0A0A0C' }
+      ],
+      actions: [
+        act('Reggie', 'M20 11.5a7.5 7.5 0 0 1-10.9 6.7L4 19.5l1.3-4.6A7.5 7.5 0 1 1 20 11.5z', true),
+        act('Déplacer', 'M7 4L3 8l4 4M3 8h12M17 20l4-4-4-4M21 16H9'),
+        act('Changer', 'M20 11a8 8 0 0 0-14.9-3M4 13a8 8 0 0 0 14.9 3M4 4v4h4M20 20v-4h-4'),
+        act('Pas dispo', 'M6 6l12 12M18 6L6 18')
+      ],
+      week: [
+        d('L', '16', ['run', 'rev', 'muscu'], true),
+        d('M', '17', ['cours']),
+        d('M', '18', ['run', 'rev']),
+        d('J', '19', ['muscu']),
+        d('V', '20', ['run']),
+        d('S', '21', ['rev']),
+        d('D', '22', ['run'])
+      ],
+      day: [
+        ev('cours', 'Physique', '10:15 à 12:15'),
+        ev('rev', 'Révision', '14:00 à 16:00'),
+        ev('run', 'Fractionné', '18:00 à 18:50'),
+        ev('muscu', 'Muscu haut du corps', '20:00 à 21:00', true)
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

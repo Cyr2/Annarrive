@@ -1,0 +1,168 @@
+# Talaria : ce que fait chaque bouton
+
+Référence pour les maquettes et le code. Chaque action dit ce qu'elle ouvre, ce que l'app fait, ce qu'Anna voit, et comment revenir en arrière.
+
+## Règles communes à toutes les actions
+
+1. **Tout changement se défait.** Après chaque modification, un bandeau apparaît en bas pendant 6 s : « Séance déplacée à mercredi 18:00 · Annuler ». Annuler remet exactement l'état d'avant, montre comprise.
+2. **La montre suit.** Toute séance modifiée est renvoyée sur la montre dans la minute. La carte affiche « Sur ta montre » une fois la synchro faite, « Envoi à ta montre… » pendant, « Pas envoyée, réessayer » en cas d'échec (tap = nouvel essai).
+3. **Reggie respecte les règles de l'algo.** Il ne propose jamais un créneau ou une séance qui casse une règle :
+   - 24 h après une séance jambes avant une séance dure ou une sortie longue ;
+   - jamais deux séances dures d'affilée ;
+   - les limites horaires d'Anna ;
+   - fin de course au moins 1 h avant son coucher.
+   Si Anna force un choix qui casse une règle, l'app l'accepte, l'avertit en une ligne et adapte le contenu (par exemple, le fractionné devient un footing).
+4. **Ce qu'Anna change à la main n'est jamais remis en cause** par une adaptation automatique.
+5. **Une séance ratée n'est jamais rattrapée.** Le plan avance.
+6. **Une seule question à la fois** quand Reggie a besoin d'une info, avec des réponses en boutons.
+
+## Aujourd'hui
+
+| Élément | Au tap | Ce qui se passe |
+|---|---|---|
+| Puce « Semi · J-62 » | Ouvre l'onglet Programme | Rien ne change |
+| Carte de la séance | Ouvre le détail de la séance (étapes, allures, pourquoi cette séance) | Rien ne change |
+| Voir les étapes | Déplie les étapes dans la carte | Rien ne change. Deuxième tap = replie |
+| **Reggie** | Ouvre la conversation, avec le contexte « À propos de : Fractionné, ce soir 18:00 » | Reggie sait de quelle séance on parle |
+| **Déplacer** | Ouvre la feuille « Déplacer » | Voir plus bas |
+| **Changer** | Ouvre la feuille « Changer » | Voir plus bas |
+| **Pas dispo** | Ouvre la feuille « Pas dispo » | Voir plus bas |
+| Un jour de « Cette semaine » | Ouvre l'onglet Semaine, positionné sur ce jour | Rien ne change |
+| Tout voir | Ouvre l'onglet Semaine sur aujourd'hui | Rien ne change |
+| Ligne de « Ma journée » | Course : détail de la séance. Muscu ou révision : feuille de modification. Cours : fiche du cours (lecture seule) avec « Ce cours n'a pas lieu » | Marquer un cours annulé libère le créneau et peut déclencher une adaptation, avec bandeau Annuler |
+
+### Déplacer
+
+Garde le **contenu** de la séance, change **le moment**.
+
+1. La feuille montre 3 créneaux proposés par l'algo, triés du meilleur au moins bon, chacun avec une raison courte :
+   - « Ce soir 19:30 · même jour, une heure plus tard » ;
+   - « Mercredi 18:00 · ta muscu jambes est jeudi soir » ;
+   - « Jeudi 7:30 · avant tes cours ».
+2. En dessous, « Choisir un autre moment » ouvre un choix de jour (7 puces) et d'heure. Les moments interdits sont grisés avec leur raison : « Moins de 24 h après ta séance jambes ».
+3. Anna tape un créneau, puis « Déplacer ».
+4. La carte glisse vers son nouveau jour. Si une autre séance de la semaine doit bouger pour respecter les règles, la feuille le dit avant validation : « Ton footing de jeudi passe à vendredi ».
+5. Bandeau « Fractionné déplacé à mercredi 18:00 · Annuler ». La montre est mise à jour.
+
+Si aucun créneau ne marche cette semaine, la feuille le dit et propose « Remplacer par un footing ce soir » ou « Passer cette séance ».
+
+### Changer
+
+Garde **le moment**, change **le contenu**. Ne propose jamais une séance plus dure que le plan.
+
+1. La feuille montre 4 options en cartes, chacune avec un aperçu (durée, allure) :
+   - **Plus court** : même séance, environ 25 % de moins (par exemple 4 × 800 m au lieu de 6) ;
+   - **Plus facile** : même durée, allure facile ;
+   - **Autre séance équivalente** : même objectif d'entraînement sous une autre forme (par exemple 3 × 1 600 m au seuil au lieu de 6 × 800 m) ;
+   - **Footing tranquille** : 30 min en endurance.
+2. Un champ « Dis-le à Reggie » permet d'expliquer autre chose. Reggie répond alors dans la conversation avec une proposition.
+3. Anna choisit, l'aperçu s'affiche en grand, puis « Valider ».
+4. La carte du jour se met à jour. Bandeau Annuler. Montre mise à jour.
+
+### Pas dispo
+
+1. La feuille demande « Qu'est-ce qui se passe ? » avec 5 boutons :
+
+| Choix | Question suivante | Résultat |
+|---|---|---|
+| Pas le temps | Aucune | Reggie propose de déplacer (comme Déplacer). Si rien ne marche, séance passée |
+| Fatiguée | Aucune | Séance du jour remplacée par du repos. La prochaine séance dure est vérifiée et allégée si elle tombe demain |
+| Malade | « Tu as de la fièvre ou ça touche la poitrine ? » Oui / Non | **Oui** : pause complète, plus de course jusqu'à ce qu'Anna dise « Ça va mieux ». **Non** (rhume) : footing très facile possible si elle veut, sinon repos. À la reprise, retour progressif sur une semaine |
+| Douleur | « Où ? » (boutons : mollet, genou, cheville, hanche, pied, autre), puis « Combien sur 10 en marchant ? » (curseur 0 à 10) | **0 à 3** : séance remplacée par un footing très facile ou du vélo. **4 et plus** : pas de course, conseil de voir un kiné ou un médecin si ça dure plus de 3 jours |
+| Autre | Champ texte | Reggie répond dans la conversation |
+
+2. Durée (sauf Malade) : « Juste aujourd'hui » ou « Jusqu'à… » (choix d'une date).
+3. Une carte résume ce qui change sur la semaine, puis « Valider ». Bandeau Annuler.
+
+## Après la course
+
+| Élément | Au tap | Ce qui se passe |
+|---|---|---|
+| Carte « Fractionné fait » | Détail de l'activité (tours, allure par fraction, FC) | Rien ne change |
+| Facile / Correct / Dur | Sélectionne le ressenti. N'apparaît que si la montre n'a rien enregistré | Enregistré pour l'algo. Trois « Dur » d'affilée sur des séances faciles déclenchent une vérification des allures |
+| Champ « Un mot pour Reggie » et flèche | Envoie la note dans la conversation | Reggie répond en une ou deux lignes. Si la note signale une douleur, il lance les questions de « Douleur » |
+
+## Semaine
+
+| Élément | Geste | Ce qui se passe |
+|---|---|---|
+| Flèches gauche et droite | Tap | Semaine précédente ou suivante. Les semaines passées sont en lecture seule |
+| Actualiser | Tap | Relit l'emploi du temps tout de suite. Si un cours change, une ligne apparaît : « 1 cours annulé jeudi · 1 course déplacée » |
+| Course, muscu, révision | Appui long (0,3 s) puis glisser | La séance se soulève (petite vibration). Les créneaux possibles s'entourent en pointillés, les jours interdits s'atténuent avec leur raison. Lâcher = déplacement, bandeau Annuler |
+| Course, muscu, révision | Tap | Course : détail. Muscu ou révision : feuille de modification |
+| Cours (emploi du temps) | Tap | Fiche du cours, lecture seule, avec « Ce cours n'a pas lieu ». Les cours ne se glissent pas (cadenas) |
+| **+** | Tap | Feuille « Ajouter » |
+
+### Feuille « Ajouter »
+
+- **Muscu** : la liste de ses séances enregistrées.
+  - **Placer** ouvre jour et heure (pré-remplis sur son habitude), puis « Ajouter ».
+  - Tap sur la ligne : modifier la séance.
+  - « Nouvelle séance de muscu » : nom, case jambes, jour, heure, durée, répétition.
+- **Révision** : durée en boutons (1 h, 1 h 30, 2 h), jour, heure, répétition.
+- **Indispo** : un titre facultatif (« Soirée chez Léa »), jour, heure de début et de fin. L'app ne place rien dessus.
+
+Après ajout, si une course entre en conflit, Reggie la déplace et le dit dans le bandeau.
+
+### Feuille « Séance de muscu »
+
+- Nom, « Travaille les jambes » (interrupteur), jour, heure, durée, répéter (jamais, chaque semaine, toutes les deux semaines).
+- OK enregistre. Annuler ferme sans rien changer.
+- Supprimer la séance demande une confirmation : « Supprimer Jambes ? Cette semaine et les suivantes » ou « Cette semaine seulement ».
+
+## Programme
+
+| Élément | Au tap | Ce qui se passe |
+|---|---|---|
+| Modifier l'objectif | Reprend les écrans de création du programme, pré-remplis | Avant validation, un résumé montre ce qui change (« 2 semaines de plus, chrono visé atteignable »). Les semaines à venir sont recalculées, la semaine en cours garde ce qu'Anna a déjà déplacé |
+| Courses par semaine, jours sans course, pas avant, pas après, heure de coucher | Choix en feuille (roue ou boutons) | La semaine en cours et les suivantes sont réorganisées. Bandeau « Reggie a réorganisé ta semaine · Voir » |
+| Séance de muscu | Feuille « Séance de muscu » | Comme plus haut |
+| Emploi du temps, Actualiser | Relit l'emploi du temps | Comme dans Semaine |
+| Montre Garmin | Fiche : modèle, dernière synchro, « Reconnecter » | Reconnecter relance la connexion Garmin |
+| Sommeil et fréquence cardiaque | Interrupteur | Désactivé : l'algo n'utilise plus que le ressenti pour adapter les séances |
+| Cycle menstruel | Interrupteur | Activé : explication et accord demandés d'abord. L'app ne change jamais les séances selon la phase du cycle. Seuls les symptômes qu'Anna signale comptent |
+| Notifications | Réglages iOS de l'app | Rien ne change dans le plan |
+| Arrêter ce programme | Confirmation « Arrêter le programme Semi-marathon ? » | Passe en mode entretien : 2 à 3 courses faciles par semaine, une séance de qualité |
+
+## Reggie (la conversation)
+
+### Ce qu'il peut faire
+
+Répondre à une question, expliquer une séance, et modifier le plan, mais seulement par les mêmes actions que les boutons : Déplacer, Changer, Pas dispo, réglages. Il ne crée jamais une séance hors des règles de l'algo.
+
+### Les widgets dans la conversation
+
+Reggie répond avec du texte court et, quand il faut agir, avec des widgets tapables :
+
+| Widget | Quand | Comportement |
+|---|---|---|
+| Boutons de réponse | Une question fermée (« Tu as de la fièvre ? ») | 2 à 5 boutons. Le tap envoie la réponse comme un message et désactive les autres boutons |
+| Curseur 0 à 10 | Niveau de douleur ou de fatigue | Glisser puis « Envoyer » |
+| Créneaux | Proposition de déplacement | 3 cartes de créneaux, tap = choix, puis la carte de changement apparaît |
+| Aperçu de séance | Proposition de remplacement | Mini carte (nom, durée, allure) avec « Prendre celle-ci » |
+| Carte de changement | Après toute modification | Liste avant et après par jour, « Montre mise à jour », bouton Annuler (actif jusqu'au changement suivant) |
+| Raccourcis au-dessus du champ | Toujours | « Je suis malade », « Plus court », « Décaler à demain », « Pourquoi cette allure ? ». Ils lancent les mêmes parcours que les boutons de l'écran Aujourd'hui |
+
+### Questions de santé ou d'entraînement
+
+Pour une question comme « j'ai mal au tibia, c'est grave ? » ou « je mange quoi avant un semi ? », Reggie répond d'abord avec ce qu'il sait. S'il lui faut une source, il fait au plus 2 recherches sur une liste fermée de sites médicaux et sportifs reconnus, affiche « Je vérifie » pendant ce temps, puis répond en 2 ou 3 phrases avec le lien de la source. Il ne pose jamais de diagnostic.
+
+### Ton
+
+Tutoiement, phrases courtes, pas de point d'exclamation en série, pas d'emoji. Il dit ce qu'il a fait et pourquoi en une phrase. Il oriente vers un professionnel dès qu'une douleur dure ou dépasse 4 sur 10.
+
+## Animations
+
+Toutes respectent « Réduire les animations » d'iOS : dans ce cas, simples fondus de 150 ms.
+
+| Moment | Animation |
+|---|---|
+| Appui sur un bouton | Réduction à 96 % pendant l'appui, retour en 120 ms |
+| Ouverture d'une feuille | Monte du bas avec un ressort sans rebond (environ 350 ms). L'écran derrière recule légèrement et s'assombrit. La feuille se ferme en la tirant vers le bas, elle suit le doigt |
+| Déplier les étapes | La hauteur s'ouvre et les lignes apparaissent en fondu, 250 ms |
+| Glisser une séance | Soulèvement (102 %, ombre plus forte) avec vibration légère. Au lâcher, ressort avec un petit rebond vers le nouveau créneau |
+| Séance modifiée | La carte se retourne en fondu vers son nouveau contenu, les chiffres d'allure défilent vers leur nouvelle valeur |
+| Bandeau Annuler | Monte de 12 px en fondu, repart seul après 6 s |
+| Message de Reggie | Apparaît en fondu en montant de 8 px. Les widgets suivent 60 ms après le texte. Trois points animés pendant qu'il réfléchit |
+| Choix dans un widget | Le bouton choisi se remplit, les autres s'estompent |
+| Changement d'onglet | Fondu croisé de 200 ms, la pastille de l'onglet actif glisse vers le nouvel onglet |
