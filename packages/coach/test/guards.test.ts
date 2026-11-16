@@ -1,0 +1,161 @@
+import { describe, expect, it } from "vitest";
+import type { Session } from "../src/index.ts";
+import {
+  capWeekSpikes,
+  distributionCheck,
+  enforceDistribution,
+  isHard,
+  makeSession,
+  resumeWeek,
+  returnAfterBreak,
+  sessionLoad,
+  spikeCap,
+  trainingLoad,
+  validateWeek,
+  weeklyCaps,
+} from "../src/index.ts";
+import { easy, hard, long, P40, sixBy800, week } from "./fixtures.ts";
+
+const total = (w: Session[]): number => w.reduce((s, x) => s + x.durMin, 0);
+const dur = (w: Session[], id: string): number | undefined => w.find((s) => s.id === id)?.durMin;
+
+describe("spikeCap and capWeekSpikes (G1)", () => {
+  it("caps a 100 min long run at 88 and moves the surplus to an E (G-1)", () => {
+    const r = capWeekSpikes([long("l", "", 100), easy("e", "", 40)], 80);
+    expect(dur(r.week, "l")).toBe(88);
+    expect(dur(r.week, "e")).toBe(52);
+  });
+
+  it("loses the surplus when no E stays under the cap (G-2)", () => {
+    const r = capWeekSpikes([long("l", "", 100), easy("e", "", 80)], 80);
+    expect(dur(r.week, "l")).toBe(88);
+    expect(dur(r.week, "e")).toBe(80);
+    expect(r.changes.map((c) => c.ruleId)).toEqual(["G1"]);
+  });
+
+  it("also caps the planned distance against the longest distance of 30 days", () => {
+    const r = spikeCap(long("l", "", 80), 100, 10_000);
+    expect(r.session.durMin).toBeLessThan(80);
+    expect(r.surplusMin).toBeGreaterThan(0);
+    expect(spikeCap(easy("e", "", 40), 80).surplusMin).toBe(0);
+  });
+});
+
+describe("weeklyCaps (G2 to G5)", () => {
+  const w220 = [
+    long("l", "", 90),
+    hard("q", "", 60, { priority: 2 }),
+    easy("e", "", 40),
+    makeSession("RECUP", [{ kind: "work", durMin: 30, zone: "E", target: { rpe: 2 } }], { id: "r" }),
+  ];
+
+  it("cuts the lowest priority easy runs to 1.10 × last week (G-3)", () => {
+    const r = weeklyCaps(w220, [{ minutes: 190 }]);
+    expect(total(r.week)).toBe(209);
+    expect(r.changes.every((c) => (c.before?.priority ?? 0) >= 4)).toBe(true);
+    expect(dur(r.week, "r")).toBe(20);
+  });
+
+  it("forces 14 days down to 1.30 × the previous 14 days (G-4)", () => {
+    const w = [long("l", "", 100), easy("e1", "", 50), easy("e2", "", 50)];
+    const r = weeklyCaps(w, [{ minutes: 150 }, { minutes: 150 }, { minutes: 200 }]);
+    expect(total(r.week) + 200).toBe(390);
+    expect(r.changes[0]?.ruleId).toBe("G3");
+  });
+
+  it("ignores strength: 180 min of running after 180 changes nothing (G-5)", () => {
+    const w = [long("l", "", 90), easy("e1", "", 45), easy("e2", "", 45)];
+    expect(weeklyCaps(w, [{ minutes: 180 }]).changes).toEqual([]);
+    expect(weeklyCaps(w, []).changes).toEqual([]);
+  });
+
+  it("drops 25 % after three rising weeks (G4)", () => {
+    const w = [long("l", "", 90), easy("e1", "", 60), easy("e2", "", 60)];
+    const r = weeklyCaps(w, [{ minutes: 150 }, { minutes: 160 }, { minutes: 170 }, { minutes: 180 }]);
+    expect(total(r.week)).toBe(135);
+    expect(r.changes[0]?.ruleId).toBe("G4");
+  });
+});
+
+describe("validateWeek (G8)", () => {
+  it("refuses a Q on Monday and another on Tuesday (G-6)", () => {
+    const r = validateWeek(week([hard("a", "2026-11-23T08:00"), hard("b", "2026-11-24T08:00")]));
+    expect(r.ok).toBe(false);
+    expect(r.violations).toContainEqual({ ruleId: "H4", sessionId: "b" });
+  });
+
+  it("refuses a Changer option above the planned load (G-7)", () => {
+    const s = makeSession("T", [{ kind: "work", durMin: 30, target: { rpe: 8 } }], {
+      id: "x",
+      start: "2026-11-23T08:00",
+    });
+    expect(sessionLoad(s)).toBe(240);
+    const r = validateWeek(week([s]), { plannedLoads: { x: 221 } });
+    expect(r.violations).toEqual([{ ruleId: "CHANGE_LOAD", sessionId: "x" }]);
+  });
+
+  it("checks G1, G3 and P11, and skips manual sessions (H10)", () => {
+    const qs = ["23", "25", "27"].map((d, i) => hard(`q${i}`, `2026-11-${d}T08:00`));
+    expect(validateWeek(week(qs)).violations).toContainEqual({ ruleId: "P11", sessionId: "q2" });
+    const l = long("l", "2026-11-29T09:00", 120);
+    expect(validateWeek(week([l]), { longest30dMin: 80 }).violations).toContainEqual({ ruleId: "G1", sessionId: "l" });
+    expect(validateWeek(week([l]), { last7dMin: 300, prev14dMin: 300 }).violations).toContainEqual({
+      ruleId: "G3",
+      sessionId: "",
+    });
+    const manual = [
+      hard("a", "2026-11-23T08:00", 60, { manual: true }),
+      hard("b", "2026-11-24T08:00", 60, { manual: true }),
+    ];
+    expect(validateWeek(week(manual)).ok).toBe(true);
+  });
+});
+
+describe("returnAfterBreak and resumeWeek (G7)", () => {
+  it("brings a 200 min week to 140 min without Q after 10 days off (G-8)", () => {
+    const w = [long("l", "", 80), hard("q", "", 60), easy("e", "", 60)];
+    const r = resumeWeek(w, 10);
+    expect(total(r.week)).toBe(140);
+    expect(r.week.filter((s) => isHard(s) && s.type !== "L")).toEqual([]);
+  });
+
+  it("follows the four bands", () => {
+    expect([2, 4, 8, 20, 30].map((d) => returnAfterBreak(d).factor)).toEqual([1, 0.85, 0.7, 0.55, 0.45]);
+    expect(resumeWeek([easy("e", "", 40)], 1).changes).toEqual([]);
+  });
+});
+
+describe("distribution (P16)", () => {
+  /** I session of 8 × 3 min + 130 min of E: Z3 = 24 / 200 = 12 %. */
+  const intervals = makeSession(
+    "I",
+    [
+      { kind: "warmup", durMin: 15, zone: "E", target: { paceSKm: P40.E, rpe: 3 } },
+      { kind: "work", durMin: 3, reps: 8, zone: "I", target: { rpe: 8 } },
+      { kind: "recover", durMin: 3, reps: 7, zone: "E", target: { rpe: 2 } },
+      { kind: "cooldown", durMin: 10, zone: "E", target: { rpe: 3 } },
+    ],
+    { id: "i" },
+  );
+  const w = [intervals, long("l", "", 80), easy("e", "", 50)];
+
+  it("removes fractions from the I until Z3 ≤ 10 % (P-15)", () => {
+    expect(distributionCheck(w, "dev")).toMatchObject({ ok: false, z3: 0.12 });
+    const r = enforceDistribution(w, "dev");
+    expect(r.week[0]?.steps[1]?.reps).toBe(6);
+    expect(distributionCheck(r.week, "dev").ok).toBe(true);
+  });
+
+  it("asks for 90 % easy time in base and stops when nothing can be removed", () => {
+    expect(distributionCheck([sixBy800()], "base").ok).toBe(false);
+    expect(enforceDistribution([hard("t", "", 60)], "dev").changes).toEqual([]);
+  });
+});
+
+describe("trainingLoad (G6)", () => {
+  it("moves ATL faster than CTL", () => {
+    const r = trainingLoad(Array(7).fill(300));
+    expect(r.atl).toBeGreaterThan(r.ctl);
+    expect(trainingLoad([])).toEqual({ ctl: 0, atl: 0 });
+  });
+});
