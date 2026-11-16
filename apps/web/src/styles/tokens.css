@@ -1,0 +1,16 @@
+/* Values from the validated mockups (design/). Components never hard-code a color. */
+:root {
+  --color-bg: #f2f2f7;
+  --color-surface: #ffffff;
+  --color-text: #0a0a0c;
+  --color-text-secondary: rgb(10 10 12 / 0.6);
+  --color-hairline: rgb(10 10 12 / 0.1);
+  --color-assistant: #0a7cff;
+  --color-intense: #ff6a2c;
+  --color-intense-ink: #b93a0a;
+  --color-easy: #34b36a;
+  --color-long: #3a82f0;
+  --color-revision: #2ba8b8;
+  --color-link: #0066cc;
+  --color-danger: #d70015;
+}
