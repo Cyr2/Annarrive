@@ -66,10 +66,14 @@ export function webGuard(): HookCallback {
   };
 }
 
-/** The SDK reads CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY from this env; empty values (as in .env.example) are unset. */
+/**
+ * The SDK reads CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY from this env; empty values (as in .env.example) are unset.
+ * REGGIE_LOCAL_LOGIN=1 lets the eval runner use the developer machine's existing Claude Code login instead.
+ */
 export function sdkEnv(env: NodeJS.ProcessEnv): Record<string, string> {
   const set = Object.fromEntries(Object.entries(env).filter((e): e is [string, string] => Boolean(e[1])));
-  if (!set.CLAUDE_CODE_OAUTH_TOKEN && !set.ANTHROPIC_API_KEY) throw new ReggieUnavailableError();
+  if (!set.CLAUDE_CODE_OAUTH_TOKEN && !set.ANTHROPIC_API_KEY && set.REGGIE_LOCAL_LOGIN !== "1")
+    throw new ReggieUnavailableError();
   return set;
 }
 
