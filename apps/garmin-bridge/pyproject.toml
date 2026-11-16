@@ -7,13 +7,14 @@ dependencies = [
     "fastapi",
     "uvicorn",
     "garminconnect",
+    "httpx",
 ]
 
 [project.scripts]
 garmin-bridge-login = "garmin_bridge.session:login_cli"
 
 [dependency-groups]
-dev = ["pytest", "httpx", "ruff"]
+dev = ["pytest", "ruff"]
 
 [tool.uv]
 package = true
