@@ -1,8 +1,17 @@
+import {
+  type FeasibilityClass,
+  feasibility,
+  initialFitness,
+  phaseSplit,
+  predictTime,
+  totalWeeks,
+} from "@talaria/coach";
 import type {
   CalendarEvent,
   ChangeOption,
   ChangeOptions,
   DailySignal,
+  FeasibilityInput,
   HealthStatus,
   PlannedSession,
   Profile,
@@ -11,6 +20,7 @@ import type {
   Slot,
   Unavailable,
 } from "@talaria/protocol";
+import type { Activity } from "./storage/stores.ts";
 import { addMinutes } from "./time.ts";
 
 /** What the server hands the algorithm: the current and next week (`WeekState`/`State` in algo.md). */
@@ -62,6 +72,37 @@ export interface CoachPort {
   reportUnavailable(st: CoachState, r: Unavailable, now: string): CoachResult;
   /** M7 `feelBetter` (EV13): lifts a sick, cold or pain status and starts the return. */
   feelBetter(st: CoachState, now: string): CoachResult;
+  /**
+   * M2 `feasibility` (P19, P20) from F10's starting fitness: the class of the target she typed,
+   * null when nothing is known of her form yet (NO_FITNESS_DATA). Never proposes a time.
+   */
+  feasibility(
+    goal: FeasibilityInput,
+    history: Activity[],
+    vo2maxGarmin: number | undefined,
+    now: string,
+  ): FeasibilityClass | null;
+}
+
+/** Already the real `@talaria/coach`: onboarding needs it before the rest of the coach is wired. */
+export function coachFeasibility(
+  goal: FeasibilityInput,
+  history: Activity[],
+  vo2maxGarmin: number | undefined,
+  now: string,
+): FeasibilityClass | null {
+  let fitness: { vdot: number; status: string };
+  try {
+    fitness = initialFitness({ activities: history, vo2maxGarmin }, now);
+  } catch (error) {
+    if (error instanceof Error && error.message === "NO_FITNESS_DATA") return null;
+    throw error;
+  }
+  const weeks = totalWeeks(now, goal.date);
+  const { taper } = phaseSplit(goal, weeks, false);
+  // shortcut: level "regular" for everyone, until onboarding asks for it (P19 rates by level).
+  const profile = { level: "regular", runsPerWeek: 3, provisional: fitness.status === "provisional" } as const;
+  return feasibility(predictTime(fitness.vdot, goal.distanceM), goal.targetMin, weeks - taper, profile).class;
 }
 
 /**
@@ -110,6 +151,7 @@ export const passThroughCoach: CoachPort = {
     warnings: [],
   }),
   feelBetter: (st) => ({ state: { ...st, health: { kind: "ok" } }, changes: [], warnings: [] }),
+  feasibility: coachFeasibility,
 };
 
 function missing(id: string): never {

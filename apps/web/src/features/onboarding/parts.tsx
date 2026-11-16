@@ -1,0 +1,101 @@
+import type { ReactNode } from "react";
+import { cx } from "../../lib/cx.ts";
+import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
+import { Icon } from "../../ui/Icon.tsx";
+import { type Draft, STEPS, type Step } from "./onboarding.ts";
+import { useOnboarding } from "./store.ts";
+
+/** Small pieces shared by the onboarding steps. */
+
+export const useDraft = () => useOnboarding((s) => s.draft);
+export const update = (patch: Partial<Draft>) => useOnboarding.getState().update(patch);
+
+type ChoiceProps = {
+  on: boolean;
+  onClick: () => void;
+  label: ReactNode;
+  detail?: string;
+  className?: string;
+  /** The check mark, left out on narrow tiles where the blue fill says enough. */
+  mark?: boolean;
+};
+
+/** A big answer: the whole row is the target, blue when picked. */
+export function BigChoice({ on, onClick, label, detail, className, mark = true }: ChoiceProps) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={onClick}
+      className={cx(
+        "select-anim press flex min-h-14 w-full min-w-0 items-center gap-3 rounded-row border-0 px-4 py-3 text-left",
+        on ? "bg-action text-on-accent shadow-accent" : "glass text-text",
+        className,
+      )}
+    >
+      <span className="flex min-w-0 flex-1 flex-col [overflow-wrap:anywhere]">
+        <span className="t-strong">{label}</span>
+        {detail && <span className={cx("t-cap", on && "text-on-accent")}>{detail}</span>}
+      </span>
+      {mark && <Icon name="check" size={18} stroke={2.6} className={cx("flex-none", !on && "opacity-0")} />}
+    </button>
+  );
+}
+
+const DAYS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
+
+/** The seven days as round toggles, 1 = Monday as in the profile. */
+export function DayChips({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number[];
+  onChange: (v: number[]) => void;
+}) {
+  return (
+    // Wraps on a 320 px screen rather than shrinking under 44 px.
+    <ChoiceGroup label={label} className="flex flex-wrap justify-center gap-1.5">
+      {DAYS.map((name, i) => {
+        const day = i + 1;
+        const on = value.includes(day);
+        return (
+          <button
+            key={name}
+            type="button"
+            aria-pressed={on}
+            aria-label={name}
+            onClick={() => onChange(on ? value.filter((d) => d !== day) : [...value, day])}
+            className={cx(
+              "select-anim press t-label flex size-11 items-center justify-center rounded-full border-0 uppercase",
+              on ? "bg-text text-on-accent" : "glass text-text",
+            )}
+          >
+            {name[0]}
+          </button>
+        );
+      })}
+    </ChoiceGroup>
+  );
+}
+
+/** A glass card holding one block of a step. */
+export function Card({ children, className }: { children: ReactNode; className?: string }) {
+  return <div className={cx("glass flex flex-col gap-3 rounded-card p-4", className)}>{children}</div>;
+}
+
+/** Progress: one dot per step, the current one stretched. */
+export function Dots({ step }: { step: Step }) {
+  const at = STEPS.indexOf(step);
+  return (
+    <div role="img" aria-label={`Étape ${at + 1} sur ${STEPS.length}`} className="flex flex-1 justify-center gap-1.5">
+      {STEPS.map((s, i) => (
+        <span
+          key={s}
+          className={cx("select-anim h-1.5 rounded-full", i === at ? "w-4 bg-text" : "w-1.5 bg-text-faint")}
+        />
+      ))}
+    </div>
+  );
+}
