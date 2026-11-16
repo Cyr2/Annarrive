@@ -56,7 +56,7 @@ export function createMockApi({
   const week = (date: string) => {
     const key = mondayOf(date);
     const seed = () => seedWeek(key, state.program.strength);
-    state.weeks[key] ??= scenario === "worst" ? worstItems(seed()) : seed();
+    state.weeks[key] ??= scenario === "worst" ? worstItems(seed(), key, monday) : seed();
     return state.weeks[key];
   };
   const all = () => Object.values(state.weeks).flat();

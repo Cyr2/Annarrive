@@ -142,5 +142,6 @@ export function ago(fromIsoDateTime: string, now: Date): string {
   const minutes = Math.max(0, Math.round((now.getTime() - new Date(fromIsoDateTime).getTime()) / 60_000));
   if (minutes < 1) return "à l'instant";
   if (minutes < 60) return `il y a ${minutes} min`;
-  return `il y a ${Math.floor(minutes / 60)} h`;
+  if (minutes < 48 * 60) return `il y a ${Math.floor(minutes / 60)} h`;
+  return `il y a ${Math.floor(minutes / 1440)} jours`;
 }

@@ -62,6 +62,7 @@ describe("date", () => {
     expect(ago("2026-11-16T11:59:50Z", now)).toBe("à l'instant");
     expect(ago("2026-11-16T11:48:00Z", now)).toBe("il y a 12 min");
     expect(ago("2026-11-16T09:00:00Z", now)).toBe("il y a 3 h");
+    expect(ago("2026-11-13T09:00:00Z", now)).toBe("il y a 3 jours");
   });
 
   it("joins class names", () => {
