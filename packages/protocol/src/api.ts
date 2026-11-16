@@ -93,6 +93,17 @@ export const goalSchema = z.object({
   targetMin: z.number().positive().optional(),
 });
 
+/** POST /api/feasibility: a goal with the target time she typed. */
+export const feasibilityInputSchema = goalSchema.required({ targetMin: true });
+export type FeasibilityInput = z.infer<typeof feasibilityInputSchema>;
+/** How her own target looks, never discouraging and never a proposed time; null until her form is known. */
+export const feasibilitySchema = z.object({ verdict: z.enum(["atteignable", "ambitieux"]).nullable() });
+export type Feasibility = z.infer<typeof feasibilitySchema>;
+
+/** GET /api/onboarding: done once "C'est parti" stored her profile; the app never shows onboarding again. */
+export const onboardingStatusSchema = z.object({ done: z.boolean() });
+export type OnboardingStatus = z.infer<typeof onboardingStatusSchema>;
+
 /** No goal means maintenance mode (algo.md M9). */
 export const programSchema = z.object({
   goal: goalSchema.nullable(),

@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect } from "react";
 import { Redirect, Route, Switch, useLocation } from "wouter";
+import { isOnboarded } from "./features/onboarding/done.ts";
 import { usePlan } from "./features/plan/store.ts";
 import { SheetHost } from "./features/sheets/SheetHost.tsx";
 import { TodayScreen } from "./features/today/TodayScreen.tsx";
@@ -14,6 +15,9 @@ const loadReggie = () => import("./features/reggie/ReggieScreen.tsx");
 const WeekScreen = lazy(loadWeek);
 const ProgramScreen = lazy(loadProgram);
 const ReggieScreen = lazy(loadReggie);
+// Onboarding is its own chunk, fetched only until it is done once.
+const OnboardingGate = lazy(() => import("./features/onboarding/OnboardingGate.tsx"));
+const onboarded = isOnboarded();
 
 const TABS: Tab[] = [
   { href: "/", label: "Aujourd'hui", icon: "today" },
@@ -48,6 +52,11 @@ export function App() {
       </div>
       <SheetHost />
       <ToastHost />
+      {!onboarded && (
+        <Suspense fallback={null}>
+          <OnboardingGate />
+        </Suspense>
+      )}
     </>
   );
 }

@@ -1,7 +1,14 @@
 import type { CalEvent, Result, Session, Settings, State } from "@talaria/coach";
 import * as coach from "@talaria/coach";
 import type { CalendarEvent, DailySignal, PlannedSession, Profile } from "@talaria/protocol";
-import type { CoachNote, CoachPort, CoachResult, CoachState, DailyDecisionResult } from "./coach-port.ts";
+import {
+  type CoachNote,
+  type CoachPort,
+  type CoachResult,
+  type CoachState,
+  coachFeasibility,
+  type DailyDecisionResult,
+} from "./coach-port.ts";
 import type { Activity } from "./storage/stores.ts";
 import { addDays, dateOf, mondayOf } from "./time.ts";
 
@@ -163,6 +170,7 @@ const REST_ADVICE = "Tes signaux de récupération sont bas : repos conseillé a
 
 /** The real `CoachPort`: translates the stored shapes and lets `@talaria/coach` decide everything. */
 export const coachAdapter: CoachPort = {
+  feasibility: coachFeasibility,
   buildWeek(st, weekStart, now) {
     if (!st.fitness) return { state: st, changes: [], warnings: [{ ruleId: "F10", message: NO_FITNESS }] };
     const week = inWeek(weekStart);

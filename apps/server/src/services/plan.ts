@@ -6,8 +6,11 @@ import type {
   ChangeResponse,
   CreateEventInput,
   DeleteEventQuery,
+  Feasibility,
+  FeasibilityInput,
   HealthStatus,
   MoveSlots,
+  OnboardingStatus,
   PlannedSession,
   Profile,
   ProfilePatch,
@@ -70,6 +73,8 @@ export type RecentData = {
 const CURRENT = "current";
 /** How far back Reggie looks at signals and runs. */
 const RECENT_DAYS = 14;
+/** F10 looks for an effort in the last 12 weeks. */
+const EFFORT_DAYS = 84;
 /** The coach replans the current and the next week (algo.md cycle 0.1). */
 const WINDOW_DAYS = 14;
 /** Runs the coach reads: a year of volumes (P8) and efforts (F10). */
@@ -125,6 +130,25 @@ export class PlanService {
 
   program(): Program {
     return this.#stores.program.get(CURRENT)?.value ?? { goal: null };
+  }
+
+  /** Onboarding stores the profile last, so a stored profile means it went through. */
+  onboarding(): OnboardingStatus {
+    return { done: this.#stores.profile.get(CURRENT) !== undefined };
+  }
+
+  /** P19: the coach's five classes shown as two, so a bold target never reads as a refusal. */
+  feasibility(goal: FeasibilityInput): Feasibility {
+    const now = this.#now();
+    const from = addDays(dateOf(now), -EFFORT_DAYS);
+    const history = this.#stores.activity.overlapping(`${from}T00:00`, now);
+    const vo2max = this.#stores.dailySignal
+      .overlapping(from, now)
+      .map((s) => s.vo2max)
+      .findLast((v) => v !== undefined);
+    const cls = this.#coach.feasibility(goal, history, vo2max, now);
+    if (cls === null || cls === "sans-cible") return { verdict: null };
+    return { verdict: cls === "ambitieux" || cls === "irréaliste" ? "ambitieux" : "atteignable" };
   }
 
   today(): Today {

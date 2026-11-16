@@ -2,6 +2,7 @@ import {
   changeSessionInputSchema,
   createEventInputSchema,
   deleteEventQuerySchema,
+  feasibilityInputSchema,
   isoWeekSchema,
   moveSessionInputSchema,
   profilePatchSchema,
@@ -49,6 +50,8 @@ export function planRoutes({ plan, changes, timetable, garmin }: Services): Hono
       .post("/feel-better", (c) => c.json(plan.feelBetter()))
       .get("/profile", (c) => c.json(plan.profile()))
       .patch("/profile", async (c) => c.json(plan.updateProfile(await body(c, profilePatchSchema))))
+      .get("/onboarding", (c) => c.json(plan.onboarding()))
+      .post("/feasibility", async (c) => c.json(plan.feasibility(await body(c, feasibilityInputSchema))))
       .get("/program", (c) => c.json(plan.program()))
       .put("/program", async (c) => c.json(plan.updateProgram(await body(c, programSchema))))
       .post("/changes/:id/undo", (c) => {

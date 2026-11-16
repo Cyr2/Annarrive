@@ -1,5 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { createEventInputSchema, deleteEventQuerySchema, isoWeekSchema, updateEventInputSchema } from "../src/index.ts";
+import {
+  createEventInputSchema,
+  deleteEventQuerySchema,
+  feasibilityInputSchema,
+  isoWeekSchema,
+  updateEventInputSchema,
+} from "../src/index.ts";
+
+describe("feasibility input", () => {
+  it("needs the target time she typed", () => {
+    const goal = { distanceM: 10000, date: "2027-04-11" };
+    expect(feasibilityInputSchema.safeParse(goal).success).toBe(false);
+    expect(feasibilityInputSchema.parse({ ...goal, targetMin: 55 }).targetMin).toBe(55);
+  });
+});
 
 const event = {
   kind: "strength",

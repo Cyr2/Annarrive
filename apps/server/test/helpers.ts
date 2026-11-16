@@ -2,7 +2,7 @@ import type { CalendarEvent, HealthStatus, PlannedSession, Unavailable } from "@
 import type { Hono } from "hono";
 import { vi } from "vitest";
 import { createApp } from "../src/app.ts";
-import type { CoachPort } from "../src/coach-port.ts";
+import { type CoachPort, coachFeasibility } from "../src/coach-port.ts";
 import type { BridgeClient } from "../src/garmin/bridge-client.ts";
 import type { ReggieRun } from "../src/reggie/agent.ts";
 import { createServices } from "../src/services/index.ts";
@@ -54,6 +54,7 @@ function healthAfter(health: HealthStatus, r: Unavailable, now: string): HealthS
 
 /** Applies every action without any rule: the double the service tests run on (the adapter has its own tests). */
 export const passThroughCoach: CoachPort = {
+  feasibility: coachFeasibility,
   buildWeek: (st) => ({ state: st, changes: [], warnings: [] }),
   moveSession: (st, id, slot) => ({
     state: {

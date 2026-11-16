@@ -116,11 +116,11 @@ export function ZoneStep({ zone, onChange }: { zone?: string; onChange: (zone: s
 export function PainStep({ pain, zone, onChange }: { pain: number; zone?: string; onChange: (pain: number) => void }) {
   return (
     <div className="flex flex-col gap-2 rounded-group bg-surface p-4">
-      <div className="flex items-baseline justify-between">
+      <div className="flex items-baseline justify-between gap-2">
         <label htmlFor="pain" className="t-cap">
           {zone ? `${zone}, ` : ""}combien sur 10 en marchant ?
         </label>
-        <span className={cx("t-num", pain <= 3 ? "text-easy-ink" : "text-intense-ink")}>
+        <span className={cx("t-num flex-none whitespace-nowrap", pain <= 3 ? "text-easy-ink" : "text-intense-ink")}>
           {pain}
           <span className="t-sub"> / 10</span>
         </span>
