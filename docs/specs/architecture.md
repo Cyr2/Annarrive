@@ -53,11 +53,23 @@ Pourquoi ce découpage :
 
 ### apps/garmin-bridge
 
-- Python, géré avec `uv`, basé sur `python-garminconnect`.
+- Python, géré avec `uv`. Deux accès à Garmin : la Personal API officielle (lecture seule, clé `GARMIN_API_KEY`) et `python-garminconnect` (connexion non officielle).
 - Joignable seulement par le serveur, sur le réseau interne Docker, protégé par un secret partagé.
 - Routes : activités récentes, détail d'une activité (dont ressenti et RPE si présents), sommeil, FC de repos, stress, Body Battery, VO2max, création et programmation d'une séance structurée, suppression d'une séance programmée.
 - Jetons de session Garmin stockés dans le volume, valables environ 6 mois. La première connexion peut demander un code de double authentification.
-- **Lecture via l'API officielle quand c'est possible** : si la Personal API Garmin (clé API) fournit ces données pour la vivoactive 4, la lecture passe par elle et le bridge ne sert plus qu'à l'écriture des séances. À vérifier au premier branchement.
+- **Ce qui est lu où** (doc : [Personal API](https://developer.garmin.com/gc-developer-program/personal/personal-api/), [Swagger](https://developer.garmin.com/gc-developer-program/personal/swagger-docs/), [client Python de Garmin](https://github.com/garmin/connect-personal-api-python)) :
+
+| Donnée | API officielle (`https://personal.connectapi.garmin.com`) | Secours non officiel |
+|---|---|---|
+| Activités récentes, ressenti, RPE | `/activitylist-service/activities/search/activities` | `get_activities`, valeur par valeur, appariée par id |
+| FC de repos, stress moyen, Body Battery (réveil, max) | `/usersummary-service/usersummary/daily` | `get_user_summary` |
+| Sommeil (durée, score) | `/sleep-service/sleep/dailySleep` | `get_sleep_data` |
+| VO2max | `/metrics-service/metrics/maxmet/daily/{j}/{j}` (absent du Swagger, appelé par le client de Garmin) | `get_max_metrics` |
+| Tours d'une activité | aucun endpoint | `get_activity_splits` uniquement |
+| Créer, programmer, supprimer une séance | impossible (API en lecture seule) | toujours non officiel |
+
+- **Règles** : la clé est échangée contre un jeton de 24 h (`POST /personalapitoken-service/personal-api/personal-api-key/token`, en-tête `Authorization: ApiKey …`), puis chaque lecture envoie `Authorization: Bearer …`. Une valeur absente côté officiel est complétée par la connexion non officielle, ouverte seulement dans ce cas. Si ce complément échoue, le bridge rend les données officielles partielles. 401 ou 403 : avertissement dans les logs, sans la clé, et lecture non officielle (clé refusée : pause de 10 min avant de la réessayer). 429 : l'API officielle n'est plus appelée pendant la durée de `Retry-After` (5 min sans en-tête), la lecture passe par le secours. Garmin ne publie aucune limite de débit.
+- **À vérifier avec la vraie clé** : ce que la vivoactive 4 renvoie réellement (sommeil, Body Battery, VO2max), la forme exacte de la réponse VO2max et la clé `overall` des scores de sommeil.
 
 ### Reggie
 
