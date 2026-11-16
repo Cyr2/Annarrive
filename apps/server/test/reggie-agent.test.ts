@@ -126,6 +126,8 @@ describe("Reggie's SDK options", () => {
   it("drops empty variables and needs one credential", () => {
     expect(sdkEnv(env)).toEqual({ ANTHROPIC_API_KEY: "test-key", PATH: "/bin" });
     expect(sdkEnv({ CLAUDE_CODE_OAUTH_TOKEN: "tok" })).toEqual({ CLAUDE_CODE_OAUTH_TOKEN: "tok" });
+    const secrets = { SESSION_SECRET: "s", BRIDGE_SECRET: "b", GARMIN_PASSWORD: "p", VAPID_PRIVATE_KEY: "v" };
+    expect(sdkEnv({ ANTHROPIC_API_KEY: "k", ...secrets })).toEqual({ ANTHROPIC_API_KEY: "k" });
     expect(() => sdkEnv({ ANTHROPIC_API_KEY: "" })).toThrow("Reggie n'est pas configuré");
   });
 });
