@@ -69,7 +69,7 @@ describe("POST /api/chat", () => {
     expect(history.messages[0]?.context).toEqual({ screen: "today", sessionId: "tonight" });
 
     await (await t.request("POST", "/api/chat", { text: "Et jeudi ?" })).text();
-    expect(prompts[1]).toContain("Anna : Je peux décaler ce soir ?\nReggie : Je regarde tes créneaux.");
+    expect(prompts[1]).toContain("Anna : Je peux décaler ce soir ?\nReggie : Mercredi 18:00 marche.");
   });
 
   it("ends with an error event and keeps Anna's message when Reggie fails", async () => {
