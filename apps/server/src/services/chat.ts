@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
-import type {
-  ChatContext,
-  ChatHistory,
-  ChatMessage,
-  ChatRequest,
-  ChatStreamEvent,
-  ChatWidget,
+import {
+  type ChatContext,
+  type ChatHistory,
+  type ChatMessage,
+  type ChatRequest,
+  type ChatStreamEvent,
+  type ChatWidget,
+  chatWidgetSchema,
 } from "@talaria/protocol";
 import { AppError } from "../errors.ts";
 import type { ReggieRun } from "../reggie/agent.ts";
@@ -56,10 +57,10 @@ export class ChatService {
     try {
       const prompt = this.#prompt(earlier, request);
       for await (const event of this.#reggie({ prompt, tools: reggieTools(this.#plan, widgets) })) {
-        if (event.type === "text") {
-          text += event.delta;
-          yield event;
-        } else if (event.type === "checking") {
+        // Only the words after the last tool call are the answer; what comes before narrates his steps.
+        if (event.type === "text") text += event.delta;
+        else if (event.type === "tool_call") text = "";
+        else if (event.type === "checking") {
           yield { type: "widget", widget: { type: "checking" } };
         }
       }
@@ -69,8 +70,12 @@ export class ChatService {
       yield { type: "error", error: message };
       return;
     }
-    for (const widget of widgets) yield { type: "widget", widget };
-    yield { type: "done", message: this.#save("reggie", text.trim(), widgets) };
+    const answer = text.trim();
+    if (answer) yield { type: "text", delta: answer };
+    // A widget the model filled badly (an empty session, say) is dropped rather than failing the whole reply.
+    const valid = widgets.filter((w) => chatWidgetSchema.safeParse(w).success);
+    for (const widget of valid) yield { type: "widget", widget };
+    yield { type: "done", message: this.#save("reggie", answer, valid) };
   }
 
   #save(role: ChatMessage["role"], text: string, widgets: ChatWidget[], context?: ChatContext): ChatMessage {
