@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { serveStatic } from "@hono/node-server/serve-static";
@@ -25,28 +27,46 @@ const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 /** Largest JSON body the API reads: a chat message is at most 2000 characters. */
 const MAX_BODY_BYTES = 64 * 1024;
 
+/** CSP hashes of the built page's inline scripts (service worker registration, week preloads), so only they run. */
+export function inlineScriptHashes(webDist: string | undefined): string[] {
+  if (!webDist) return [];
+  let html: string;
+  try {
+    html = readFileSync(join(webDist, "index.html"), "utf8");
+  } catch {
+    return [];
+  }
+  return [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map(
+    ([, body]) =>
+      `'sha256-${createHash("sha256")
+        .update(body ?? "")
+        .digest("base64")}'`,
+  );
+}
+
 /** The PWA loads nothing from another origin; inline styles cover the login page and React's style props. */
-const securityHeaders = secureHeaders({
-  contentSecurityPolicy: {
-    defaultSrc: ["'self'"],
-    scriptSrc: ["'self'"],
-    styleSrc: ["'self'", "'unsafe-inline'"],
-    imgSrc: ["'self'", "data:", "blob:"],
-    fontSrc: ["'self'"],
-    connectSrc: ["'self'"],
-    workerSrc: ["'self'"],
-    manifestSrc: ["'self'"],
-    objectSrc: ["'none'"],
-    baseUri: ["'none'"],
-    formAction: ["'self'"],
-    frameAncestors: ["'none'"],
-  },
-  strictTransportSecurity: "max-age=63072000; includeSubDomains",
-  xFrameOptions: "DENY",
-  // The login link carries its token in the URL.
-  referrerPolicy: "no-referrer",
-  permissionsPolicy: { camera: [], microphone: [], geolocation: [], payment: [], usb: [] },
-});
+const securityHeaders = (scriptHashes: string[]) =>
+  secureHeaders({
+    contentSecurityPolicy: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", ...scriptHashes],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "blob:"],
+      fontSrc: ["'self'"],
+      connectSrc: ["'self'"],
+      workerSrc: ["'self'"],
+      manifestSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'none'"],
+      formAction: ["'self'"],
+      frameAncestors: ["'none'"],
+    },
+    strictTransportSecurity: "max-age=63072000; includeSubDomains",
+    xFrameOptions: "DENY",
+    // The login link carries its token in the URL.
+    referrerPolicy: "no-referrer",
+    permissionsPolicy: { camera: [], microphone: [], geolocation: [], payment: [], usb: [] },
+  });
 
 /**
  * CSRF: a state-changing call must come from the app's own pages. Browsers send `Sec-Fetch-Site` and `Origin`;
@@ -92,7 +112,7 @@ export type AppOptions = { services: Services; sessionSecret: string; webDist?: 
 /** The API, plus the built PWA when `webDist` is given (one container serves both). */
 export function createApp({ services, sessionSecret, webDist }: AppOptions): Hono {
   const app = new Hono();
-  app.use(securityHeaders);
+  app.use(securityHeaders(inlineScriptHashes(webDist)));
 
   app.onError((error, c) => {
     if (error instanceof AppError) return c.json({ error: error.message }, error.status);

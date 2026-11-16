@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -79,6 +80,20 @@ describe("hardening", () => {
       expect(headers.get("x-content-type-options")).toBe("nosniff");
       expect(headers.get("permissions-policy")).toContain("camera=()");
     }
+  });
+
+  it("lets the built page's own inline scripts run, and only those", async () => {
+    const webDist = await mkdtemp(join(tmpdir(), "talaria-web-"));
+    await writeFile(
+      join(webDist, "index.html"),
+      `<script type="module" src="/assets/index.js"></script><script id="sw">register()</script><script>preload()</script>`,
+    );
+    const { services } = setup();
+    const csp = (await createApp({ services, sessionSecret: SECRET, webDist }).request("/semaine")).headers.get(
+      "content-security-policy",
+    );
+    const hash = (body: string) => `'sha256-${createHash("sha256").update(body).digest("base64")}'`;
+    expect(csp).toContain(`script-src 'self' ${hash("register()")} ${hash("preload()")};`);
   });
 
   it("refuses a state-changing call from another site, even with her cookie", async () => {
