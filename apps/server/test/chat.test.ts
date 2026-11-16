@@ -64,7 +64,7 @@ describe("POST /api/chat", () => {
     const history = chatHistorySchema.parse(await (await t.request("GET", "/api/chat")).json());
     expect(history.messages.map((m) => [m.role, m.text])).toEqual([
       ["anna", "Je peux décaler ce soir ?"],
-      ["reggie", "Je regarde tes créneaux. Mercredi 18:00 marche."],
+      ["reggie", "Mercredi 18:00 marche."],
     ]);
     expect(history.messages[0]?.context).toEqual({ screen: "today", sessionId: "tonight" });
 
