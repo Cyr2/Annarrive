@@ -6,8 +6,8 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["src/**/*.ts"],
-      // Process entry point: only wires the app to a port.
-      exclude: ["src/index.ts"],
+      // Process entry points: they only wire services to a port or to stdout.
+      exclude: ["src/index.ts", "src/cli/**"],
       reporter: ["text-summary"],
       thresholds: { lines: 80, functions: 80, branches: 75, statements: 80 },
     },
