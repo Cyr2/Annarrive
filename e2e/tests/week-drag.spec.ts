@@ -16,10 +16,14 @@ async function pressAndDrag(page: Page, item: Locator, target?: Locator) {
   if (target) {
     // The page scrolls under the held session, as her thumb would; dnd-kit measures again on the next frames.
     await target.evaluate((el) => el.scrollIntoView({ block: "center" }));
-    await page.waitForTimeout(300);
-    const to = await target.boundingBox();
-    if (!to) throw new Error("Cible invisible");
-    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 15 });
+    // Aims again until that slot is the one under the finger: the days can still shift as the drag starts.
+    const slot = target.locator("xpath=ancestor::div[1]");
+    await expect(async () => {
+      const to = await target.boundingBox();
+      if (!to) throw new Error("Cible invisible");
+      await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 15 });
+      await expect(slot).toHaveClass(/border-assistant/, { timeout: 500 });
+    }).toPass();
   }
 }
 
