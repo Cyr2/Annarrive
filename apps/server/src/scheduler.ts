@@ -50,7 +50,11 @@ export const timetableDue = ({ hour, minute }: ParisMinute) =>
 
 const noop = () => undefined;
 
-export function createJobs(services: { refreshTimetable: () => unknown; buildNextWeek: () => unknown }): Job[] {
+export function createJobs(services: {
+  refreshTimetable: () => unknown;
+  buildNextWeek: () => unknown;
+  backup: () => unknown;
+}): Job[] {
   return [
     { name: "Emploi du temps", due: timetableDue, run: services.refreshTimetable },
     // TODO step 4 (Garmin): fetch new activities and attach each run to its planned session.
@@ -67,5 +71,7 @@ export function createJobs(services: { refreshTimetable: () => unknown; buildNex
     },
     // TODO step 4 (Garmin): resend sessions whose watch upload failed.
     { name: "Montre", due: ({ minute }) => minute % 5 === 0, run: noop },
+    // 3:30, when nothing else runs: one copy a day, 30 days kept.
+    { name: "Sauvegarde", due: ({ hour, minute }) => hour === 3 && minute === 30, run: services.backup },
   ];
 }
