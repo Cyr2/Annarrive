@@ -1,4 +1,5 @@
 import type {
+  ActivityView,
   ChangeOptions,
   ChangeResponse,
   ChatStreamEvent,
@@ -19,11 +20,14 @@ import type {
   Week as ServerWeek,
   SessionView,
   Unavailable,
+  UnavailablePreview,
+  WatchInfo,
 } from "@talaria/protocol";
 import { daysBetween, decimal, duration, minutesOf, relativeDay, timeOf, weekday } from "../lib/date.ts";
 import type { GoalInput, NewEvent, UnavailableInput } from "./client.ts";
 import { ApiError } from "./errors.ts";
 import type {
+  Activity,
   CalendarEvent,
   ChangeOption,
   ChangeResult,
@@ -31,6 +35,7 @@ import type {
   ChatEvent,
   ChatMessage,
   EventKind,
+  Feel,
   Intensity,
   Item,
   MoveOptions,
@@ -214,6 +219,37 @@ export function toProposal(proposal: ServerProposal): Proposal {
   };
 }
 
+const FEELS: Record<NonNullable<ActivityView["feel"]>, Feel> = { easy: "easy", ok: "fine", hard: "hard" };
+export const toServerFeel = (feel: Feel) => (feel === "fine" ? "ok" : feel);
+
+/** "51:12", "1:02:05". */
+function clockDuration(minutes: number): string {
+  const total = Math.round(minutes * 60);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const [h, m, s] = [Math.floor(total / 3600), Math.floor(total / 60) % 60, total % 60];
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+}
+
+/** After the run: what Garmin sent, against the session it matched when there is one. */
+export function toActivity(run: ActivityView, session: SessionView | null): Activity {
+  const planned = session && run.sessionId === session.id ? session : null;
+  const paceS = run.distM > 0 ? (run.durMin * 60_000) / run.distM : 0;
+  return {
+    id: run.id,
+    title: planned ? TITLES[planned.type] : "Course libre",
+    receivedAt: clockOf(run.start),
+    distanceKm: Math.round(run.distM / 100) / 10,
+    duration: clockDuration(run.durMin),
+    mainPaceLabel: "Allure moyenne",
+    mainPace: paceS ? paceText([paceS, paceS]) : "",
+    verdict: planned
+      ? `Prévu ${duration(Math.round(planned.durMin))}, fait en ${duration(Math.round(run.durMin))}`
+      : "Hors programme, comptée dans ton volume",
+    askFeel: run.feel === undefined,
+    feel: run.answeredFeel && FEELS[run.answeredFeel],
+  };
+}
+
 export function toToday(
   today: ServerToday,
   program: ServerProgram,
@@ -234,6 +270,11 @@ export function toToday(
         }
       : undefined,
     session: today.session && shown(today.session) ? toRun(today.session) : undefined,
+    // A morning jog does not hide the evening session still ahead.
+    activity:
+      today.activity && (today.session?.status !== "planned" || today.activity.sessionId === today.session.id)
+        ? toActivity(today.activity, today.session)
+        : undefined,
     next: next && toRun(next),
     proposals: proposals.map(toProposal),
   };
@@ -312,9 +353,10 @@ export type ProgramParts = {
   lastSyncAt: string | null;
   days: DayView[];
   today: string;
+  watch: WatchInfo;
 };
 
-export function toProgram({ program, profile, lastSyncAt, days, today }: ProgramParts): Program {
+export function toProgram({ program, profile, lastSyncAt, days, today, watch }: ProgramParts): Program {
   const { goal } = program;
   return {
     goal: goal
@@ -337,7 +379,8 @@ export function toProgram({ program, profile, lastSyncAt, days, today }: Program
     timetableUrl: profile.icsUrl,
     watch: {
       model: "Garmin vivoactive 4",
-      connected: !days.some((d) => d.sessions.some((s) => s.watch === "failed")),
+      connected: watch.configured && !days.some((d) => d.sessions.some((s) => s.watch === "failed")),
+      lastSync: watch.lastSyncAt ?? undefined,
     },
   };
 }
@@ -427,27 +470,16 @@ export function toUnavailable(input: UnavailableInput): Unavailable {
   return { reason: "tired", ...until };
 }
 
-/**
- * shortcut: the server has no preview route yet, so the summary repeats the rules of docs/interactions.md;
- * ask the server once it can dry-run "Pas dispo".
- */
-export function unavailableRows(input: UnavailableInput, today: string): ChangeRow[] {
-  const day = input.until ? `Jusqu'à ${relativeDay(input.until, today).toLowerCase()}` : "Aujourd'hui";
-  if (input.reason === "tired") return [{ day, label: "Repos, la séance dure suivante est allégée", tone: "rest" }];
-  if (input.reason === "sick") {
-    return input.fever
-      ? [
-          {
-            day: "Tant que tu as de la fièvre",
-            label: "Repos conseillé, footing court si tu veux courir",
-            tone: "rest",
-          },
-        ]
-      : [{ day: "Jusqu'à ce que ça aille mieux", label: "Endurance fondamentale, pas de fractionné", tone: "easy" }];
-  }
-  return (input.pain ?? 0) <= 3
-    ? [{ day, label: "Footing en endurance fondamentale ou vélo, pas de fractionné", tone: "easy" }]
-    : [{ day, label: "Repos ou vélo conseillé, 20 min tranquille si tu cours", tone: "rest" }];
+/** Pas dispo's summary from the server's dry run: each changed day as it would be, then Reggie's advice. */
+export function toPreviewRows(preview: UnavailablePreview, today: string): ChangeRow[] {
+  return [
+    ...preview.days.map(({ date, after }): ChangeRow => {
+      const day = relativeDay(date, today);
+      if (!after) return { day, label: "Repos", tone: "rest" };
+      return { day, label: `${TITLES[after.type]} · ${detail(after)}`, tone: intensityOf(after.type) };
+    }),
+    ...preview.warnings.map((label): ChangeRow => ({ day: "Conseil", label, tone: "other" })),
+  ];
 }
 
 function toWidget(widget: ChatWidget): Widget | undefined {

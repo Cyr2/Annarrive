@@ -46,6 +46,8 @@ const minutesApart = (a: string, b: string) => Math.abs(Date.parse(`${a}:00Z`) -
 const stopsSync = (error: unknown) =>
   error instanceof BridgeUnreachableError || error instanceof GarminRateLimitError || error instanceof GarminAuthError;
 
+const LAST_SYNC = "watch.lastSyncAt";
+
 const errorName = (error: unknown) => (error instanceof Error ? error.message : "erreur inconnue");
 
 /** The scheduled Garmin jobs: read runs and recovery, keep the watch calendar in step with the plan. */
@@ -83,10 +85,11 @@ export class GarminService {
       .map(toActivity)
       .filter((a) => a !== null)
       .sort((a, b) => a.start.localeCompare(b.start));
+    this.#synced();
     for (const run of runs) {
       const stored = this.#stores.activity.get(run.id);
       const sessionId = stored?.sessionId ?? this.#matchingSession(run)?.id;
-      this.#stores.activity.put({ ...run, sessionId });
+      this.#stores.activity.put({ ...run, answeredFeel: stored?.answeredFeel, sessionId });
       if (sessionId && !stored?.sessionId) this.#plan.markDone(sessionId);
       if (!stored) this.#fitness.afterRun({ ...run, sessionId });
       if (!stored && dateOf(run.start) === today) await this.#notifications.runSynced();
@@ -119,7 +122,7 @@ export class GarminService {
         this.#syncAgain = false;
         const today = dateOf(this.#now());
         if (!(await this.#removeStale(today))) return;
-        await this.#upload(today);
+        if (await this.#upload(today)) this.#synced();
       } while (this.#syncAgain);
     } finally {
       this.#syncingWatch = false;
@@ -147,7 +150,18 @@ export class GarminService {
     return true;
   }
 
-  async #upload(today: string): Promise<void> {
+  /** Last time Garmin answered, for Programme > Montre Garmin. */
+  lastSyncAt(): string | null {
+    return this.#stores.meta.get(LAST_SYNC)?.value ?? null;
+  }
+
+  #synced(): void {
+    this.#stores.meta.put({ id: LAST_SYNC, value: this.#clock().toISOString() });
+  }
+
+  /** True when every session reached the watch. */
+  async #upload(today: string): Promise<boolean> {
+    let ok = true;
     const sessions = this.#stores.plannedSession
       .overlapping(`${today}T00:00`, `${addDays(today, 7)}T00:00`)
       .filter((s) => onWatch(s, today));
@@ -165,9 +179,11 @@ export class GarminService {
       } catch (error) {
         this.#stores.watchSync.put({ id: session.id, status: "failed", hash, workoutId });
         console.error(`Montre : séance non envoyée (${errorName(error)})`);
-        if (stopsSync(error)) return;
+        ok = false;
+        if (stopsSync(error)) return false;
       }
     }
+    return ok;
   }
 
   /** The planned session of the same day that starts closest to the run. */

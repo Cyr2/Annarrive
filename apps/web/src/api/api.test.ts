@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ApiError, errorMessage } from "./errors.ts";
 import { createHttpApi, isHealthy, sse } from "./http.ts";
 import { mockRequest, pickApi } from "./index.ts";
-import { toGoal, toMoveOptions, toProfilePatch, toUnavailable, unavailableRows } from "./map.ts";
+import { toGoal, toMoveOptions, toPreviewRows, toProfilePatch, toUnavailable } from "./map.ts";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -88,7 +88,8 @@ function server(routes: Record<string, unknown> = {}) {
 }
 
 const reads = {
-  "GET /api/today": { date: "2026-11-16", session: SESSION, events: [CLASS] },
+  "GET /api/today": { date: "2026-11-16", session: SESSION, events: [CLASS], activity: null },
+  "GET /api/watch": { configured: true, lastSyncAt: "2026-11-16T07:55:00.000Z" },
   "GET /api/program": { goal: { distanceM: 21097.5, date: "2027-01-17", targetMin: 115 } },
   "GET /api/weeks/2026-W47": WEEK,
   "GET /api/weeks/2026-W48": { week: "2026-W48", readOnly: false, days: [] },
@@ -231,6 +232,42 @@ describe("http client, reading", () => {
     });
   });
 
+  it("shows today's run once done, asking the feel only when the watch did not", async () => {
+    const run = { id: "garmin:1", start: "2026-11-16T18:02", durMin: 51.2, distM: 8300, sessionId: "s1" };
+    const done = { ...SESSION, status: "done" };
+    const today = await server({
+      ...reads,
+      "GET /api/today": { date: "2026-11-16", session: done, events: [], activity: run },
+    }).api.today();
+    expect(today.activity).toEqual({
+      id: "garmin:1",
+      title: "Fractionné",
+      receivedAt: "18:02",
+      distanceKm: 8.3,
+      duration: "51:12",
+      mainPaceLabel: "Allure moyenne",
+      mainPace: "6:10",
+      verdict: "Prévu 50 min, fait en 51 min",
+      askFeel: true,
+      feel: undefined,
+    });
+    const answered = await server({
+      ...reads,
+      "GET /api/today": { date: "2026-11-16", session: null, events: [], activity: { ...run, answeredFeel: "ok" } },
+    }).api.today();
+    expect(answered.activity).toMatchObject({ title: "Course libre", feel: "fine", askFeel: true });
+    const morning = await server({
+      ...reads,
+      "GET /api/today": {
+        date: "2026-11-16",
+        session: SESSION,
+        events: [],
+        activity: { ...run, sessionId: undefined },
+      },
+    }).api.today();
+    expect(morning.activity).toBeUndefined();
+  });
+
   it("asks once for a week that Aujourd'hui and the week both need at launch", async () => {
     const { api, fetcher } = server(reads);
     await Promise.all([api.today(), api.week(0)]);
@@ -272,7 +309,11 @@ describe("http client, reading", () => {
       },
     ]);
     expect(program.timetableUrl).toBe("https://edt.univ.fr/anna.ics");
-    expect(program.watch.connected).toBe(false);
+    expect(program.watch).toEqual({
+      model: "Garmin vivoactive 4",
+      connected: false,
+      lastSync: "2026-11-16T07:55:00.000Z",
+    });
     const maintenance = await server({ ...reads, "GET /api/program": { goal: null } }).api.program();
     expect(maintenance.maintenance).toBe(true);
   });
@@ -423,13 +464,27 @@ describe("http client, changes", () => {
     });
     expect(toUnavailable({ sessionId: "s1", reason: "sick" })).toEqual({ reason: "sick", feverOrChest: false });
     expect(toUnavailable({ sessionId: "s1", reason: "tired" })).toEqual({ reason: "tired" });
-    expect(unavailableRows({ sessionId: "s1", reason: "pain", pain: 2 }, "2026-11-16")[0]?.tone).toBe("easy");
-    expect(unavailableRows({ sessionId: "s1", reason: "pain", pain: 6 }, "2026-11-16")[0]?.tone).toBe("rest");
-    expect(unavailableRows({ sessionId: "s1", reason: "sick", fever: true }, "2026-11-16")[0]?.tone).toBe("rest");
-    expect(unavailableRows({ sessionId: "s1", reason: "sick" }, "2026-11-16")[0]?.tone).toBe("easy");
-    expect(unavailableRows({ sessionId: "s1", reason: "tired", until: "2026-11-17" }, "2026-11-16")[0]?.day).toBe(
-      "Jusqu'à demain",
-    );
+    const preview = {
+      days: [
+        { date: "2026-11-16", before: SESSION, after: { ...EASY, durMin: 20 } },
+        { date: "2026-11-17", before: SESSION, after: null },
+      ],
+      warnings: ["Repos ou vélo conseillé"],
+    };
+    expect(toPreviewRows(preview, "2026-11-16")).toEqual([
+      { day: "Aujourd'hui", label: "Footing · 20 min", tone: "easy" },
+      { day: "Demain", label: "Repos", tone: "rest" },
+      { day: "Conseil", label: "Repos ou vélo conseillé", tone: "other" },
+    ]);
+  });
+
+  it("asks the server for Pas dispo's summary without changing anything", async () => {
+    const { api, sent } = server({
+      "POST /api/unavailable/preview": { days: [], warnings: ["Repos conseillé tant que tu as de la fièvre"] },
+    });
+    const rows = await api.previewUnavailable({ sessionId: "s1", reason: "sick", fever: true });
+    expect(sent("POST /api/unavailable/preview")).toEqual({ reason: "sick", feverOrChest: true });
+    expect(rows).toEqual([{ day: "Conseil", label: "Repos conseillé tant que tu as de la fièvre", tone: "other" }]);
   });
 });
 
@@ -454,6 +509,9 @@ describe("http client, errors", () => {
     const offline = createHttpApi(vi.fn(() => Promise.reject(new TypeError("Failed to fetch"))));
     await expect(offline.feelBetter()).rejects.toThrow("vérifie ton réseau");
     await expect(api.logFeel("a1", "easy")).rejects.toBeInstanceOf(ApiError);
+    const feel = server({ "POST /api/activities/garmin%3A1/feel": null });
+    await feel.api.logFeel("garmin:1", "fine");
+    expect(feel.sent("POST /api/activities/garmin%3A1/feel")).toEqual({ feel: "ok" });
     expect(errorMessage(new Error("boom"))).toBe("Ça n'a pas marché. Réessaie dans un instant.");
   });
 });

@@ -1,10 +1,17 @@
+import type { LookupAddress } from "node:dns";
 import { readFileSync } from "node:fs";
-import { createServer } from "node:http";
+import { createServer, request as httpRequest } from "node:http";
 import type { AddressInfo } from "node:net";
 import { timetableRefreshSchema, timetableStatusSchema } from "@talaria/protocol";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { TimetableError } from "../src/errors.ts";
-import { diffSummary, icsFetcher, parseTimetable } from "../src/services/timetable.ts";
+import {
+  diffSummary,
+  type IcsFetcherOptions,
+  icsFetcher,
+  isPublicAddress,
+  parseTimetable,
+} from "../src/services/timetable.ts";
 import { session, setup } from "./helpers.ts";
 
 const fixture = (name: string) => readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8");
@@ -186,31 +193,104 @@ describe("icsFetcher", () => {
     for (const server of servers.splice(0)) server.close();
   });
 
-  async function serve(handler: Parameters<typeof createServer>[1]): Promise<string> {
+  const URL_ = "https://edt.test/edt.ics";
+
+  /** A local http server standing in for the https host `edt.test`, so the guards still see an https link. */
+  async function serve(handler: Parameters<typeof createServer>[1], over: IcsFetcherOptions = {}) {
     const server = createServer(handler);
     servers.push(server);
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
-    return `http://127.0.0.1:${(server.address() as AddressInfo).port}/edt.ics`;
+    const port = (server.address() as AddressInfo).port;
+    const transport: IcsFetcherOptions["transport"] = (url, { signal }, callback) =>
+      httpRequest({ host: "127.0.0.1", port, path: url.pathname, signal }, callback);
+    return icsFetcher({ transport, ...over });
   }
 
   it("downloads the feed", async () => {
-    const url = await serve((_req, res) => res.end(v1));
-    expect(await icsFetcher()(url)).toBe(v1);
+    const fetchIcs = await serve((_req, res) => res.end(v1));
+    expect(await fetchIcs(URL_)).toBe(v1);
   });
 
   it("gives up after the timeout without revealing the URL", async () => {
-    const url = await serve(() => undefined);
-    const error = await icsFetcher(50)(url).catch((e: unknown) => e);
+    const fetchIcs = await serve(() => undefined, { timeoutMs: 50 });
+    const error = await fetchIcs(URL_).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(Error);
     expect(String(error)).toMatch(/ne répond pas/);
-    expect(String(error)).not.toContain("127.0.0.1");
+    expect(String(error)).not.toContain("edt.test");
   });
 
   it("reports an HTTP error status", async () => {
-    const url = await serve((_req, res) => {
+    const fetchIcs = await serve((_req, res) => {
       res.statusCode = 404;
       res.end();
     });
-    await expect(icsFetcher()(url)).rejects.toThrow(/404/);
+    await expect(fetchIcs(URL_)).rejects.toThrow(/404/);
+  });
+
+  it("stops reading a feed larger than the limit", async () => {
+    const fetchIcs = await serve((_req, res) => res.end("x".repeat(2000)), { maxBytes: 1000 });
+    await expect(fetchIcs(URL_)).rejects.toThrow(/trop gros/);
+  });
+
+  it("follows a few https redirects, never one to http or to an internal address", async () => {
+    const fetchIcs = await serve((req, res) => {
+      const to: Record<string, string> = {
+        "/edt.ics": "/moved.ics",
+        "/plain.ics": "http://edt.test/edt.ics",
+        "/inside.ics": "https://169.254.169.254/latest/meta-data",
+        "/loop.ics": "/loop.ics",
+      };
+      const location = to[req.url ?? ""];
+      if (location) res.writeHead(302, { location }).end();
+      else res.end(v1);
+    });
+    expect(await fetchIcs(URL_)).toBe(v1);
+    await expect(fetchIcs("https://edt.test/plain.ics")).rejects.toThrow(/https/);
+    await expect(fetchIcs("https://edt.test/inside.ics")).rejects.toThrow(/adresse interne/);
+    await expect(fetchIcs("https://edt.test/loop.ics")).rejects.toThrow(/redirige trop/);
+  });
+});
+
+describe("ICS link guard (SSRF)", () => {
+  it("only accepts public addresses", () => {
+    for (const ip of ["93.184.216.34", "2606:4700::1111"]) expect(isPublicAddress(ip), ip).toBe(true);
+    for (const ip of [
+      "127.0.0.1",
+      "10.1.2.3",
+      "172.20.0.5",
+      "192.168.1.1",
+      "169.254.169.254",
+      "100.64.0.1",
+      "0.0.0.0",
+      "::1",
+      "::",
+      "fd00::1",
+      "fe80::1",
+      "::ffff:127.0.0.1",
+      "::ffff:7f00:1",
+      "not an ip",
+    ])
+      expect(isPublicAddress(ip), ip).toBe(false);
+  });
+
+  it("refuses http, internal IPs in the link and names that resolve inside, before connecting", async () => {
+    const resolve = vi.fn((host: string, cb: (e: Error | null, a: LookupAddress[]) => void) =>
+      cb(
+        null,
+        host === "rebind.test"
+          ? [
+              { address: "8.8.8.8", family: 4 },
+              { address: "10.0.0.5", family: 4 },
+            ]
+          : [],
+      ),
+    );
+    const fetchIcs = icsFetcher({ resolve, timeoutMs: 2000 });
+    await expect(fetchIcs("http://edt.test/edt.ics")).rejects.toThrow(/https/);
+    await expect(fetchIcs("https://127.0.0.1/edt.ics")).rejects.toThrow(/adresse interne/);
+    await expect(fetchIcs("https://[::1]/edt.ics")).rejects.toThrow(/adresse interne/);
+    await expect(fetchIcs("https://rebind.test/edt.ics")).rejects.toThrow(/adresse interne/);
+    await expect(fetchIcs("https://nowhere.test/edt.ics")).rejects.toThrow(/ne répond pas/);
+    expect(resolve).toHaveBeenCalledWith("rebind.test", expect.any(Function));
   });
 });

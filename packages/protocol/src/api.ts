@@ -196,15 +196,39 @@ export const dayViewSchema = z.object({
 });
 export type DayView = z.infer<typeof dayViewSchema>;
 
+export const feelSchema = z.enum(["easy", "ok", "hard"]);
+export type Feel = z.infer<typeof feelSchema>;
+
+/** Today's run as Garmin sent it; `feel` is the watch's answer, `answeredFeel` the one Anna gave in the app. */
+export const activityViewSchema = z.object({
+  id: z.string(),
+  start: localDateTimeSchema,
+  durMin: z.number(),
+  distM: z.number(),
+  feel: feelSchema.optional(),
+  answeredFeel: feelSchema.optional(),
+  sessionId: z.string().optional(),
+});
+export type ActivityView = z.infer<typeof activityViewSchema>;
+
+/** "Comment c'était ?" after a run the watch did not ask about. */
+export const feelInputSchema = z.object({ feel: feelSchema });
+
 export const todaySchema = z.object({
   date: localDateSchema,
   session: sessionViewSchema.nullable(),
   events: z.array(calendarEventSchema),
+  /** The latest run of the day, null before she runs. */
+  activity: activityViewSchema.nullable(),
 });
 export type Today = z.infer<typeof todaySchema>;
 
 export const weekSchema = z.object({ week: isoWeekSchema, readOnly: z.boolean(), days: z.array(dayViewSchema) });
 export type Week = z.infer<typeof weekSchema>;
+
+/** Programme > Montre Garmin: `lastSyncAt` is the last time Garmin answered (ISO instant), null if never. */
+export const watchInfoSchema = z.object({ configured: z.boolean(), lastSyncAt: z.string().nullable() });
+export type WatchInfo = z.infer<typeof watchInfoSchema>;
 
 export const timetableStatusSchema = z.object({ lastSyncAt: z.string().nullable() });
 export type TimetableStatus = z.infer<typeof timetableStatusSchema>;
@@ -286,3 +310,16 @@ export const changeOptionsSchema = z.object({
 });
 export type ChangeOptions = z.infer<typeof changeOptionsSchema>;
 export const changeSessionInputSchema = z.object({ option: changeOptionSchema });
+
+/** Pas dispo's dry run: each day whose session would change, as it is and as it would be (null: no run). */
+export const unavailablePreviewSchema = z.object({
+  days: z.array(
+    z.object({
+      date: localDateSchema,
+      before: plannedSessionSchema.nullable(),
+      after: plannedSessionSchema.nullable(),
+    }),
+  ),
+  warnings: z.array(z.string()),
+});
+export type UnavailablePreview = z.infer<typeof unavailablePreviewSchema>;

@@ -1,4 +1,5 @@
-import type { Item, Program } from "../schemas.ts";
+import { addDays } from "../../lib/date.ts";
+import type { CalendarEvent, Item, Program } from "../schemas.ts";
 
 /**
  * Dev only (`?mock=worst`): the longest realistic values, entering at the same boundary as the demo data,
@@ -14,7 +15,25 @@ const TITLES: Record<string, string> = {
   "Sortie longue": "Sortie longue avec la fin à allure semi",
 };
 
-export function worstItems(items: Item[]): Item[] {
+/** Twelve back-to-back slots on one day, the busiest a timetable plus Anna's own events can get. */
+function crowdedDay(date: string): CalendarEvent[] {
+  return Array.from({ length: 12 }, (_, i) => ({
+    id: `worst-${i}`,
+    kind: i % 4 === 3 ? "busy" : "class",
+    date,
+    start: `${8 + i}:00`,
+    end: `${8 + i}:50`,
+    title: i % 2 ? "Méthodologie de la recherche en sciences humaines et sociales" : `TD ${i + 1}`,
+  }));
+}
+
+/** This week at its longest, with a crowded Wednesday; the next week empty (no run, no class). */
+export function worstItems(items: Item[], monday: string, thisMonday: string): Item[] {
+  if (monday !== thisMonday) return [];
+  return [...longest(items), ...crowdedDay(addDays(monday, 2))];
+}
+
+function longest(items: Item[]): Item[] {
   return items.map((item) => {
     const title = TITLES[item.title] ?? item.title;
     if (item.kind !== "run" || item.intensity !== "hard") return { ...item, title };

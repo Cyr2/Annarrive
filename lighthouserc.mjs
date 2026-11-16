@@ -25,7 +25,7 @@ export default {
       numberOfRuns: 3,
       settings: {
         formFactor: "mobile",
-        extraHeaders: JSON.stringify({ Cookie: `talaria_session=${encodeURIComponent(signed)}` }),
+        extraHeaders: JSON.stringify({ Cookie: `__Host-talaria_session=${encodeURIComponent(signed)}` }),
       },
     },
     assert: {

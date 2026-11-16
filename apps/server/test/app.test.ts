@@ -1,9 +1,11 @@
+import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { healthSchema } from "@talaria/protocol";
+import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
-import { createApp } from "../src/app.ts";
+import { createApp, rateLimit } from "../src/app.ts";
 import { MONDAY_8AM, postLogin, SECRET, setup } from "./helpers.ts";
 
 describe("server", () => {
@@ -59,6 +61,83 @@ describe("server", () => {
   });
 });
 
+describe("hardening", () => {
+  it("sends the security headers on the API and on the app", async () => {
+    const webDist = await mkdtemp(join(tmpdir(), "talaria-web-"));
+    await writeFile(join(webDist, "index.html"), "<!doctype html><title>Talaria</title>");
+    const { services } = setup();
+    const app = createApp({ services, sessionSecret: SECRET, webDist });
+    for (const path of ["/api/health", "/semaine"]) {
+      const headers = (await app.request(path)).headers;
+      const csp = headers.get("content-security-policy") ?? "";
+      expect(csp).toContain("default-src 'self'");
+      expect(csp).toContain("script-src 'self';");
+      expect(csp).toContain("frame-ancestors 'none'");
+      expect(csp).toContain("object-src 'none'");
+      expect(headers.get("strict-transport-security")).toBe("max-age=63072000; includeSubDomains");
+      expect(headers.get("referrer-policy")).toBe("no-referrer");
+      expect(headers.get("x-frame-options")).toBe("DENY");
+      expect(headers.get("x-content-type-options")).toBe("nosniff");
+      expect(headers.get("permissions-policy")).toContain("camera=()");
+    }
+  });
+
+  it("lets the built page's own inline scripts run, and only those", async () => {
+    const webDist = await mkdtemp(join(tmpdir(), "talaria-web-"));
+    await writeFile(
+      join(webDist, "index.html"),
+      `<script type="module" src="/assets/index.js"></script><script id="sw">register()</script><script>preload()</script>`,
+    );
+    const { services } = setup();
+    const csp = (await createApp({ services, sessionSecret: SECRET, webDist }).request("/semaine")).headers.get(
+      "content-security-policy",
+    );
+    const hash = (body: string) => `'sha256-${createHash("sha256").update(body).digest("base64")}'`;
+    expect(csp).toContain(`script-src 'self' ${hash("register()")} ${hash("preload()")};`);
+  });
+
+  it("refuses a state-changing call from another site, even with her cookie", async () => {
+    const t = setup();
+    await t.login();
+    const cookie = (await t.login()).headers.get("set-cookie")?.split(";")[0] ?? "";
+    const post = (headers: Record<string, string>) =>
+      t.app.request("/api/feel-better", { method: "POST", headers: { cookie, ...headers } });
+
+    expect((await post({ "sec-fetch-site": "cross-site" })).status).toBe(403);
+    expect((await post({ "sec-fetch-site": "same-site" })).status).toBe(403);
+    expect((await post({ origin: "https://evil.test", host: "talaria.test" })).status).toBe(403);
+    expect(
+      (await post({ origin: "https://talaria.test", host: "talaria.test", "sec-fetch-site": "same-origin" })).status,
+    ).not.toBe(403);
+    const read = await t.app.request("/api/today", { headers: { cookie, "sec-fetch-site": "cross-site" } });
+    expect(read.status).toBe(200);
+  });
+
+  it("refuses a body over 64 kB", async () => {
+    const t = setup();
+    await t.login();
+    expect((await t.call("POST", "/api/chat", { text: "x".repeat(70_000) })).status).toBe(413);
+  });
+
+  it("limits each route's window and opens again after it", async () => {
+    let now = 0;
+    const limit = rateLimit(2, 1000, () => now);
+    const app = new Hono().onError((e, c) => c.json({ error: e.message }, 429)).get("/", limit, (c) => c.text("ok"));
+    expect((await app.request("/")).status).toBe(200);
+    expect((await app.request("/")).status).toBe(200);
+    expect((await app.request("/")).status).toBe(429);
+    now = 1000;
+    expect((await app.request("/")).status).toBe(200);
+  });
+
+  it("caps Reggie at 30 messages per 10 minutes", async () => {
+    const t = setup({ reggie: async function* () {} });
+    await t.login();
+    for (let i = 0; i < 30; i++) await t.request("POST", "/api/chat", { text: "x" });
+    expect((await t.call("POST", "/api/chat", { text: "x" })).status).toBe(429);
+  });
+});
+
 describe("login", () => {
   it("refuses every API route without a session", async () => {
     const t = setup();
@@ -74,7 +153,8 @@ describe("login", () => {
     expect(response.status).toBe(302);
     expect(response.headers.get("location")).toBe("/");
     const cookie = response.headers.get("set-cookie") ?? "";
-    expect(cookie).toMatch(/^talaria_session=/);
+    expect(cookie).toMatch(/^__Host-talaria_session=/);
+    expect(cookie).toContain("Path=/");
     expect(cookie).toContain("Max-Age=15552000");
     expect(cookie).toContain("HttpOnly");
     expect(cookie).toContain("Secure");

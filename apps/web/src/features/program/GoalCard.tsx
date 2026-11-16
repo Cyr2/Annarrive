@@ -52,7 +52,7 @@ export function GoalCard({ program, today }: { program: Program; today: string }
             />
           ))}
         </div>
-        <div className="t-cap flex">
+        <div className="t-cap flex gap-1">
           {phases.map((p) => (
             <span
               key={p.name}
