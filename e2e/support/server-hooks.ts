@@ -1,4 +1,8 @@
 import { readFile } from "node:fs/promises";
+import { createServer, request as httpRequest } from "node:http";
+import https from "node:https";
+import { syncBuiltinESMExports } from "node:module";
+import type { AddressInfo } from "node:net";
 import { basename, join } from "node:path";
 
 /**
@@ -20,14 +24,23 @@ class ShiftedDate extends RealDate {
 }
 globalThis.Date = ShiftedDate as DateConstructor;
 
-const ICS_HOST = "https://ics.e2e.test/";
-const realFetch = globalThis.fetch;
-globalThis.fetch = async (input, init) => {
-  const url = input instanceof Request ? input.url : String(input);
-  if (!url.startsWith(ICS_HOST)) return realFetch(input, init);
-  const file = join(process.env.E2E_ICS_DIR ?? ".", basename(new URL(url).pathname));
+// A local http server stands in for the https host, so the timetable's https-only and address guards still apply.
+const ICS_HOST = "ics.e2e.test";
+const icsServer = createServer(async (req, res) => {
+  const file = join(process.env.E2E_ICS_DIR ?? ".", basename(new URL(req.url ?? "/", "http://x").pathname));
   const body = await readFile(file).catch(() => null);
-  return body
-    ? new Response(body, { headers: { "content-type": "text/calendar" } })
-    : new Response("", { status: 404 });
-};
+  if (!body) return void res.writeHead(404).end();
+  res.writeHead(200, { "content-type": "text/calendar" }).end(body);
+});
+await new Promise<void>((resolve) => icsServer.listen(0, "127.0.0.1", resolve));
+icsServer.unref();
+const { port } = icsServer.address() as AddressInfo;
+
+const realRequest = https.request;
+https.request = ((...args: Parameters<typeof https.request>) => {
+  const [url, options, callback] = args;
+  if (!(url instanceof URL) || url.hostname !== ICS_HOST) return realRequest(...args);
+  const { signal } = options as { signal?: AbortSignal };
+  return httpRequest({ host: "127.0.0.1", port, path: url.pathname, signal }, callback);
+}) as typeof https.request;
+syncBuiltinESMExports();

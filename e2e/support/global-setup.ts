@@ -27,9 +27,9 @@ async function logIn(browser: Browser, server: Server, file: string, use: FullCo
   const { status, setCookie } = await answered;
   await context.close();
   // The cookie is Secure (https in production): WebKit drops it over http://localhost, so the tests get it unsecured.
-  const value = setCookie?.match(/^talaria_session=([^;]+)/)?.[1];
+  const value = setCookie?.match(/^__Host-talaria_session=([^;]+)/)?.[1];
   if (status !== 302 || !value) throw new Error(`Connexion refusée (${status}) : pas de cookie de session.`);
-  const cookie = { name: "talaria_session", value, domain: "localhost", path: "/", expires: -1 };
+  const cookie = { name: "__Host-talaria_session", value, domain: "localhost", path: "/", expires: -1 };
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(
     file,
