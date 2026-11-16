@@ -33,7 +33,7 @@ describe("Scheduler", () => {
     return { scheduler, refreshTimetable, buildNextWeek, garmin, set: (iso: string) => (now = new Date(iso)) };
   }
 
-  it("polls recovery from 5:00 to 9:45, decides at 10:00, syncs runs and the watch on their beat", async () => {
+  it("polls recovery from 5:00 to 9:45, checks the morning decision every 5 minutes, syncs runs and the watch on their beat", async () => {
     const s = scheduled("2026-11-16T04:00:00Z"); // 05:00 in Paris
     await s.scheduler.tick();
     s.set("2026-11-16T08:45:00Z");
@@ -41,7 +41,7 @@ describe("Scheduler", () => {
     s.set("2026-11-16T09:00:00Z");
     await s.scheduler.tick();
     expect(s.garmin.syncRecovery).toHaveBeenCalledTimes(2);
-    expect(s.garmin.morningDecision).toHaveBeenCalledTimes(1);
+    expect(s.garmin.morningDecision).toHaveBeenCalledTimes(3);
     expect(s.garmin.syncActivities).toHaveBeenCalledTimes(2);
     expect(s.garmin.syncWatch).toHaveBeenCalledTimes(3);
   });

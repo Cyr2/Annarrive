@@ -1,6 +1,6 @@
 import { repace } from "./catalog.ts";
 import { addDays, dateOf, daysBetween } from "./dates.ts";
-import { isEligibleEffort, paces, vdot } from "./fitness.ts";
+import { type InitialFitness, isEligibleEffort, paces, vdot } from "./fitness.ts";
 import type { Activity, DailySignal, FeelLog, Proposal, Result, Session, State } from "./types.ts";
 
 const PROPOSAL_DAYS = 14;
@@ -32,6 +32,15 @@ export function evaluateRace(a: Activity, current: number, ctx: RaceCtx): Propos
     (a.tempC ?? 0) > 15 || (a.elevGainM ?? 0) / a.distM >= 0.01 || ctx.illnessLast14d === true || a.feel === "easy";
   if (current - v >= 1.5 && !excused) return proposal("vdot", current, v, "RC2", [a.id], ctx.now);
   return null;
+}
+
+/**
+ * F10 then RC11: once a provisional level meets its first measured effort, the measured VDOT is proposed,
+ * never applied, under the same 0.5 threshold as RC1.
+ */
+export function proposeMeasured(current: number, measured: InitialFitness, now: string): Proposal | null {
+  if (measured.status !== "measured" || Math.abs(measured.vdot - current) <= 0.5) return null;
+  return proposal("vdot", current, measured.vdot, "F10", [measured.source], now);
 }
 
 export type KeySession = {

@@ -10,13 +10,22 @@ import {
   plannedSessionSchema,
   profileSchema,
   programSchema,
+  proposalSchema,
 } from "@talaria/protocol";
 import { z } from "zod";
 import { addMinutes } from "../time.ts";
 import { DocumentStore } from "./store.ts";
 
 /** Tables a plan change can touch, so the change log can restore them. */
-export const planTables = ["planned_session", "calendar_event", "profile", "program", "health"] as const;
+export const planTables = [
+  "planned_session",
+  "calendar_event",
+  "profile",
+  "program",
+  "health",
+  "fitness_estimate",
+  "proposal",
+] as const;
 export type PlanTable = (typeof planTables)[number];
 
 export const changeEntrySchema = z.object({
@@ -35,6 +44,8 @@ export const activitySchema = z.object({
   durMin: z.number(),
   distM: z.number(),
   avgHr: z.number().optional(),
+  /** Highest heart rate of the run: the observed maximum anchors F12 and F9. */
+  maxHr: z.number().optional(),
   hrSeries: z.array(z.number()).optional(),
   elevGainM: z.number().optional(),
   isRace: z.boolean().optional(),
@@ -46,7 +57,15 @@ export const activitySchema = z.object({
   sessionId: z.string().optional(),
 });
 export type Activity = z.infer<typeof activitySchema>;
-const fitnessEstimateSchema = z.object({ id: z.string(), date: localDateSchema, vdot: z.number(), source: z.string() });
+/** One estimate per day, the latest wins; `provisional` until a measured effort backs it (F10). */
+const fitnessEstimateSchema = z.object({
+  id: z.string(),
+  date: localDateSchema,
+  vdot: z.number(),
+  source: z.string(),
+  provisional: z.boolean().optional(),
+});
+export type FitnessEstimate = z.infer<typeof fitnessEstimateSchema>;
 const pushSubscriptionSchema = z.object({
   id: z.string().url(),
   keys: z.object({ p256dh: z.string(), auth: z.string() }),
@@ -94,6 +113,7 @@ export function createStores(db: DatabaseSync) {
       fitnessEstimateSchema,
       ranged((f) => f.date),
     ),
+    proposal: new DocumentStore(db, "proposal", proposalSchema),
     changeLog: new DocumentStore(
       db,
       "change_log",
