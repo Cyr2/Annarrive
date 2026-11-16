@@ -8,7 +8,7 @@ export const SESSION_SECONDS = 180 * 24 * 3600;
 const MAX_FAILURES = 5;
 const FAILURE_WINDOW_MS = 15 * 60_000;
 
-const hash = (secret: string) => createHash("sha256").update(secret).digest("hex");
+export const hash = (secret: string) => createHash("sha256").update(secret).digest("hex");
 
 /** One user: a one-time link from the server CLI opens a long session. */
 export class AuthService {
