@@ -1,3 +1,7 @@
+import { lookup as dnsLookup, type LookupAddress } from "node:dns";
+import type { ClientRequest, IncomingMessage } from "node:http";
+import { request as httpsRequest } from "node:https";
+import { BlockList, isIP, type LookupFunction } from "node:net";
 import type { DatabaseSync } from "node:sqlite";
 import type { CalendarEvent, TimetableRefresh, TimetableStatus } from "@talaria/protocol";
 import { sync as ical } from "node-ical";
@@ -42,15 +46,130 @@ export function parseTimetable(ics: string): CalendarEvent[] {
   });
 }
 
-/** Downloads a feed; the URL is a secret, so it never appears in an error. */
-export function icsFetcher(timeoutMs = 15_000): (url: string) => Promise<string> {
-  return async (url) => {
-    const response = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) }).catch(() => {
-      throw new TimetableError("L'emploi du temps ne répond pas : réessaie dans quelques minutes.");
+// The link is typed by Anna: it must never reach the server's own network (bridge, Coolify, cloud metadata).
+const internal = new BlockList();
+for (const [net, prefix] of [
+  ["0.0.0.0", 8],
+  ["10.0.0.0", 8],
+  ["100.64.0.0", 10],
+  ["127.0.0.0", 8],
+  ["169.254.0.0", 16],
+  ["172.16.0.0", 12],
+  ["192.0.0.0", 24],
+  ["192.168.0.0", 16],
+  ["198.18.0.0", 15],
+  ["224.0.0.0", 3],
+] as const)
+  internal.addSubnet(net, prefix, "ipv4");
+for (const [net, prefix] of [
+  ["::", 127],
+  ["64:ff9b::", 96],
+  ["2002::", 16],
+  ["fc00::", 7],
+  ["fe80::", 10],
+  ["ff00::", 8],
+] as const)
+  internal.addSubnet(net, prefix, "ipv6");
+
+/** False for loopback, private, link-local, shared, multicast and IPv4-embedding IPv6 addresses. */
+export function isPublicAddress(address: string): boolean {
+  const version = isIP(address);
+  return version !== 0 && !internal.check(address, version === 4 ? "ipv4" : "ipv6");
+}
+
+const INTERNAL_LINK = "Ce lien mène à une adresse interne : colle le lien ICS public de ton université.";
+const UNREACHABLE = "L'emploi du temps ne répond pas : réessaie dans quelques minutes.";
+
+type Resolve = (hostname: string, callback: (error: Error | null, addresses: LookupAddress[]) => void) => void;
+const systemResolve: Resolve = (hostname, callback) => dnsLookup(hostname, { all: true }, callback);
+
+/** Every address the name resolves to must be public; the connection then uses them, so a rebinding DNS cannot swap one in. */
+function guardedLookup(resolve: Resolve): LookupFunction {
+  return (hostname, options, callback) => {
+    resolve(hostname, (error, addresses) => {
+      const first = addresses[0];
+      if (error || !first) return callback(error ?? new TimetableError(UNREACHABLE), "");
+      if (!addresses.every((a) => isPublicAddress(a.address))) return callback(new TimetableError(INTERNAL_LINK), "");
+      if (options.all) return callback(null, addresses);
+      callback(null, first.address, first.family);
     });
-    if (!response.ok) throw new TimetableError(`L'emploi du temps a répondu ${response.status} : vérifie le lien ICS.`);
-    return response.text();
   };
+}
+
+type Transport = (
+  url: URL,
+  options: { lookup: LookupFunction; signal: AbortSignal },
+  callback: (res: IncomingMessage) => void,
+) => ClientRequest;
+
+export type IcsFetcherOptions = {
+  timeoutMs?: number;
+  maxBytes?: number;
+  maxRedirects?: number;
+  resolve?: Resolve;
+  /** `https.request`; tests swap in a local server. */
+  transport?: Transport;
+};
+
+/**
+ * Downloads a feed over https only, never from an internal address, within `timeoutMs` and `maxBytes`, following
+ * at most `maxRedirects` redirects that pass the same checks. The URL is a secret: it never appears in an error.
+ */
+export function icsFetcher({
+  timeoutMs = 15_000,
+  maxBytes = 5_000_000,
+  maxRedirects = 3,
+  resolve = systemResolve,
+  transport = httpsRequest,
+}: IcsFetcherOptions = {}): (url: string) => Promise<string> {
+  const lookup = guardedLookup(resolve);
+  const get = (url: string, redirectsLeft: number, signal: AbortSignal): Promise<string> => {
+    const target = URL.parse(url);
+    if (target?.protocol !== "https:")
+      return Promise.reject(new TimetableError("Le lien de l'emploi du temps doit commencer par https://."));
+    const literal = target.hostname.replace(/^\[|\]$/g, "");
+    // An IP in the URL skips the lookup, so it is checked here.
+    if (isIP(literal) && !isPublicAddress(literal)) return Promise.reject(new TimetableError(INTERNAL_LINK));
+    return new Promise((done, fail) => {
+      const req = transport(target, { lookup, signal }, (res) => {
+        answer(res, target, redirectsLeft, signal).then(done, fail);
+      });
+      req.on("error", (error) => fail(asTimetableError(error)));
+      req.end();
+    });
+  };
+  /** The body of a 2xx, the next hop of a redirect (checked like the first), an error otherwise. */
+  const answer = (res: IncomingMessage, from: URL, redirectsLeft: number, signal: AbortSignal): Promise<string> => {
+    const status = res.statusCode ?? 0;
+    const location = status >= 300 && status < 400 ? res.headers.location : undefined;
+    if (location === undefined && status >= 200 && status < 300) return readCapped(res, maxBytes);
+    res.resume();
+    if (location === undefined)
+      return Promise.reject(new TimetableError(`L'emploi du temps a répondu ${status} : vérifie le lien ICS.`));
+    if (redirectsLeft === 0)
+      return Promise.reject(new TimetableError("L'emploi du temps redirige trop : vérifie le lien ICS."));
+    return get(new URL(location, from).toString(), redirectsLeft - 1, signal);
+  };
+  return (url) => get(url, maxRedirects, AbortSignal.timeout(timeoutMs));
+}
+
+const asTimetableError = (error: unknown) =>
+  error instanceof TimetableError ? error : new TimetableError(UNREACHABLE);
+
+/** The body as text, cut off past `maxBytes` so a huge or endless feed cannot fill the memory. */
+function readCapped(res: IncomingMessage, maxBytes: number): Promise<string> {
+  return new Promise((done, fail) => {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    res.on("data", (chunk: Buffer) => {
+      size += chunk.length;
+      if (size <= maxBytes) return chunks.push(chunk);
+      fail(new TimetableError("L'emploi du temps reçu est trop gros : vérifie le lien ICS."));
+      res.destroy();
+    });
+    res.on("end", () => done(Buffer.concat(chunks).toString("utf8")));
+    res.on("error", (error) => fail(asTimetableError(error)));
+  });
 }
 
 type Verb = "annulé" | "ajouté" | "modifié";
