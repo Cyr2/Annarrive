@@ -22,7 +22,7 @@ export function ItemRow({ item, lifted = false }: { item: Item; lifted?: boolean
   return (
     <div
       className={cx(
-        "flex min-h-14 items-center gap-3 rounded-row px-3 text-left",
+        "flex min-h-14 items-center gap-3 rounded-row px-3 py-2 text-left",
         isRun ? tone.wash : "bg-surface",
         lifted && "lifted",
       )}

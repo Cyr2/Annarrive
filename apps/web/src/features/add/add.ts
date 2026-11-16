@@ -16,6 +16,11 @@ export function strengthWhen(template: Strength): string {
   return `${weekdayName(template.weekday)} ${template.start} · ${repeatLabel(template.repeat).toLowerCase()}`;
 }
 
+/** "Lundi 20:00", for the Programme list where the row is narrow. */
+export function strengthShort(template: Strength): string {
+  return template.placed ? `${weekdayName(template.weekday)} ${template.start}` : "Pas placée";
+}
+
 /** The date of a template's usual weekday in the week of `today`, never in the past. */
 export function usualDate(template: Strength, monday: string, today: string): string {
   const date = addDays(monday, template.weekday);

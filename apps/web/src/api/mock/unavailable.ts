@@ -1,4 +1,4 @@
-import { addDays, relativeDay } from "../../lib/date.ts";
+import { addDays, duration, relativeDay } from "../../lib/date.ts";
 import type { UnavailableInput } from "../client.ts";
 import type { ChangeRow, Item, Run } from "../schemas.ts";
 import { easy, isRun } from "./rules.ts";
@@ -23,7 +23,7 @@ export function applyUnavailable(items: Item[], input: UnavailableInput, today: 
       row(item, `Repos, ${item.title.toLowerCase()} retiré`, "rest");
       return [];
     }
-    row(replacement, `${replacement.title} · ${replacement.durationMin} min`, "easy");
+    row(replacement, `${replacement.title} · ${duration(replacement.durationMin)}`, "easy");
     return [replacement];
   });
 

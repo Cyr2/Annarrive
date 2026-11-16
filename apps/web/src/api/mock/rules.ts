@@ -1,4 +1,13 @@
-import { addDays, addMinutes, dayName, daysBetween, minutesOf, relativeDay, weekday } from "../../lib/date.ts";
+import {
+  addDays,
+  addMinutes,
+  dayName,
+  daysBetween,
+  duration,
+  minutesOf,
+  relativeDay,
+  weekday,
+} from "../../lib/date.ts";
 import type { ChangeOption, ChangeOptionId, Item, ProposedSlot, Run, Settings } from "../schemas.ts";
 
 /**
@@ -88,10 +97,17 @@ export function changeOptions(run: Run): ChangeOption[] {
     {
       id: "shorter",
       title: "Plus court",
-      detail: shorterSet ? `${shorterSet} à ${run.pace} · ${shorterMin} min` : `${shorterMin} min, même allure`,
+      detail: shorterSet
+        ? `${shorterSet} à ${run.pace} · ${duration(shorterMin)}`
+        : `${duration(shorterMin)}, même allure`,
       intensity: run.intensity,
     },
-    { id: "easier", title: "Plus facile", detail: `${run.durationMin} min, allure 6:15 à 6:45`, intensity: "easy" },
+    {
+      id: "easier",
+      title: "Plus facile",
+      detail: `${duration(run.durationMin)}, allure 6:15 à 6:45`,
+      intensity: "easy",
+    },
     { id: "equivalent", title: "Équivalente", detail: "3 × 1 600 m à 5:10 · 50 min", intensity: "hard" },
     { id: "jog", title: "Footing tranquille", detail: "30 min, allure 6:30 à 7:00", intensity: "easy" },
   ];

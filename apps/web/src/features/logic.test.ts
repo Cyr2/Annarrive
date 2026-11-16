@@ -7,6 +7,7 @@ import {
   repeatLabel,
   revisionEvent,
   strengthEvent,
+  strengthShort,
   strengthWhen,
   usualDate,
 } from "./add/add.ts";
@@ -125,6 +126,8 @@ describe("add", () => {
     expect(usualDate({ ...legs, weekday: 0 }, MONDAY, "2026-11-18")).toBe("2026-11-23");
     expect(strengthEvent(legs, "2026-11-19", "19:30")).toMatchObject({ kind: "strength", end: "20:30", legs: true });
     expect(repeatLabel("biweekly")).toBe("Toutes les deux semaines");
+    expect(strengthShort(legs)).toBe("Jeudi 19:30");
+    expect(strengthShort({ ...legs, placed: false })).toBe("Pas placée");
   });
   it("builds revisions and busy slots", () => {
     const form = { title: " ", date: MONDAY, start: "14:00", end: "16:00", minutes: 90, repeat: "weekly" as const };

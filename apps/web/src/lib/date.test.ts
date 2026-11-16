@@ -6,6 +6,7 @@ import {
   ago,
   daysBetween,
   dayTitle,
+  decimal,
   duration,
   longDate,
   mondayOf,
@@ -52,6 +53,7 @@ describe("date", () => {
     expect(duration(80)).toBe("1 h 20");
     expect(duration(215)).toBe("3 h 35");
     expect(span("10:15", "12:15")).toBe("10:15 à 12:15");
+    expect(decimal(12.5)).toBe("12,5");
   });
 
   it("says how long ago", () => {

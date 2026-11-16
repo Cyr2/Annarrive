@@ -119,6 +119,11 @@ export function duration(minutes: number): string {
   return m === 0 ? `${h} h` : `${h} h ${String(m).padStart(2, "0")}`;
 }
 
+/** French decimal: "12,5". */
+export function decimal(value: number): string {
+  return String(value).replace(".", ",");
+}
+
 /** "10:15 à 12:15" */
 export function span(start: string, end: string): string {
   return `${start} à ${end}`;

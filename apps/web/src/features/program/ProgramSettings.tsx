@@ -5,7 +5,7 @@ import { Dot } from "../../ui/bits.tsx";
 import { Group, RowButton, Section } from "../../ui/List.tsx";
 import { Switch } from "../../ui/Switch.tsx";
 import { notify } from "../../ui/toast.ts";
-import { strengthWhen } from "../add/add.ts";
+import { strengthShort } from "../add/add.ts";
 import { usePlan } from "../plan/store.ts";
 import { type SettingKey, useSheet } from "../sheets/store.ts";
 import { SETTING_LABELS, settingValue } from "./program.ts";
@@ -39,7 +39,7 @@ export function ProgramSettings({ program }: { program: Program }) {
             <RowButton
               key={t.id}
               label={t.name}
-              value={strengthWhen(t)}
+              value={strengthShort(t)}
               onClick={() => show({ kind: "strength", templateId: t.id })}
             />
           ))}

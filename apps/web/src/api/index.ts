@@ -3,9 +3,9 @@ import type { Scenario } from "./mock/index.ts";
 
 export type { Api } from "./client.ts";
 
-const SCENARIOS: Scenario[] = ["run", "rest", "done", "light"];
+const SCENARIOS: Scenario[] = ["run", "rest", "done", "light", "worst"];
 
-/** `?mock`, `?mock=rest`, `?mock=done`, `?mock=light`: forces the mock and picks which "today" it shows. */
+/** `?mock`, `?mock=rest`, `?mock=done`, `?mock=light`, `?mock=worst`: forces the mock and picks its "today". */
 export function mockRequest(search: string, envFlag: string | undefined): Scenario | undefined {
   const value = new URLSearchParams(search).get("mock");
   if (value === null) return envFlag === "1" ? "run" : undefined;

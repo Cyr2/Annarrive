@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Run } from "../../api/schemas.ts";
 import { cx } from "../../lib/cx.ts";
-import { duration, momentLabel } from "../../lib/date.ts";
+import { decimal, duration, momentLabel } from "../../lib/date.ts";
 import { RollingText } from "../../ui/bits.tsx";
 import { Glass } from "../../ui/Glass.tsx";
 import { Icon } from "../../ui/Icon.tsx";
@@ -14,7 +14,9 @@ const STEP_TONE = { plain: "text-text", hard: "text-intense-ink", muted: "text-t
 /** The session of the day (design/Main): time and watch status, title, main block and target pace, steps on tap. */
 export function RunCard({ run, today }: { run: Run; today: string }) {
   const [open, setOpen] = useState(false);
-  const sub = [duration(run.durationMin), run.distanceKm && `${run.distanceKm} km environ`].filter(Boolean).join(" · ");
+  const sub = [duration(run.durationMin), run.distanceKm && `${decimal(run.distanceKm)} km environ`]
+    .filter(Boolean)
+    .join(" · ");
   return (
     <Glass as="article" className="flex flex-col gap-4 rounded-card px-5 pt-5 pb-1">
       <div className="flex items-center justify-between gap-2">

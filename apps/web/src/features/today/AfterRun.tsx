@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Activity, Feel, Run } from "../../api/schemas.ts";
-import { addDays } from "../../lib/date.ts";
+import { addDays, decimal } from "../../lib/date.ts";
 import { Glass } from "../../ui/Glass.tsx";
 import { Icon } from "../../ui/Icon.tsx";
 import { Segmented } from "../../ui/Segmented.tsx";
@@ -38,7 +38,7 @@ export function AfterRun({ activity, next, today }: { activity: Activity; next?:
           </div>
         </div>
         <dl className="m-0 grid grid-cols-3 gap-2">
-          <Figure label="Distance" value={String(activity.distanceKm).replace(".", ",")} unit=" km" />
+          <Figure label="Distance" value={decimal(activity.distanceKm)} unit=" km" />
           <Figure label="Durée" value={activity.duration} />
           <Figure label={activity.mainPaceLabel} value={activity.mainPace} accent />
         </dl>

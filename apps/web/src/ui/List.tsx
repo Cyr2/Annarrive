@@ -40,9 +40,9 @@ export function RowButton({ label, value, onClick, tall = false, tone = "plain" 
         tone === "link" && "justify-start text-link",
       )}
     >
-      <span className="t-body">{label}</span>
+      <span className="t-body min-w-0 py-3">{label}</span>
       {tone === "plain" && (
-        <span className="t-body flex items-center gap-2 text-text-secondary">
+        <span className="t-body flex flex-none items-center gap-2 text-right text-text-secondary">
           {value}
           <Chevron />
         </span>

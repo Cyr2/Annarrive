@@ -1,13 +1,27 @@
-import { addDays, addMinutes, dayName, daysBetween, minutesOf, mondayOf, relativeDay, toIso } from "../../lib/date.ts";
+import {
+  addDays,
+  addMinutes,
+  dayName,
+  daysBetween,
+  duration,
+  minutesOf,
+  mondayOf,
+  relativeDay,
+  toIso,
+} from "../../lib/date.ts";
 import type { Api } from "../client.ts";
 import type { Activity, CalendarEvent, ChangeRow, Item, Program, Run } from "../schemas.ts";
 import { type ReggieMemory, reggie } from "./chat.ts";
 import { applyChange, blockedDays, changeOptions, isRun, proposeSlots } from "./rules.ts";
 import { seedProgram, seedWeek, strengthEvent } from "./seed.ts";
 import { applyUnavailable } from "./unavailable.ts";
+import { worstItems, worstProgram } from "./worst.ts";
 
-/** Which "today" the mock shows: the states of the mockups (Main, Repos, Apres) plus a lightened session. */
-export type Scenario = "run" | "rest" | "done" | "light";
+/**
+ * Which "today" the mock shows: the states of the mockups (Main, Repos, Apres), a lightened session,
+ * and `worst`, the longest realistic values (break-ui check).
+ */
+export type Scenario = "run" | "rest" | "done" | "light" | "worst";
 
 type State = { weeks: Record<string, Item[]>; program: Program; activity?: Activity; refreshed: boolean };
 
@@ -31,7 +45,8 @@ export function createMockApi({
   latencyMs = 0,
 }: MockOptions = {}) {
   const today = scenario === "rest" ? addDays(monday, 1) : monday;
-  const program = seedProgram(addDays(monday, 62), new Date());
+  const seeded = seedProgram(addDays(monday, 62), new Date());
+  const program = scenario === "worst" ? worstProgram(seeded) : seeded;
   const state: State = { weeks: {}, program, refreshed: false, activity: scenario === "done" ? ACTIVITY : undefined };
   const log = new Map<string, State>();
   const memory: ReggieMemory = { count: 0 };
@@ -40,7 +55,8 @@ export function createMockApi({
   const wait = () => new Promise((resolve) => setTimeout(resolve, latencyMs));
   const week = (date: string) => {
     const key = mondayOf(date);
-    state.weeks[key] ??= seedWeek(key, state.program.strength);
+    const seed = () => seedWeek(key, state.program.strength);
+    state.weeks[key] ??= scenario === "worst" ? worstItems(seed()) : seed();
     return state.weeks[key];
   };
   const all = () => Object.values(state.weeks).flat();
@@ -99,7 +115,7 @@ export function createMockApi({
       const next = runs.filter((r) => r.date > today).sort((a, b) => (a.date < b.date ? -1 : 1))[0];
       return {
         date: today,
-        goal: { label: "Semi", daysLeft: daysBetween(today, state.program.goal.date) },
+        goal: { label: goalLabel(state.program.goal.race), daysLeft: daysBetween(today, state.program.goal.date) },
         session,
         next,
         activity: state.activity,
@@ -184,7 +200,7 @@ export function createMockApi({
       commit("Séance changée, ta montre est à jour", () => {
         const run = applyChange(findRun(id), option);
         put(run);
-        return [runRow(run, `${run.title} · ${run.durationMin} min`)];
+        return [runRow(run, `${run.title} · ${duration(run.durationMin)}`)];
       }),
     async previewUnavailable(input) {
       await wait();
@@ -269,6 +285,11 @@ function targetTag(time: string, distanceKm: number) {
   const [h = 0, m = 0, sec = 0] = time.split(":").map(Number);
   const secondsPerKm = (h * 3600 + m * 60 + sec) / distanceKm;
   return secondsPerKm < 300 ? "ambitious" : "reachable";
+}
+
+/** The short name on the countdown chip: "Semi · J-62". */
+function goalLabel(race: string) {
+  return race === "Semi-marathon" ? "Semi" : race;
 }
 
 function overlaps(run: Run, start: string, end: string) {

@@ -33,6 +33,12 @@ describe("mock api", () => {
     expect(session?.watch).toBe("failed");
   });
 
+  it("has a worst case with the longest realistic values", async () => {
+    const api = make({ scenario: "worst" });
+    expect((await api.today()).session?.title).toBe("Fractionné en côte, retour en descente");
+    expect((await api.program()).goal.targetTag).toBe("ambitious");
+  });
+
   it("sums the week like the mockup: 4 runs", async () => {
     const week = await make().week(0);
     expect(week.items.filter((i) => i.kind === "run")).toHaveLength(4);

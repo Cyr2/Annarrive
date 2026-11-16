@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ChangeOption, ChangeOptionId } from "../../api/schemas.ts";
 import { cx } from "../../lib/cx.ts";
-import { relativeMoment } from "../../lib/date.ts";
+import { duration, relativeMoment } from "../../lib/date.ts";
 import { Button } from "../../ui/Button.tsx";
 import { IconTile } from "../../ui/bits.tsx";
 import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
@@ -33,7 +33,7 @@ export default function ChangeSheet({ spec, ...sheet }: SheetProps<"change">) {
     <Sheet {...sheet} title="Changer la séance">
       <p className="t-cap m-0 px-4">
         Même moment, {relativeMoment(run.date, run.start, today).toLowerCase()}. Prévu : {run.title.toLowerCase()}
-        {run.mainSet ? ` ${run.mainSet}` : ""}, {run.durationMin} min.
+        {run.mainSet ? ` ${run.mainSet}` : ""}, {duration(run.durationMin)}.
       </p>
       {options === null && (
         <p className="t-cap m-0 px-4">Impossible de charger les options. Réessaie dans un instant.</p>
