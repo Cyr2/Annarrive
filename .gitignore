@@ -16,3 +16,4 @@ __pycache__/
 e2e/test-results/
 playwright-report/
 .claude/skills/
+.claude/worktrees/

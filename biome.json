@@ -11,7 +11,9 @@
       "!design",
       "!research",
       "!**/*.html",
-      "!apps/garmin-bridge"
+      "!apps/garmin-bridge",
+      "!**/*.md",
+      "!skills-lock.json"
     ]
   },
   "formatter": {
