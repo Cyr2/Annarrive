@@ -1,0 +1,66 @@
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import { z } from "zod";
+
+export const tableNames = [
+  "profile",
+  "program",
+  "planned_session",
+  "calendar_event",
+  "activity",
+  "daily_signal",
+  "fitness_estimate",
+  "change_log",
+  "chat_message",
+  "push_subscription",
+  "auth_session",
+  "login_token",
+  "meta",
+] as const;
+export type TableName = (typeof tableNames)[number];
+
+// Every table keeps its zod-validated document as JSON, plus the time span it covers for range queries.
+const documentTable = (name: string) =>
+  `CREATE TABLE ${name} (id TEXT PRIMARY KEY, start_at TEXT, end_at TEXT, data TEXT NOT NULL);
+   CREATE INDEX ${name}_start ON ${name} (start_at);`;
+
+/** Append only: a migration that shipped is never edited. */
+const migrations: string[] = [tableNames.map(documentTable).join("\n")];
+
+/** `:memory:` for tests, otherwise `talaria.db` inside `dataDir`. */
+export function openDatabase(dataDir: string | ":memory:"): DatabaseSync {
+  let path = dataDir;
+  if (dataDir !== ":memory:") {
+    mkdirSync(dataDir, { recursive: true });
+    path = join(dataDir, "talaria.db");
+  }
+  const db = new DatabaseSync(path);
+  db.exec("PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;");
+  migrate(db);
+  return db;
+}
+
+function migrate(db: DatabaseSync): void {
+  const { user_version: current } = z
+    .object({ user_version: z.number() })
+    .parse(db.prepare("PRAGMA user_version").get());
+  migrations.slice(current).forEach((sql, index) => {
+    transaction(db, () => {
+      db.exec(sql);
+      db.exec(`PRAGMA user_version = ${current + index + 1}`);
+    });
+  });
+}
+
+export function transaction<T>(db: DatabaseSync, work: () => T): T {
+  db.exec("BEGIN");
+  try {
+    const result = work();
+    db.exec("COMMIT");
+    return result;
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+}

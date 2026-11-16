@@ -63,7 +63,7 @@ jobs:
         run: docker build -t talaria .
       - name: The app starts and answers its health check
         run: |
-          docker run -d --name talaria -p 8787:8787 talaria
+          docker run -d --name talaria -p 8787:8787 -e SESSION_SECRET="$(openssl rand -hex 32)" talaria
           for i in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:8787/api/health; then exit 0; fi
             sleep 1
