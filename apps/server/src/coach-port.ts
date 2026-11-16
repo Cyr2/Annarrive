@@ -1,4 +1,12 @@
-import type { CalendarEvent, PlannedSession, Profile, ProfilePatch, Program, Slot } from "@talaria/protocol";
+import type {
+  CalendarEvent,
+  DailySignal,
+  PlannedSession,
+  Profile,
+  ProfilePatch,
+  Program,
+  Slot,
+} from "@talaria/protocol";
 import { addMinutes } from "./time.ts";
 
 /** What the server hands the algorithm: the current and next week (`WeekState`/`State` in algo.md). */
@@ -13,6 +21,8 @@ export type CoachState = {
 /** A `Change` or `Warning` of algo.md, reduced to what the screen shows. */
 export type CoachNote = { ruleId: string; message: string };
 export type CoachResult = { state: CoachState; changes: CoachNote[]; warnings: CoachNote[] };
+/** The M5 `dailyDecision` action, with the state where today's session is already lightened. */
+export type DailyDecisionResult = CoachResult & { action: "keep" | "easier" | "shorter" | "proposeRest" | "none" };
 
 /**
  * The slice of `@talaria/coach` the server calls, with the signatures of docs/specs/algo.md.
@@ -33,6 +43,12 @@ export interface CoachPort {
   updateSettings(st: CoachState, patch: ProfilePatch, now: string): CoachResult;
   /** M7 `onTimetableChange` (EV15): `newEvents` replaces `st.events`, conflicting sessions move. */
   onTimetableChange(st: CoachState, newEvents: CalendarEvent[], now: string): CoachResult;
+  /**
+   * M5 `readiness` (`baseline`, `dailySignals`, `dailyDecision`) for today's session. `signals` holds
+   * the stored days of the last 4 weeks, oldest first, today last when Garmin had it. Never makes a
+   * session harder (D9); the server freezes today's session afterwards (D7).
+   */
+  dailyDecision(st: CoachState, signals: DailySignal[], now: string): DailyDecisionResult;
 }
 
 /**
@@ -56,6 +72,7 @@ export const passThroughCoach: CoachPort = {
     warnings: [],
   }),
   onTimetableChange: (st, newEvents) => ({ state: { ...st, events: newEvents }, changes: [], warnings: [] }),
+  dailyDecision: (st) => ({ state: st, changes: [], warnings: [], action: "keep" }),
 };
 
 export function slotFor(session: PlannedSession, start: string): Slot {

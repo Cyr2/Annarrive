@@ -57,6 +57,12 @@ export class TimetableError extends AppError {
   }
 }
 
+export class GarminNotConfiguredError extends AppError {
+  constructor() {
+    super(503, "La montre n'est pas reliée : ajoute BRIDGE_URL et BRIDGE_SECRET aux variables du serveur.");
+  }
+}
+
 export class TimetableNotConfiguredError extends AppError {
   constructor() {
     super(503, "Aucun lien d'emploi du temps n'est configuré : ajoute ICS_URL aux variables du serveur.");

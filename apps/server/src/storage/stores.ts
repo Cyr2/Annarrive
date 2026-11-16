@@ -2,6 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import {
   type CalendarEvent,
   calendarEventSchema,
+  dailySignalSchema,
   localDateSchema,
   localDateTimeSchema,
   plannedSessionSchema,
@@ -25,8 +26,8 @@ export const changeEntrySchema = z.object({
 });
 export type ChangeEntry = z.infer<typeof changeEntrySchema>;
 
-// Shaped like `Activity` and `DailySignal` in docs/specs/algo.md; filled by the Garmin step.
-const activitySchema = z.object({
+// Shaped like `Activity` in docs/specs/algo.md, plus what Garmin gave and the session it was matched to.
+export const activitySchema = z.object({
   id: z.string(),
   start: localDateTimeSchema,
   durMin: z.number(),
@@ -38,15 +39,11 @@ const activitySchema = z.object({
   isTest: z.boolean().optional(),
   tempC: z.number().optional(),
   feel: z.enum(["easy", "ok", "hard"]).optional(),
+  /** Garmin self-evaluation, 1 to 10. */
+  rpe: z.number().optional(),
+  sessionId: z.string().optional(),
 });
-const dailySignalSchema = z.object({
-  id: localDateSchema,
-  rhr: z.number().optional(),
-  sleepMin: z.number().optional(),
-  bodyBatteryWake: z.number().optional(),
-  stressAvg: z.number().optional(),
-  vo2max: z.number().optional(),
-});
+export type Activity = z.infer<typeof activitySchema>;
 const fitnessEstimateSchema = z.object({ id: z.string(), date: localDateSchema, vdot: z.number(), source: z.string() });
 const chatMessageSchema = z.object({
   id: z.string(),
@@ -58,6 +55,17 @@ const pushSubscriptionSchema = z.object({
   id: z.string().url(),
   keys: z.object({ p256dh: z.string(), auth: z.string() }),
 });
+/**
+ * What the watch holds for a planned session, kept apart from `planned_session` so a sync
+ * never conflicts with Annuler. `hash` is the content last tried, sent or not.
+ */
+const watchSyncSchema = z.object({
+  id: z.string(),
+  status: z.enum(["sent", "failed"]),
+  hash: z.string(),
+  workoutId: z.number().int().optional(),
+});
+export type WatchSync = z.infer<typeof watchSyncSchema>;
 /** Login tokens and sessions are stored by SHA-256 hash, never in clear. */
 const secretSchema = z.object({ id: z.string(), expiresAt: z.string(), usedAt: z.string().optional() });
 
@@ -105,6 +113,7 @@ export function createStores(db: DatabaseSync) {
     authSession: new DocumentStore(db, "auth_session", secretSchema),
     loginToken: new DocumentStore(db, "login_token", secretSchema),
     meta: new DocumentStore(db, "meta", single(z.string())),
+    watchSync: new DocumentStore(db, "watch_sync", watchSyncSchema),
   };
 }
 export type Stores = ReturnType<typeof createStores>;

@@ -142,16 +142,24 @@ export const changeSchema = z.object({ id: z.string(), summary: z.string() });
 export const changeResponseSchema = z.object({ change: changeSchema.nullable(), warnings: z.array(z.string()) });
 export type ChangeResponse = z.infer<typeof changeResponseSchema>;
 
+/** "Sur ta montre", "Envoi à ta montre…", "Pas envoyée, réessayer" (docs/interactions.md). */
+export const watchStatusSchema = z.enum(["pending", "sent", "failed"]);
+export type WatchStatus = z.infer<typeof watchStatusSchema>;
+
+/** A session as the screens show it; `watch` is null outside the 7 days sent to the watch. */
+export const sessionViewSchema = plannedSessionSchema.extend({ watch: watchStatusSchema.nullable() });
+export type SessionView = z.infer<typeof sessionViewSchema>;
+
 export const dayViewSchema = z.object({
   date: localDateSchema,
-  sessions: z.array(plannedSessionSchema),
+  sessions: z.array(sessionViewSchema),
   events: z.array(calendarEventSchema),
 });
 export type DayView = z.infer<typeof dayViewSchema>;
 
 export const todaySchema = z.object({
   date: localDateSchema,
-  session: plannedSessionSchema.nullable(),
+  session: sessionViewSchema.nullable(),
   events: z.array(calendarEventSchema),
 });
 export type Today = z.infer<typeof todaySchema>;
@@ -172,3 +180,26 @@ export const timetableRefreshSchema = z.object({
   change: changeSchema.nullable(),
 });
 export type TimetableRefresh = z.infer<typeof timetableRefreshSchema>;
+
+/** Shaped like `DailySignal` in docs/specs/algo.md; every field may be missing (vivoactive 4). */
+export const dailySignalSchema = z.object({
+  id: localDateSchema,
+  rhr: z.number().optional(),
+  sleepMin: z.number().optional(),
+  bodyBatteryWake: z.number().optional(),
+  stressAvg: z.number().optional(),
+  vo2max: z.number().optional(),
+});
+export type DailySignal = z.infer<typeof dailySignalSchema>;
+
+/** `PushSubscription.toJSON()` from the browser; extra fields are dropped. */
+export const pushSubscriptionInputSchema = z.object({
+  endpoint: z.url({ protocol: /^https$/ }),
+  keys: z.object({ p256dh: z.string().min(1), auth: z.string().min(1) }),
+});
+export type PushSubscriptionInput = z.infer<typeof pushSubscriptionInputSchema>;
+export const pushUnsubscribeInputSchema = pushSubscriptionInputSchema.pick({ endpoint: true });
+
+/** Null when the server has no VAPID keys: the app then hides the notifications switch. */
+export const pushKeySchema = z.object({ publicKey: z.string().nullable() });
+export type PushKey = z.infer<typeof pushKeySchema>;
