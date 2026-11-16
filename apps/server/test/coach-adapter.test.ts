@@ -6,6 +6,7 @@ import {
   type GarminActivity,
   type PlannedSession,
   proposalSchema,
+  unavailablePreviewSchema,
 } from "@talaria/protocol";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
@@ -170,6 +171,50 @@ describe("coach adapter: Anna's actions", () => {
     await t.call("POST", `/api/changes/${sick.change?.id}/undo`);
     expect(t.services.plan.health()).toEqual({ kind: "ok" });
     expect(t.stores.plannedSession.get("tonight")).toEqual(before);
+  });
+
+  it("previews Pas dispo with the real coach without writing anything", async () => {
+    const t = await ready();
+    t.stores.plannedSession.put(built("tonight", "T", "2026-11-16T18:00", 60));
+    const before = t.stores.plannedSession.get("tonight");
+    const changes = t.stores.changeLog.list().length;
+
+    const { status, json } = await t.call("POST", "/api/unavailable/preview", {
+      reason: "pain",
+      where: "genou",
+      walking0to10: 5,
+    });
+    const preview = unavailablePreviewSchema.parse(json);
+
+    expect(status).toBe(200);
+    expect(preview.warnings[0]).toContain("Repos ou vélo");
+    expect(preview.days).toEqual([
+      { date: "2026-11-16", before, after: expect.objectContaining({ type: "E", durMin: 20 }) },
+    ]);
+    expect(t.stores.plannedSession.get("tonight")).toEqual(before);
+    expect(t.services.plan.health()).toEqual({ kind: "ok" });
+    expect(t.stores.changeLog.list()).toHaveLength(changes);
+    expect((await t.call("POST", "/api/unavailable/preview", { reason: "pain" })).status).toBe(400);
+  });
+
+  it("raises RC5 after three easy runs felt hard (C3)", async () => {
+    const t = await ready();
+    t.stores.fitnessEstimate.put({ id: "2026-11-01", date: "2026-11-01", vdot: 40, source: "test" });
+    for (const day of ["2026-11-10", "2026-11-12", "2026-11-14"]) {
+      t.stores.plannedSession.put({ ...built(`e-${day}`, "E", `${day}T18:00`), status: "done" });
+      t.stores.activity.put({
+        id: `run-${day}`,
+        start: `${day}T18:05`,
+        durMin: 45,
+        distM: 7000,
+        sessionId: `e-${day}`,
+      });
+    }
+    t.services.fitness.logFeel("run-2026-11-10", "hard");
+    t.services.fitness.logFeel("run-2026-11-12", "hard");
+    expect(t.services.fitness.pending()).toEqual([]);
+    t.services.fitness.logFeel("run-2026-11-14", "hard");
+    expect(t.services.fitness.pending()).toMatchObject([{ kind: "vdot", ruleId: "RC5" }]);
   });
 
   it("after a fever, feeling better starts the easy return (EV9)", async () => {

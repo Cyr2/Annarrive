@@ -117,6 +117,77 @@ describe("Garmin activities", () => {
 
     expect(sentTitles(t.send)).toEqual(["Course enregistrée"]);
   });
+
+  it("shows today's run and keeps Anna's feel answer across the next polls", async () => {
+    const t = garminSetup();
+    t.stores.plannedSession.put(session("today", "2026-11-16T07:00"));
+    t.bridge.recentActivities.mockResolvedValue([garminRun(1, "2026-11-16 07:10:00")]);
+    await t.garmin.syncActivities();
+    await t.login();
+
+    expect(await t.call("POST", "/api/activities/garmin:1/feel", { feel: "hard" })).toEqual({
+      status: 204,
+      json: null,
+    });
+    await t.garmin.syncActivities();
+
+    const today = todaySchema.parse((await t.call("GET", "/api/today")).json);
+    expect(today.activity).toEqual({
+      id: "garmin:1",
+      start: "2026-11-16T07:10",
+      durMin: 45,
+      distM: 7500,
+      answeredFeel: "hard",
+      sessionId: "today",
+    });
+  });
+
+  it("never overwrites the feel the watch recorded, and refuses an unknown run or answer", async () => {
+    const t = garminSetup();
+    t.bridge.recentActivities.mockResolvedValue([garminRun(1, "2026-11-16 07:10:00", { feel: 100 })]);
+    await t.garmin.syncActivities();
+    await t.login();
+
+    expect((await t.call("POST", "/api/activities/garmin:1/feel", { feel: "hard" })).status).toBe(403);
+    expect((await t.call("POST", "/api/activities/nope/feel", { feel: "hard" })).status).toBe(404);
+    expect((await t.call("POST", "/api/activities/garmin:1/feel", { feel: "terrible" })).status).toBe(400);
+  });
+
+  it("asks the coach after a feel answer and stores its RC5 proposal once", async () => {
+    const evaluateFeels = vi.fn<CoachPort["evaluateFeels"]>((st) =>
+      st.feels.length > 0
+        ? { kind: "vdot", from: 40, to: 39, ruleId: "RC5", evidence: [], expiresOn: "2026-11-30" }
+        : null,
+    );
+    const t = garminSetup({ ...fakeCoach, evaluateFeels });
+    t.stores.plannedSession.put(session("today", "2026-11-16T07:00"));
+    t.bridge.recentActivities.mockResolvedValue([garminRun(1, "2026-11-16 07:10:00")]);
+    await t.garmin.syncActivities();
+
+    t.services.fitness.logFeel("garmin:1", "hard");
+    t.services.fitness.logFeel("garmin:1", "hard");
+
+    expect(evaluateFeels.mock.calls[0]?.[0].feels).toEqual([
+      { sessionId: "today", date: "2026-11-16", feel: "hard", rpeTarget: 3 },
+    ]);
+    expect(t.services.fitness.pending().map((p) => p.ruleId)).toEqual(["RC5"]);
+  });
+
+  it("gives the watch's last sync time, null before the first one", async () => {
+    const t = garminSetup();
+    await t.login();
+    expect((await t.call("GET", "/api/watch")).json).toEqual({ configured: true, lastSyncAt: null });
+
+    await t.garmin.syncActivities();
+
+    expect((await t.call("GET", "/api/watch")).json).toEqual({
+      configured: true,
+      lastSyncAt: "2026-11-16T07:00:00.000Z",
+    });
+    const plain = setup();
+    await plain.login();
+    expect((await plain.call("GET", "/api/watch")).json).toEqual({ configured: false, lastSyncAt: null });
+  });
 });
 
 describe("Garmin recovery and morning decision", () => {
@@ -251,6 +322,17 @@ describe("watch sync", () => {
     expect(t.bridge.deleteWorkout).toHaveBeenCalledWith(1);
     expect(t.bridge.createWorkout).toHaveBeenLastCalledWith(expect.objectContaining({ date: "2026-11-18" }));
     expect(t.stores.watchSync.get("tue")).toMatchObject({ status: "sent", workoutId: 2 });
+  });
+
+  it("moves the last sync time only when every session reached the watch", async () => {
+    const t = garminSetup();
+    t.stores.plannedSession.put(session("tue", "2026-11-17T18:00"));
+    t.bridge.createWorkout.mockRejectedValueOnce(new BridgeError("Bridge Garmin : réponse 500", 500));
+
+    await t.garmin.syncWatch();
+    expect(t.garmin.lastSyncAt()).toBeNull();
+    await t.garmin.syncWatch();
+    expect(t.garmin.lastSyncAt()).toBe("2026-11-16T07:00:00.000Z");
   });
 
   it("marks the session failed when the bridge is unreachable, then sends it on the next run", async () => {

@@ -90,6 +90,8 @@ export interface CoachPort {
   estimateFitness(st: CoachState, vo2max: number | undefined, now: string): Omit<FitnessEstimate, "id" | "date"> | null;
   /** M8 after a new run: RC1 and RC2 for a race or test, F10 while the level is provisional. */
   evaluateRun(st: CoachState, run: Activity, now: string): ProposalDraft | null;
+  /** M8 RC5 after a feel answer: three "hard" in a row on easy sessions propose easier paces. */
+  evaluateFeels(st: CoachState, now: string): ProposalDraft | null;
   /** M8 `acceptProposal` (RC9): new paces for future sessions, and the new estimate in `state.fitness`. */
   acceptProposal(st: CoachState, proposal: ProposalDraft, now: string): CoachResult;
   /**
