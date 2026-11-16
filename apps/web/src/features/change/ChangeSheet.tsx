@@ -59,7 +59,7 @@ export default function ChangeSheet({ spec, ...sheet }: SheetProps<"change">) {
           <span className={cx("t-body", TONES[chosen.intensity].ink)}>{chosen.detail}</span>
         </div>
       )}
-      <AskReggie context={sessionContext(run, today)} onSent={() => sheet.onOpenChange(false)} />
+      <AskReggie context={sessionContext(run, today)} sessionId={run.id} onSent={() => sheet.onOpenChange(false)} />
       <Button disabled={!chosen} onClick={() => void validate()}>
         Valider{chosen ? ` : ${chosen.title.toLowerCase()}` : ""}
       </Button>

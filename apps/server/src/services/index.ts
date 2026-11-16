@@ -31,7 +31,9 @@ export function createServices(deps: {
   db: DatabaseSync;
   clock: Clock;
   coach: CoachPort;
-  fetchIcs: () => Promise<string>;
+  fetchIcs: (url: string) => Promise<string>;
+  /** Env `ICS_URL`, used until Anna pastes her own link. */
+  icsUrl?: string | undefined;
   bridge?: BridgeClient | undefined;
   push?: { send: PushSender; publicKey: string } | undefined;
   /** Defaults to the Agent SDK; tests pass a fake. */
@@ -57,7 +59,7 @@ export function createServices(deps: {
     changes,
     chat: new ChatService(stores, plan, deps.reggie ?? createReggie(query), deps.clock),
     plan,
-    timetable: new TimetableService(deps.db, stores, plan, deps.clock, deps.fetchIcs),
+    timetable: new TimetableService(deps.db, stores, plan, deps.clock, deps.fetchIcs, deps.icsUrl),
     notifications,
     garmin,
     fitness,

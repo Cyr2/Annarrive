@@ -20,7 +20,8 @@ const services = createServices({
   db,
   clock: systemClock,
   coach: coachAdapter,
-  fetchIcs: icsFetcher(config.ICS_URL),
+  fetchIcs: icsFetcher(),
+  icsUrl: config.ICS_URL,
   bridge:
     config.BRIDGE_URL && config.BRIDGE_SECRET
       ? createBridgeClient({ baseUrl: config.BRIDGE_URL, secret: config.BRIDGE_SECRET })
@@ -33,7 +34,7 @@ const services = createServices({
 const app = createApp({ services, sessionSecret: config.SESSION_SECRET, webDist: config.WEB_DIST });
 
 const jobs = createJobs({
-  refreshTimetable: () => (config.ICS_URL ? services.timetable.refresh() : undefined),
+  refreshTimetable: () => (services.timetable.url() ? services.timetable.refresh() : undefined),
   syncActivities: () => services.garmin?.syncActivities(),
   syncRecovery: () => services.garmin?.syncRecovery(),
   morningDecision: () => services.plan.morningDecision(),

@@ -194,6 +194,12 @@ describe("calendar events", () => {
 
     await undo(t, cancelled.change?.id);
     expect(t.stores.calendarEvent.get("ics:1")?.cancelled).toBe(false);
+
+    // "Le cours a lieu finalement", after the banner is gone.
+    await change(t, "POST", "/api/events/ics:1/cancel");
+    const restored = await change(t, "DELETE", "/api/events/ics:1/cancel");
+    expect(restored.change?.summary).toBe("Cours remis à ta semaine");
+    expect(t.stores.calendarEvent.get("ics:1")?.cancelled).toBe(false);
   });
 
   it("only cancels classes, and says so", async () => {
@@ -201,6 +207,7 @@ describe("calendar events", () => {
     await t.call("POST", "/api/events", strength);
     const [event] = t.stores.calendarEvent.list();
     expect((await t.call("POST", `/api/events/${event?.id}/cancel`)).status).toBe(400);
+    expect((await t.call("DELETE", `/api/events/${event?.id}/cancel`)).status).toBe(400);
     expect((await t.call("POST", "/api/events/nope/cancel")).status).toBe(404);
   });
 });

@@ -20,7 +20,7 @@ export function AfterRun({ activity, next, today }: { activity: Activity; next?:
   const go = useGo();
   const sendNote = () => {
     if (!note.trim()) return;
-    useChat.getState().setContext(`${activity.title}, ce soir`);
+    useChat.getState().setContext(`${activity.title}, ce soir`, { screen: "after_run" });
     void useChat.getState().send(note);
     setNote("");
     go("/reggie");

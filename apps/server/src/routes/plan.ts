@@ -7,6 +7,7 @@ import {
   moveSessionInputSchema,
   profilePatchSchema,
   programSchema,
+  timetableUrlInputSchema,
   unavailableSchema,
   updateEventInputSchema,
 } from "@talaria/protocol";
@@ -36,6 +37,7 @@ export function planRoutes({ plan, changes, timetable, garmin }: Services): Hono
         c.json(plan.deleteEvent(c.req.param("id"), deleteEventQuerySchema.parse(c.req.query()))),
       )
       .post("/events/:id/cancel", (c) => c.json(plan.cancelClass(c.req.param("id"))))
+      .delete("/events/:id/cancel", (c) => c.json(plan.restoreClass(c.req.param("id"))))
       .get("/sessions/:id/slots", (c) => c.json(plan.proposeMoveSlots(c.req.param("id"))))
       .post("/sessions/:id/move", async (c) => {
         const { start } = await body(c, moveSessionInputSchema);
@@ -60,6 +62,7 @@ export function planRoutes({ plan, changes, timetable, garmin }: Services): Hono
       })
       .get("/timetable", (c) => c.json(timetable.status()))
       .post("/timetable/refresh", async (c) => c.json(await timetable.refresh()))
+      .put("/timetable/url", async (c) => c.json(await timetable.setUrl((await body(c, timetableUrlInputSchema)).url)))
       // "Pas envoyée, réessayer": the app reloads the day afterwards to read the new status.
       .post("/watch/sync", async (c) => {
         if (!garmin) throw new GarminNotConfiguredError();

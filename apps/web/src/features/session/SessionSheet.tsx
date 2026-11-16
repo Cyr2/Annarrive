@@ -24,7 +24,7 @@ export default function SessionSheet({ spec, ...sheet }: SheetProps<"session">) 
         <span className={cx("t-strong", tone.deep)}>
           {relativeMoment(run.date, run.start, today)} · {duration(run.durationMin)}
         </span>
-        <span className={cx("t-cap", tone.ink)}>{WATCH_LABEL[run.watch]}</span>
+        {run.watch && <span className={cx("t-cap", tone.ink)}>{WATCH_LABEL[run.watch]}</span>}
       </div>
       <section className="flex flex-col gap-2">
         <h2 className="t-cap m-0 px-4">Étapes</h2>

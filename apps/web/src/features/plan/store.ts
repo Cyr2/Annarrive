@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { Api } from "../../api/client.ts";
+import { errorMessage } from "../../api/errors.ts";
 import { api as defaultApi } from "../../api/index.ts";
 import type { ChangeResult, Program, Today, Week } from "../../api/schemas.ts";
 import { notify as defaultNotify } from "../../ui/toast.ts";
@@ -27,8 +28,6 @@ export type PlanState = {
   /** Re-reads what is on screen after a change made elsewhere (Reggie), remembering it for Annuler. */
   sync: (changeId?: string) => Promise<void>;
 };
-
-const FAILED = "Ça n'a pas marché. Réessaie dans un instant.";
 
 export function createPlanStore(getApi: () => Promise<Api>, notify: Notify) {
   return create<PlanState>((set, get) => {
@@ -72,10 +71,11 @@ export function createPlanStore(getApi: () => Promise<Api>, notify: Notify) {
           const result = await action(await getApi());
           await get().sync(result.changeId);
           const undo = { label: "Annuler", onClick: () => void get().undo(result.changeId) };
-          if (!options?.quiet) notify(result.message, options?.action ?? undo);
+          // Nothing changed: no change to undo either.
+          if (!options?.quiet) notify(result.message, result.changeId ? (options?.action ?? undo) : undefined);
           return result;
-        } catch {
-          notify(FAILED);
+        } catch (error) {
+          notify(errorMessage(error));
           return undefined;
         }
       },
@@ -84,8 +84,8 @@ export function createPlanStore(getApi: () => Promise<Api>, notify: Notify) {
           await action(await getApi());
           await refresh();
           return true;
-        } catch {
-          notify(FAILED);
+        } catch (error) {
+          notify(errorMessage(error));
           return false;
         }
       },
@@ -98,8 +98,8 @@ export function createPlanStore(getApi: () => Promise<Api>, notify: Notify) {
           await (await getApi()).undo(changeId);
           await get().sync(undefined);
           notify("Modification annulée");
-        } catch {
-          notify(FAILED);
+        } catch (error) {
+          notify(errorMessage(error));
         }
       },
     };

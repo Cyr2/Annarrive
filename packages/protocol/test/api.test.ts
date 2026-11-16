@@ -3,7 +3,9 @@ import {
   createEventInputSchema,
   deleteEventQuerySchema,
   feasibilityInputSchema,
+  icsUrlSchema,
   isoWeekSchema,
+  profilePatchSchema,
   updateEventInputSchema,
 } from "../src/index.ts";
 
@@ -47,5 +49,18 @@ describe("isoWeekSchema", () => {
   it("accepts ISO weeks only", () => {
     expect(isoWeekSchema.safeParse("2026-W47").success).toBe(true);
     expect(isoWeekSchema.safeParse("2026-W54").success).toBe(false);
+  });
+});
+
+describe("icsUrlSchema", () => {
+  it("accepts an https feed and refuses anything else with a French hint", () => {
+    expect(icsUrlSchema.parse("https://edt.univ.fr/anna.ics")).toBe("https://edt.univ.fr/anna.ics");
+    for (const url of ["http://edt.univ.fr/anna.ics", "webcal://edt.univ.fr/anna.ics", "pas un lien"]) {
+      expect(icsUrlSchema.safeParse(url).error?.issues[0]?.message).toBe("Colle un lien qui commence par https://.");
+    }
+  });
+
+  it("is never patched with the other settings", () => {
+    expect(profilePatchSchema.parse({ icsUrl: "https://edt.univ.fr/anna.ics" })).toEqual({});
   });
 });

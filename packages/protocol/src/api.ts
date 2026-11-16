@@ -72,6 +72,10 @@ export const calendarEventSchema = z.object({
 });
 export type CalendarEvent = z.infer<typeof calendarEventSchema>;
 
+/** Anna's timetable feed, pasted in Programme; the server falls back to env `ICS_URL` without it. */
+export const icsUrlSchema = z.url({ protocol: /^https$/, error: "Colle un lien qui commence par https://." });
+export const timetableUrlInputSchema = z.object({ url: icsUrlSchema });
+
 /** Onboarding settings, shaped like `Settings` in algo.md (defaults from its section 4.2). */
 export const profileSchema = z.object({
   runsPerWeek: z.union([z.literal(3), z.literal(4), z.literal(5)]),
@@ -84,6 +88,7 @@ export const profileSchema = z.object({
   useSleepHr: z.boolean(),
   travelMin: z.number().int().min(0).max(120),
   cycleTracking: z.boolean(),
+  icsUrl: icsUrlSchema.optional(),
 });
 export type Profile = z.infer<typeof profileSchema>;
 
@@ -157,7 +162,8 @@ export const deleteEventQuerySchema = z.discriminatedUnion("scope", [
 export type DeleteEventQuery = z.infer<typeof deleteEventQuerySchema>;
 
 export const moveSessionInputSchema = z.object({ start: localDateTimeSchema });
-export const profilePatchSchema = profileSchema.partial();
+/** The timetable link changes through `PUT /timetable/url`, which also re-reads the classes. */
+export const profilePatchSchema = profileSchema.omit({ icsUrl: true }).partial();
 export type ProfilePatch = z.infer<typeof profilePatchSchema>;
 
 export const slotSchema = z.object({ start: localDateTimeSchema, end: localDateTimeSchema });

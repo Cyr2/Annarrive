@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Api } from "../api/client.ts";
+import { ApiError } from "../api/errors.ts";
 import { createMockApi } from "../api/mock/index.ts";
 import { createPlanStore } from "./plan/store.ts";
 import { createChatStore } from "./reggie/store.ts";
@@ -107,6 +108,54 @@ describe("chat store", () => {
     expect(chat.getState().messages).toHaveLength(1);
     await chat.getState().send("Salut");
     expect(chat.getState().messages.at(-1)?.text).toMatch(/^Je n'arrive pas/);
+  });
+
+  it("grows the streamed message in place, sends the context, and shows the server's own error", async () => {
+    const sent: unknown[] = [];
+    const api: Pick<Api, "chat"> = {
+      async *chat(input) {
+        sent.push(input);
+        yield { type: "message", message: { id: "r1", role: "reggie", text: "Je " } };
+        yield { type: "message", message: { id: "r1", role: "reggie", text: "Je regarde." } };
+        throw new ApiError(502, "Reggie ne répond pas : réessaie dans un instant.");
+      },
+    };
+    const chat = createChatStore(async () => api as Api, vi.fn());
+    chat.getState().setContext("Fractionné, ce soir 18:00", { screen: "today", sessionId: "s1" });
+    await chat.getState().send("Plus court");
+    expect(sent).toEqual([{ text: "Plus court", context: { screen: "today", sessionId: "s1" } }]);
+    expect(chat.getState().messages.map((m) => m.text)).toEqual([
+      expect.stringMatching(/^Salut/),
+      "Plus court",
+      "Je regarde.",
+      "Reggie ne répond pas : réessaie dans un instant.",
+    ]);
+  });
+
+  it("loads the stored conversation once, under the welcome line", async () => {
+    const chatHistory = vi
+      .fn<Api["chatHistory"]>()
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValue([{ id: "m1", role: "user", text: "Bonjour" }]);
+    const chat = createChatStore(async () => ({ chatHistory }) as unknown as Api, vi.fn());
+    await chat.getState().loadHistory();
+    expect(chat.getState().messages).toHaveLength(1);
+    await chat.getState().loadHistory();
+    await chat.getState().loadHistory();
+    expect(chatHistory).toHaveBeenCalledTimes(2);
+    expect(chat.getState().messages.map((m) => m.id)).toEqual(["welcome", "m1"]);
+  });
+});
+
+describe("plan store with the server's answers", () => {
+  it("shows the server's message, and no Annuler when nothing changed", async () => {
+    const notify = vi.fn();
+    const api = createMockApi({ monday: MONDAY });
+    const plan = createPlanStore(async () => api, notify);
+    await plan.getState().apply(async () => ({ changeId: "", message: "Rien n'a changé", rows: [] }));
+    expect(notify).toHaveBeenLastCalledWith("Rien n'a changé", undefined);
+    await plan.getState().apply(() => Promise.reject(new ApiError(409, "Ce changement est déjà annulé.")));
+    expect(notify).toHaveBeenLastCalledWith("Ce changement est déjà annulé.");
   });
 });
 

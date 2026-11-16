@@ -13,8 +13,8 @@ export default function WatchSheet(sheet: SheetProps<"watch">) {
   const rows = [
     { label: "Modèle", value: watch.model },
     { label: "État", value: watch.connected ? "Connectée" : "Déconnectée" },
-    { label: "Dernière synchro", value: ago(watch.lastSync, new Date()) },
   ];
+  if (watch.lastSync) rows.push({ label: "Dernière synchro", value: ago(watch.lastSync, new Date()) });
   return (
     <Sheet {...sheet} title="Montre Garmin" cancelLabel="Fermer">
       <Group>

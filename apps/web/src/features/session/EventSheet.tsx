@@ -82,7 +82,7 @@ function EditEvent({ event, today, ...sheet }: Props & { today: string }) {
       </Group>
       <Section footnote="Si une course tombe sur ce créneau, Reggie la déplace et te le dit.">
         <Group>
-          <Button variant="danger" onClick={() => void run((api) => api.deleteEvent(event.id, "one"))}>
+          <Button variant="danger" onClick={() => void run((api) => api.deleteEvent(event.id, "one", event.date))}>
             Supprimer
           </Button>
         </Group>

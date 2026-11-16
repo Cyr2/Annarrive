@@ -157,7 +157,9 @@ export function fakeBridge() {
 
 export function setup(
   options: {
-    ics?: string | (() => Promise<string>);
+    ics?: string | ((url: string) => Promise<string>);
+    /** The server's `ICS_URL`; null leaves it unset. */
+    icsUrl?: string | null;
     coach?: CoachPort;
     bridge?: BridgeClient;
     push?: { send: PushSender; publicKey: string };
@@ -174,6 +176,7 @@ export function setup(
     clock,
     coach: options.coach ?? fakeCoach,
     fetchIcs,
+    icsUrl: options.icsUrl === null ? undefined : (options.icsUrl ?? "https://edt.test/env.ics"),
     bridge: options.bridge,
     push: options.push,
     reggie: options.reggie,

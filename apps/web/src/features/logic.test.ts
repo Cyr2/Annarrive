@@ -14,7 +14,7 @@ import {
 import { consequenceOf, dayChoices, shortMoment, timeChoices } from "./move/move.ts";
 import { findItem, findRun, todayOf } from "./plan/selectors.ts";
 import { goalSummary } from "./program/goal.ts";
-import { phaseBar, raceLine, settingValue } from "./program/program.ts";
+import { checkIcsUrl, phaseBar, raceLine, settingValue } from "./program/program.ts";
 import { agenda, contentKey, itemTime, moodOf, sessionContext, sheetFor, toneOf, weekStrip } from "./today/today.ts";
 import { canContinue, EMPTY, nextStep, painAdvice, toInput } from "./unavailable/unavailable.ts";
 import { dropTargets, isDraggable, moveItem, refreshLine, weekDays, weekHeading } from "./week/week.ts";
@@ -201,5 +201,14 @@ describe("selectors", () => {
     expect(findItem({ weeks: {} }, "nope")).toBeUndefined();
     expect(todayOf(state)).toBe(MONDAY);
     expect(todayOf({})).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe("timetable link", () => {
+  it("accepts https and webcal links, and says what to fix otherwise", () => {
+    expect(checkIcsUrl("  https://edt.univ.fr/anna.ics ")).toEqual({ url: "https://edt.univ.fr/anna.ics" });
+    expect(checkIcsUrl("webcal://edt.univ.fr/anna.ics")).toEqual({ url: "https://edt.univ.fr/anna.ics" });
+    expect(checkIcsUrl("").error).toBe("Colle le lien de ton emploi du temps.");
+    expect(checkIcsUrl("http://edt.univ.fr/anna.ics").error).toBe("Colle un lien qui commence par https://.");
   });
 });

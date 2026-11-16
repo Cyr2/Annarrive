@@ -28,7 +28,8 @@ export const runSchema = z.object({
   pace: z.string(),
   steps: z.array(stepSchema),
   why: z.string(),
-  watch: watchStatusSchema,
+  /** Absent outside the days already sent to the watch. */
+  watch: watchStatusSchema.optional(),
   /** Why the morning check made this session lighter, shown on the card. */
   lightened: z.string().optional(),
 });
@@ -65,12 +66,17 @@ export const activitySchema = z.object({
   feel: z.enum(["easy", "fine", "hard"]).optional(),
 });
 
+/** A level change the coach proposes (new paces, a test, a new target), accepted or declined in one tap. */
+export const proposalSchema = z.object({ id: z.string(), text: z.string() });
+
 export const todaySchema = z.object({
   date: isoDate,
-  goal: goalSchema,
+  /** Absent in maintenance mode: no race to count down to. */
+  goal: goalSchema.optional(),
   session: runSchema.optional(),
   next: runSchema.optional(),
   activity: activitySchema.optional(),
+  proposals: z.array(proposalSchema).optional(),
 });
 
 export const weekSchema = z.object({
@@ -154,8 +160,11 @@ export const programSchema = z.object({
   maintenance: z.boolean(),
   settings: settingsSchema,
   strength: z.array(strengthSchema),
+  /** Empty until the timetable is read once. */
   timetableCheckedAt: z.string(),
-  watch: z.object({ model: z.string(), connected: z.boolean(), lastSync: z.string() }),
+  /** The ICS link Anna pasted; absent when the server uses its own. */
+  timetableUrl: z.string().optional(),
+  watch: z.object({ model: z.string(), connected: z.boolean(), lastSync: z.string().optional() }),
 });
 
 export const sessionPreviewSchema = z.object({
@@ -201,6 +210,7 @@ export type Item = z.infer<typeof itemSchema>;
 export type Activity = z.infer<typeof activitySchema>;
 export type Feel = NonNullable<Activity["feel"]>;
 export type Today = z.infer<typeof todaySchema>;
+export type Proposal = z.infer<typeof proposalSchema>;
 export type Week = z.infer<typeof weekSchema>;
 export type Slot = z.infer<typeof slotSchema>;
 export type MoveOptions = z.infer<typeof moveOptionsSchema>;

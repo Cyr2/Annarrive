@@ -65,6 +65,6 @@ export class GarminNotConfiguredError extends AppError {
 
 export class TimetableNotConfiguredError extends AppError {
   constructor() {
-    super(503, "Aucun lien d'emploi du temps n'est configuré : ajoute ICS_URL aux variables du serveur.");
+    super(503, "Aucun lien d'emploi du temps : colle-le dans Programme, Connexions, Emploi du temps.");
   }
 }

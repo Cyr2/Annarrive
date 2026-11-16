@@ -217,6 +217,11 @@ export function createMockApi({
         remove(id);
         return undefined;
       }),
+    feelBetter: () =>
+      commit("Ça va mieux : encore 3 jours en endurance fondamentale, puis retour normal", () => undefined),
+    // The mock never proposes a new level: these only exist for the Api contract.
+    acceptProposal: () => commit("Allures mises à jour", () => undefined),
+    declineProposal: () => commit("Proposition refusée", () => undefined),
     async undo(changeId) {
       await wait();
       const before = log.get(changeId);
@@ -233,6 +238,10 @@ export function createMockApi({
       const thursday = week(today).find((i): i is CalendarEvent => i.kind === "class" && i.title === "Mathématiques");
       if (thursday) put({ ...thursday, cancelled: true });
       return { checkedAt: state.program.timetableCheckedAt, summary: "1 cours annulé jeudi" };
+    },
+    async setTimetableUrl(url) {
+      state.program.timetableUrl = url;
+      return api.refreshTimetable();
     },
     updateSettings: (patch) =>
       commit("Reggie a réorganisé ta semaine", () => {
@@ -264,6 +273,11 @@ export function createMockApi({
       if (state.activity) state.activity = { ...state.activity, feel };
     },
     chat: (input) => reggie(api, input, { today, latencyMs, memory }),
+    chatHistory: async () => [],
+    // No VAPID key: the mock hides the notifications switch, as a server without keys does.
+    pushKey: async () => null,
+    subscribePush: async () => undefined,
+    unsubscribePush: async () => undefined,
   };
 
   /** A new busy slot over a run pushes the run after it, or to the next morning. */

@@ -59,7 +59,7 @@ export function useWeekDrag(week: Week | undefined, offset: number, today: strin
     const slot = { date: target.date, start: target.start };
     // Moved on screen at once, so the drop animation lands on the new slot; the server confirms after.
     flushSync(() => usePlan.setState((s) => ({ weeks: { ...s.weeks, [offset]: moveItem(week, item.id, slot) } })));
-    void usePlan.getState().apply((client) => client.move(item.id, slot));
+    void usePlan.getState().apply((client) => client.move(item.id, slot, item.kind === "run" ? undefined : item));
   };
 
   return {

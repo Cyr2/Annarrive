@@ -66,7 +66,8 @@ export default function WeekScreen() {
         <div className="flex items-center justify-between px-1">
           <span className="t-cap flex items-center gap-1.5">
             <Dot size="md" className="bg-success" />
-            {refreshed ?? (week ? `Emploi du temps à jour ${ago(week.timetableCheckedAt, new Date())}` : "")}
+            {refreshed ??
+              (week?.timetableCheckedAt ? `Emploi du temps à jour ${ago(week.timetableCheckedAt, new Date())}` : "")}
           </span>
           <Button variant="link" icon="change" className="t-label" onClick={() => void refresh()}>
             Actualiser
