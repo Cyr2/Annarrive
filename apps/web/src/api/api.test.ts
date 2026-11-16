@@ -94,6 +94,48 @@ const reads = {
   "GET /api/weeks/2026-W48": { week: "2026-W48", readOnly: false, days: [] },
   "GET /api/timetable": { lastSyncAt: "2026-11-16T07:00:00.000Z" },
   "GET /api/profile": PROFILE,
+  "GET /api/proposals": [
+    {
+      id: "p1",
+      kind: "vdot",
+      from: 40,
+      to: 41,
+      ruleId: "RC3",
+      evidence: [],
+      expiresOn: "2026-11-20",
+      status: "pending",
+    },
+    {
+      id: "p2",
+      kind: "vdot",
+      from: 40,
+      to: 39,
+      ruleId: "RC4",
+      evidence: [],
+      expiresOn: "2026-11-20",
+      status: "pending",
+    },
+    {
+      id: "p3",
+      kind: "test",
+      from: 40,
+      to: 40,
+      ruleId: "RC5",
+      evidence: [],
+      expiresOn: "2026-11-20",
+      status: "pending",
+    },
+    {
+      id: "p4",
+      kind: "goal",
+      from: 110,
+      to: 115,
+      ruleId: "G1",
+      evidence: [],
+      expiresOn: "2026-11-20",
+      status: "pending",
+    },
+  ],
 };
 
 describe("api selection", () => {
@@ -173,6 +215,12 @@ describe("http client, reading", () => {
       { label: "6 × 800 m", pace: "4:55", tone: "hard" },
       { label: "Récupération 2 min", pace: "", tone: "muted" },
       { label: "Retour au calme 10 min", pace: "6:15 à 6:45", tone: "plain" },
+    ]);
+    expect(today.proposals?.map((p) => p.text.split(" :")[0])).toEqual([
+      "Tes dernières séances clés sont bien passées",
+      "Tes dernières séances clés ont été dures",
+      "Je propose un test pour recaler tes allures.",
+      "Ton chrono visé semble à revoir",
     ]);
     expect(today.next).toMatchObject({
       id: "s2",
@@ -254,6 +302,8 @@ describe("http client, changes", () => {
       "DELETE /api/events/ics%3A1/cancel": CHANGE,
       "POST /api/changes/c1/undo": { id: "c1", summary: "x" },
       "POST /api/feel-better": CHANGE,
+      "POST /api/proposals/p1/accept": { change: { id: "c2", summary: "Allures mises à jour" }, warnings: [] },
+      "POST /api/proposals/p1/decline": CHANGE,
       "POST /api/unavailable": CHANGE,
     });
     expect(await api.move("a/b", { date: "2026-11-18", start: "18:00" })).toEqual({
@@ -285,6 +335,8 @@ describe("http client, changes", () => {
     await api.updateEvent("ics:1", { cancelled: false });
     await api.undo("c1");
     await api.feelBetter();
+    expect(await api.acceptProposal("p1")).toMatchObject({ changeId: "c2", message: "Allures mises à jour" });
+    await api.declineProposal("p1");
     await api.skip("s1");
     expect(sent("POST /api/unavailable")).toEqual({ reason: "no_time" });
   });

@@ -66,6 +66,9 @@ export const activitySchema = z.object({
   feel: z.enum(["easy", "fine", "hard"]).optional(),
 });
 
+/** A level change the coach proposes (new paces, a test, a new target), accepted or declined in one tap. */
+export const proposalSchema = z.object({ id: z.string(), text: z.string() });
+
 export const todaySchema = z.object({
   date: isoDate,
   /** Absent in maintenance mode: no race to count down to. */
@@ -73,6 +76,7 @@ export const todaySchema = z.object({
   session: runSchema.optional(),
   next: runSchema.optional(),
   activity: activitySchema.optional(),
+  proposals: z.array(proposalSchema).optional(),
 });
 
 export const weekSchema = z.object({
@@ -206,6 +210,7 @@ export type Item = z.infer<typeof itemSchema>;
 export type Activity = z.infer<typeof activitySchema>;
 export type Feel = NonNullable<Activity["feel"]>;
 export type Today = z.infer<typeof todaySchema>;
+export type Proposal = z.infer<typeof proposalSchema>;
 export type Week = z.infer<typeof weekSchema>;
 export type Slot = z.infer<typeof slotSchema>;
 export type MoveOptions = z.infer<typeof moveOptionsSchema>;

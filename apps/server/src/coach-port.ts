@@ -1,16 +1,27 @@
+import {
+  type FeasibilityClass,
+  feasibility,
+  initialFitness,
+  phaseSplit,
+  predictTime,
+  totalWeeks,
+} from "@talaria/coach";
 import type {
   CalendarEvent,
   ChangeOption,
   ChangeOptions,
   DailySignal,
+  FeasibilityInput,
   HealthStatus,
   PlannedSession,
   Profile,
   ProfilePatch,
   Program,
+  Proposal,
   Slot,
   Unavailable,
 } from "@talaria/protocol";
+import type { Activity, FitnessEstimate } from "./storage/stores.ts";
 import { addMinutes } from "./time.ts";
 
 /** What the server hands the algorithm: the current and next week (`WeekState`/`State` in algo.md). */
@@ -21,7 +32,16 @@ export type CoachState = {
   settings: Profile;
   program: Program;
   health: HealthStatus;
+  /** Stored runs of the last year: volumes of the plan (M2), spike caps (G1) and fitness (M1). */
+  activities: Activity[];
+  /** Latest estimate, null until the first one. */
+  fitness: FitnessEstimate | null;
+  /** Feel answers of the last two weeks, with the RPE the session aimed for (SG4). */
+  feels: { sessionId: string; date: string; feel: "easy" | "ok" | "hard"; rpeTarget: number }[];
 };
+
+/** A level change as the coach proposes it, before the server stores it. */
+export type ProposalDraft = Omit<Proposal, "id" | "status" | "decidedOn">;
 
 /** A `Change` or `Warning` of algo.md, reduced to what the screen shows. */
 export type CoachNote = { ruleId: string; message: string };
@@ -32,6 +52,8 @@ export type DailyDecisionResult = CoachResult & { action: "keep" | "easier" | "s
 /**
  * The slice of `@talaria/coach` the server calls, with the signatures of docs/specs/algo.md.
  * Every result is final: the coach has already run `guards.validateWeek` on it.
+ * The last four methods have no counterpart in the first port: the server needs them to bootstrap
+ * fitness, recalibrate (M8) and time the morning decision (D1) without holding any rule itself.
  */
 export interface CoachPort {
   /** Cycle 0.1 `buildWeek` (M2 `weekTemplate` + M4 `placeWeek`): fills the week starting `weekStart`. */
@@ -62,68 +84,47 @@ export interface CoachPort {
   reportUnavailable(st: CoachState, r: Unavailable, now: string): CoachResult;
   /** M7 `feelBetter` (EV13): lifts a sick, cold or pain status and starts the return. */
   feelBetter(st: CoachState, now: string): CoachResult;
-}
-
-/**
- * shortcut: applies Anna's actions without checking any training rule and never plans anything,
- * until `@talaria/coach` (step 1) is wired in its place.
- */
-export const passThroughCoach: CoachPort = {
-  buildWeek: (st) => ({ state: st, changes: [], warnings: [] }),
-  moveSession: (st, id, slot) => ({
-    state: {
-      ...st,
-      sessions: st.sessions.map((s) => (s.id === id ? { ...s, start: slot.start, manual: true } : s)),
-    },
-    changes: [],
-    warnings: [],
-  }),
-  proposeMoveSlots: () => ({ best: [], forbidden: [], sideEffects: [] }),
-  updateSettings: (st, patch) => ({
-    state: { ...st, settings: { ...st.settings, ...patch } },
-    changes: [],
-    warnings: [],
-  }),
-  onTimetableChange: (st, newEvents) => ({ state: { ...st, events: newEvents }, changes: [], warnings: [] }),
-  dailyDecision: (st) => ({ state: st, changes: [], warnings: [], action: "keep" }),
-  changeOptions: (st, id) => {
-    const s = st.sessions.find((x) => x.id === id) ?? missing(id);
-    const easy = (durMin: number): PlannedSession => ({ ...s, type: "E", durMin, steps: [], rpeTarget: 3 });
-    return {
-      shorter: { ...s, durMin: Math.round((s.durMin * 0.75) / 5) * 5 },
-      easier: easy(s.durMin),
-      jog30: easy(Math.min(30, s.durMin)),
-    };
-  },
-  applyChange(st, id, option) {
-    const chosen = passThroughCoach.changeOptions(st, id)[option];
-    if (!chosen) return { state: st, changes: [], warnings: [], refusal: "Pas de séance équivalente pour celle-ci." };
-    return {
-      state: { ...st, sessions: st.sessions.map((s) => (s.id === id ? { ...chosen, manual: true } : s)) },
-      changes: [],
-      warnings: [],
-    };
-  },
-  reportUnavailable: (st, r, now) => ({
-    state: { ...st, health: healthAfter(st.health, r, now) },
-    changes: [],
-    warnings: [],
-  }),
-  feelBetter: (st) => ({ state: { ...st, health: { kind: "ok" } }, changes: [], warnings: [] }),
-};
-
-function missing(id: string): never {
-  throw new Error(`Unknown session ${id}`);
-}
-
-function healthAfter(health: HealthStatus, r: Unavailable, now: string): HealthStatus {
-  const since = now.slice(0, 10);
-  if (r.reason === "sick") return r.feverOrChest ? { kind: "sick", since } : { kind: "cold", since };
-  if (r.reason === "pain")
-    return { kind: "pain", since, level: r.walking0to10, where: r.where, until: r.until, orientationSent: false };
-  return health;
+  /** M5 `decisionDue` (D1): after the night's sleep, else at 10:00 or 2 h before the session, whichever is first. */
+  decisionDue(now: string, sessionStart: string | null, nightSynced: boolean): boolean;
+  /** M1 `initialFitness` (F10): history first, then Garmin VO2max or the declared time; null when nothing is known. */
+  estimateFitness(st: CoachState, vo2max: number | undefined, now: string): Omit<FitnessEstimate, "id" | "date"> | null;
+  /** M8 after a new run: RC1 and RC2 for a race or test, F10 while the level is provisional. */
+  evaluateRun(st: CoachState, run: Activity, now: string): ProposalDraft | null;
+  /** M8 `acceptProposal` (RC9): new paces for future sessions, and the new estimate in `state.fitness`. */
+  acceptProposal(st: CoachState, proposal: ProposalDraft, now: string): CoachResult;
+  /**
+   * M2 `feasibility` (P19, P20) from F10's starting fitness: the class of the target she typed,
+   * null when nothing is known of her form yet (NO_FITNESS_DATA). Never proposes a time.
+   */
+  feasibility(
+    goal: FeasibilityInput,
+    history: Activity[],
+    vo2maxGarmin: number | undefined,
+    now: string,
+  ): FeasibilityClass | null;
 }
 
 export function slotFor(session: PlannedSession, start: string): Slot {
   return { start, end: addMinutes(start, session.durMin) };
+}
+
+/** Already the real `@talaria/coach`: onboarding needs it before the rest of the coach is wired. */
+export function coachFeasibility(
+  goal: FeasibilityInput,
+  history: Activity[],
+  vo2maxGarmin: number | undefined,
+  now: string,
+): FeasibilityClass | null {
+  let fitness: { vdot: number; status: string };
+  try {
+    fitness = initialFitness({ activities: history, vo2maxGarmin }, now);
+  } catch (error) {
+    if (error instanceof Error && error.message === "NO_FITNESS_DATA") return null;
+    throw error;
+  }
+  const weeks = totalWeeks(now, goal.date);
+  const { taper } = phaseSplit(goal, weeks, false);
+  // shortcut: level "regular" for everyone, until onboarding asks for it (P19 rates by level).
+  const profile = { level: "regular", runsPerWeek: 3, provisional: fitness.status === "provisional" } as const;
+  return feasibility(predictTime(fitness.vdot, goal.distanceM), goal.targetMin, weeks - taper, profile).class;
 }

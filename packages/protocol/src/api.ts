@@ -29,6 +29,8 @@ export const stepSchema = z.object({
   durMin: z.number().positive().optional(),
   distM: z.number().positive().optional(),
   reps: z.number().int().positive().optional(),
+  /** Which pace the step follows, so a new level can repace it (algo.md RC9). */
+  zone: z.enum(["E", "M", "T", "I", "R", "race"]).optional(),
   target: z.object({ paceSKm: range.optional(), hrBpm: range.optional(), rpe: z.number().optional() }),
 });
 
@@ -96,9 +98,40 @@ export const goalSchema = z.object({
   targetMin: z.number().positive().optional(),
 });
 
+/** POST /api/feasibility: a goal with the target time she typed. */
+export const feasibilityInputSchema = goalSchema.required({ targetMin: true });
+export type FeasibilityInput = z.infer<typeof feasibilityInputSchema>;
+/** How her own target looks, never discouraging and never a proposed time; null until her form is known. */
+export const feasibilitySchema = z.object({ verdict: z.enum(["atteignable", "ambitieux"]).nullable() });
+export type Feasibility = z.infer<typeof feasibilitySchema>;
+
+/** GET /api/onboarding: done once "C'est parti" stored her profile; the app never shows onboarding again. */
+export const onboardingStatusSchema = z.object({ done: z.boolean() });
+export type OnboardingStatus = z.infer<typeof onboardingStatusSchema>;
+
 /** No goal means maintenance mode (algo.md M9). */
-export const programSchema = z.object({ goal: goalSchema.nullable() });
+export const programSchema = z.object({
+  goal: goalSchema.nullable(),
+  /** A recent race time, used only when Garmin has no usable effort (algo.md F10 c). */
+  declaredTime: z.object({ distanceM: z.number().positive(), minutes: z.number().positive() }).optional(),
+  /** Set by the server when the goal changes: the plan's phases count from this day. */
+  startedOn: localDateSchema.optional(),
+});
 export type Program = z.infer<typeof programSchema>;
+
+/** A level change the coach proposes (algo.md M8), accepted or declined in one tap. */
+export const proposalSchema = z.object({
+  id: z.string(),
+  kind: z.enum(["vdot", "test", "goal"]),
+  from: z.number(),
+  to: z.number(),
+  ruleId: z.string(),
+  evidence: z.array(z.string()),
+  expiresOn: localDateSchema,
+  status: z.enum(["pending", "accepted", "declined"]),
+  decidedOn: localDateSchema.optional(),
+});
+export type Proposal = z.infer<typeof proposalSchema>;
 
 const eventFields = z.object({
   kind: z.enum(["strength", "revision", "unavailable"]),

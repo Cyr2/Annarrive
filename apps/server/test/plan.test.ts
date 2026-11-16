@@ -274,7 +274,7 @@ describe("settings", () => {
     expect((await t.call("PATCH", "/api/profile", { runsPerWeek: 9 })).status).toBe(400);
   });
 
-  it("sets a goal and rebuilds the next week through the coach", async () => {
+  it("sets a goal, dates the plan from today and rebuilds this week and the next through the coach", async () => {
     const t = await ready();
     expect((await t.call("GET", "/api/program")).json).toEqual({ goal: null });
     const goal = { distanceM: 21097.5, date: "2027-03-14", targetMin: 110 };
@@ -282,10 +282,25 @@ describe("settings", () => {
     const saved = await change(t, "PUT", "/api/program", { goal });
 
     expect(saved.change?.summary).toBe("Objectif modifié");
-    expect((await t.call("GET", "/api/program")).json).toEqual({ goal });
+    expect((await t.call("GET", "/api/program")).json).toEqual({ goal, startedOn: "2026-11-16" });
+    expect(t.stores.plannedSession.get("built-2026-11-16")).toBeDefined();
     expect(t.stores.plannedSession.get("built-2026-11-23")).toBeDefined();
     await undo(t, saved.change?.id);
     expect(t.stores.plannedSession.get("built-2026-11-23")).toBeUndefined();
+  });
+
+  it("keeps the plan's start when only the declared time changes, and leaves this week alone without a goal", async () => {
+    const t = await ready();
+    const goal = { distanceM: 10000, date: "2027-03-14" };
+    await t.call("PUT", "/api/program", { goal });
+    t.setNow(new Date("2026-11-18T07:00:00Z"));
+    await t.call("PUT", "/api/program", { goal, declaredTime: { distanceM: 10000, minutes: 52 } });
+    expect(t.services.plan.program().startedOn).toBe("2026-11-16");
+
+    t.stores.plannedSession.delete("built-2026-11-16");
+    await t.call("PUT", "/api/program", { goal: null });
+    expect(t.stores.plannedSession.get("built-2026-11-16")).toBeUndefined();
+    expect(t.services.plan.program()).toMatchObject({ goal: null, startedOn: "2026-11-18" });
   });
 
   it("builds next week on Sunday through the coach", async () => {

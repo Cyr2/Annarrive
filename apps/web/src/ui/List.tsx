@@ -95,10 +95,11 @@ type InputProps = {
   type?: "text" | "time" | "date";
   placeholder?: string;
   min?: string;
+  inputMode?: "decimal" | "numeric";
 };
 
 /** A row with an editable value on the right: name, time, date. 16 px so iOS never zooms in. */
-export function RowInput({ label, value, onChange, type = "text", placeholder, min }: InputProps) {
+export function RowInput({ label, value, onChange, type = "text", placeholder, min, inputMode }: InputProps) {
   const id = useId();
   return (
     <div className="row">
@@ -111,6 +112,7 @@ export function RowInput({ label, value, onChange, type = "text", placeholder, m
         // The app writes "7:30"; a time field needs "07:30".
         value={type === "time" ? value.padStart(5, "0") : value}
         min={min}
+        inputMode={inputMode}
         placeholder={placeholder}
         onChange={(e) => onChange(type === "time" ? e.target.value.replace(/^0(\d)/, "$1") : e.target.value)}
         className="t-body min-h-11 min-w-0 flex-1 border-0 bg-transparent text-right text-text-secondary"

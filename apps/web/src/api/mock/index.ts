@@ -219,6 +219,9 @@ export function createMockApi({
       }),
     feelBetter: () =>
       commit("Ça va mieux : encore 3 jours en endurance fondamentale, puis retour normal", () => undefined),
+    // The mock never proposes a new level: these only exist for the Api contract.
+    acceptProposal: () => commit("Allures mises à jour", () => undefined),
+    declineProposal: () => commit("Proposition refusée", () => undefined),
     async undo(changeId) {
       await wait();
       const before = log.get(changeId);

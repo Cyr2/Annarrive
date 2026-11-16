@@ -8,6 +8,7 @@ import { useSheet } from "../sheets/store.ts";
 import { useGo } from "../useGo.ts";
 import { AfterRun } from "./AfterRun.tsx";
 import { DayAgenda } from "./DayAgenda.tsx";
+import { ProposalCard } from "./ProposalCard.tsx";
 import { RestCard } from "./RestCard.tsx";
 import { RunCard } from "./RunCard.tsx";
 import { moodOf, sessionContext } from "./today.ts";
@@ -59,7 +60,7 @@ export function TodayScreen() {
       {!activity && session && (
         <>
           <RunCard run={session} today={date} />
-          <div className="grid grid-cols-4 gap-2">
+          <div data-tour="actions" className="grid grid-cols-4 gap-2">
             <RoundAction label="Reggie" icon="reggie" main onClick={askReggie} />
             <RoundAction label="Déplacer" icon="move" onClick={() => show({ kind: "move", id: session.id })} />
             <RoundAction label="Changer" icon="change" onClick={() => show({ kind: "change", id: session.id })} />
@@ -68,6 +69,9 @@ export function TodayScreen() {
         </>
       )}
       {!activity && !session && <RestCard next={next} today={date} />}
+      {today.proposals?.map((p) => (
+        <ProposalCard key={p.id} proposal={p} />
+      ))}
 
       {!activity && <WeekStrip week={week} today={date} legend={Boolean(session)} />}
       {!activity && <DayAgenda items={week.items} date={date} />}

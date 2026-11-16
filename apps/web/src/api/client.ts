@@ -68,6 +68,8 @@ export interface Api {
   /** "Ça va mieux": easy runs 3 more days, then back to normal. */
   feelBetter(): Promise<ChangeResult>;
   undo(changeId: string): Promise<void>;
+  acceptProposal(id: string): Promise<ChangeResult>;
+  declineProposal(id: string): Promise<ChangeResult>;
 
   refreshTimetable(): Promise<RefreshResult>;
   /** Saves the ICS link, then reads it at once. */

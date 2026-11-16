@@ -2,7 +2,7 @@ import { join } from "node:path";
 import { serve } from "@hono/node-server";
 import { sendNotification, setVapidDetails } from "web-push";
 import { createApp } from "./app.ts";
-import { passThroughCoach } from "./coach-port.ts";
+import { coachAdapter } from "./coach-adapter.ts";
 import { loadConfig } from "./config.ts";
 import { createBridgeClient } from "./garmin/bridge-client.ts";
 import { createJobs, Scheduler } from "./scheduler.ts";
@@ -19,7 +19,7 @@ if (publicKey && privateKey) setVapidDetails(config.PUBLIC_URL, publicKey, priva
 const services = createServices({
   db,
   clock: systemClock,
-  coach: passThroughCoach,
+  coach: coachAdapter,
   fetchIcs: icsFetcher(),
   icsUrl: config.ICS_URL,
   bridge:

@@ -6,6 +6,7 @@ import {
   healthSchema,
   moveSlotsSchema,
   profileSchema,
+  proposalSchema,
   pushKeySchema,
   pushSubscriptionInputSchema,
   changeOptionsSchema as serverChangeOptionsSchema,
@@ -15,7 +16,7 @@ import {
   timetableRefreshSchema,
   timetableStatusSchema,
 } from "@talaria/protocol";
-import type { z } from "zod";
+import { z } from "zod";
 import { addDays, addMinutes, isoWeek, minutesOf, mondayOf, toIso } from "../lib/date.ts";
 import type { Api } from "./client.ts";
 import { ApiError } from "./errors.ts";
@@ -152,12 +153,13 @@ export function createHttpApi(
   return {
     mode: "server",
     async today() {
-      const [t, program, days] = await Promise.all([
+      const [t, program, days, proposals] = await Promise.all([
         get("/today", serverTodaySchema),
         get("/program", serverProgramSchema),
         twoWeeks(),
+        get("/proposals", z.array(proposalSchema)),
       ]);
-      return toToday(t, program, days);
+      return toToday(t, program, days, proposals);
     },
     async week(offset) {
       const monday = addDays(thisMonday(), offset * 7);
@@ -217,6 +219,8 @@ export function createHttpApi(
     unavailable: (input) => change("POST", "/unavailable", toUnavailable(input)),
     skip: () => change("POST", "/unavailable", { reason: "no_time" }),
     feelBetter: () => change("POST", "/feel-better"),
+    acceptProposal: (proposalId) => change("POST", `/proposals/${id(proposalId)}/accept`),
+    declineProposal: (proposalId) => change("POST", `/proposals/${id(proposalId)}/decline`),
     async undo(changeId) {
       await call("POST", `/changes/${id(changeId)}/undo`, changeSchema);
     },

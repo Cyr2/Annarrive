@@ -13,6 +13,7 @@ import type {
   CalendarEvent as ServerEvent,
   ChatMessage as ServerMessage,
   Program as ServerProgram,
+  Proposal as ServerProposal,
   Today as ServerToday,
   WatchStatus as ServerWatch,
   Week as ServerWeek,
@@ -34,6 +35,7 @@ import type {
   Item,
   MoveOptions,
   Program,
+  Proposal,
   Repeat,
   Run,
   Settings,
@@ -199,7 +201,25 @@ function raceOf(distanceM: number): string {
   return RACES.get(distanceM) ?? `${decimal(distanceM / 1000)} km`;
 }
 
-export function toToday(today: ServerToday, program: ServerProgram, days: DayView[]): Today {
+export function toProposal(proposal: ServerProposal): Proposal {
+  if (proposal.kind === "test") return { id: proposal.id, text: "Je propose un test pour recaler tes allures." };
+  if (proposal.kind === "goal")
+    return { id: proposal.id, text: "Ton chrono visé semble à revoir : je propose de l'ajuster." };
+  return {
+    id: proposal.id,
+    text:
+      proposal.to > proposal.from
+        ? "Tes dernières séances clés sont bien passées : je propose des allures un peu plus rapides."
+        : "Tes dernières séances clés ont été dures : je propose des allures un peu plus faciles.",
+  };
+}
+
+export function toToday(
+  today: ServerToday,
+  program: ServerProgram,
+  days: DayView[],
+  proposals: ServerProposal[] = [],
+): Today {
   const { goal } = program;
   const next = days
     .flatMap((d) => d.sessions)
@@ -215,6 +235,7 @@ export function toToday(today: ServerToday, program: ServerProgram, days: DayVie
       : undefined,
     session: today.session && shown(today.session) ? toRun(today.session) : undefined,
     next: next && toRun(next),
+    proposals: proposals.map(toProposal),
   };
 }
 
