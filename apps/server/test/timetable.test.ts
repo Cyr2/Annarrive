@@ -293,4 +293,13 @@ describe("ICS link guard (SSRF)", () => {
     await expect(fetchIcs("https://nowhere.test/edt.ics")).rejects.toThrow(/ne répond pas/);
     expect(resolve).toHaveBeenCalledWith("rebind.test", expect.any(Function));
   });
+
+  it("says the timetable does not answer when the name does not resolve", async () => {
+    // Like dns.lookup: an error and no address list.
+    const fetchIcs = icsFetcher({
+      resolve: (_host, callback) => callback(new Error("getaddrinfo ENOTFOUND"), undefined as never),
+      timeoutMs: 2000,
+    });
+    await expect(fetchIcs("https://nowhere.test/edt.ics")).rejects.toThrow(/ne répond pas/);
+  });
 });

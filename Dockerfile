@@ -11,6 +11,8 @@ COPY apps/web/package.json apps/web/
 COPY apps/server/package.json apps/server/
 COPY packages/coach/package.json packages/coach/
 COPY packages/protocol/package.json packages/protocol/
+# Only so the lockfile matches the workspace; the e2e tests never run in the image.
+COPY e2e/package.json e2e/
 RUN pnpm install --frozen-lockfile
 COPY apps/web apps/web
 COPY apps/server apps/server

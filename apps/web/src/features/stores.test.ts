@@ -4,7 +4,7 @@ import { ApiError } from "../api/errors.ts";
 import { createMockApi } from "../api/mock/index.ts";
 import { createPlanStore } from "./plan/store.ts";
 import { createChatStore } from "./reggie/store.ts";
-import { useSheet } from "./sheets/store.ts";
+import { SHEET_CLOSE_MS, useSheet } from "./sheets/store.ts";
 
 const MONDAY = "2026-11-16";
 const RUN = `${MONDAY}-2`;
@@ -182,15 +182,30 @@ describe("plan store with the server's answers", () => {
 });
 
 describe("sheet store", () => {
-  it("shows one sheet at a time and queues the next until the first has closed", () => {
+  it("shows one sheet at a time and queues the next until the first has slid away", () => {
+    vi.useFakeTimers();
     useSheet.getState().show({ kind: "move", id: RUN });
     expect(useSheet.getState()).toMatchObject({ open: true, current: { kind: "move" } });
     useSheet.getState().show({ kind: "change", id: RUN });
     expect(useSheet.getState()).toMatchObject({ open: false, queued: { kind: "change" } });
-    useSheet.getState().closed();
+    vi.advanceTimersByTime(SHEET_CLOSE_MS);
     expect(useSheet.getState()).toMatchObject({ open: true, current: { kind: "change" } });
     useSheet.getState().close();
-    useSheet.getState().closed();
+    vi.advanceTimersByTime(SHEET_CLOSE_MS);
     expect(useSheet.getState().current).toBeUndefined();
+    vi.useRealTimers();
+  });
+
+  // Vaul never reports the end of a close it did not start: "Nouvelle séance de muscu" from + used to open nothing.
+  it("opens a sheet asked for right after the app closed the previous one", () => {
+    vi.useFakeTimers();
+    useSheet.getState().show({ kind: "add" });
+    useSheet.getState().close();
+    useSheet.getState().show({ kind: "strength" });
+    vi.advanceTimersByTime(SHEET_CLOSE_MS);
+    expect(useSheet.getState()).toMatchObject({ open: true, current: { kind: "strength" } });
+    useSheet.getState().close();
+    vi.advanceTimersByTime(SHEET_CLOSE_MS);
+    vi.useRealTimers();
   });
 });

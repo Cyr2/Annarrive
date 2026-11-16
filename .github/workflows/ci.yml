@@ -38,6 +38,34 @@ jobs:
         env:
           LHCI_BUILD_CONTEXT__CURRENT_BRANCH: ${{ github.head_ref || github.ref_name }}
 
+  e2e:
+    name: e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm build
+      - name: Install WebKit (Safari on iPhone)
+        run: pnpm --filter @talaria/e2e exec playwright install --with-deps webkit
+      - name: Playwright (iPhone 15, WebKit)
+        run: pnpm --filter @talaria/e2e e2e
+      - name: Traces of the failed tests
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-traces
+          path: |
+            e2e/test-results
+            e2e/playwright-report
+          retention-days: 7
+
   bridge:
     name: garmin-bridge
     runs-on: ubuntu-latest

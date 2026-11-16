@@ -87,7 +87,8 @@ const systemResolve: Resolve = (hostname, callback) => dnsLookup(hostname, { all
 function guardedLookup(resolve: Resolve): LookupFunction {
   return (hostname, options, callback) => {
     resolve(hostname, (error, addresses) => {
-      const first = addresses[0];
+      // On a failure, Node hands no address list at all.
+      const first = error ? undefined : addresses[0];
       if (error || !first) return callback(error ?? new TimetableError(UNREACHABLE), "");
       if (!addresses.every((a) => isPublicAddress(a.address))) return callback(new TimetableError(INTERNAL_LINK), "");
       if (options.all) return callback(null, addresses);

@@ -24,17 +24,26 @@ type SheetState = {
   queued?: SheetSpec;
   show: (spec: SheetSpec) => void;
   close: () => void;
-  /** Called when the closing animation ends. */
+  /** Called by `close` when the closing animation ends. */
   closed: () => void;
 };
+
+/** Vaul's closing slide (its TRANSITIONS.DURATION). */
+export const SHEET_CLOSE_MS = 500;
 
 export const useSheet = create<SheetState>((set, get) => ({
   open: false,
   show(spec) {
-    if (get().current) set({ queued: spec, open: false });
-    else set({ current: spec, open: true });
+    if (!get().current) return set({ current: spec, open: true });
+    set({ queued: spec });
+    get().close();
   },
-  close: () => set({ open: false }),
+  // Vaul reports the end of its closing slide only when it closed itself, never when `open` turns false.
+  close() {
+    if (!get().open) return;
+    set({ open: false });
+    setTimeout(() => get().closed(), SHEET_CLOSE_MS);
+  },
   closed() {
     const next = get().queued;
     set({ current: next, open: Boolean(next), queued: undefined });
