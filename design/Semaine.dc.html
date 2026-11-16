@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Semaine</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0066CC;text-decoration:none}a:hover{color:#004C99}
+button{font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.glass{background:rgba(255,255,255,.5);-webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);box-shadow:inset 0 0 0 .5px rgba(255,255,255,.75),inset 0 1px 0 rgba(255,255,255,.95),0 10px 36px rgba(90,40,10,.12)}
+.glass-bar{background:rgba(255,255,255,.62);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);box-shadow:inset 0 0 0 .5px rgba(255,255,255,.8),inset 0 1px 0 rgba(255,255,255,.95),0 8px 30px rgba(0,0,0,.12)}
+.press{transition:transform 120ms ease-out}.press:active{transform:scale(.96)}
+.t-large{margin:0;font-size:28px;font-weight:700;letter-spacing:-0.02em;line-height:34px}
+.t-title{margin:0;font-size:20px;font-weight:700;letter-spacing:-0.01em;line-height:25px}
+.t-body{font-size:17px;font-weight:400;line-height:22px}
+.t-strong{font-size:17px;font-weight:600;line-height:22px}
+.t-sub{font-size:15px;font-weight:400;line-height:20px;color:rgba(10,10,12,.6)}
+.t-cap{font-size:13px;font-weight:500;line-height:18px;color:rgba(10,10,12,.6)}
+.tab{border-radius:26px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;font-weight:600;color:rgba(10,10,12,.6)}
+.tab.on{background:rgba(10,10,12,.07);color:#0A0A0C}
+.icon-btn{width:44px;height:44px;border:none;border-radius:22px;display:flex;align-items:center;justify-content:center;color:#0A0A0C}
+:focus-visible{outline:2px solid #0A7CFF;outline-offset:2px}
+@media (prefers-reduced-transparency: reduce){.glass,.glass-bar{background:rgba(255,255,255,.96);-webkit-backdrop-filter:none;backdrop-filter:none}}
+@media (prefers-reduced-motion: reduce){.press:active{transform:none}}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #F2F2F7; color: #0A0A0C; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums">
+
+  <div aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 390px; height: 420px; background: radial-gradient(70% 45% at 10% 4%, rgba(255,150,90,.75) 0%, rgba(255,150,90,0) 100%), radial-gradient(60% 45% at 96% 10%, rgba(140,200,240,.75) 0%, rgba(140,200,240,0) 100%), #F2F2F7"></div>
+  <div aria-hidden="true" style="position: absolute; left: 0; top: 220px; width: 390px; height: 200px; background: linear-gradient(180deg, rgba(242,242,247,0) 0%, #F2F2F7 100%)"></div>
+
+  <div style="position: relative; height: 844px; overflow-y: auto; box-sizing: border-box; padding: 60px 16px 128px; display: flex; flex-direction: column; gap: 24px">
+
+    <div style="display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; justify-content: space-between; align-items: center">
+        <h1 class="t-large">Semaine</h1>
+        <button type="button" class="press icon-btn" aria-label="Ajouter" style="background: #0A0A0C; color: #FFFFFF">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+        </button>
+      </div>
+      <div class="glass" style="display: flex; align-items: center; justify-content: space-between; border-radius: 22px; padding: 0 4px">
+        <button type="button" class="press icon-btn" aria-label="Semaine précédente" style="background: transparent">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+        </button>
+        <div style="display: flex; flex-direction: column; align-items: center">
+          <span class="t-strong">16 au 22 novembre</span>
+          <span class="t-cap">Semaine 4 sur 12 · 4 courses · 3 h 35</span>
+        </div>
+        <button type="button" class="press icon-btn" aria-label="Semaine suivante" style="background: transparent">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+        </button>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 0 4px">
+        <span class="t-cap" style="display: flex; align-items: center; gap: 6px">
+          <span style="width: 8px; height: 8px; border-radius: 4px; background: #34C759"></span>
+          Emploi du temps à jour il y a 12 min
+        </span>
+        <button type="button" class="press" style="min-height: 44px; padding: 0 4px; border: none; background: transparent; display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 600; color: #0066CC">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.9-3M4 13a8 8 0 0 0 14.9 3M4 4v4h4M20 20v-4h-4"></path></svg>
+          Actualiser
+        </button>
+      </div>
+    </div>
+
+    <sc-for list="{{days}}" as="day" hint-placeholder-count="5">
+      <section style="display: flex; flex-direction: column; gap: 8px">
+        <div style="display: flex; align-items: baseline; gap: 8px; padding: 0 4px">
+          <h2 class="t-title">{{day.name}}</h2>
+          <span class="t-cap">{{day.note}}</span>
+        </div>
+        <div style="background: #FFFFFF; border-radius: 20px; padding: 4px; display: flex; flex-direction: column; gap: 4px">
+          <sc-for list="{{day.items}}" as="it" hint-placeholder-count="2">
+            <div style="display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 12px; border-radius: 16px; background: {{it.bg}}; border: {{it.border}}; transform: {{it.lift}}; box-shadow: {{it.shadow}}">
+              <span style="width: 32px; height: 32px; border-radius: 8px; flex: none; display: flex; align-items: center; justify-content: center; background: {{it.tile}}; color: {{it.ink}}">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{it.icon}}"></path></svg>
+              </span>
+              <div style="flex: 1; display: flex; flex-direction: column">
+                <span class="{{it.cls}}" style="color: {{it.fg}}">{{it.label}}</span>
+                <span class="t-cap">{{it.meta}}</span>
+              </div>
+              <sc-if value="{{it.tag}}" hint-placeholder-val="{{ false }}">
+                <span class="t-cap" style="padding: 2px 8px; border-radius: 8px; background: #EDEDF0; color: #3A3A3F">Jambes</span>
+              </sc-if>
+              <sc-if value="{{it.grip}}" hint-placeholder-val="{{ false }}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(10,10,12,.35)" aria-hidden="true"><circle cx="9" cy="6" r="1.5"></circle><circle cx="15" cy="6" r="1.5"></circle><circle cx="9" cy="12" r="1.5"></circle><circle cx="15" cy="12" r="1.5"></circle><circle cx="9" cy="18" r="1.5"></circle><circle cx="15" cy="18" r="1.5"></circle></svg>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+    </sc-for>
+  </div>
+
+  <nav class="glass-bar" aria-label="Navigation principale" style="position: absolute; left: 16px; right: 16px; bottom: 24px; height: 64px; box-sizing: border-box; padding: 6px; border-radius: 32px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px">
+    <a href="#" class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg>Aujourd'hui</a>
+    <a href="#" class="tab on" aria-current="page"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>Semaine</a>
+    <a href="#" class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"></path></svg>Programme</a>
+    <a href="#" class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-10.9 6.7L4 19.5l1.3-4.6A7.5 7.5 0 1 1 20 11.5z"></path></svg>Reggie</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const RUN = 'M13 4.5a1.5 1.5 0 1 0 0-.01M10 9l3-1 3 3 3 1M13 8l-2 5 3 3-1 5M11 13l-4 1-2 4';
+    const I = {
+      cours: 'M4 5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2V5zM4 19a2 2 0 0 1 2-2h12',
+      rev: 'M15 4l5 5-11 11H4v-5L15 4z',
+      muscu: 'M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12',
+      plus: 'M12 5v14M5 12h14'
+    };
+    const C = {
+      hard: { bg: '#FFE6DA', tile: '#FF6A2C', fg: '#7A2608' },
+      easy: { bg: '#DDF5E6', tile: '#34B36A', fg: '#0E4A2A' },
+      long: { bg: '#DCEBFF', tile: '#3A82F0', fg: '#0F3A73' }
+    };
+    const run = (type, label, meta, lift) => ({
+      label: label, meta: meta, cls: 't-strong', grip: true, tag: false, icon: RUN,
+      bg: C[type].bg, tile: C[type].tile, ink: '#FFFFFF', fg: C[type].fg, border: 'none',
+      lift: lift ? 'translateY(-4px) scale(1.02)' : 'none',
+      shadow: lift ? '0 14px 34px rgba(0,0,0,.18)' : 'none'
+    });
+    const other = (kind, label, meta, legs) => ({
+      label: label, meta: meta, cls: 't-body', grip: kind !== 'cours', tag: !!legs, icon: I[kind],
+      bg: 'transparent', tile: kind === 'rev' ? '#DDF3F5' : '#EDEDF0', ink: kind === 'rev' ? '#11707C' : '#3A3A3F', fg: '#0A0A0C', border: 'none', lift: 'none', shadow: 'none'
+    });
+    const slot = (meta) => ({ label: 'Déposer ici', meta: meta, cls: 't-strong', grip: false, tag: false, icon: I.plus, bg: '#F2F2F7', tile: '#FFFFFF', ink: 'rgba(10,10,12,.6)', fg: 'rgba(10,10,12,.7)', border: '1.5px dashed rgba(10,10,12,.22)', lift: 'none', shadow: 'none' });
+    return {
+      days: [
+        { name: 'Lundi 16', note: 'Aujourd’hui', items: [other('cours', 'Physique', '10:15 à 12:15'), other('rev', 'Révision', '14:00 à 16:00'), run('hard', 'Fractionné', '18:00 · 50 min'), other('muscu', 'Haut du corps', '20:00 à 21:00')] },
+        { name: 'Mardi 17', note: 'Repos', items: [other('cours', 'Français', '8:15 à 10:15'), other('cours', 'Allemand', '12:45 à 14:45')] },
+        { name: 'Mercredi 18', note: '', items: [run('easy', 'Footing facile', '7:30 · 45 min', true), other('rev', 'Révision', '16:00 à 18:00')] },
+        { name: 'Jeudi 19', note: '', items: [slot('18:00 · créneau libre'), other('muscu', 'Jambes', '19:30 à 20:30', true)] },
+        { name: 'Vendredi 20', note: '', items: [run('easy', 'Footing et lignes droites', '17:30 · 40 min')] },
+        { name: 'Dimanche 22', note: '', items: [run('long', 'Sortie longue', '9:00 · 1 h 20')] }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
