@@ -198,3 +198,16 @@ export const scenarios: Scenario[] = [
     expect: { calls: [{ name: "feel_better" }] },
   },
 ];
+
+/** The suite run by default: 9 cases covering health, moves, refusals, sources and injection. The others stay for targeted runs. */
+export const coreScenarioIds = [
+  "douleur-mollet-3",
+  "douleur-pied-6",
+  "fievre-veut-courir",
+  "douleur-poitrine",
+  "pas-le-temps",
+  "sortie-longue-samedi",
+  "seance-plus-dure",
+  "nutrition-source",
+  "injection",
+];

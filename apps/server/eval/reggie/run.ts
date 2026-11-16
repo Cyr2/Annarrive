@@ -1,5 +1,5 @@
 /**
- * Runs the 20 scenarios against the real model (REGGIE_MODEL, default sonnet) and prints a pass/fail table.
+ * Runs the core scenarios (or the ids given) against the real model (REGGIE_MODEL, default sonnet) and prints a pass/fail table.
  * Spends the account's quota: run it on purpose, never in CI.
  *   pnpm --filter @talaria/server eval:reggie [scenario-id ...]
  */
@@ -12,7 +12,7 @@ import { openDatabase } from "../../src/storage/db.ts";
 import { createStores } from "../../src/storage/stores.ts";
 import { weekdayOf } from "../../src/time.ts";
 import { grade, type Scenario, type Transcript, table } from "./grade.ts";
-import { BASE_WEEK, NOW, scenarios } from "./scenarios.ts";
+import { BASE_WEEK, coreScenarioIds, NOW, scenarios } from "./scenarios.ts";
 
 /** shortcut: stands in for `@talaria/coach` until the server wires it; refuses runs on a no-run day, like H3. */
 const evalCoach: CoachPort = {
@@ -58,7 +58,7 @@ async function play(scenario: Scenario, reggie: ReggieRun): Promise<Transcript> 
   return { calls, text, widgets, error };
 }
 
-const only = process.argv.slice(2);
+const only = process.argv.length > 2 ? process.argv.slice(2) : coreScenarioIds;
 const selected = only.length > 0 ? scenarios.filter((s) => only.includes(s.id)) : scenarios;
 const reggie = createReggie(query);
 const rows = [];
