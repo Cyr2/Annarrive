@@ -1,0 +1,30 @@
+import { Button } from "../../ui/Button.tsx";
+import { Sheet } from "../../ui/Sheet.tsx";
+import { usePlan } from "../plan/store.ts";
+import type { SheetProps } from "../sheets/SheetHost.tsx";
+
+/** Turning the cycle on asks for her consent first, and says what the app will and will not do. */
+export default function CycleSheet(sheet: SheetProps<"cycle">) {
+  const apply = usePlan((s) => s.apply);
+  const agree = async () => {
+    if (await apply((api) => api.updateSettings({ cycle: true }), { quiet: true })) sheet.onOpenChange(false);
+  };
+  return (
+    <Sheet {...sheet} title="Cycle menstruel">
+      <div className="t-body flex flex-col gap-3 rounded-group bg-surface p-4">
+        <p className="m-0">
+          Si tu l'actives, tu peux signaler à Reggie un symptôme lié à ton cycle (douleurs, fatigue). Il en tient compte
+          comme pour toute fatigue.
+        </p>
+        <p className="m-0">
+          L'app ne change jamais tes séances selon la phase de ton cycle. Tes données restent sur le serveur de l'app et
+          tu peux désactiver ce réglage à tout moment.
+        </p>
+      </div>
+      <Button onClick={() => void agree()}>J'accepte et j'active</Button>
+      <Button variant="tinted" onClick={() => sheet.onOpenChange(false)}>
+        Pas maintenant
+      </Button>
+    </Sheet>
+  );
+}
