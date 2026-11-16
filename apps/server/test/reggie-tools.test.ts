@@ -1,0 +1,171 @@
+import { type ChatWidget, chatWidgetSchema } from "@talaria/protocol";
+import { describe, expect, it } from "vitest";
+import { z } from "zod";
+import { type ReggieTool, reggieTools } from "../src/reggie/tools.ts";
+import { fakeCoach, session, setup } from "./helpers.ts";
+
+function prepare(options: Parameters<typeof setup>[0] = {}) {
+  const t = setup(options);
+  t.stores.plannedSession.put(session("tonight", "2026-11-16T18:00", { type: "I", durMin: 60 }));
+  const widgets: ChatWidget[] = [];
+  const tools = reggieTools(t.services.plan, widgets);
+  const byName = (name: string): ReggieTool => {
+    const found = tools.find((x) => x.name === name);
+    if (!found) throw new Error(`no tool ${name}`);
+    return found;
+  };
+  /** Validates the input like the SDK does, then runs the handler. */
+  async function call(name: string, input: Record<string, unknown> = {}) {
+    const def = byName(name);
+    const args = z.object(def.inputSchema).parse(input);
+    // Each tool has its own argument type; the schema parse above checks it.
+    const handler = def.handler as (input: unknown, extra: unknown) => ReturnType<ReggieTool["handler"]>;
+    const result = await handler(args, {});
+    const first = result.content[0];
+    return { isError: result.isError ?? false, json: JSON.parse(first?.type === "text" ? first.text : "null") };
+  }
+  return { ...t, widgets, tools, byName, call };
+}
+
+describe("Reggie's tools", () => {
+  it("exposes only the app's actions", () => {
+    expect(prepare().tools.map((x) => x.name)).toEqual([
+      "get_today",
+      "get_week",
+      "get_program",
+      "get_recent",
+      "propose_move_slots",
+      "move_session",
+      "change_options",
+      "change_session",
+      "report_unavailable",
+      "feel_better",
+      "update_setting",
+      "ask_choice",
+      "ask_level",
+    ]);
+  });
+
+  it("reads today, the week, the program and recent data through the plan service", async () => {
+    const t = prepare();
+    t.stores.activity.put({ id: "a1", start: "2026-11-14T10:00", durMin: 40, distM: 7000, hrSeries: [120, 130] });
+    t.stores.dailySignal.put({ id: "2026-11-15", rhr: 50 });
+
+    expect((await t.call("get_today")).json.session.id).toBe("tonight");
+    expect((await t.call("get_week")).json.week).toBe("2026-W47");
+    expect((await t.call("get_week", { week: "2026-W48" })).json.days[0].date).toBe("2026-11-23");
+    expect((await t.call("get_program")).json).toMatchObject({ program: { goal: null }, health: { kind: "ok" } });
+    const recent = (await t.call("get_recent")).json;
+    expect(recent.activities).toEqual([{ id: "a1", start: "2026-11-14T10:00", durMin: 40, distM: 7000 }]);
+    expect(recent.signals).toEqual([{ id: "2026-11-15", rhr: 50 }]);
+    expect(t.widgets).toEqual([]);
+  });
+
+  it("proposes slots as a widget, then moves with an undoable change card", async () => {
+    const t = prepare();
+    const slots = await t.call("propose_move_slots", { sessionId: "tonight" });
+    expect(slots.json.best).toHaveLength(1);
+
+    const moved = await t.call("move_session", { sessionId: "tonight", start: "2026-11-18T18:00" });
+    expect(moved.json.change.summary).toBe("Séance déplacée à mercredi 18:00");
+    expect(t.stores.plannedSession.get("tonight")?.start).toBe("2026-11-18T18:00");
+    expect(t.widgets.map((w) => w.type)).toEqual(["slots", "change"]);
+
+    const card = t.widgets[1];
+    if (card?.type !== "change") throw new Error("change card expected");
+    t.services.changes.undo(card.changeId);
+    expect(t.stores.plannedSession.get("tonight")?.start).toBe("2026-11-16T18:00");
+  });
+
+  it("shows change options as previews and applies the chosen one", async () => {
+    const t = prepare();
+    const options = await t.call("change_options", { sessionId: "tonight" });
+    expect(options.json.shorter.durMin).toBe(45);
+    expect(t.widgets.map((w) => (w.type === "session_preview" ? w.option : w.type))).toEqual([
+      "shorter",
+      "easier",
+      "jog30",
+    ]);
+
+    await t.call("change_session", { sessionId: "tonight", option: "jog30" });
+    expect(t.stores.plannedSession.get("tonight")).toMatchObject({ type: "E", durMin: 30, manual: true });
+  });
+
+  it("records sickness and pain as undoable health changes, and lifts them on feel_better", async () => {
+    const t = prepare();
+    const sick = await t.call("report_unavailable", { reason: "sick", feverOrChest: true });
+    expect(sick.json.change.summary).toBe("Malade : séances adaptées");
+    expect(t.services.plan.health()).toEqual({ kind: "sick", since: "2026-11-16" });
+
+    await t.call("feel_better");
+    expect(t.services.plan.health()).toEqual({ kind: "ok" });
+
+    const pain = await t.call("report_unavailable", { reason: "pain", where: "mollet", level: 3 });
+    expect(t.services.plan.health()).toMatchObject({ kind: "pain", where: "mollet", level: 3 });
+    t.services.changes.undo(pain.json.change.id);
+    expect(t.services.plan.health()).toEqual({ kind: "ok" });
+  });
+
+  it("refuses a health report with a missing answer instead of guessing it", async () => {
+    const t = prepare();
+    const result = await t.call("report_unavailable", { reason: "sick" });
+    expect(result.isError).toBe(true);
+    expect(t.services.plan.health()).toEqual({ kind: "ok" });
+  });
+
+  it("relays the coach's refusal and writes nothing", async () => {
+    const t = prepare({
+      coach: {
+        ...fakeCoach,
+        moveSession: (st) => ({ state: st, changes: [], warnings: [], refusal: "Samedi est un jour sans course." }),
+      },
+    });
+    const result = await t.call("move_session", { sessionId: "tonight", start: "2026-11-21T10:00" });
+    expect(result).toEqual({ isError: true, json: { ok: false, refused: "Samedi est un jour sans course." } });
+    expect(t.stores.plannedSession.get("tonight")?.start).toBe("2026-11-16T18:00");
+    expect(t.stores.changeLog.list()).toEqual([]);
+  });
+
+  it("refuses unknown sessions and finished ones", async () => {
+    const t = prepare();
+    t.stores.plannedSession.put(session("done", "2026-11-16T07:00", { status: "done" }));
+    expect((await t.call("change_options", { sessionId: "nope" })).isError).toBe(true);
+    expect((await t.call("change_session", { sessionId: "done", option: "easier" })).json.refused).toContain(
+      "plus à venir",
+    );
+  });
+
+  it("updates a setting, but never cycle tracking, which needs Anna's consent", async () => {
+    const t = prepare();
+    await t.call("update_setting", { patch: { noRunDays: [6] } });
+    expect(t.services.plan.profile().noRunDays).toEqual([6]);
+    await expect(t.call("update_setting", { patch: { cycleTracking: true } })).rejects.toThrow();
+  });
+
+  it("asks questions with buttons or a slider, and every widget matches the protocol", async () => {
+    const t = prepare();
+    await t.call("ask_choice", { options: ["Oui", "Non"] });
+    await t.call("ask_level", { label: "Combien sur 10 en marchant ?" });
+    await t.call("propose_move_slots", { sessionId: "tonight" });
+    await t.call("change_options", { sessionId: "tonight" });
+    await t.call("feel_better");
+    expect(t.widgets.slice(0, 2)).toEqual([
+      { type: "choices", options: ["Oui", "Non"] },
+      { type: "slider", label: "Combien sur 10 en marchant ?", min: 0, max: 10 },
+    ]);
+    for (const widget of t.widgets) expect(chatWidgetSchema.parse(widget)).toEqual(widget);
+    await expect(t.call("ask_choice", { options: ["Seul"] })).rejects.toThrow();
+  });
+
+  it("lets unexpected errors through", async () => {
+    const t = prepare({
+      coach: {
+        ...fakeCoach,
+        feelBetter: () => {
+          throw new TypeError("bug");
+        },
+      },
+    });
+    await expect(t.call("feel_better")).rejects.toThrow("bug");
+  });
+});

@@ -1,10 +1,12 @@
 import {
+  changeSessionInputSchema,
   createEventInputSchema,
   deleteEventQuerySchema,
   isoWeekSchema,
   moveSessionInputSchema,
   profilePatchSchema,
   programSchema,
+  unavailableSchema,
   updateEventInputSchema,
 } from "@talaria/protocol";
 import { type Context, Hono } from "hono";
@@ -38,6 +40,13 @@ export function planRoutes({ plan, changes, timetable, garmin }: Services): Hono
         const { start } = await body(c, moveSessionInputSchema);
         return c.json(plan.moveSession(c.req.param("id"), start));
       })
+      .get("/sessions/:id/options", (c) => c.json(plan.changeOptions(c.req.param("id"))))
+      .post("/sessions/:id/change", async (c) => {
+        const { option } = await body(c, changeSessionInputSchema);
+        return c.json(plan.changeSession(c.req.param("id"), option));
+      })
+      .post("/unavailable", async (c) => c.json(plan.reportUnavailable(await body(c, unavailableSchema))))
+      .post("/feel-better", (c) => c.json(plan.feelBetter()))
       .get("/profile", (c) => c.json(plan.profile()))
       .patch("/profile", async (c) => c.json(plan.updateProfile(await body(c, profilePatchSchema))))
       .get("/program", (c) => c.json(plan.program()))

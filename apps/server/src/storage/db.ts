@@ -18,7 +18,7 @@ const initialTables = [
   "login_token",
   "meta",
 ] as const;
-export const tableNames = [...initialTables, "watch_sync"] as const;
+export const tableNames = [...initialTables, "watch_sync", "health"] as const;
 export type TableName = (typeof tableNames)[number];
 
 // Every table keeps its zod-validated document as JSON, plus the time span it covers for range queries.
@@ -27,7 +27,11 @@ const documentTable = (name: string) =>
    CREATE INDEX ${name}_start ON ${name} (start_at);`;
 
 /** Append only: a migration that shipped is never edited. */
-const migrations: string[] = [initialTables.map(documentTable).join("\n"), documentTable("watch_sync")];
+const migrations: string[] = [
+  initialTables.map(documentTable).join("\n"),
+  documentTable("watch_sync"),
+  documentTable("health"),
+];
 
 /** `:memory:` for tests, otherwise `talaria.db` inside `dataDir`. */
 export function openDatabase(dataDir: string | ":memory:"): DatabaseSync {

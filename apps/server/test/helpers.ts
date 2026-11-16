@@ -4,6 +4,7 @@ import { vi } from "vitest";
 import { createApp } from "../src/app.ts";
 import { type CoachPort, passThroughCoach } from "../src/coach-port.ts";
 import type { BridgeClient } from "../src/garmin/bridge-client.ts";
+import type { ReggieRun } from "../src/reggie/agent.ts";
 import { createServices } from "../src/services/index.ts";
 import type { PushSender } from "../src/services/notifications.ts";
 import { openDatabase } from "../src/storage/db.ts";
@@ -101,6 +102,7 @@ export function setup(
     coach?: CoachPort;
     bridge?: BridgeClient;
     push?: { send: PushSender; publicKey: string };
+    reggie?: ReggieRun;
   } = {},
 ) {
   const db = openDatabase(":memory:");
@@ -115,9 +117,16 @@ export function setup(
     fetchIcs,
     bridge: options.bridge,
     push: options.push,
+    reggie: options.reggie,
   });
   const app = createApp({ services, sessionSecret: SECRET });
   let cookie = "";
+  /** An authenticated request. */
+  const request = (method: string, path: string, body?: unknown) => {
+    const init: RequestInit = { method, headers: { cookie, "content-type": "application/json" } };
+    if (body !== undefined) init.body = JSON.stringify(body);
+    return app.request(path, init);
+  };
 
   return {
     db,
@@ -133,11 +142,10 @@ export function setup(
       cookie = (response.headers.get("set-cookie") ?? "").split(";")[0] ?? "";
       return response;
     },
+    request,
     /** An authenticated JSON request. */
     async call(method: string, path: string, body?: unknown) {
-      const init: RequestInit = { method, headers: { cookie, "content-type": "application/json" } };
-      if (body !== undefined) init.body = JSON.stringify(body);
-      const response = await app.request(path, init);
+      const response = await request(method, path, body);
       const text = await response.text();
       const json: unknown = text ? JSON.parse(text) : null;
       return { status: response.status, json };
