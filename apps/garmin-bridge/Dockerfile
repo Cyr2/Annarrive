@@ -8,7 +8,7 @@ COPY src ./src
 RUN uv sync --frozen --no-dev
 # Garmin session tokens live on this volume (valid about six months).
 # The venv on PATH: the app runs as nobody, who cannot write a uv cache.
-ENV GARMINTOKENS=/data/garmin \n    PATH="/app/.venv/bin:$PATH"
+ENV GARMINTOKENS=/data/garmin PATH="/app/.venv/bin:$PATH"
 RUN mkdir -p /data/garmin && chown -R nobody /data
 VOLUME /data
 USER nobody
