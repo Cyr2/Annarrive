@@ -67,8 +67,8 @@ Garde **le moment**, change **le contenu**. Ne propose jamais une séance plus d
 |---|---|---|
 | Pas le temps | Aucune | Reggie propose de déplacer (comme Déplacer). Si rien ne marche, séance passée |
 | Fatiguée | Aucune | Séance du jour remplacée par du repos. La prochaine séance dure est vérifiée et allégée si elle tombe demain |
-| Malade | « Tu as de la fièvre ou ça touche la poitrine ? » Oui / Non | **Oui** : pause complète, plus de course jusqu'à ce qu'Anna dise « Ça va mieux ». **Non** (rhume) : footing très facile possible si elle veut, sinon repos. À la reprise, retour progressif sur une semaine |
-| Douleur | « Où ? » (boutons : mollet, genou, cheville, hanche, pied, autre), puis « Combien sur 10 en marchant ? » (curseur 0 à 10) | **0 à 3** : séance remplacée par un footing très facile ou du vélo. **4 et plus** : pas de course, conseil de voir un kiné ou un médecin si ça dure plus de 3 jours |
+| Malade | « Tu as de la fièvre ou ça touche la poitrine ? » Oui / Non | **Oui** : Reggie conseille le repos tant qu'il y a de la fièvre, sans rien bloquer. Si elle veut courir, la séance devient un footing en endurance fondamentale, court et tranquille. **Non** (rhume) : séances gardées en endurance fondamentale, pas de fractionné. Quand elle dit « Ça va mieux », endurance fondamentale encore 3 jours, puis retour normal |
+| Douleur | « Où ? » (boutons : mollet, genou, cheville, hanche, pied, autre), puis « Combien sur 10 en marchant ? » (curseur 0 à 10) | **0 à 3** : footing en endurance fondamentale ou vélo, pas de fractionné. **4 et plus** : Reggie conseille le repos ou le vélo, sans bloquer. Si elle veut courir : 20 min tranquille, arrêt si ça monte. Conseil de voir un kiné ou un médecin si ça dure plus de 3 jours |
 | Autre | Champ texte | Reggie répond dans la conversation |
 
 2. Durée (sauf Malade) : « Juste aujourd'hui » ou « Jusqu'à… » (choix d'une date).
