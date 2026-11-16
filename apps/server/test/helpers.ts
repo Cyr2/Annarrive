@@ -1,8 +1,8 @@
-import type { CalendarEvent, PlannedSession } from "@talaria/protocol";
+import type { CalendarEvent, HealthStatus, PlannedSession, Unavailable } from "@talaria/protocol";
 import type { Hono } from "hono";
 import { vi } from "vitest";
 import { createApp } from "../src/app.ts";
-import { type CoachPort, passThroughCoach } from "../src/coach-port.ts";
+import type { CoachPort } from "../src/coach-port.ts";
 import type { BridgeClient } from "../src/garmin/bridge-client.ts";
 import type { ReggieRun } from "../src/reggie/agent.ts";
 import { createServices } from "../src/services/index.ts";
@@ -43,6 +43,64 @@ export function session(id: string, start: string, over: Partial<PlannedSession>
 }
 
 const overlaps = (s: PlannedSession, e: CalendarEvent) => s.start < e.end && addMinutes(s.start, s.durMin) > e.start;
+
+function healthAfter(health: HealthStatus, r: Unavailable, now: string): HealthStatus {
+  const since = now.slice(0, 10);
+  if (r.reason === "sick") return r.feverOrChest ? { kind: "sick", since } : { kind: "cold", since };
+  if (r.reason === "pain")
+    return { kind: "pain", since, level: r.walking0to10, where: r.where, until: r.until, orientationSent: false };
+  return health;
+}
+
+/** Applies every action without any rule: the double the service tests run on (the adapter has its own tests). */
+export const passThroughCoach: CoachPort = {
+  buildWeek: (st) => ({ state: st, changes: [], warnings: [] }),
+  moveSession: (st, id, slot) => ({
+    state: {
+      ...st,
+      sessions: st.sessions.map((s) => (s.id === id ? { ...s, start: slot.start, manual: true } : s)),
+    },
+    changes: [],
+    warnings: [],
+  }),
+  proposeMoveSlots: () => ({ best: [], forbidden: [], sideEffects: [] }),
+  updateSettings: (st, patch) => ({
+    state: { ...st, settings: { ...st.settings, ...patch } },
+    changes: [],
+    warnings: [],
+  }),
+  onTimetableChange: (st, newEvents) => ({ state: { ...st, events: newEvents }, changes: [], warnings: [] }),
+  dailyDecision: (st) => ({ state: st, changes: [], warnings: [], action: "keep" }),
+  changeOptions: (st, id) => {
+    const s = st.sessions.find((x) => x.id === id);
+    if (!s) throw new Error(`Unknown session ${id}`);
+    const easy = (durMin: number): PlannedSession => ({ ...s, type: "E", durMin, steps: [], rpeTarget: 3 });
+    return {
+      shorter: { ...s, durMin: Math.round((s.durMin * 0.75) / 5) * 5 },
+      easier: easy(s.durMin),
+      jog30: easy(Math.min(30, s.durMin)),
+    };
+  },
+  applyChange(st, id, option) {
+    const chosen = passThroughCoach.changeOptions(st, id)[option];
+    if (!chosen) return { state: st, changes: [], warnings: [], refusal: "Pas de séance équivalente pour celle-ci." };
+    return {
+      state: { ...st, sessions: st.sessions.map((s) => (s.id === id ? { ...chosen, manual: true } : s)) },
+      changes: [],
+      warnings: [],
+    };
+  },
+  reportUnavailable: (st, r, now) => ({
+    state: { ...st, health: healthAfter(st.health, r, now) },
+    changes: [],
+    warnings: [],
+  }),
+  feelBetter: (st) => ({ state: { ...st, health: { kind: "ok" } }, changes: [], warnings: [] }),
+  decisionDue: () => true,
+  estimateFitness: () => null,
+  evaluateRun: () => null,
+  acceptProposal: (st) => ({ state: st, changes: [], warnings: [] }),
+};
 
 /** Enough of the algorithm to watch the server wire it: conflicts move 30 min after the event. */
 export const fakeCoach: CoachPort = {

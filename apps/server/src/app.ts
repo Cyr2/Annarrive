@@ -7,6 +7,7 @@ import { getSignedCookie, setSignedCookie } from "hono/cookie";
 import { ZodError, z } from "zod";
 import { AppError, UnauthorizedError } from "./errors.ts";
 import { chatRoutes } from "./routes/chat.ts";
+import { fitnessRoutes } from "./routes/fitness.ts";
 import { planRoutes } from "./routes/plan.ts";
 import { pushRoutes } from "./routes/push.ts";
 import { SESSION_SECONDS } from "./services/auth.ts";
@@ -81,6 +82,7 @@ export function createApp({ services, sessionSecret, webDist }: AppOptions): Hon
   app.route("/api", planRoutes(services));
   app.route("/api", pushRoutes(services));
   app.route("/api", chatRoutes(services));
+  app.route("/api", fitnessRoutes(services));
   app.all("/api/*", (c) => c.json({ error: "Route inconnue" }, 404));
 
   if (webDist) {

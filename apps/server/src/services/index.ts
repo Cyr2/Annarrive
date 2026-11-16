@@ -2,12 +2,14 @@ import type { DatabaseSync } from "node:sqlite";
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import type { CoachPort } from "../coach-port.ts";
 import type { BridgeClient } from "../garmin/bridge-client.ts";
+import { touchesWatch } from "../garmin/workout.ts";
 import { createReggie, type ReggieRun } from "../reggie/agent.ts";
 import { createStores } from "../storage/stores.ts";
-import type { Clock } from "../time.ts";
+import { type Clock, dateOf, toParisLocal } from "../time.ts";
 import { AuthService } from "./auth.ts";
 import { ChangeService } from "./changes.ts";
 import { ChatService } from "./chat.ts";
+import { FitnessService } from "./fitness.ts";
 import { GarminService } from "./garmin.ts";
 import { NotificationService, type PushSender } from "./notifications.ts";
 import { PlanService } from "./plan.ts";
@@ -22,6 +24,7 @@ export type Services = {
   /** Null when the server has no bridge configured (local development). */
   garmin: GarminService | null;
   chat: ChatService;
+  fitness: FitnessService;
 };
 
 export function createServices(deps: {
@@ -38,6 +41,17 @@ export function createServices(deps: {
   const changes = new ChangeService(deps.db, stores, deps.clock);
   const notifications = new NotificationService(stores, deps.push);
   const plan = new PlanService(stores, changes, deps.coach, deps.clock, notifications);
+  const fitness = new FitnessService(stores, plan, changes, deps.coach, deps.clock);
+  const garmin = deps.bridge ? new GarminService(stores, plan, fitness, notifications, deps.bridge, deps.clock) : null;
+  // A change reaches the watch within the minute (interactions.md), not at the next 5-minute job.
+  changes.onRecorded((entry) => {
+    if (!garmin || !touchesWatch(entry.mutations, dateOf(toParisLocal(deps.clock())))) return;
+    garmin.syncWatch().catch((error: unknown) => {
+      console.error(
+        `Montre : synchro immédiate en échec (${error instanceof Error ? error.message : "erreur inconnue"})`,
+      );
+    });
+  });
   return {
     auth: new AuthService(stores, deps.clock),
     changes,
@@ -45,6 +59,7 @@ export function createServices(deps: {
     plan,
     timetable: new TimetableService(deps.db, stores, plan, deps.clock, deps.fetchIcs),
     notifications,
-    garmin: deps.bridge ? new GarminService(stores, plan, notifications, deps.bridge, deps.clock) : null,
+    garmin,
+    fitness,
   };
 }

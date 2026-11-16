@@ -5,24 +5,13 @@
  */
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import type { ChatWidget } from "@talaria/protocol";
-import { type CoachPort, passThroughCoach } from "../../src/coach-port.ts";
+import { coachAdapter } from "../../src/coach-adapter.ts";
 import { createReggie, type ReggieRun } from "../../src/reggie/agent.ts";
 import { createServices } from "../../src/services/index.ts";
 import { openDatabase } from "../../src/storage/db.ts";
 import { createStores } from "../../src/storage/stores.ts";
-import { weekdayOf } from "../../src/time.ts";
 import { grade, type Scenario, type Transcript, table } from "./grade.ts";
 import { BASE_WEEK, coreScenarioIds, NOW, scenarios } from "./scenarios.ts";
-
-/** shortcut: stands in for `@talaria/coach` until the server wires it; refuses runs on a no-run day, like H3. */
-const evalCoach: CoachPort = {
-  ...passThroughCoach,
-  moveSession(st, id, slot, now) {
-    if (st.settings.noRunDays.includes(weekdayOf(slot.start.slice(0, 10))))
-      return { state: st, changes: [], warnings: [], refusal: "Ce jour est un jour sans course dans tes réglages." };
-    return passThroughCoach.moveSession(st, id, slot, now);
-  },
-};
 
 async function play(scenario: Scenario, reggie: ReggieRun): Promise<Transcript> {
   const calls: Transcript["calls"] = [];
@@ -39,7 +28,7 @@ async function play(scenario: Scenario, reggie: ReggieRun): Promise<Transcript> 
   const services = createServices({
     db,
     clock: () => NOW,
-    coach: evalCoach,
+    coach: coachAdapter,
     fetchIcs: async () => "",
     reggie: recording,
   });

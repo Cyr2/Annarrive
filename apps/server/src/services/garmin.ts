@@ -8,6 +8,7 @@ import {
 import { onWatch, toWorkoutRequest, workoutHash } from "../garmin/workout.ts";
 import type { Activity, Stores } from "../storage/stores.ts";
 import { addDays, type Clock, dateOf, toParisLocal } from "../time.ts";
+import type { FitnessService } from "./fitness.ts";
 import type { NotificationService } from "./notifications.ts";
 import type { PlanService } from "./plan.ts";
 
@@ -31,6 +32,7 @@ export function toActivity(a: GarminActivity): Activity | null {
     durMin: a.durationS / 60,
     distM: a.distanceM ?? 0,
     avgHr: a.avgHr ?? undefined,
+    maxHr: a.maxHr ?? undefined,
     elevGainM: a.elevationGainM ?? undefined,
     feel: feelOf(a.feel),
     // Garmin stores RPE × 10.
@@ -50,20 +52,24 @@ const errorName = (error: unknown) => (error instanceof Error ? error.message : 
 export class GarminService {
   readonly #stores: Stores;
   readonly #plan: PlanService;
+  readonly #fitness: FitnessService;
   readonly #notifications: NotificationService;
   readonly #bridge: BridgeClient;
   readonly #clock: Clock;
   #syncingWatch = false;
+  #syncAgain = false;
 
   constructor(
     stores: Stores,
     plan: PlanService,
+    fitness: FitnessService,
     notifications: NotificationService,
     bridge: BridgeClient,
     clock: Clock,
   ) {
     this.#stores = stores;
     this.#plan = plan;
+    this.#fitness = fitness;
     this.#notifications = notifications;
     this.#bridge = bridge;
     this.#clock = clock;
@@ -82,6 +88,7 @@ export class GarminService {
       const sessionId = stored?.sessionId ?? this.#matchingSession(run)?.id;
       this.#stores.activity.put({ ...run, sessionId });
       if (sessionId && !stored?.sessionId) this.#plan.markDone(sessionId);
+      if (!stored) this.#fitness.afterRun({ ...run, sessionId });
       if (!stored && dateOf(run.start) === today) await this.#notifications.runSynced();
     }
   }
@@ -101,11 +108,19 @@ export class GarminService {
   /** Uploads every session of the next 7 days whose content the watch does not have yet. */
   async syncWatch(): Promise<void> {
     // A slow bridge can outlast the 5 min between runs: two syncs at once would upload twice.
-    if (this.#syncingWatch) return;
+    // A change made meanwhile asks for one more pass, so it does not wait for the next job.
+    if (this.#syncingWatch) {
+      this.#syncAgain = true;
+      return;
+    }
     this.#syncingWatch = true;
     try {
-      const today = dateOf(this.#now());
-      if (await this.#removeStale(today)) await this.#upload(today);
+      do {
+        this.#syncAgain = false;
+        const today = dateOf(this.#now());
+        if (!(await this.#removeStale(today))) return;
+        await this.#upload(today);
+      } while (this.#syncAgain);
     } finally {
       this.#syncingWatch = false;
     }
