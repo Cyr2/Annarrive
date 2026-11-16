@@ -1,8 +1,8 @@
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Redirect, Route, Switch, useLocation } from "wouter";
 import { useSignedOut } from "./api/session.ts";
 import { SignedOut } from "./features/auth/SignedOut.tsx";
-import { isOnboarded } from "./features/onboarding/done.ts";
+import { needsOnboarding } from "./features/onboarding/done.ts";
 import { usePlan } from "./features/plan/store.ts";
 import { usePush } from "./features/push/store.ts";
 import { SheetHost } from "./features/sheets/SheetHost.tsx";
@@ -18,9 +18,8 @@ const loadReggie = () => import("./features/reggie/ReggieScreen.tsx");
 const WeekScreen = lazy(loadWeek);
 const ProgramScreen = lazy(loadProgram);
 const ReggieScreen = lazy(loadReggie);
-// Onboarding is its own chunk, fetched only until it is done once.
+// Onboarding is its own chunk, fetched only when the server says it is not done.
 const OnboardingGate = lazy(() => import("./features/onboarding/OnboardingGate.tsx"));
-const onboarded = isOnboarded();
 
 const TABS: Tab[] = [
   { href: "/", label: "Aujourd'hui", icon: "today" },
@@ -34,10 +33,17 @@ export function App() {
   const active = TABS.findIndex((tab) => tab.href === location);
 
   const signedOut = useSignedOut((s) => s.signedOut);
+  const [onboarding, setOnboarding] = useState(false);
 
   useEffect(() => {
-    void usePlan.getState().load();
-    void usePush.getState().check();
+    // Aujourd'hui first: nothing else competes with its requests or delays its paint.
+    void usePlan
+      .getState()
+      .load()
+      .then(() => {
+        void usePush.getState().check();
+        void needsOnboarding().then(setOnboarding);
+      });
   }, []);
 
   if (signedOut) return <SignedOut />;
@@ -60,7 +66,7 @@ export function App() {
       </div>
       <SheetHost />
       <ToastHost />
-      {!onboarded && (
+      {onboarding && (
         <Suspense fallback={null}>
           <OnboardingGate />
         </Suspense>

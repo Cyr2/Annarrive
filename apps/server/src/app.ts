@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { serveStatic } from "@hono/node-server/serve-static";
 import type { Health } from "@talaria/protocol";
 import { Hono } from "hono";
+import { compress } from "hono/compress";
 import { getSignedCookie, setSignedCookie } from "hono/cookie";
 import { ZodError, z } from "zod";
 import { AppError, UnauthorizedError } from "./errors.ts";
@@ -86,6 +87,14 @@ export function createApp({ services, sessionSecret, webDist }: AppOptions): Hon
   app.all("/api/*", (c) => c.json({ error: "Route inconnue" }, 404));
 
   if (webDist) {
+    // Only the PWA's files: compressing the API would hold back Reggie's stream.
+    app.use("/*", compress());
+    // Hashed names change with their content, so a phone never asks for them twice (the HTML fallback excepted).
+    app.use("/assets/*", async (c, next) => {
+      await next();
+      if (c.res.ok && !c.res.headers.get("content-type")?.startsWith("text/html"))
+        c.header("Cache-Control", "public, max-age=31536000, immutable");
+    });
     app.use("/*", serveStatic({ root: webDist }));
     // Client-side routes all land on the app shell.
     app.get("/*", async (c) => c.html(await readFile(join(webDist, "index.html"), "utf8")));

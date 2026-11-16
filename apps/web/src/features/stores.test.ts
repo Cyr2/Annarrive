@@ -72,9 +72,31 @@ describe("plan store", () => {
   });
 
   it("reports a load error", async () => {
+    localStorage.clear();
     const plan = createPlanStore(() => Promise.reject(new Error("offline")), vi.fn());
     await plan.getState().load();
     expect(plan.getState().status).toBe("error");
+  });
+
+  it("paints today's last copy at launch, even offline, and never yesterday's", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 10, 16, 9));
+    localStorage.clear();
+    const { plan } = setup();
+    await plan.getState().load();
+    await vi.waitFor(() => expect(localStorage.getItem("talaria.firstScreen")).toContain(RUN));
+
+    const offline = createPlanStore(() => Promise.reject(new Error("offline")), vi.fn());
+    await offline.getState().load();
+    expect(offline.getState().status).toBe("ready");
+    expect(offline.getState().today?.session?.id).toBe(RUN);
+    expect(offline.getState().weeks[0]?.monday).toBe(MONDAY);
+
+    vi.setSystemTime(new Date(2026, 10, 17, 9));
+    const nextDay = createPlanStore(() => Promise.reject(new Error("offline")), vi.fn());
+    await nextDay.getState().load();
+    expect(nextDay.getState().status).toBe("error");
+    vi.useRealTimers();
   });
 });
 

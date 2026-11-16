@@ -1,8 +1,10 @@
 import { create } from "zustand";
+import { readFirstScreen, saveFirstScreen } from "../../api/cache.ts";
 import type { Api } from "../../api/client.ts";
 import { errorMessage } from "../../api/errors.ts";
 import { api as defaultApi } from "../../api/index.ts";
 import type { ChangeResult, Program, Today, Week } from "../../api/schemas.ts";
+import { toIso } from "../../lib/date.ts";
 import { notify as defaultNotify } from "../../ui/toast.ts";
 
 /** `quiet`: no banner. `action`: replaces Annuler (settings show "Voir", docs/interactions.md). */
@@ -45,18 +47,24 @@ export function createPlanStore(getApi: () => Promise<Api>, notify: Notify) {
         if (week) byOffset[offset] = week;
       });
       set({ today, weeks: byOffset, program });
+      if (byOffset[0]) saveFirstScreen({ today, week: byOffset[0] });
     };
 
     return {
       status: "loading",
       weeks: {},
       async load() {
+        // The copy from the last launch paints at once; the server's answer replaces it a moment later.
+        const saved = get().status === "loading" ? readFirstScreen(toIso(new Date())) : undefined;
+        if (saved) set((s) => ({ status: "ready", today: saved.today, weeks: { ...s.weeks, 0: saved.week } }));
         try {
           const client = await getApi();
           const [today, week] = await Promise.all([client.today(), client.week(0)]);
           set((s) => ({ status: "ready", today, weeks: { ...s.weeks, 0: week } }));
+          saveFirstScreen({ today, week });
         } catch {
-          set({ status: "error" });
+          // Offline with a copy from today: keep showing it rather than an error.
+          if (!saved) set({ status: "error" });
         }
       },
       async loadWeek(offset) {

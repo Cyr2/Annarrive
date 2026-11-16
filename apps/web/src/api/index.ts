@@ -1,4 +1,5 @@
 import type { Api } from "./client.ts";
+import { createHttpApi, isHealthy } from "./http.ts";
 import type { Scenario } from "./mock/index.ts";
 import { signOut } from "./session.ts";
 
@@ -13,7 +14,7 @@ export function mockRequest(search: string, envFlag: string | undefined): Scenar
   return SCENARIOS.find((s) => s === value) ?? "run";
 }
 
-/** The health check body when something JSON answers, unvalidated: zod only loads with the HTTP client. */
+/** The health check body when something JSON answers, validated by `isHealthy`. */
 async function healthBody(fetcher: typeof fetch): Promise<unknown> {
   try {
     const response = await fetcher("/api/health", { signal: AbortSignal.timeout(2500) });
@@ -26,7 +27,8 @@ async function healthBody(fetcher: typeof fetch): Promise<unknown> {
 
 /**
  * The mock only with `?mock`, or in development when no server answers its health check; in production the
- * app always talks to its own server. Both load on demand, so the first screen's file carries neither zod nor the mock data.
+ * app always talks to its own server. The HTTP client and zod ship in the first file: Aujourd'hui cannot paint before
+ * its data is validated, so loading them apart only added a round trip. The mock data loads on demand.
  */
 export async function pickApi(
   search = location.search,
@@ -36,8 +38,7 @@ export async function pickApi(
   const forced = mockRequest(search, import.meta.env.VITE_API_MOCK);
   if (!forced) {
     const health = dev ? await healthBody(fetcher) : undefined;
-    const http = await import("./http.ts");
-    if (!dev || http.isHealthy(health)) return http.createHttpApi(fetcher, signOut);
+    if (!dev || isHealthy(health)) return createHttpApi(fetcher, signOut);
   }
   const { createMockApi } = await import("./mock/index.ts");
   return createMockApi({ scenario: forced ?? "run", latencyMs: 150 });
