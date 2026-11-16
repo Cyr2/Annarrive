@@ -13,16 +13,28 @@ async function logIn(browser: Browser, server: Server, file: string, use: FullCo
   const context = await browser.newContext({ ...use, baseURL: server.url });
   const page = await context.newPage();
   await page.goto(await loginLink(server));
+  // The tap posts the form as is; its answer is read here for the session cookie (see below), then the page
+  // gets an empty one: a route cannot hand WebKit a redirect.
+  const answered = new Promise<{ status: number; setCookie?: string }>((resolve) => {
+    void page.route("**/api/auth/login", async (route) => {
+      if (route.request().method() !== "POST") return route.continue();
+      const response = await route.fetch({ maxRedirects: 0 });
+      resolve({ status: response.status(), setCookie: response.headers()["set-cookie"] });
+      await route.fulfill({ status: 200, contentType: "text/html", body: "" });
+    });
+  });
   await page.getByRole("button", { name: "Se connecter" }).click();
-  await page.waitForURL(`${server.url}/`);
-  const state = await context.storageState();
+  const { status, setCookie } = await answered;
   await context.close();
-  // The server sets a Secure cookie (https in production); WebKit never sends one back over http://localhost.
-  const cookies = state.cookies.map((cookie) => ({ ...cookie, secure: false }));
-  if (!cookies.some((c) => c.name === "talaria_session"))
-    throw new Error("Connexion refusée : pas de cookie de session.");
+  // The cookie is Secure (https in production): WebKit drops it over http://localhost, so the tests get it unsecured.
+  const value = setCookie?.match(/^talaria_session=([^;]+)/)?.[1];
+  if (status !== 302 || !value) throw new Error(`Connexion refusée (${status}) : pas de cookie de session.`);
+  const cookie = { name: "talaria_session", value, domain: "localhost", path: "/", expires: -1 };
   mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, JSON.stringify({ ...state, cookies }));
+  writeFileSync(
+    file,
+    JSON.stringify({ cookies: [{ ...cookie, httpOnly: true, secure: false, sameSite: "Lax" }], origins: [] }),
+  );
 }
 
 /**
