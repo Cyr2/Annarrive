@@ -45,6 +45,7 @@ Pourquoi ce découpage :
 | Garmin, récupération | Au réveil (dès que le sommeil de la nuit est disponible, au plus tard 10 h) | Sommeil, FC de repos, Body Battery, stress |
 | Décision du matin | Juste après la récupération | Applique la règle d'allègement du jour, fige la séance, envoie la montre si besoin |
 | Semaine suivante | Dimanche 18 h | Construit la semaine, l'envoie sur la montre, notifie « Ta semaine est prête » |
+| Sauvegarde | Chaque nuit à 3 h 30 | Copie cohérente de la base dans `/app/data/backups` (`VACUUM INTO`), 30 jours gardés. Les sauvegardes de volume Coolify vers un stockage externe protègent si le serveur disparaît |
 | Montre | Après chaque changement | Envoie ou met à jour la séance dans le calendrier Garmin, avec nouvel essai en cas d'échec |
 
 - **Notifications** : Web Push (clés VAPID en variables d'environnement). iOS 26 les accepte pour une PWA installée sur l'écran d'accueil. L'abonnement est revérifié à chaque ouverture de l'app.

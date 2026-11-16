@@ -25,7 +25,7 @@ describe("Scheduler", () => {
     let now = new Date(start);
     const refreshTimetable = vi.fn();
     const buildNextWeek = vi.fn();
-    const scheduler = new Scheduler(createJobs({ refreshTimetable, buildNextWeek }), () => now);
+    const scheduler = new Scheduler(createJobs({ refreshTimetable, buildNextWeek, backup: vi.fn() }), () => now);
     return { scheduler, refreshTimetable, buildNextWeek, set: (iso: string) => (now = new Date(iso)) };
   }
 
@@ -37,6 +37,7 @@ describe("Scheduler", () => {
       "Décision du matin",
       "Semaine suivante",
       "Montre",
+      "Sauvegarde",
     ]);
   });
 
