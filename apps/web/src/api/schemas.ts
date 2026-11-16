@@ -192,7 +192,8 @@ export const chatMessageSchema = z.object({
   role: z.enum(["user", "reggie"]),
   text: z.string(),
   widget: widgetSchema.optional(),
-  source: z.object({ label: z.string(), url: z.url() }).optional(),
+  // Rendered as a link: https only, never a javascript: URL.
+  source: z.object({ label: z.string(), url: z.url({ protocol: /^https$/ }) }).optional(),
 });
 
 export const chatEventSchema = z.discriminatedUnion("type", [

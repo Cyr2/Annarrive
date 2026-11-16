@@ -44,6 +44,7 @@ describe("today and week", () => {
     expect(todaySchema.parse((await t.call("GET", "/api/today")).json)).toEqual({
       date: "2026-11-16",
       session: null,
+      activity: null,
       events: [],
     });
   });

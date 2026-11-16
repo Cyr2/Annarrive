@@ -42,8 +42,9 @@ export function RowButton({ label, value, onClick, tall = false, tone = "plain" 
     >
       <span className="t-body min-w-0 py-3">{label}</span>
       {tone === "plain" && (
-        <span className="t-body flex flex-none items-center gap-2 text-right text-text-secondary">
-          {value}
+        // A long value ("Lundi, Mercredi, Samedi, Dimanche") wraps instead of running over the label.
+        <span className="t-body flex min-w-0 max-w-[55%] items-center gap-2 text-right text-text-secondary">
+          <span className="min-w-0">{value}</span>
           <Chevron />
         </span>
       )}

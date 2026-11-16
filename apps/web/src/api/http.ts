@@ -15,6 +15,8 @@ import {
   weekSchema as serverWeekSchema,
   timetableRefreshSchema,
   timetableStatusSchema,
+  unavailablePreviewSchema,
+  watchInfoSchema,
 } from "@talaria/protocol";
 import { z } from "zod";
 import { addDays, addMinutes, isoWeek, minutesOf, mondayOf, toIso } from "../lib/date.ts";
@@ -29,13 +31,14 @@ import {
   toGoal,
   toMessages,
   toMoveOptions,
+  toPreviewRows,
   toProfilePatch,
   toProgram,
   toRecurrence,
+  toServerFeel,
   toToday,
   toUnavailable,
   toWeek,
-  unavailableRows,
 } from "./map.ts";
 import type { RefreshResult } from "./schemas.ts";
 
@@ -180,13 +183,14 @@ export function createHttpApi(
       return toWeek(w, monday, status.lastSyncAt);
     },
     async program() {
-      const [program, profile, status, days] = await Promise.all([
+      const [program, profile, status, days, watch] = await Promise.all([
         get("/program", serverProgramSchema),
         get("/profile", profileSchema),
         get("/timetable", timetableStatusSchema),
         twoWeeks(),
+        get("/watch", watchInfoSchema),
       ]);
-      return toProgram({ program, profile, lastSyncAt: status.lastSyncAt, days, today: today() });
+      return toProgram({ program, profile, lastSyncAt: status.lastSyncAt, days, today: today(), watch });
     },
 
     addEvent: (input) => change("POST", "/events", toEventInput(input)),
@@ -228,7 +232,11 @@ export function createHttpApi(
       toChangeOptions(await get(`/sessions/${id(sessionId)}/options`, serverChangeOptionsSchema)),
     change: (sessionId, option) =>
       change("POST", `/sessions/${id(sessionId)}/change`, { option: option === "jog" ? "jog30" : option }),
-    previewUnavailable: async (input) => unavailableRows(input, today()),
+    previewUnavailable: async (input) =>
+      toPreviewRows(
+        await call("POST", "/unavailable/preview", unavailablePreviewSchema, toUnavailable(input)),
+        today(),
+      ),
     unavailable: (input) => change("POST", "/unavailable", toUnavailable(input)),
     skip: () => change("POST", "/unavailable", { reason: "no_time" }),
     feelBetter: () => change("POST", "/feel-better"),
@@ -245,9 +253,7 @@ export function createHttpApi(
     stopProgram: () => change("PUT", "/program", { goal: null }),
     reconnectWatch: () => run("POST", "/watch/sync"),
     resendToWatch: () => run("POST", "/watch/sync"),
-    logFeel: async () => {
-      throw new ApiError(501, "Le ressenti se note sur ta montre pour l'instant.");
-    },
+    logFeel: (activityId, feel) => run("POST", `/activities/${id(activityId)}/feel`, { feel: toServerFeel(feel) }),
 
     async *chat(input) {
       const response = await send("POST", "/chat", input);

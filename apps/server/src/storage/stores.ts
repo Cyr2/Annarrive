@@ -4,6 +4,7 @@ import {
   calendarEventSchema,
   chatMessageSchema,
   dailySignalSchema,
+  feelSchema,
   healthStatusSchema,
   localDateSchema,
   localDateTimeSchema,
@@ -51,7 +52,9 @@ export const activitySchema = z.object({
   isRace: z.boolean().optional(),
   isTest: z.boolean().optional(),
   tempC: z.number().optional(),
-  feel: z.enum(["easy", "ok", "hard"]).optional(),
+  feel: feelSchema.optional(),
+  /** Anna's answer in the app, asked only when Garmin has no `feel`. */
+  answeredFeel: feelSchema.optional(),
   /** Garmin self-evaluation, 1 to 10. */
   rpe: z.number().optional(),
   sessionId: z.string().optional(),

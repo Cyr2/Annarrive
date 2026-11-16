@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type {
+  ActivityView,
   CalendarEvent,
   ChangeOption,
   ChangeOptions,
@@ -17,13 +18,14 @@ import type {
   Program,
   Today,
   Unavailable,
+  UnavailablePreview,
   UpdateEventInput,
   Week,
 } from "@talaria/protocol";
 import { type CoachPort, type CoachResult, type CoachState, type DailyDecisionResult, slotFor } from "../coach-port.ts";
 import { InvalidInputError, NotFoundError, ReadOnlyError } from "../errors.ts";
 import { watchStatus } from "../garmin/workout.ts";
-import type { Stores } from "../storage/stores.ts";
+import type { Activity, Stores } from "../storage/stores.ts";
 import { addDays, type Clock, dateOf, frenchMoment, isoWeekStart, mondayOf, toParisLocal } from "../time.ts";
 import { afterDelete, occurrences } from "./calendar.ts";
 import type { ChangeService, PlanWrite } from "./changes.ts";
@@ -91,6 +93,16 @@ const decisionSummaries: Record<DailyDecisionResult["action"], string> = {
   proposeRest: "Repos proposé aujourd'hui",
 };
 
+const toActivityView = ({ id, start, durMin, distM, feel, answeredFeel, sessionId }: Activity): ActivityView => ({
+  id,
+  start,
+  durMin,
+  distM,
+  feel,
+  answeredFeel,
+  sessionId,
+});
+
 export function movedRunsText(count: number): string {
   return count === 1 ? "1 course déplacée" : `${count} courses déplacées`;
 }
@@ -154,7 +166,28 @@ export class PlanService {
   today(): Today {
     const date = dateOf(this.#now());
     const day = this.#days(date, 1)[0];
-    return { date, session: day?.sessions[0] ?? null, events: day?.events ?? [] };
+    const activity = this.#stores.activity.overlapping(`${date}T00:00`, `${addDays(date, 1)}T00:00`).at(-1);
+    return {
+      date,
+      session: day?.sessions[0] ?? null,
+      events: day?.events ?? [],
+      activity: activity ? toActivityView(activity) : null,
+    };
+  }
+
+  /** Pas dispo's summary: the coach's answer on the current state, never written. */
+  previewUnavailable(report: Unavailable): UnavailablePreview {
+    const before = this.coachState();
+    const result = this.#coach.reportUnavailable(before, report, this.#now());
+    if (result.refusal) throw new InvalidInputError(result.refusal);
+    const after = new Map(result.state.sessions.map((s) => [s.id, s]));
+    const days = before.sessions.flatMap((old) => {
+      const next = after.get(old.id) ?? null;
+      if (JSON.stringify(old) === JSON.stringify(next)) return [];
+      const shown = (s: PlannedSession | null) => (s && s.status !== "skipped" && s.status !== "cancelled" ? s : null);
+      return [{ date: dateOf(old.start), before: old, after: shown(next) }];
+    });
+    return { days: days.sort((a, b) => a.date.localeCompare(b.date)), warnings: result.warnings.map((w) => w.message) };
   }
 
   week(isoWeek: string): Week {
@@ -405,8 +438,9 @@ export class PlanService {
     const today = dateOf(this.#now());
     return this.#stores.activity.overlapping(`${addDays(today, -RECENT_DAYS)}T00:00`, this.#now()).flatMap((a) => {
       const session = a.sessionId ? this.#stores.plannedSession.get(a.sessionId) : undefined;
-      return a.feel && session
-        ? [{ sessionId: session.id, date: dateOf(session.start), feel: a.feel, rpeTarget: session.rpeTarget }]
+      const feel = a.feel ?? a.answeredFeel;
+      return feel && session
+        ? [{ sessionId: session.id, date: dateOf(session.start), feel, rpeTarget: session.rpeTarget }]
         : [];
     });
   }

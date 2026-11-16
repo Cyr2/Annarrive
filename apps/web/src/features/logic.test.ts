@@ -67,7 +67,10 @@ describe("week", () => {
     const days = weekDays(week, MONDAY);
     expect(days[0]?.note).toBe("Aujourd'hui");
     expect(days[1]?.note).toBe("Repos");
-    expect(weekHeading(week)).toEqual({ range: "16 au 22 novembre", summary: "Semaine 4 sur 12 · 4 courses · 3 h 35" });
+    expect(weekHeading(week)).toEqual({
+      range: "16 au 22 novembre",
+      summary: "Semaine 4 sur 12 · 4 courses · 3 h 35",
+    });
   });
 
   it("locks classes and past weeks", () => {

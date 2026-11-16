@@ -312,6 +312,10 @@ export const coachAdapter: CoachPort = {
     return coach.evaluateRace(run, st.fitness.vdot, ctx);
   },
 
+  evaluateFeels(st, now) {
+    return st.fitness ? coach.evaluateFeels(st.feels, st.fitness.vdot, now) : null;
+  },
+
   acceptProposal(st, proposal, now) {
     const r = coach.acceptProposal(toState(st, mondayOf(dateOf(now)), true), proposal, now);
     const today = dateOf(now);

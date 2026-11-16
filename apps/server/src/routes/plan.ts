@@ -10,6 +10,7 @@ import {
   timetableUrlInputSchema,
   unavailableSchema,
   updateEventInputSchema,
+  type WatchInfo,
 } from "@talaria/protocol";
 import { type Context, Hono } from "hono";
 import type { z } from "zod";
@@ -49,6 +50,7 @@ export function planRoutes({ plan, changes, timetable, garmin }: Services): Hono
         return c.json(plan.changeSession(c.req.param("id"), option));
       })
       .post("/unavailable", async (c) => c.json(plan.reportUnavailable(await body(c, unavailableSchema))))
+      .post("/unavailable/preview", async (c) => c.json(plan.previewUnavailable(await body(c, unavailableSchema))))
       .post("/feel-better", (c) => c.json(plan.feelBetter()))
       .get("/profile", (c) => c.json(plan.profile()))
       .patch("/profile", async (c) => c.json(plan.updateProfile(await body(c, profilePatchSchema))))
@@ -63,6 +65,9 @@ export function planRoutes({ plan, changes, timetable, garmin }: Services): Hono
       .get("/timetable", (c) => c.json(timetable.status()))
       .post("/timetable/refresh", async (c) => c.json(await timetable.refresh()))
       .put("/timetable/url", async (c) => c.json(await timetable.setUrl((await body(c, timetableUrlInputSchema)).url)))
+      .get("/watch", (c) =>
+        c.json<WatchInfo>({ configured: garmin !== null, lastSyncAt: garmin?.lastSyncAt() ?? null }),
+      )
       // "Pas envoyée, réessayer": the app reloads the day afterwards to read the new status.
       .post("/watch/sync", async (c) => {
         if (!garmin) throw new GarminNotConfiguredError();

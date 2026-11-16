@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { ChangeResponse, Proposal } from "@talaria/protocol";
+import type { ChangeResponse, Feel, Proposal } from "@talaria/protocol";
 import type { CoachPort } from "../coach-port.ts";
 import { NotFoundError, ReadOnlyError } from "../errors.ts";
 import type { Activity, Stores } from "../storage/stores.ts";
@@ -41,6 +41,20 @@ export class FitnessService {
       this.#now(),
     );
     return draft && this.#stores.proposal.put({ ...draft, id: randomUUID(), status: "pending" });
+  }
+
+  /**
+   * C3: Anna's "Comment c'était ?" when the watch did not ask. Garmin's own answer wins, so the app never
+   * overwrites it; RC5 may then propose easier paces.
+   */
+  logFeel(activityId: string, feel: Feel): void {
+    const activity = this.#stores.activity.get(activityId);
+    if (!activity) throw new NotFoundError("Cette course est introuvable : recharge l'écran.");
+    if (activity.feel) throw new ReadOnlyError("Ta montre a déjà noté ton ressenti pour cette course.");
+    this.#stores.activity.put({ ...activity, answeredFeel: feel });
+    const draft = this.#coach.evaluateFeels(this.#plan.coachState(), this.#now());
+    const known = this.pending().some((p) => p.ruleId === draft?.ruleId);
+    if (draft && !known) this.#stores.proposal.put({ ...draft, id: randomUUID(), status: "pending" });
   }
 
   accept(id: string): ChangeResponse {

@@ -23,7 +23,9 @@ export function weekHeading(week: Week) {
     `${runs.length} ${runs.length > 1 ? "courses" : "course"}`,
     runs.length ? duration(minutes) : undefined,
   ];
-  return { range: weekRange(week.monday), summary: parts.filter(Boolean).join(" · ") };
+  // Each part stays on one line: "4 h 30" never splits after the 4.
+  const whole = parts.flatMap((p) => (p ? [p.replaceAll(" ", " ")] : []));
+  return { range: weekRange(week.monday), summary: whole.join(" · ") };
 }
 
 /** Sessions, strength and revision move by drag. Classes are locked, past weeks are read-only. */
