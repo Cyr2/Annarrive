@@ -28,7 +28,8 @@ export const runSchema = z.object({
   pace: z.string(),
   steps: z.array(stepSchema),
   why: z.string(),
-  watch: watchStatusSchema,
+  /** Absent outside the days already sent to the watch. */
+  watch: watchStatusSchema.optional(),
   /** Why the morning check made this session lighter, shown on the card. */
   lightened: z.string().optional(),
 });
@@ -67,7 +68,8 @@ export const activitySchema = z.object({
 
 export const todaySchema = z.object({
   date: isoDate,
-  goal: goalSchema,
+  /** Absent in maintenance mode: no race to count down to. */
+  goal: goalSchema.optional(),
   session: runSchema.optional(),
   next: runSchema.optional(),
   activity: activitySchema.optional(),
@@ -154,8 +156,11 @@ export const programSchema = z.object({
   maintenance: z.boolean(),
   settings: settingsSchema,
   strength: z.array(strengthSchema),
+  /** Empty until the timetable is read once. */
   timetableCheckedAt: z.string(),
-  watch: z.object({ model: z.string(), connected: z.boolean(), lastSync: z.string() }),
+  /** The ICS link Anna pasted; absent when the server uses its own. */
+  timetableUrl: z.string().optional(),
+  watch: z.object({ model: z.string(), connected: z.boolean(), lastSync: z.string().optional() }),
 });
 
 export const sessionPreviewSchema = z.object({

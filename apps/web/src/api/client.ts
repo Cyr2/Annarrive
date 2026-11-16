@@ -1,3 +1,4 @@
+import type { ChatContext } from "@talaria/protocol";
 import type {
   CalendarEvent,
   ChangeOption,
@@ -5,6 +6,7 @@ import type {
   ChangeResult,
   ChangeRow,
   ChatEvent,
+  ChatMessage,
   Feel,
   MoveOptions,
   Program,
@@ -35,7 +37,7 @@ export type UnavailableInput = {
 
 export type GoalInput = { race: string; distanceKm: number; date: string; targetTime?: string };
 
-export type ChatInput = { text: string; context?: string };
+export type ChatInput = { text: string; context?: ChatContext };
 
 /**
  * Everything the screens ask the server. The HTTP client and the in-memory mock both implement it,
@@ -49,20 +51,27 @@ export interface Api {
 
   addEvent(input: NewEvent): Promise<ChangeResult>;
   updateEvent(id: string, patch: EventPatch): Promise<ChangeResult>;
-  deleteEvent(id: string, scope: DeleteScope): Promise<ChangeResult>;
-  saveStrength(template: Strength): Promise<ChangeResult>;
-  deleteStrength(id: string, scope: DeleteScope): Promise<ChangeResult>;
+  /** `date`: the occurrence tapped, so "one" skips only that day of a recurring event. */
+  deleteEvent(id: string, scope: DeleteScope, date?: string): Promise<ChangeResult>;
+  saveStrength(template: Strength, existing?: boolean): Promise<ChangeResult>;
+  /** "one" is this week only, "all" this week and the following ones, from `date`. */
+  deleteStrength(id: string, scope: DeleteScope, date?: string): Promise<ChangeResult>;
 
   moveOptions(id: string): Promise<MoveOptions>;
-  move(id: string, slot: Slot): Promise<ChangeResult>;
+  /** A run by default; a strength, revision or busy slot when `event` is given. */
+  move(id: string, slot: Slot, event?: CalendarEvent): Promise<ChangeResult>;
   changeOptions(sessionId: string): Promise<ChangeOption[]>;
   change(sessionId: string, option: ChangeOptionId): Promise<ChangeResult>;
   previewUnavailable(input: UnavailableInput): Promise<ChangeRow[]>;
   unavailable(input: UnavailableInput): Promise<ChangeResult>;
   skip(sessionId: string): Promise<ChangeResult>;
+  /** "Ça va mieux": easy runs 3 more days, then back to normal. */
+  feelBetter(): Promise<ChangeResult>;
   undo(changeId: string): Promise<void>;
 
   refreshTimetable(): Promise<RefreshResult>;
+  /** Saves the ICS link, then reads it at once. */
+  setTimetableUrl(url: string): Promise<RefreshResult>;
   updateSettings(patch: Partial<Settings>): Promise<ChangeResult>;
   updateGoal(goal: GoalInput): Promise<ChangeResult>;
   stopProgram(): Promise<ChangeResult>;
@@ -70,6 +79,13 @@ export interface Api {
   resendToWatch(sessionId: string): Promise<void>;
   logFeel(activityId: string, feel: Feel): Promise<void>;
 
-  /** Reggie answers as a stream: status updates ("Je vérifie"), then messages. */
+  /** Reggie answers as a stream: status updates ("Je vérifie"), then messages (an id seen again replaces it). */
   chat(input: ChatInput): AsyncIterable<ChatEvent>;
+  chatHistory(): Promise<ChatMessage[]>;
+
+  /** Null when the server has no VAPID keys: the notifications switch then stays hidden. */
+  pushKey(): Promise<string | null>;
+  /** `PushSubscription.toJSON()`, validated before it leaves. */
+  subscribePush(subscription: unknown): Promise<void>;
+  unsubscribePush(endpoint: string): Promise<void>;
 }

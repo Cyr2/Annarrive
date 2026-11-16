@@ -8,6 +8,7 @@ import {
   dayTitle,
   decimal,
   duration,
+  isoWeek,
   longDate,
   mondayOf,
   relativeDay,
@@ -65,5 +66,15 @@ describe("date", () => {
 
   it("joins class names", () => {
     expect(cx("a", false, undefined, "b")).toBe("a b");
+  });
+});
+
+describe("isoWeek", () => {
+  it("names the week of the Thursday, across year ends", () => {
+    expect(isoWeek("2026-11-16")).toBe("2026-W47");
+    expect(isoWeek("2026-11-22")).toBe("2026-W47");
+    expect(isoWeek("2026-12-31")).toBe("2026-W53");
+    expect(isoWeek("2027-01-03")).toBe("2026-W53");
+    expect(isoWeek("2027-01-04")).toBe("2027-W01");
   });
 });

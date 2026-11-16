@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import type { Strength } from "../../api/schemas.ts";
-import { duration, weekdayName } from "../../lib/date.ts";
+import { addDays, duration, mondayOf, weekdayName } from "../../lib/date.ts";
 import { Button } from "../../ui/Button.tsx";
 import { Group, RowInput, RowSelect, Section } from "../../ui/List.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
 import { Switch } from "../../ui/Switch.tsx";
 import { REPEATS } from "../add/add.ts";
+import { todayOf } from "../plan/selectors.ts";
 import { usePlan } from "../plan/store.ts";
 import type { SheetProps } from "../sheets/SheetHost.tsx";
 
@@ -38,6 +39,9 @@ type FormProps = { saved?: Strength; sheet: Omit<SheetProps<"strength">, "spec">
 
 function StrengthForm({ saved, sheet }: FormProps) {
   const apply = usePlan((s) => s.apply);
+  const today = usePlan(todayOf);
+  // The occurrence of this week: "Cette semaine seulement" skips it, the other choice stops the series there.
+  const thisWeek = (template: Strength) => addDays(mondayOf(today), template.weekday);
   const [draft, setDraft] = useState<Strength>(saved ?? { ...BLANK, id: `s-${Date.now()}` });
   const [confirm, setConfirm] = useState(false);
   const set = (patch: Partial<Strength>) => setDraft({ ...draft, ...patch });
@@ -52,7 +56,7 @@ function StrengthForm({ saved, sheet }: FormProps) {
       action={{
         label: "OK",
         disabled: !draft.name.trim() || !draft.start,
-        onClick: () => void run((api) => api.saveStrength({ ...draft, name: draft.name.trim() })),
+        onClick: () => void run((api) => api.saveStrength({ ...draft, name: draft.name.trim() }, Boolean(saved))),
       }}
     >
       <Group>
@@ -94,13 +98,16 @@ function StrengthForm({ saved, sheet }: FormProps) {
       {saved && confirm && (
         <Section title={`Supprimer ${saved.name} ?`}>
           <Group>
-            <Button variant="danger" onClick={() => void run((api) => api.deleteStrength(saved.id, "all"))}>
+            <Button
+              variant="danger"
+              onClick={() => void run((api) => api.deleteStrength(saved.id, "all", thisWeek(saved)))}
+            >
               Cette semaine et les suivantes
             </Button>
             <Button
               variant="danger"
               className="hairline-top"
-              onClick={() => void run((api) => api.deleteStrength(saved.id, "one"))}
+              onClick={() => void run((api) => api.deleteStrength(saved.id, "one", thisWeek(saved)))}
             >
               Cette semaine seulement
             </Button>

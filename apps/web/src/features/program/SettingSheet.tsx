@@ -11,7 +11,8 @@ import type { SheetProps } from "../sheets/SheetHost.tsx";
 import { useGo } from "../useGo.ts";
 import { SETTING_LABELS } from "./program.ts";
 
-const COUNTS = ["2", "3", "4", "5"].map((value) => ({ value, label: value }));
+// The plan holds 3 to 5 runs a week (algo.md 4.2).
+const COUNTS = ["3", "4", "5"].map((value) => ({ value, label: value }));
 
 /** One training limit, picked with buttons or the iOS time wheel. Saving reorganizes this week and the next. */
 export default function SettingSheet({ spec, ...sheet }: SheetProps<"setting">) {

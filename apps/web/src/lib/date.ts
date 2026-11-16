@@ -46,6 +46,14 @@ export function mondayOf(iso: string): string {
   return addDays(iso, -weekday(iso));
 }
 
+/** ISO 8601 week of a date, "2026-W47": the week of its Thursday. */
+export function isoWeek(iso: string): string {
+  const thursday = addDays(iso, 3 - weekday(iso));
+  const year = thursday.slice(0, 4);
+  const week = Math.floor(daysBetween(`${year}-01-01`, thursday) / 7) + 1;
+  return `${year}-W${String(week).padStart(2, "0")}`;
+}
+
 export function daysBetween(from: string, to: string): number {
   return Math.round((toDate(to).getTime() - toDate(from).getTime()) / 86_400_000);
 }

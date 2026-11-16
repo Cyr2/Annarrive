@@ -166,6 +166,13 @@ export class PlanService {
     return this.#changeEvent("Cours marqué « n'a pas lieu »", id, { ...event, cancelled: true });
   }
 
+  /** "Le cours a lieu finalement", once the Annuler banner is gone. */
+  restoreClass(id: string): ChangeResponse {
+    const event = this.#event(id);
+    if (event.kind !== "class") throw new InvalidInputError("Seuls les cours de l'emploi du temps peuvent être remis.");
+    return this.#changeEvent("Cours remis à ta semaine", id, { ...event, cancelled: false });
+  }
+
   moveSession(id: string, start: string): ChangeResponse {
     const before = this.coachState();
     const session = this.#upcoming(before, id);
@@ -237,6 +244,13 @@ export class PlanService {
       after: { id: CURRENT, value: { ...before.settings, ...patch } },
     };
     return this.#commit("Réglages enregistrés", [write], before, result);
+  }
+
+  /** The timetable link moves no session by itself: the refresh that follows does. */
+  saveIcsUrl(icsUrl: string): void {
+    this.#changes.record("Lien de l'emploi du temps enregistré", [
+      { table: "profile", id: CURRENT, after: { id: CURRENT, value: { ...this.profile(), icsUrl } } },
+    ]);
   }
 
   /** EV14: the next weeks follow the new goal, the current week keeps what Anna moved. */

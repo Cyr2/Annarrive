@@ -42,10 +42,9 @@ export function parseTimetable(ics: string): CalendarEvent[] {
   });
 }
 
-/** Downloads the feed; the URL is a secret, so it never appears in an error. */
-export function icsFetcher(url: string | undefined, timeoutMs = 15_000): () => Promise<string> {
-  return async () => {
-    if (!url) throw new TimetableNotConfiguredError();
+/** Downloads a feed; the URL is a secret, so it never appears in an error. */
+export function icsFetcher(timeoutMs = 15_000): (url: string) => Promise<string> {
+  return async (url) => {
     const response = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) }).catch(() => {
       throw new TimetableError("L'emploi du temps ne répond pas : réessaie dans quelques minutes.");
     });
@@ -81,22 +80,44 @@ export class TimetableService {
   readonly #stores: Stores;
   readonly #plan: PlanService;
   readonly #clock: Clock;
-  readonly #fetch: () => Promise<string>;
+  readonly #fetch: (url: string) => Promise<string>;
+  readonly #envUrl: string | undefined;
 
-  constructor(db: DatabaseSync, stores: Stores, plan: PlanService, clock: Clock, fetchIcs: () => Promise<string>) {
+  constructor(
+    db: DatabaseSync,
+    stores: Stores,
+    plan: PlanService,
+    clock: Clock,
+    fetchIcs: (url: string) => Promise<string>,
+    envUrl?: string,
+  ) {
     this.#db = db;
     this.#stores = stores;
     this.#plan = plan;
     this.#clock = clock;
     this.#fetch = fetchIcs;
+    this.#envUrl = envUrl;
   }
 
   status(): TimetableStatus {
     return { lastSyncAt: this.#stores.meta.get(LAST_SYNC)?.value ?? null };
   }
 
+  /** The link Anna pasted in Programme wins over the server's `ICS_URL`. */
+  url(): string | undefined {
+    return this.#plan.profile().icsUrl ?? this.#envUrl;
+  }
+
+  /** Saves Anna's link (undoable like any setting), then reads it at once. */
+  async setUrl(url: string): Promise<TimetableRefresh> {
+    this.#plan.saveIcsUrl(url);
+    return this.refresh();
+  }
+
   async refresh(): Promise<TimetableRefresh> {
-    const feed = parseTimetable(await this.#fetch());
+    const url = this.url();
+    if (!url) throw new TimetableNotConfiguredError();
+    const feed = parseTimetable(await this.#fetch(url));
     // An empty feed is far more likely an outage than a semester without classes.
     if (feed.length === 0)
       throw new TimetableError("L'emploi du temps reçu est vide : rien n'a changé, réessaie plus tard.");

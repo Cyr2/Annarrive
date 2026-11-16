@@ -3,17 +3,17 @@ import { IconButton } from "../../ui/Button.tsx";
 import { useGo } from "../useGo.ts";
 import { useChat } from "./store.ts";
 
-type Props = { context: string; label?: string; placeholder?: string; onSent: () => void };
+type Props = { context: string; sessionId: string; label?: string; placeholder?: string; onSent: () => void };
 
 /** "Dis-le à Reggie": a free text that opens the conversation, where Reggie answers with a proposal. */
-export function AskReggie({ context, onSent, label = "Autre chose ? Dis-le à Reggie", placeholder }: Props) {
+export function AskReggie({ context, sessionId, onSent, label = "Autre chose ? Dis-le à Reggie", placeholder }: Props) {
   const id = useId();
   const go = useGo();
   const [text, setText] = useState("");
   const send = () => {
     if (!text.trim()) return;
     const chat = useChat.getState();
-    chat.setContext(context);
+    chat.setContext(context, { screen: "today", sessionId });
     void chat.send(text);
     onSent();
     go("/reggie");

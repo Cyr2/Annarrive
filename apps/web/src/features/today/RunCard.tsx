@@ -74,6 +74,7 @@ export function RunCard({ run, today }: { run: Run; today: string }) {
 }
 
 function WatchStatus({ run }: { run: Run }) {
+  if (!run.watch) return null;
   const label = WATCH_LABEL[run.watch];
   if (run.watch !== "failed") {
     return (

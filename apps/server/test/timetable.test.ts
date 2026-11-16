@@ -128,6 +128,58 @@ describe("timetable sync", () => {
   });
 });
 
+describe("timetable link set by Anna", () => {
+  it("reads the env link until Anna pastes hers, then hers first", async () => {
+    const read: string[] = [];
+    const t = setup({
+      ics: async (url) => {
+        read.push(url);
+        return v1;
+      },
+    });
+    await t.login();
+    await t.services.timetable.refresh();
+
+    const saved = await t.call("PUT", "/api/timetable/url", { url: "https://edt.univ.fr/anna.ics" });
+
+    expect(saved.status).toBe(200);
+    expect(timetableRefreshSchema.parse(saved.json).lastSyncAt).toBe("2026-11-16T07:00:00.000Z");
+    expect(read).toEqual(["https://edt.test/env.ics", "https://edt.univ.fr/anna.ics"]);
+    expect((await t.call("GET", "/api/profile")).json).toMatchObject({ icsUrl: "https://edt.univ.fr/anna.ics" });
+    await t.services.timetable.refresh();
+    expect(read.at(-1)).toBe("https://edt.univ.fr/anna.ics");
+  });
+
+  it("refuses a link that is not https, in French, and keeps the old one", async () => {
+    const t = setup({ ics: v1 });
+    await t.login();
+    const refused = await t.call("PUT", "/api/timetable/url", { url: "http://edt.univ.fr/anna.ics" });
+    expect(refused.status).toBe(400);
+    expect(JSON.stringify(refused.json)).toContain("https://");
+    expect(t.services.timetable.url()).toBe("https://edt.test/env.ics");
+  });
+
+  it("asks for a link when neither Anna nor the server has one", async () => {
+    const t = setup({ ics: v1, icsUrl: null });
+    await t.login();
+    expect(t.services.timetable.url()).toBeUndefined();
+    const missing = await t.call("POST", "/api/timetable/refresh");
+    expect(missing.status).toBe(503);
+    expect(JSON.stringify(missing.json)).toContain("Programme");
+  });
+
+  it("keeps the link out of the settings patch and lets Annuler restore the previous one", async () => {
+    const t = setup({ ics: v1, icsUrl: null });
+    await t.login();
+    await t.call("PATCH", "/api/profile", { icsUrl: "https://ailleurs.fr/x.ics", runsPerWeek: 4 });
+    expect(t.services.timetable.url()).toBeUndefined();
+    await t.services.timetable.setUrl("https://edt.univ.fr/anna.ics");
+    const [entry] = t.stores.changeLog.list().filter((c) => c.summary.startsWith("Lien"));
+    t.services.changes.undo(entry?.id ?? "");
+    expect(t.services.timetable.url()).toBeUndefined();
+  });
+});
+
 describe("icsFetcher", () => {
   const servers: ReturnType<typeof createServer>[] = [];
   afterEach(() => {
@@ -143,12 +195,12 @@ describe("icsFetcher", () => {
 
   it("downloads the feed", async () => {
     const url = await serve((_req, res) => res.end(v1));
-    expect(await icsFetcher(url)()).toBe(v1);
+    expect(await icsFetcher()(url)).toBe(v1);
   });
 
   it("gives up after the timeout without revealing the URL", async () => {
     const url = await serve(() => undefined);
-    const error = await icsFetcher(url, 50)().catch((e: unknown) => e);
+    const error = await icsFetcher(50)(url).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(Error);
     expect(String(error)).toMatch(/ne répond pas/);
     expect(String(error)).not.toContain("127.0.0.1");
@@ -159,10 +211,6 @@ describe("icsFetcher", () => {
       res.statusCode = 404;
       res.end();
     });
-    await expect(icsFetcher(url)()).rejects.toThrow(/404/);
-  });
-
-  it("asks for ICS_URL when it is missing", async () => {
-    await expect(icsFetcher(undefined)()).rejects.toThrow(/ICS_URL/);
+    await expect(icsFetcher()(url)).rejects.toThrow(/404/);
   });
 });

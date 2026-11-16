@@ -31,6 +31,9 @@ export default function UnavailableSheet({ spec, ...sheet }: SheetProps<"unavail
   const validate = async () => {
     if (input && (await plan.apply((api) => api.unavailable(input)))) sheet.onOpenChange(false);
   };
+  const feelBetter = async () => {
+    if (await plan.apply((api) => api.feelBetter())) sheet.onOpenChange(false);
+  };
 
   return (
     <Sheet {...sheet} title="Pas dispo">
@@ -43,6 +46,7 @@ export default function UnavailableSheet({ spec, ...sheet }: SheetProps<"unavail
       {step === "reason" && draft.reason === "other" ? (
         <AskReggie
           context={`Pas dispo · ${sessionContext(run, today)}`}
+          sessionId={run.id}
           label="Explique à Reggie"
           placeholder="Ce qui se passe"
           onSent={() => sheet.onOpenChange(false)}
@@ -54,6 +58,11 @@ export default function UnavailableSheet({ spec, ...sheet }: SheetProps<"unavail
       ) : (
         <Button disabled={!canContinue(step, draft)} onClick={next}>
           Continuer
+        </Button>
+      )}
+      {step === "reason" && (
+        <Button variant="tinted" onClick={() => void feelBetter()}>
+          Ça va mieux
         </Button>
       )}
     </Sheet>

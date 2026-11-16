@@ -1,5 +1,6 @@
 import type { Api } from "./client.ts";
 import type { Scenario } from "./mock/index.ts";
+import { signOut } from "./session.ts";
 
 export type { Api } from "./client.ts";
 
@@ -24,15 +25,19 @@ async function healthBody(fetcher: typeof fetch): Promise<unknown> {
 }
 
 /**
- * The real server when it answers its health check, otherwise the in-memory mock. Both load on demand,
- * so the first screen's file carries neither zod nor the mock data.
+ * The mock only with `?mock`, or in development when no server answers its health check; in production the
+ * app always talks to its own server. Both load on demand, so the first screen's file carries neither zod nor the mock data.
  */
-export async function pickApi(search = location.search, fetcher: typeof fetch = fetch): Promise<Api> {
+export async function pickApi(
+  search = location.search,
+  fetcher: typeof fetch = fetch,
+  dev: boolean = import.meta.env.DEV,
+): Promise<Api> {
   const forced = mockRequest(search, import.meta.env.VITE_API_MOCK);
-  const health = forced ? undefined : await healthBody(fetcher);
-  if (health !== undefined) {
+  if (!forced) {
+    const health = dev ? await healthBody(fetcher) : undefined;
     const http = await import("./http.ts");
-    if (http.isHealthy(health)) return http.createHttpApi(fetcher);
+    if (!dev || http.isHealthy(health)) return http.createHttpApi(fetcher, signOut);
   }
   const { createMockApi } = await import("./mock/index.ts");
   return createMockApi({ scenario: forced ?? "run", latencyMs: 150 });

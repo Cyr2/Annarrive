@@ -15,6 +15,10 @@ export default function ReggieScreen() {
   const today = usePlan(todayOf);
   const end = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    void useChat.getState().loadHistory();
+  }, []);
+
   // Follow the conversation: the newest message, widget or typing dots stays in view.
   // biome-ignore lint/correctness/useExhaustiveDependencies: scrolls when the list or the status changes
   useEffect(() => {

@@ -33,23 +33,27 @@ export function TodayScreen() {
 
   const { session, activity, next, goal, date } = today;
   const askReggie = () => {
-    useChat.getState().setContext(session ? sessionContext(session, date) : undefined);
+    useChat
+      .getState()
+      .setContext(session && sessionContext(session, date), { screen: "today", sessionId: session?.id });
     go("/reggie");
   };
 
   return (
     <Screen mood={moodOf(session, Boolean(activity))}>
-      <a
-        href="/programme"
-        onClick={(e) => {
-          e.preventDefault();
-          go("/programme");
-        }}
-        className="glass press t-label inline-flex min-h-11 items-center gap-2 self-start rounded-full px-4 text-text"
-      >
-        <Icon name="flag" size={16} />
-        {goal.label} · J-{goal.daysLeft}
-      </a>
+      {goal && (
+        <a
+          href="/programme"
+          onClick={(e) => {
+            e.preventDefault();
+            go("/programme");
+          }}
+          className="glass press t-label inline-flex min-h-11 items-center gap-2 self-start rounded-full px-4 text-text"
+        >
+          <Icon name="flag" size={16} />
+          {goal.label} · J-{goal.daysLeft}
+        </a>
+      )}
 
       {activity && <AfterRun activity={activity} next={next} today={date} />}
       {!activity && session && (

@@ -1,6 +1,9 @@
 import { lazy, Suspense, useEffect } from "react";
 import { Redirect, Route, Switch, useLocation } from "wouter";
+import { useSignedOut } from "./api/session.ts";
+import { SignedOut } from "./features/auth/SignedOut.tsx";
 import { usePlan } from "./features/plan/store.ts";
+import { usePush } from "./features/push/store.ts";
 import { SheetHost } from "./features/sheets/SheetHost.tsx";
 import { TodayScreen } from "./features/today/TodayScreen.tsx";
 import { withTransition } from "./lib/transition.ts";
@@ -26,9 +29,14 @@ export function App() {
   const [location, navigate] = useLocation();
   const active = TABS.findIndex((tab) => tab.href === location);
 
+  const signedOut = useSignedOut((s) => s.signedOut);
+
   useEffect(() => {
     void usePlan.getState().load();
+    void usePush.getState().check();
   }, []);
+
+  if (signedOut) return <SignedOut />;
 
   return (
     <>

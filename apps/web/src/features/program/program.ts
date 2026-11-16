@@ -1,3 +1,4 @@
+import { icsUrlSchema } from "@talaria/protocol";
 import type { Program, Settings } from "../../api/schemas.ts";
 import { daysBetween, longDate, weekdayName } from "../../lib/date.ts";
 import type { SettingKey } from "../sheets/store.ts";
@@ -30,6 +31,14 @@ export function phaseBar(program: Program) {
     start += phase.weeks;
     return { ...phase, current };
   });
+}
+
+/** A pasted timetable link, or why it cannot be used. Calendar apps share `webcal:` links: the same feed over https. */
+export function checkIcsUrl(text: string): { url?: string; error?: string } {
+  const url = text.trim().replace(/^webcal:/i, "https:");
+  if (!url) return { error: "Colle le lien de ton emploi du temps." };
+  const parsed = icsUrlSchema.safeParse(url);
+  return parsed.success ? { url: parsed.data } : { error: parsed.error.issues[0]?.message };
 }
 
 /** Her own target, tagged without ever discouraging (the app does not propose a time). */
