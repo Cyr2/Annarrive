@@ -8,21 +8,27 @@ Coach de course à pied en PWA pour Anna (iPhone, Garmin vivoactive 4). L'app pl
 - `docs/specs/algo.md` : les règles de l'algo, avec leurs cas de test.
 - `docs/specs/architecture.md` : stack, composants, tâches planifiées, plan de construction par étapes.
 - `docs/interactions.md` : le comportement exact de chaque bouton, de Reggie et des animations. Aucun comportement n'est laissé au hasard : si un cas manque, le demander.
-- `design/*.dc.html` : maquettes validées (canevas : https://claude.ai/artifact/EExsbz7FntTfBqaZFvjtA3). Chaque écran livré est comparé à sa maquette.
+- `design/*.dc.html` : maquettes (canevas : https://claude.ai/artifact/EExsbz7FntTfBqaZFvjtA3). Elles fixent l'intention (contenu, hiérarchie, comportement), pas les pixels : le rendu vient du système de design de `apps/web/src/ui/`, et doit faire mieux que la maquette.
+- `docs/audit/` : l'audit UI et ses captures.
 - `research/` : la recherche sourcée derrière l'algo.
 
 ## Marque et style
 
-- Nom : **Talaria**. Assistant : **Reggie** (nom fixe, aucune option pour le changer).
-- Style Apple iOS 26 Liquid Glass : fond coloré en dégradé derrière des surfaces en verre, police système (SF Pro), titres en gras. Ne pas remplacer ce style par un style « sobre » : il a été choisi et validé.
+- Nom : **Talaria**. Assistant : **Reggie** (nom fixe, aucune option pour le changer). Le logo se choisit avec Darius : ne jamais en inventer un, garder un emplacement prévu.
+- Direction « Ciel du matin » : un ciel d'aube doux derrière chaque écran, surfaces Apple iOS 26 Liquid Glass, police système (SF Pro), titres en gras. Clair, pastel, joyeux, jamais criard. Aucun noir.
+- Palette de départ (tokens dans `apps/web/src/styles/tokens.css`) : ciel `#FDE7DA`, `#F3ECF6`, `#E6F1F8`, `#F7F9FB` ; texte `#23303D` ; actions `#3D6A9E` (bleu crépuscule) ; Reggie `#0B6B52` ; séances en pastel : intensité `#F29C7B`, facile `#7CC8A8`, sortie longue `#8DB3EA`, révision `#8FCFD6`. Une allure ne s'affiche jamais en rouge ou en orange.
+- Un seul matériau : le verre dépoli pour les cartes, feuilles, widgets et listes (`Surface`), glisse pour les petits contrôles (boutons, pastilles, segmentés, onglets, champs, interrupteurs, curseurs), via `apps/web/src/ui/` uniquement.
+- La couleur porte un sens (type de séance, aujourd'hui, action, Reggie, alerte) et fait ressortir ce qui compte. Pas de couleur décorative.
 - Échelle de texte unique : titre de page 28, titre de section 20, texte 17, secondaire 15, légende 13, onglets 11. Une seule couleur de texte secondaire.
-- Assistant en bleu (`#0A7CFF`), séances intenses en orange, faciles en vert, sortie longue en bleu ciel.
 - Aucun tiret long ni demi-tiret dans les textes de l'interface : « 10:15 à 12:15 ».
 - Les valeurs de couleur, d'espacement et de durée vivent dans des tokens, jamais en dur dans les composants.
 
 ## Skills à utiliser
 
 - `ponytail` (actif) : la plus petite modification qui résout tout le problème.
+- `frontend-design` (dans `.agents/skills/`) : avant tout nouvel écran ou changement visuel.
+- `composition-patterns`, `react-best-practices` : architecture et performance des composants React.
+- `web-design-guidelines` : audit avant chaque livraison d'écran, avec des captures à 390 et 320 px regardées une à une.
 - `mobile-native` : tout ce qui touche à l'iPhone (zones sûres, 100vh, zoom des champs, état de survol).
 - `apple-design`, `animate`, `gestures`, `emil-design-eng` : animations, feuilles, glisser-déposer, finition.
 - `review-animations`, `animation-performance`, `break-ui` : avant de livrer un écran.
