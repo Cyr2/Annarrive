@@ -10,6 +10,7 @@
     "test": "vitest run --coverage",
     "typecheck": "tsc -p .",
     "eval:reggie": "node --env-file-if-exists=../../.env --import tsx eval/reggie/run.ts",
+    "lighthouse": "tsx src/cli/lighthouse.ts",
     "login-link": "node --env-file-if-exists=../../.env --import tsx src/cli/login-link.ts"
   },
   "dependencies": {

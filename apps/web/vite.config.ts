@@ -12,6 +12,8 @@ export default defineConfig({
     VitePWA({
       // The app picks when to switch to a new version, never in the middle of an action.
       registerType: "prompt",
+      // Inline: one request less, and nothing blocks the first paint.
+      injectRegister: "inline",
       includeAssets: ["icon.svg", "apple-touch-icon.png"],
       manifest: {
         name: "Talaria",
