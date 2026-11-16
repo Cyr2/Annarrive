@@ -8,6 +8,7 @@ COPY src ./src
 RUN uv sync --frozen --no-dev
 # Garmin session tokens live on this volume (valid about six months).
 ENV GARMINTOKENS=/data/garmin
+RUN mkdir -p /data/garmin && chown -R nobody /data
 VOLUME /data
 USER nobody
 EXPOSE 8000

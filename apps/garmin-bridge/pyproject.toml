@@ -9,6 +9,9 @@ dependencies = [
     "garminconnect",
 ]
 
+[project.scripts]
+garmin-bridge-login = "garmin_bridge.session:login_cli"
+
 [dependency-groups]
 dev = ["pytest", "httpx", "ruff"]
 
