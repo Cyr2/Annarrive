@@ -25,9 +25,26 @@ describe("Scheduler", () => {
     let now = new Date(start);
     const refreshTimetable = vi.fn();
     const buildNextWeek = vi.fn();
-    const scheduler = new Scheduler(createJobs({ refreshTimetable, buildNextWeek, backup: vi.fn() }), () => now);
-    return { scheduler, refreshTimetable, buildNextWeek, set: (iso: string) => (now = new Date(iso)) };
+    const garmin = { syncActivities: vi.fn(), syncRecovery: vi.fn(), morningDecision: vi.fn(), syncWatch: vi.fn() };
+    const scheduler = new Scheduler(
+      createJobs({ refreshTimetable, buildNextWeek, backup: vi.fn(), ...garmin }),
+      () => now,
+    );
+    return { scheduler, refreshTimetable, buildNextWeek, garmin, set: (iso: string) => (now = new Date(iso)) };
   }
+
+  it("polls recovery from 5:00 to 9:45, decides at 10:00, syncs runs and the watch on their beat", async () => {
+    const s = scheduled("2026-11-16T04:00:00Z"); // 05:00 in Paris
+    await s.scheduler.tick();
+    s.set("2026-11-16T08:45:00Z");
+    await s.scheduler.tick();
+    s.set("2026-11-16T09:00:00Z");
+    await s.scheduler.tick();
+    expect(s.garmin.syncRecovery).toHaveBeenCalledTimes(2);
+    expect(s.garmin.morningDecision).toHaveBeenCalledTimes(1);
+    expect(s.garmin.syncActivities).toHaveBeenCalledTimes(2);
+    expect(s.garmin.syncWatch).toHaveBeenCalledTimes(3);
+  });
 
   it("registers every job of the architecture", () => {
     expect(scheduled("2026-11-16T07:00:00Z").scheduler.jobNames).toEqual([

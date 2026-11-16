@@ -6,6 +6,10 @@ const configSchema = z.object({
   WEB_DIST: z.string().optional(),
   PUBLIC_URL: z.string().url().default("http://localhost:8787"),
   ICS_URL: z.string().url().optional(),
+  BRIDGE_URL: z.string().url().optional(),
+  BRIDGE_SECRET: z.string().optional(),
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
   SESSION_SECRET: z
     .string()
     .min(32, "SESSION_SECRET manque ou fait moins de 32 caractères : génère-le avec `openssl rand -hex 32`."),

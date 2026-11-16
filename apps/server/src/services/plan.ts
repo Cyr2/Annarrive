@@ -5,6 +5,7 @@ import type {
   CreateEventInput,
   DeleteEventQuery,
   MoveSlots,
+  PlannedSession,
   Profile,
   ProfilePatch,
   Program,
@@ -12,12 +13,14 @@ import type {
   UpdateEventInput,
   Week,
 } from "@talaria/protocol";
-import { type CoachPort, type CoachResult, type CoachState, slotFor } from "../coach-port.ts";
+import { type CoachPort, type CoachResult, type CoachState, type DailyDecisionResult, slotFor } from "../coach-port.ts";
 import { InvalidInputError, NotFoundError, ReadOnlyError } from "../errors.ts";
+import { watchStatus } from "../garmin/workout.ts";
 import type { Stores } from "../storage/stores.ts";
 import { addDays, type Clock, dateOf, frenchMoment, isoWeekStart, mondayOf, toParisLocal } from "../time.ts";
 import { afterDelete, occurrences } from "./calendar.ts";
 import type { ChangeService, PlanWrite } from "./changes.ts";
+import type { NotificationService } from "./notifications.ts";
 
 /** Defaults of algo.md section 4.2, used until onboarding stores a profile. */
 export const defaultProfile: Profile = {
@@ -43,8 +46,25 @@ const CURRENT = "current";
 /** The coach replans the current and the next week (algo.md cycle 0.1). */
 const WINDOW_DAYS = 14;
 
+const MORNING_DECISION = "morning.decidedOn";
+const decisionSummaries: Record<DailyDecisionResult["action"], string> = {
+  keep: "Séance du jour confirmée",
+  none: "Séance du jour confirmée",
+  easier: "Séance du jour allégée",
+  shorter: "Séance du jour raccourcie",
+  proposeRest: "Repos proposé aujourd'hui",
+};
+
 export function movedRunsText(count: number): string {
   return count === 1 ? "1 course déplacée" : `${count} courses déplacées`;
+}
+
+/** Pairs [before, after] of the sessions the coach gave a new start. */
+function movedSessions(before: CoachState, result: CoachResult): [PlannedSession, PlannedSession][] {
+  return result.state.sessions.flatMap((s) => {
+    const old = before.sessions.find((b) => b.id === s.id);
+    return old && old.start !== s.start ? [[old, s]] : [];
+  });
 }
 
 export class PlanService {
@@ -52,12 +72,20 @@ export class PlanService {
   readonly #changes: ChangeService;
   readonly #coach: CoachPort;
   readonly #clock: Clock;
+  readonly #notifications: NotificationService;
 
-  constructor(stores: Stores, changes: ChangeService, coach: CoachPort, clock: Clock) {
+  constructor(
+    stores: Stores,
+    changes: ChangeService,
+    coach: CoachPort,
+    clock: Clock,
+    notifications: NotificationService,
+  ) {
     this.#stores = stores;
     this.#changes = changes;
     this.#coach = coach;
     this.#clock = clock;
+    this.#notifications = notifications;
   }
 
   profile(): Profile {
@@ -157,20 +185,57 @@ export class PlanService {
   }
 
   /** Sunday 18:00 job (algo.md cycle 0.1). */
-  buildNextWeek(): ChangeResponse {
+  async buildNextWeek(): Promise<ChangeResponse> {
     const before = this.coachState();
-    return this.#commit(
+    const response = this.#commit(
       "Ta semaine est prête",
       [],
       before,
       this.#coach.buildWeek(before, this.#nextMonday(), this.#now()),
     );
+    if (response.change) await this.#notifications.weekReady();
+    return response;
   }
 
-  /** After a timetable sync already rewrote the classes: lets the coach move what now conflicts. */
-  replanAfterTimetable(before: CoachState, summary: string): ChangeResponse {
+  /** After a timetable sync already rewrote the classes: lets the coach move what now conflicts, and tells Anna. */
+  async replanAfterTimetable(before: CoachState, summary: string): Promise<ChangeResponse> {
     const result = this.#coach.onTimetableChange(before, this.#windowEvents(), this.#now());
-    return this.#commit(summary, [], before, result);
+    const response = this.#commit(summary, [], before, result);
+    for (const [old, moved] of movedSessions(before, result)) await this.#notifications.runMoved(old, moved);
+    return response;
+  }
+
+  /**
+   * D1 and D7 of algo.md: once a day, after the night's sleep is in or at 10:00, lets the coach lighten
+   * today's session, then freezes it. Returns null when already decided today or nothing is planned.
+   */
+  morningDecision(): ChangeResponse | null {
+    const now = this.#now();
+    const today = dateOf(now);
+    if (this.#stores.meta.get(MORNING_DECISION)?.value === today) return null;
+    const before = this.coachState();
+    const session = before.sessions.find((s) => dateOf(s.start) === today && s.status === "planned" && !s.frozen);
+    let response: ChangeResponse | null = null;
+    if (session) {
+      const signals = this.#stores.dailySignal.overlapping(addDays(today, -29), addDays(today, 1));
+      const result = this.#coach.dailyDecision(before, signals, now);
+      const sessions = result.state.sessions.map((s) => (s.id === session.id ? { ...s, frozen: true } : s));
+      response = this.#commit(decisionSummaries[result.action], [], before, {
+        ...result,
+        state: { ...result.state, sessions },
+      });
+    }
+    this.#stores.meta.put({ id: MORNING_DECISION, value: today });
+    return response;
+  }
+
+  /** A Garmin run matched this session: it is done, and Annuler can still reopen it. */
+  markDone(id: string): void {
+    const session = this.#stores.plannedSession.get(id);
+    if (session)
+      this.#changes.record("Course synchronisée", [
+        { table: "planned_session", id, after: { ...session, status: "done" } },
+      ]);
   }
 
   coachState(): CoachState {
@@ -205,9 +270,7 @@ export class PlanService {
         .map((s) => ({ table: "planned_session" as const, id: s.id, after: null })),
       ...result.state.sessions.map((s) => ({ table: "planned_session" as const, id: s.id, after: s })),
     ];
-    const moved = result.state.sessions.filter(
-      (s) => s.id !== movedId && before.sessions.some((b) => b.id === s.id && b.start !== s.start),
-    ).length;
+    const moved = movedSessions(before, result).filter(([, s]) => s.id !== movedId).length;
     const fullSummary = moved > 0 ? `${summary} · ${movedRunsText(moved)}` : summary;
     const entry = this.#changes.record(fullSummary, [...writes, ...sessionWrites]);
     return {
@@ -231,7 +294,10 @@ export class PlanService {
 
   #days(from: string, count: number): Week["days"] {
     const to = addDays(from, count);
-    const sessions = this.#stores.plannedSession.overlapping(`${from}T00:00`, `${to}T00:00`);
+    const today = dateOf(this.#now());
+    const sessions = this.#stores.plannedSession
+      .overlapping(`${from}T00:00`, `${to}T00:00`)
+      .map((s) => ({ ...s, watch: watchStatus(s, this.#stores.watchSync.get(s.id), today) }));
     const events = this.#stores.calendarEvent
       .overlapping(`${from}T00:00`, `${to}T00:00`)
       .flatMap((e) => occurrences(e, from, to))

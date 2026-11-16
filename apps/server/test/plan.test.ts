@@ -281,9 +281,9 @@ describe("settings", () => {
     expect(t.stores.plannedSession.get("built-2026-11-23")).toBeUndefined();
   });
 
-  it("builds next week on Sunday through the coach", () => {
+  it("builds next week on Sunday through the coach", async () => {
     const t = setup();
-    expect(t.services.plan.buildNextWeek().change?.summary).toBe("Ta semaine est prête");
+    expect((await t.services.plan.buildNextWeek()).change?.summary).toBe("Ta semaine est prête");
   });
 });
 

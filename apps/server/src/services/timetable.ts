@@ -106,7 +106,7 @@ export class TimetableService {
     this.#stores.meta.put({ id: LAST_SYNC, value: lastSyncAt });
 
     const classes = diffSummary(lines);
-    const replan = lines.length > 0 ? this.#plan.replanAfterTimetable(before, classes) : { change: null };
+    const replan = lines.length > 0 ? await this.#plan.replanAfterTimetable(before, classes) : { change: null };
     const count = (verb: Verb) => lines.filter((l) => l.verb === verb).length;
     return {
       lastSyncAt,

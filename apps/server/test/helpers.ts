@@ -1,12 +1,25 @@
 import type { CalendarEvent, PlannedSession } from "@talaria/protocol";
+import type { Hono } from "hono";
+import { vi } from "vitest";
 import { createApp } from "../src/app.ts";
 import { type CoachPort, passThroughCoach } from "../src/coach-port.ts";
+import type { BridgeClient } from "../src/garmin/bridge-client.ts";
 import { createServices } from "../src/services/index.ts";
+import type { PushSender } from "../src/services/notifications.ts";
 import { openDatabase } from "../src/storage/db.ts";
 import { createStores } from "../src/storage/stores.ts";
 import { addMinutes } from "../src/time.ts";
 
 export const SECRET = "test-secret-test-secret-test-secret!";
+
+/** What the "Se connecter" button of the login page sends. */
+export function postLogin(app: Hono, token: string, site = "same-origin") {
+  return app.request("/api/auth/login", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded", "sec-fetch-site": site },
+    body: new URLSearchParams({ token }).toString(),
+  });
+}
 
 /** Monday 16 November 2026, 08:00 in Paris. */
 export const MONDAY_8AM = new Date("2026-11-16T07:00:00Z");
@@ -62,13 +75,47 @@ export const fakeCoach: CoachPort = {
   }),
 };
 
-export function setup(options: { ics?: string | (() => Promise<string>); coach?: CoachPort } = {}) {
+/** A bridge whose every call is a mock; tests override the answers they need. */
+export function fakeBridge() {
+  return {
+    recentActivities: vi.fn<BridgeClient["recentActivities"]>(async () => []),
+    activityLaps: vi.fn<BridgeClient["activityLaps"]>(async () => []),
+    dailySignals: vi.fn<BridgeClient["dailySignals"]>(async (date) => ({
+      date,
+      sleepS: null,
+      sleepScore: null,
+      restingHr: null,
+      stressAvg: null,
+      bodyBatteryAtWake: null,
+      bodyBatteryHighest: null,
+      vo2Max: null,
+    })),
+    createWorkout: vi.fn<BridgeClient["createWorkout"]>(async () => ({ workoutId: 1 })),
+    deleteWorkout: vi.fn<BridgeClient["deleteWorkout"]>(async () => undefined),
+  };
+}
+
+export function setup(
+  options: {
+    ics?: string | (() => Promise<string>);
+    coach?: CoachPort;
+    bridge?: BridgeClient;
+    push?: { send: PushSender; publicKey: string };
+  } = {},
+) {
   const db = openDatabase(":memory:");
   let now = MONDAY_8AM;
   const clock = () => now;
   const { ics = "" } = options;
   const fetchIcs = typeof ics === "string" ? async () => ics : ics;
-  const services = createServices({ db, clock, coach: options.coach ?? fakeCoach, fetchIcs });
+  const services = createServices({
+    db,
+    clock,
+    coach: options.coach ?? fakeCoach,
+    fetchIcs,
+    bridge: options.bridge,
+    push: options.push,
+  });
   const app = createApp({ services, sessionSecret: SECRET });
   let cookie = "";
 
@@ -81,8 +128,8 @@ export function setup(options: { ics?: string | (() => Promise<string>); coach?:
       now = instant;
     },
     async login() {
-      const link = new URL(services.auth.createLoginLink("https://talaria.test"));
-      const response = await app.request(`${link.pathname}${link.search}`);
+      const token = new URL(services.auth.createLoginLink("https://talaria.test")).searchParams.get("token") ?? "";
+      const response = await postLogin(app, token);
       cookie = (response.headers.get("set-cookie") ?? "").split(";")[0] ?? "";
       return response;
     },
@@ -91,7 +138,8 @@ export function setup(options: { ics?: string | (() => Promise<string>); coach?:
       const init: RequestInit = { method, headers: { cookie, "content-type": "application/json" } };
       if (body !== undefined) init.body = JSON.stringify(body);
       const response = await app.request(path, init);
-      const json: unknown = await response.json();
+      const text = await response.text();
+      const json: unknown = text ? JSON.parse(text) : null;
       return { status: response.status, json };
     },
   };

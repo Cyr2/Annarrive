@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { healthSchema } from "@talaria/protocol";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../src/app.ts";
-import { MONDAY_8AM, SECRET, setup } from "./helpers.ts";
+import { MONDAY_8AM, postLogin, SECRET, setup } from "./helpers.ts";
 
 describe("server", () => {
   it("answers the health check without a session", async () => {
@@ -70,15 +70,52 @@ describe("login", () => {
     expect((await t.call("GET", "/api/today")).status).toBe(200);
   });
 
-  it("refuses a link used twice or older than 15 minutes", async () => {
+  it("opening the link only shows a Se connecter button, so a message preview does not use it up", async () => {
     const t = setup();
     const link = new URL(t.services.auth.createLoginLink("https://talaria.test"));
-    expect((await t.app.request(`${link.pathname}${link.search}`)).status).toBe(302);
-    expect((await t.app.request(`${link.pathname}${link.search}`)).status).toBe(401);
+    const token = link.searchParams.get("token") ?? "";
 
-    const late = new URL(t.services.auth.createLoginLink("https://talaria.test"));
+    const preview = await t.app.request(`${link.pathname}${link.search}`);
+    await t.app.request(`${link.pathname}${link.search}`);
+
+    expect(preview.status).toBe(200);
+    expect(preview.headers.get("set-cookie")).toBeNull();
+    const page = await preview.text();
+    expect(page).toContain('<form method="post" action="/api/auth/login">');
+    expect(page).toContain(`value="${token}"`);
+    expect(page).toContain("Se connecter");
+    expect((await postLogin(t.app, token)).status).toBe(302);
+  });
+
+  it("logs in once per link: a second POST is refused with a French page", async () => {
+    const t = setup();
+    const token = new URL(t.services.auth.createLoginLink("https://talaria.test")).searchParams.get("token") ?? "";
+    expect((await postLogin(t.app, token)).status).toBe(302);
+
+    const second = await postLogin(t.app, token);
+
+    expect(second.status).toBe(401);
+    expect(second.headers.get("set-cookie")).toBeNull();
+    expect(await second.text()).toContain("Ce lien de connexion n'est plus valable");
+  });
+
+  it("refuses a link older than 15 minutes", async () => {
+    const t = setup();
+    const late = new URL(t.services.auth.createLoginLink("https://talaria.test")).searchParams.get("token") ?? "";
     t.setNow(new Date(MONDAY_8AM.getTime() + 15 * 60_000));
-    expect((await t.app.request(`${late.pathname}${late.search}`)).status).toBe(401);
+    expect((await postLogin(t.app, late)).status).toBe(401);
+  });
+
+  it("refuses a login form posted from another site without using up the link", async () => {
+    const t = setup();
+    const token = new URL(t.services.auth.createLoginLink("https://talaria.test")).searchParams.get("token") ?? "";
+    expect((await postLogin(t.app, token, "cross-site")).status).toBe(403);
+    expect((await postLogin(t.app, token)).status).toBe(302);
+  });
+
+  it("refuses a link whose token is not base64url", async () => {
+    const t = setup();
+    expect((await t.app.request("/api/auth/login?token=%22%3E%3Cscript%3E")).status).toBe(400);
   });
 
   it("ends the session after 180 days", async () => {
@@ -96,8 +133,8 @@ describe("login", () => {
 
   it("blocks login for 15 minutes after 5 wrong links", async () => {
     const t = setup();
-    for (let i = 0; i < 5; i++) expect((await t.app.request("/api/auth/login?token=wrong")).status).toBe(401);
-    const blocked = await t.app.request("/api/auth/login?token=wrong");
+    for (let i = 0; i < 5; i++) expect((await postLogin(t.app, "wrong")).status).toBe(401);
+    const blocked = await postLogin(t.app, "wrong");
     expect(blocked.status).toBe(429);
     expect((await t.login()).status).toBe(429);
 
