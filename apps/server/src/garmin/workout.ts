@@ -1,4 +1,10 @@
-import type { PlannedSession, WatchStatus, WorkoutRequest, WorkoutStep } from "@talaria/protocol";
+import {
+  type PlannedSession,
+  plannedSessionSchema,
+  type WatchStatus,
+  type WorkoutRequest,
+  type WorkoutStep,
+} from "@talaria/protocol";
 import { addDays, dateOf } from "../time.ts";
 
 type Step = PlannedSession["steps"][number];
@@ -77,6 +83,18 @@ export function workoutHash(session: PlannedSession): string {
 export function onWatch(session: PlannedSession, today: string): boolean {
   const day = dateOf(session.start);
   return session.status === "planned" && day >= today && day < addDays(today, 7);
+}
+
+/** True when a change adds, edits or removes a session the watch holds or should hold. */
+export function touchesWatch(mutations: { table: string; before: unknown; after: unknown }[], today: string): boolean {
+  return mutations.some(
+    (m) =>
+      m.table === "planned_session" &&
+      [m.before, m.after].some((doc) => {
+        const parsed = plannedSessionSchema.safeParse(doc);
+        return parsed.success && dateOf(parsed.data.start) >= today && dateOf(parsed.data.start) < addDays(today, 7);
+      }),
+  );
 }
 
 /** "pending" until the content on the watch matches the session, then the last upload's outcome. */

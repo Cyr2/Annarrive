@@ -74,9 +74,13 @@ const CURRENT = "current";
 /** How far back Reggie looks at signals and runs. */
 const RECENT_DAYS = 14;
 /** F10 looks for an effort in the last 12 weeks. */
-const FITNESS_DAYS = 84;
+const EFFORT_DAYS = 84;
 /** The coach replans the current and the next week (algo.md cycle 0.1). */
 const WINDOW_DAYS = 14;
+/** Runs the coach reads: a year of volumes (P8) and efforts (F10). */
+const HISTORY_DAYS = 365;
+/** How old a Garmin VO2max may be to stand in for a level (F10 c). */
+const FITNESS_DAYS = 30;
 
 const MORNING_DECISION = "morning.decidedOn";
 const decisionSummaries: Record<DailyDecisionResult["action"], string> = {
@@ -136,7 +140,7 @@ export class PlanService {
   /** P19: the coach's five classes shown as two, so a bold target never reads as a refusal. */
   feasibility(goal: FeasibilityInput): Feasibility {
     const now = this.#now();
-    const from = addDays(dateOf(now), -FITNESS_DAYS);
+    const from = addDays(dateOf(now), -EFFORT_DAYS);
     const history = this.#stores.activity.overlapping(`${from}T00:00`, now);
     const vo2max = this.#stores.dailySignal
       .overlapping(from, now)
@@ -263,12 +267,52 @@ export class PlanService {
     return this.#commit("Réglages enregistrés", [write], before, result);
   }
 
-  /** EV14: the next weeks follow the new goal, the current week keeps what Anna moved. */
-  updateProgram(program: Program): ChangeResponse {
+  /**
+   * EV14: the plan restarts from the new goal, this week included (what Anna moved stays), and the level
+   * is estimated first if still unknown or provisional. Without a goal (MA8) the current week stays.
+   */
+  updateProgram(input: Program): ChangeResponse {
     const before = this.coachState();
-    const result = this.#coach.buildWeek({ ...before, program }, this.#nextMonday(), this.#now());
+    const today = dateOf(this.#now());
+    const sameGoal = JSON.stringify(input.goal) === JSON.stringify(before.program.goal);
+    const program = { ...input, startedOn: sameGoal ? (before.program.startedOn ?? today) : today };
     const write: PlanWrite = { table: "program", id: CURRENT, after: { id: CURRENT, value: program } };
-    return this.#commit("Objectif modifié", [write], before, result);
+    return this.#rebuild("Objectif modifié", [write], { ...before, program }, before, program.goal !== null);
+  }
+
+  /** After a run, when no level was known yet: estimates it and builds the weeks it was missing. */
+  bootstrapFitness(): ChangeResponse | null {
+    const before = this.coachState();
+    const fitness = before.fitness ? null : this.#estimate(before);
+    return fitness && this.#rebuild("Niveau estimé", [], { ...before, fitness }, before, true);
+  }
+
+  /** Lets FitnessService record an accepted proposal like any other change. */
+  commitResult(summary: string, writes: PlanWrite[], before: CoachState, result: CoachResult): ChangeResponse {
+    return this.#commit(summary, writes, before, result);
+  }
+
+  #rebuild(summary: string, writes: PlanWrite[], state: CoachState, before: CoachState, thisWeek: boolean) {
+    const now = this.#now();
+    const fitness = state.fitness?.provisional === false ? state.fitness : (this.#estimate(state) ?? state.fitness);
+    const current = thisWeek
+      ? this.#coach.buildWeek({ ...state, fitness }, this.#windowStart(), now)
+      : { state: { ...state, fitness }, warnings: [] };
+    const next = this.#coach.buildWeek(current.state, this.#nextMonday(), now);
+    const warnings = [...current.warnings, ...next.warnings].filter(
+      (w, i, all) => all.findIndex((x) => x.message === w.message) === i,
+    );
+    return this.#commit(summary, writes, before, { ...next, warnings });
+  }
+
+  /** F10 from what is stored: Garmin runs, the latest Garmin VO2max, the declared time. */
+  #estimate(state: CoachState): CoachState["fitness"] {
+    const now = this.#now();
+    const vo2max = this.#stores.dailySignal
+      .overlapping(addDays(dateOf(now), -FITNESS_DAYS), addDays(dateOf(now), 1))
+      .findLast((d) => d.vo2max !== undefined)?.vo2max;
+    const guess = this.#coach.estimateFitness(state, vo2max, now);
+    return guess && { ...guess, id: dateOf(now), date: dateOf(now) };
   }
 
   /** Sunday 18:00 job (algo.md cycle 0.1). */
@@ -293,7 +337,7 @@ export class PlanService {
   }
 
   /**
-   * D1 and D7 of algo.md: once a day, after the night's sleep is in or at 10:00, lets the coach lighten
+   * D1 and D7 of algo.md: once a day, after the night's sleep is in, else at 10:00 or 2 h before the session, lets the coach lighten
    * today's session, then freezes it. Returns null when already decided today or nothing is planned.
    */
   morningDecision(): ChangeResponse | null {
@@ -302,6 +346,8 @@ export class PlanService {
     if (this.#stores.meta.get(MORNING_DECISION)?.value === today) return null;
     const before = this.coachState();
     const session = before.sessions.find((s) => dateOf(s.start) === today && s.status === "planned" && !s.frozen);
+    const nightSynced = this.#stores.dailySignal.get(today)?.sleepMin !== undefined;
+    if (!this.#coach.decisionDue(now, session?.start ?? null, nightSynced)) return null;
     let response: ChangeResponse | null = null;
     if (session) {
       const signals = this.#stores.dailySignal.overlapping(addDays(today, -29), addDays(today, 1));
@@ -334,7 +380,21 @@ export class PlanService {
       settings: this.profile(),
       program: this.program(),
       health: this.health(),
+      activities: this.#stores.activity.overlapping(`${addDays(from, -HISTORY_DAYS)}T00:00`, this.#now()),
+      fitness: this.#stores.fitnessEstimate.list().at(-1) ?? null,
+      feels: this.#feels(),
     };
+  }
+
+  /** Feel answers of the runs matched to a session, for SG4. */
+  #feels(): CoachState["feels"] {
+    const today = dateOf(this.#now());
+    return this.#stores.activity.overlapping(`${addDays(today, -RECENT_DAYS)}T00:00`, this.#now()).flatMap((a) => {
+      const session = a.sessionId ? this.#stores.plannedSession.get(a.sessionId) : undefined;
+      return a.feel && session
+        ? [{ sessionId: session.id, date: dateOf(session.start), feel: a.feel, rpeTarget: session.rpeTarget }]
+        : [];
+    });
   }
 
   #upcoming(state: CoachState, id: string): PlannedSession {
@@ -360,10 +420,13 @@ export class PlanService {
     movedId?: string,
   ): ChangeResponse {
     if (result.refusal) throw new InvalidInputError(result.refusal);
-    const healthWrites: PlanWrite[] =
+    const stateWrites: PlanWrite[] =
       JSON.stringify(result.state.health) === JSON.stringify(before.health)
         ? []
         : [{ table: "health", id: CURRENT, after: { id: CURRENT, value: result.state.health } }];
+    const fitness = result.state.fitness;
+    if (fitness && JSON.stringify(fitness) !== JSON.stringify(before.fitness))
+      stateWrites.push({ table: "fitness_estimate", id: fitness.id, after: fitness });
     const kept = new Set(result.state.sessions.map((s) => s.id));
     const sessionWrites: PlanWrite[] = [
       ...before.sessions
@@ -373,7 +436,7 @@ export class PlanService {
     ];
     const moved = movedSessions(before, result).filter(([, s]) => s.id !== movedId).length;
     const fullSummary = moved > 0 ? `${summary} · ${movedRunsText(moved)}` : summary;
-    const entry = this.#changes.record(fullSummary, [...writes, ...healthWrites, ...sessionWrites]);
+    const entry = this.#changes.record(fullSummary, [...writes, ...stateWrites, ...sessionWrites]);
     return {
       change: entry && { id: entry.id, summary: entry.summary },
       warnings: result.warnings.map((w) => w.message),

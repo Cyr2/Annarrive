@@ -10,6 +10,7 @@ import {
   evaluateTrends,
   paces,
   predictTime,
+  proposeMeasured,
 } from "../src/index.ts";
 import { easy, hard, sixBy800, state } from "./fixtures.ts";
 
@@ -168,5 +169,17 @@ describe("acceptProposal (RC9)", () => {
       NOW,
     );
     expect(r.state).toBe(st);
+  });
+});
+
+describe("proposeMeasured (F10, RC11)", () => {
+  it("proposes the first measured level in place of the provisional one", () => {
+    const measured = { vdot: 43.2, status: "measured" as const, source: "effort:a1" };
+    expect(proposeMeasured(40, measured, NOW)).toMatchObject({ kind: "vdot", from: 40, to: 43.2, ruleId: "F10" });
+  });
+
+  it("stays silent for another provisional guess or a level within half a point", () => {
+    expect(proposeMeasured(40, { vdot: 45, status: "provisional", source: "declared" }, NOW)).toBeNull();
+    expect(proposeMeasured(40, { vdot: 40.4, status: "measured", source: "effort:a1" }, NOW)).toBeNull();
   });
 });

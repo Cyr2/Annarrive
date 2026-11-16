@@ -70,12 +70,8 @@ export function createJobs(services: {
       due: ({ hour, minute }) => hour >= 5 && hour < 10 && minute % 15 === 0,
       run: services.syncRecovery,
     },
-    // D1: decides with whatever arrived when the sleep never did; does nothing if already decided.
-    {
-      name: "Décision du matin",
-      due: ({ hour, minute }) => hour === 10 && minute === 0,
-      run: services.morningDecision,
-    },
+    // D1: the coach says when it is due (10:00, or 2 h before an earlier session); a no-op once decided.
+    { name: "Décision du matin", due: ({ minute }) => minute % 5 === 0, run: services.morningDecision },
     {
       name: "Semaine suivante",
       due: (t) => t.weekday === 7 && t.hour === 18 && t.minute === 0,
