@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Lint and format
+        run: pnpm lint
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Tests with coverage thresholds
+        run: pnpm test
+      - name: Build
+        run: pnpm build
+      - name: Lighthouse (mobile, every category at least 95)
+        run: pnpm lighthouse
+        env:
+          LHCI_BUILD_CONTEXT__CURRENT_BRANCH: ${{ github.head_ref || github.ref_name }}
+
+  bridge:
+    name: garmin-bridge
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: apps/garmin-bridge
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run pytest -q
+
+  docker:
+    name: docker
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build the app image
+        run: docker build -t talaria .
+      - name: The app starts and answers its health check
+        run: |
+          docker run -d --name talaria -p 8787:8787 talaria
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8787/api/health; then exit 0; fi
+            sleep 1
+          done
+          docker logs talaria
+          exit 1
+      - name: Build the bridge image
+        run: docker build -t garmin-bridge apps/garmin-bridge

@@ -1,0 +1,15 @@
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  test: {
+    include: ["test/**/*.test.ts"],
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.ts"],
+      // Process entry point: only wires the app to a port.
+      exclude: ["src/index.ts"],
+      reporter: ["text-summary"],
+      thresholds: { lines: 80, functions: 80, branches: 75, statements: 80 },
+    },
+  },
+});
