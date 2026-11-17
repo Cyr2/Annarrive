@@ -71,7 +71,12 @@ export function frenchWeekday(localDate: string): string {
   return weekdays[weekdayOf(localDate) - 1] ?? "";
 }
 
-/** "mercredi 18:00" */
+/** "18:00", "7:30": the clock as the app writes it, without a zero in front of the hour. */
+export function frenchClock(localDateTime: string): string {
+  return localDateTime.slice(11, 16).replace(/^0/, "");
+}
+
+/** "mercredi 18:00", "mardi 7:30" */
 export function frenchMoment(localDateTime: string): string {
-  return `${frenchWeekday(dateOf(localDateTime))} ${localDateTime.slice(11, 16)}`;
+  return `${frenchWeekday(dateOf(localDateTime))} ${frenchClock(localDateTime)}`;
 }

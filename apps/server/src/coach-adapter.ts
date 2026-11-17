@@ -1,6 +1,12 @@
 import type { CalEvent, Result, Session, Settings, State } from "@annarrive/coach";
 import * as coach from "@annarrive/coach";
-import type { CalendarEvent, DailySignal, PlannedSession, Profile } from "@annarrive/protocol";
+import {
+  type CalendarEvent,
+  type DailySignal,
+  type PlannedSession,
+  type Profile,
+  sessionNames,
+} from "@annarrive/protocol";
 import {
   type CoachNote,
   type CoachPort,
@@ -9,7 +15,6 @@ import {
   coachFeasibility,
   type DailyDecisionResult,
 } from "./coach-port.ts";
-import { workoutNames } from "./garmin/workout.ts";
 import type { Activity } from "./storage/stores.ts";
 import { addDays, dateOf, mondayOf } from "./time.ts";
 
@@ -86,7 +91,7 @@ const mondays = (now: string): string[] => {
 /** "Sortie longue de mardi". */
 function sessionName(r: Result, id: string): string {
   const s = r.state.sessions.find((x) => x.id === id);
-  return s ? `${workoutNames[s.type]} de ${coach.DAY_NAMES[coach.weekday(s.start)]}` : "Une séance proche";
+  return s ? `${sessionNames[s.type]} de ${coach.DAY_NAMES[coach.weekday(s.start)]}` : "Une séance proche";
 }
 
 const toNotes = (r: Result): { changes: CoachNote[]; warnings: CoachNote[] } => ({
@@ -100,7 +105,7 @@ const toNotes = (r: Result): { changes: CoachNote[]; warnings: CoachNote[] } => 
     // H9: a session starting within 12 h is never moved without her say.
     ...(r.proposals ?? []).map((p) => ({
       ruleId: "H9",
-      message: `${sessionName(r, p.sessionId)} est en conflit : choisis un autre moment ou passe cette séance.`,
+      message: `${sessionName(r, p.sessionId)} tombe sur un créneau pris : choisis un autre moment ou passe cette séance.`,
     })),
   ],
 });
@@ -171,7 +176,20 @@ function initialFitness(st: CoachState, vo2max: number | undefined, now: string)
 
 const NO_FITNESS =
   "Reggie a besoin de ton niveau pour préparer ta semaine : indique un chrono récent ou cours avec ta montre.";
-const REST_ADVICE = "Tes signaux de récupération sont bas : repos conseillé aujourd'hui.";
+const SIGNAL_WORDS: Record<string, string> = {
+  SG1: "cœur au repos plus haut que d'habitude",
+  SG2: "nuit courte",
+  SG3: "récupération basse sur ta montre",
+  SG4: "ta dernière séance facile t'a paru dure",
+  SG5: "un examen aujourd'hui ou demain",
+};
+
+/** « nuit courte et cœur au repos plus haut que d'habitude »: what the morning check saw, for Anna. */
+function whyText(signals: string[]): string {
+  const words = signals.flatMap((id) => SIGNAL_WORDS[id] ?? []);
+  const last = words.pop();
+  return words.length > 0 ? `${words.join(", ")} et ${last}` : (last ?? "");
+}
 
 /** The real `CoachPort`: translates the stored shapes and lets `@annarrive/coach` decide everything. */
 export const coachAdapter: CoachPort = {
@@ -282,9 +300,11 @@ export const coachAdapter: CoachPort = {
       history.some((h) => h.date === yesterday) ? signalsOf(yesterday) : null,
       now,
     );
+    const why = whyText(signalsOf(today));
     const done = (state: CoachState, warnings: CoachNote[] = []): DailyDecisionResult => ({
       ...validated({ state, changes: [], warnings }, now),
       action: decision.action,
+      why,
     });
     if (!session) return done(st);
     let after = session;
@@ -294,7 +314,8 @@ export const coachAdapter: CoachPort = {
     if (!session.manual && st.health.kind !== "ok")
       after = coach.adaptForHealth(after, st.health, today, coach.paces(week.vdot));
     const sessions = st.sessions.map((s) => (s.id === session.id ? fromSession(after) : s));
-    const warnings = decision.action === "proposeRest" ? [{ ruleId: "D5", message: REST_ADVICE }] : [];
+    const warnings =
+      decision.action === "proposeRest" ? [{ ruleId: "D5", message: `Repos conseillé aujourd'hui : ${why}.` }] : [];
     return done({ ...st, sessions }, warnings);
   },
 

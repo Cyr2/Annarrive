@@ -67,7 +67,7 @@ describe("Reggie's tools", () => {
     expect(slots.json.best).toHaveLength(1);
 
     const moved = await t.call("move_session", { sessionId: "tonight", start: "2026-11-18T18:00" });
-    expect(moved.json.change.summary).toBe("Séance déplacée à mercredi 18:00");
+    expect(moved.json.change.summary).toBe("Fractionné passé à mercredi 18:00");
     expect(t.stores.plannedSession.get("tonight")?.start).toBe("2026-11-18T18:00");
     expect(t.widgets.map((w) => w.type)).toEqual(["slots", "change"]);
 
@@ -94,7 +94,7 @@ describe("Reggie's tools", () => {
   it("records sickness and pain as undoable health changes, and lifts them on feel_better", async () => {
     const t = prepare();
     const sick = await t.call("report_unavailable", { reason: "sick", feverOrChest: true });
-    expect(sick.json.change.summary).toBe("Malade : séances adaptées");
+    expect(sick.json.change.summary).toBe("Malade : footing tranquille jusqu'à ce que ça aille mieux");
     expect(t.services.plan.health()).toEqual({ kind: "sick", since: "2026-11-16" });
 
     await t.call("feel_better");

@@ -56,7 +56,11 @@ export type CoachNote = { ruleId: string; message: string; sessionId?: string };
 /** `refusal` is set when the coach rejects the action (`ok: false` in algo.md): nothing is written. */
 export type CoachResult = { state: CoachState; changes: CoachNote[]; warnings: CoachNote[]; refusal?: string };
 /** The M5 `dailyDecision` action, with the state where today's session is already lightened. */
-export type DailyDecisionResult = CoachResult & { action: "keep" | "easier" | "shorter" | "proposeRest" | "none" };
+export type DailyDecisionResult = CoachResult & {
+  action: "keep" | "easier" | "shorter" | "proposeRest" | "none";
+  /** The signals that made the morning check lighten the session, in words (« nuit courte et cœur au repos plus haut »). */
+  why?: string;
+};
 /**
  * The slice of `@annarrive/coach` the server calls, with the signatures of docs/specs/algo.md.
  * Every result is final: the coach has already run `guards.validateWeek` on it.

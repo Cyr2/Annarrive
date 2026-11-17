@@ -5,7 +5,7 @@ import { frenchSpaces } from "./Message.tsx";
 import { useChat } from "./store.ts";
 
 /** The same journeys as the buttons of Aujourd'hui, one tap away. */
-export const SHORTCUTS = ["Je suis malade", "Plus court", "Décaler à demain", "Pourquoi cette allure ?"];
+export const SHORTCUTS = ["Je suis malade", "Plus court", "Déplacer à demain", "Pourquoi cette allure ?"];
 
 /**
  * Shortcuts and the message field, floating just above the tab bar. It reports its height, so the

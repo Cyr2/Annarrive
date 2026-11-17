@@ -37,7 +37,7 @@ test("Semaine : appui long puis glisser une course vers un autre jour la déplac
   await pressAndDrag(page, run, friday.getByText("Déposer ici"));
   await page.mouse.up();
 
-  const moved = banner(page, "Séance déplacée à");
+  const moved = banner(page, /passée?s? à /);
   await expect(moved).toBeVisible();
   await expect(friday.getByRole("button", { name: /Footing/ })).toBeVisible();
   await expect(day(page, "2026-11-19").getByRole("button", { name: /Footing/ })).toHaveCount(0);

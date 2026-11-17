@@ -91,10 +91,10 @@ export default function WeekScreen() {
       {week && week.items.length === 0 && (
         <EmptyState
           icon="week"
-          title="Rien de prévu"
-          action={!week.readOnly && <Button onClick={add}>Ajouter une séance</Button>}
+          title="Rien de prévu pour l'instant"
+          action={!week.readOnly && <Button onClick={add}>Ajouter</Button>}
         >
-          Aucune course ni aucun cours cette semaine pour l'instant.
+          Ta semaine se remplit le dimanche soir.
         </EmptyState>
       )}
 

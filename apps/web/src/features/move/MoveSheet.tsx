@@ -33,7 +33,7 @@ export default function MoveSheet({ spec, ...sheet }: SheetProps<"move">) {
   const footer = stuck ? (
     <>
       <Button variant="filled" size="large" onClick={() => void act((api) => api.change(run.id, "jog"))}>
-        Remplacer par un footing ce soir
+        Remplacer par un footing tranquille
       </Button>
       <Button size="large" onClick={() => void act((api) => api.skip(run.id))}>
         Passer cette séance
@@ -54,7 +54,7 @@ export default function MoveSheet({ spec, ...sheet }: SheetProps<"move">) {
         disabled={!slot}
         onClick={() => slot && void act((api) => api.move(run.id, slot))}
       >
-        {slot ? `Déplacer à ${shortMoment(slot, today)}` : "Choisis un moment"}
+        {slot ? `Déplacer : ${shortMoment(slot, today)}` : "Choisis un moment"}
       </Button>
       {/* Skipping is its own decision, never made up later (algo.md EV21). */}
       <TextButton onClick={() => void act((api) => api.skip(run.id))}>Passer cette séance</TextButton>

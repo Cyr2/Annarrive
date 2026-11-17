@@ -90,7 +90,7 @@ describe("today and week", () => {
     const t = await ready();
     const response = await t.call("GET", "/api/weeks/2026-47");
     expect(response.status).toBe(400);
-    expect(response.json).toEqual({ error: expect.stringContaining("AAAA-Wss") });
+    expect(response.json).toEqual({ error: expect.stringContaining("semaine") });
   });
 });
 
@@ -116,7 +116,7 @@ describe("calendar events", () => {
       end: "2026-11-18T22:00",
       recurrence: "none",
     });
-    expect(created.change?.summary).toBe("Indispo ajoutée · Footing passé à mercredi 22:30");
+    expect(created.change?.summary).toBe("Occupée ajoutée · Footing passé à mercredi 22:30");
     expect(t.stores.plannedSession.get("run")?.start).toBe("2026-11-18T22:30");
 
     await undo(t, created.change?.id);
@@ -235,7 +235,7 @@ describe("moving a session", () => {
 
     const moved = await change(t, "POST", "/api/sessions/q/move", { start: "2026-11-18T18:00" });
 
-    expect(moved.change?.summary).toBe("Séance déplacée à mercredi 18:00");
+    expect(moved.change?.summary).toBe("Fractionné passé à mercredi 18:00");
     expect(t.stores.plannedSession.get("q")).toMatchObject({ start: "2026-11-18T18:00", manual: true });
     await undo(t, moved.change?.id);
     expect(t.stores.plannedSession.get("q")).toMatchObject({ start: "2026-11-19T18:00", manual: false });
@@ -278,7 +278,7 @@ describe("settings", () => {
     expect(profileSchema.parse((await t.call("GET", "/api/profile")).json).runsPerWeek).toBe(3);
 
     const saved = await change(t, "PATCH", "/api/profile", { runsPerWeek: 4, bedtime: "22:30" });
-    expect(saved.change?.summary).toBe("Réglages enregistrés");
+    expect(saved.change?.summary).toBe("Reggie a réorganisé ta semaine");
     expect((await t.call("GET", "/api/profile")).json).toMatchObject({ runsPerWeek: 4, bedtime: "22:30" });
 
     await undo(t, saved.change?.id);

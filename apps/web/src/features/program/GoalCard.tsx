@@ -1,6 +1,6 @@
 import type { Program } from "../../api/schemas.ts";
 import { cx } from "../../lib/cx.ts";
-import { longDate } from "../../lib/date.ts";
+import { daysBetween, longDate } from "../../lib/date.ts";
 import { Button } from "../../ui/controls.tsx";
 import { PaceValue } from "../../ui/PaceValue.tsx";
 import { Surface } from "../../ui/Surface.tsx";
@@ -43,7 +43,7 @@ function Maintenance() {
       <div className="flex flex-col gap-1">
         <span className="t-cap">Sans objectif</span>
         <h2 className="t-large m-0">Mode entretien</h2>
-        <span className="t-sub">2 à 3 courses faciles par semaine et une séance de qualité.</span>
+        <span className="t-sub">2 à 3 courses faciles par semaine, dont une un peu plus rythmée.</span>
       </div>
       <Button variant="tinted" onClick={() => show({ kind: "goal" })}>
         Choisir un objectif
@@ -69,12 +69,12 @@ export function GoalCard({ program, today }: { program: Program; today: string }
       </div>
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
         <div className="flex flex-col gap-1">
-          <span className="t-cap">{left.unit ? "Plus que" : "C'est aujourd'hui"}</span>
+          <span className="t-cap">{left.unit ? "Plus que" : left.label}</span>
           <PaceValue value={left.value} unit={left.unit} size="figure" />
         </div>
         <div className="flex flex-col gap-1">
           <span className="t-cap">{goal.targetTime ? "Chrono visé" : "Objectif"}</span>
-          <PaceValue value={goal.targetTime ?? "La finir"} size="figure" />
+          <PaceValue value={goal.targetTime ?? "Finir"} size="figure" />
         </div>
       </div>
       {goal.targetTag && <TargetTag kind={goal.targetTag} className="-mt-2" />}
@@ -84,7 +84,9 @@ export function GoalCard({ program, today }: { program: Program; today: string }
           {note && <span className="t-sub">{note}</span>}
         </div>
       )}
-      <Button onClick={() => show({ kind: "goal" })}>Modifier l'objectif</Button>
+      <Button onClick={() => show({ kind: "goal" })}>
+        {daysBetween(today, goal.date) < 0 ? "Choisir un nouvel objectif" : "Modifier l'objectif"}
+      </Button>
     </Surface>
   );
 }

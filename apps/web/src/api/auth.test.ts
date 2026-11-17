@@ -72,7 +72,7 @@ describe("auth calls", () => {
 
   it("refuses options it cannot read, before the browser prompts", async () => {
     const fetcher = vi.fn<typeof fetch>(async () => json({ challenge: 42 }));
-    await expect(registerPasskey(fetcher)).rejects.toThrow("Le serveur a répondu de travers");
+    await expect(registerPasskey(fetcher)).rejects.toThrow("Ça n'a pas marché");
     expect(browser.startRegistration).not.toHaveBeenCalled();
   });
 });

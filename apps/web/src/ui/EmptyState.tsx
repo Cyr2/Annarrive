@@ -31,7 +31,7 @@ export function LoadFailed({ title, what, onRetry }: { title: string; what: stri
         </Button>
       }
     >
-      Impossible de charger {what}. Vérifie ta connexion, puis réessaie.
+      Impossible de charger {what}. Réessaie dans un instant.
     </EmptyState>
   );
 }

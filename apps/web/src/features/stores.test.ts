@@ -38,7 +38,7 @@ describe("plan store", () => {
     action.onClick();
     await vi.waitFor(() => expect(plan.getState().today?.session?.id).toBe(RUN));
     expect(plan.getState().lastChangeId).toBeUndefined();
-    expect(notify).toHaveBeenLastCalledWith("Modification annulée");
+    expect(notify).toHaveBeenLastCalledWith("Changement annulé");
   });
 
   it("uses a custom banner action, or none when quiet", async () => {

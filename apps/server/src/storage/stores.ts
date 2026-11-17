@@ -60,6 +60,9 @@ export const activitySchema = z.object({
   sessionId: z.string().optional(),
 });
 export type Activity = z.infer<typeof activitySchema>;
+
+/** How a session felt when no run from the watch matched it (« Oui, je l'ai faite »): keyed by the session's id. */
+const sessionFeelSchema = z.object({ id: z.string(), feel: feelSchema });
 /** One estimate per day, the latest wins; `provisional` until a measured effort backs it (F10). */
 const fitnessEstimateSchema = z.object({
   id: z.string(),
@@ -159,6 +162,7 @@ export function createStores(db: DatabaseSync) {
     passkey: new DocumentStore(db, "passkey", passkeySchema),
     meta: new DocumentStore(db, "meta", single(z.string())),
     watchSync: new DocumentStore(db, "watch_sync", watchSyncSchema),
+    sessionFeel: new DocumentStore(db, "session_feel", sessionFeelSchema),
   };
 }
 export type Stores = ReturnType<typeof createStores>;

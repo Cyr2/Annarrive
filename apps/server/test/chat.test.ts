@@ -64,7 +64,7 @@ describe("POST /api/chat", () => {
     expect(prompts[0]).toContain(
       "Anna a ouvert la conversation depuis l'écran Aujourd'hui, à propos de la séance tonight.",
     );
-    expect(prompts[0]).toContain("Nous sommes lundi 08:00, le 2026-11-16");
+    expect(prompts[0]).toContain("Nous sommes lundi 8:00, le 2026-11-16");
 
     const history = chatHistorySchema.parse(await (await t.request("GET", "/api/chat")).json());
     expect(history.messages.map((m) => [m.role, m.text])).toEqual([
@@ -121,10 +121,12 @@ describe("Changer, Pas dispo and Ça va mieux routes", () => {
     expect(changed.change?.summary).toBe("Séance passée en allure facile");
 
     const sick = await t.request("POST", "/api/unavailable", { reason: "sick", feverOrChest: false });
-    expect(changeResponseSchema.parse(await sick.json()).change?.summary).toBe("Malade : séances adaptées");
+    expect(changeResponseSchema.parse(await sick.json()).change?.summary).toBe(
+      "Malade : footing tranquille jusqu'à ce que ça aille mieux",
+    );
     expect((await t.request("POST", "/api/unavailable", { reason: "pain", where: "dos" })).status).toBe(400);
 
     const better = changeResponseSchema.parse(await (await t.request("POST", "/api/feel-better")).json());
-    expect(better.change?.summary).toBe("Retour progressif lancé");
+    expect(better.change?.summary).toBe("Ça va mieux : tes séances reprennent");
   });
 });

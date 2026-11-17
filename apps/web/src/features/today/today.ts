@@ -50,7 +50,7 @@ export function sessionContext(run: Run, today: string): string {
 export const WATCH_LABEL: Record<WatchStatus, string> = {
   synced: "Sur ta montre",
   sending: "Envoi à ta montre…",
-  failed: "Pas sur ta montre",
+  failed: "Pas envoyée",
   off: "Montre pas reliée",
 };
 

@@ -1,4 +1,5 @@
 import { useEffect, useId } from "react";
+import { PRIVACY_NOTE } from "../../lib/privacy.ts";
 import { Icon } from "../../ui/Icon.tsx";
 import { Group, Section } from "../../ui/List.tsx";
 import { SwitchRow } from "../program/SwitchRow.tsx";
@@ -27,7 +28,7 @@ export function HealthStep() {
       {draft.pain && draft.zone && (
         <PainLevel pain={draft.level} zone={draft.zone} onChange={(level) => update({ level })} />
       )}
-      <Section title="Ce qu'Annarrivé lit" footnote="Tes données restent sur le serveur de l'app. Rien n'est partagé.">
+      <Section title="Ce qu'Annarrivé lit" footnote={PRIVACY_NOTE}>
         <Group>
           <SwitchRow
             title="Sommeil et fréquence cardiaque"
@@ -37,7 +38,7 @@ export function HealthStep() {
           />
           <SwitchRow
             title="Cycle menstruel"
-            detail="Désactivé par défaut. Activé, tu peux signaler un symptôme à Reggie, qui en tient compte comme d'une fatigue. Tes séances ne suivent jamais la phase du cycle."
+            detail="Tu peux signaler un symptôme à Reggie, qui en tient compte comme d'une fatigue. Tes séances ne suivent jamais la phase du cycle."
             checked={draft.cycleTracking}
             onChange={(cycleTracking) => update({ cycleTracking })}
           />

@@ -80,7 +80,7 @@ export function isPublicAddress(address: string): boolean {
   return version !== 0 && !internal.check(address, version === 4 ? "ipv4" : "ipv6");
 }
 
-const INTERNAL_LINK = "Ce lien mène à une adresse interne : colle le lien ICS public de ton université.";
+const INTERNAL_LINK = "Ce lien mène à une adresse interne : colle le lien d'abonnement public de ton emploi du temps.";
 const UNREACHABLE = "L'emploi du temps ne répond pas : réessaie dans quelques minutes.";
 
 type Resolve = (hostname: string, callback: (error: Error | null, addresses: LookupAddress[]) => void) => void;
@@ -148,10 +148,17 @@ export function icsFetcher({
     const location = status >= 300 && status < 400 ? res.headers.location : undefined;
     if (location === undefined && status >= 200 && status < 300) return readCapped(res, maxBytes);
     res.resume();
-    if (location === undefined)
-      return Promise.reject(new TimetableError(`L'emploi du temps a répondu ${status} : vérifie le lien ICS.`));
+    if (location === undefined) {
+      // The status code stays in the logs: Anna cannot act on it.
+      console.warn(`Emploi du temps : réponse ${status}`);
+      return Promise.reject(
+        new TimetableError("Ton emploi du temps ne répond pas à ce lien : vérifie-le dans Programme."),
+      );
+    }
     if (redirectsLeft === 0)
-      return Promise.reject(new TimetableError("L'emploi du temps redirige trop : vérifie le lien ICS."));
+      return Promise.reject(
+        new TimetableError("Ton emploi du temps redirige trop de fois : vérifie le lien dans Programme."),
+      );
     return get(new URL(location, from).toString(), redirectsLeft - 1, signal);
   };
   return (url) => get(url, maxRedirects, AbortSignal.timeout(timeoutMs));
@@ -168,7 +175,7 @@ function readCapped(res: IncomingMessage, maxBytes: number): Promise<string> {
     res.on("data", (chunk: Buffer) => {
       size += chunk.length;
       if (size <= maxBytes) return chunks.push(chunk);
-      fail(new TimetableError("L'emploi du temps reçu est trop gros : vérifie le lien ICS."));
+      fail(new TimetableError("Ton emploi du temps est trop gros pour être lu : vérifie le lien dans Programme."));
       res.destroy();
     });
     res.on("end", () => done(Buffer.concat(chunks).toString("utf8")));

@@ -29,7 +29,7 @@ test("Programme : changer de course recalcule le plan sans toucher la semaine en
   expect(await week.allInnerTexts()).toEqual(thisWeek);
 
   await changed.getByRole("button", { name: "Annuler" }).click();
-  await expect(banner(page, "Modification annulée")).toBeVisible();
+  await expect(banner(page, "Changement annulé")).toBeVisible();
   await page.getByRole("link", { name: "Programme" }).click();
   await expect(card.getByRole("heading")).toHaveText("Semi-marathon");
 });

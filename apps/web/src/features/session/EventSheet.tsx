@@ -13,7 +13,7 @@ import { findItem, todayOf } from "../plan/selectors.ts";
 import { usePlan } from "../plan/store.ts";
 import type { SheetProps } from "../sheets/SheetHost.tsx";
 
-const TITLES = { class: "Cours", revision: "Révision", busy: "Indispo", strength: "Muscu" } as const;
+const TITLES = { class: "Cours", revision: "Révision", busy: "Occupée", strength: "Muscu" } as const;
 
 /** A class (read only, "Ce cours n'a pas lieu"), a revision or a busy slot (day and time can change). */
 export default function EventSheet({ spec, ...sheet }: SheetProps<"event">) {

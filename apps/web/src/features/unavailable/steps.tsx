@@ -70,8 +70,12 @@ export function ReasonStep({ draft, today, onChange }: ReasonProps) {
 }
 
 const FEVER = [
-  { value: true, label: "Oui", detail: "Repos tant qu'il y a de la fièvre. Rien n'est bloqué." },
-  { value: false, label: "Non", detail: "Un rhume : tes courses restent, en endurance fondamentale." },
+  {
+    value: true,
+    label: "Oui",
+    detail: "Repos conseillé tant que tu as de la fièvre. Si tu veux courir, footing court et tranquille.",
+  },
+  { value: false, label: "Non", detail: "Un rhume : tes courses restent, en footing tranquille." },
 ];
 
 /** A closed question: two cards, and the tap answers it (no Continuer). */
@@ -125,7 +129,7 @@ export function PainStep({ pain, zone, onChange }: { pain: number; zone?: string
         <label htmlFor="pain" className="t-cap">
           {zone ? `${zone}, ` : ""}combien sur 10 en marchant ?
         </label>
-        <PaceValue value={String(pain)} unit="/ 10" size="num" />
+        <PaceValue value={String(pain)} unit="sur 10" size="num" />
       </div>
       <Slider id="pain" value={pain} onChange={onChange} min={0} max={10} valueText={`${pain} sur 10`} />
       <div className="t-cap flex justify-between">

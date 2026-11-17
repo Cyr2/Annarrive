@@ -112,7 +112,7 @@ export function applyChange(st: State, id: string, option: ChangeOption, now: st
       state: st,
       previous: st,
       changes: [],
-      warnings: [{ ruleId: "EV4", message: "Option indisponible", sessionId: id }],
+      warnings: [{ ruleId: "EV4", message: "Cette option n'est pas possible pour cette séance", sessionId: id }],
     };
   }
   const after = { ...chosen, manual: true };
@@ -258,7 +258,7 @@ export function feelBetter(st: State, now: string): Result {
     const resumed = resumeWeek(plannedFrom(st, addDays(today, 1)), daysBetween(h.since, today));
     return finish(st, putAll({ ...st, health: { kind: "ok" } }, resumed.week), resumed.changes, []);
   }
-  return finish(st, st, [], [{ ruleId: "EV13", message: "Aucune restriction en cours" }]);
+  return finish(st, st, [], [{ ruleId: "EV13", message: "Rien à lever : aucune restriction n'est en cours" }]);
 }
 
 /** EV14: new settings, the week repaired by M4, manual sessions kept with a warning. */
@@ -356,7 +356,12 @@ export function logFeel(st: State, sessionId: string, feel: Feel): Result {
   const feels = [...st.feels, { sessionId, date: dateOf(s.start), feel, rpeTarget: s.rpeTarget }];
   const check = evaluateFeels(feels, st.vdot, s.start);
   const warnings = check
-    ? [{ ruleId: "RC5", message: "Trois séances faciles ressenties dures : on vérifie tes allures ?" }]
+    ? [
+        {
+          ruleId: "RC5",
+          message: "Tes trois derniers footings t'ont paru durs : je te conseille de les courir plus doucement",
+        },
+      ]
     : [];
   return finish(st, { ...st, feels }, [], warnings);
 }
@@ -375,7 +380,8 @@ const refuse = (st: State, id: string, message: string): Result => ({
  */
 export function confirmDone(st: State, id: string, now: string): Result {
   const s = find(st, id);
-  if (s.status !== "planned" || s.start > now) return refuse(st, id, "Cette séance n'a pas encore eu lieu");
+  if (s.status !== "planned" || s.start > now)
+    return refuse(st, id, "Cette séance n'a pas encore eu lieu : tu pourras la valider après");
   const after: Session = { ...s, status: "done" };
   return finish(st, put(st, after), [change("EV21", s, after)], []);
 }

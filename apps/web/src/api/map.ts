@@ -25,6 +25,7 @@ import type {
   UnavailablePreview,
   WatchInfo,
 } from "@annarrive/protocol";
+import { agreeWith, sessionNames } from "@annarrive/protocol";
 import {
   daysBetween,
   decimal,
@@ -68,35 +69,21 @@ import type {
 
 type RunType = PlannedSession["type"];
 
-const TITLES: Record<RunType, string> = {
-  E: "Footing",
-  RECUP: "Footing de récupération",
-  L: "Sortie longue",
-  T: "Seuil",
-  CRUISE: "Seuil en fractions",
-  I: "Fractionné",
-  R: "Vitesse",
-  SPE: "Allure course",
-  COTES_C: "Côtes courtes",
-  COTES_L: "Côtes longues",
-  FARTLEK: "Fartlek",
-  TEST: "Test",
-  RACE: "Ta course",
-};
+const TITLES = sessionNames;
 
 const WHY: Record<RunType, string> = {
-  E: "Endurance fondamentale : elle construit ta base sans te fatiguer.",
+  E: "Un footing tranquille : il construit ta base d'endurance sans te fatiguer.",
   RECUP: "Garde les jambes en mouvement pour récupérer de la séance d'avant.",
   L: "Habitue ton corps à durer, à allure facile.",
-  T: "Repousse ton seuil : tenir plus longtemps une allure soutenue.",
-  CRUISE: "Le seuil en fractions : le même effet que le seuil, plus facile à tenir.",
-  I: "Des fractions intenses pour faire monter ta VO2max.",
-  R: "Des fractions très courtes pour ta vitesse et ta foulée.",
-  SPE: "Tu répètes l'allure de ta course.",
+  T: "Une allure soutenue mais tenable : tu repousses le moment où ça devient dur.",
+  CRUISE: "La même allure soutenue, coupée en morceaux pour la tenir plus facilement.",
+  I: "Des efforts courts et rapides : l'allure de ton objectif te paraîtra plus facile.",
+  R: "Des efforts très courts pour gagner en vitesse et en foulée.",
+  SPE: "Tu t'habitues à l'allure de ton objectif, pour qu'elle te paraisse naturelle le jour J.",
   COTES_C: "La côte renforce tes jambes et ta foulée.",
   COTES_L: "De longues montées pour ton endurance et ta force.",
-  FARTLEK: "Des changements d'allure au ressenti.",
-  TEST: "Mesure ta forme pour ajuster tes allures.",
+  FARTLEK: "Tu accélères et tu ralentis au ressenti, sans regarder ta montre.",
+  TEST: "Un effort pour mesurer ta forme et régler tes allures.",
   RACE: "Le jour J. Pars à ton allure, pas plus vite.",
 };
 
@@ -126,6 +113,7 @@ const RACES = new Map([
 const DISTANCES = [5000, 10000, 21097.5, 42195] as const;
 
 export const dateOf = (at: string) => at.slice(0, 10);
+const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 /** "07:30" and "2026-11-16T07:30" both give "7:30", the screens' clock. */
 export const clockOf = (at: string) => timeOf(minutesOf(at.length > 5 ? at.slice(11, 16) : at));
 const fullClock = (clock: string) => clock.padStart(5, "0");
@@ -274,15 +262,19 @@ function raceOf(distanceM: number): string {
 }
 
 export function toProposal(proposal: ServerProposal): Proposal {
-  if (proposal.kind === "test") return { id: proposal.id, text: "Je propose un test pour recaler tes allures." };
+  if (proposal.kind === "test")
+    return { id: proposal.id, text: "Je te propose un test de forme pour régler tes allures." };
   if (proposal.kind === "goal")
-    return { id: proposal.id, text: "Ton chrono visé semble à revoir : je propose de l'ajuster." };
+    return {
+      id: proposal.id,
+      text: "Tes dernières courses donnent un autre chrono pour ton objectif. Je te propose de l'ajuster, ou tu gardes le tien.",
+    };
   return {
     id: proposal.id,
     text:
       proposal.to > proposal.from
-        ? "Tes dernières séances clés sont bien passées : je propose des allures un peu plus rapides."
-        : "Tes dernières séances clés ont été dures : je propose des allures un peu plus faciles.",
+        ? "Tes dernières séances rapides sont bien passées : je te propose des allures un peu plus vives."
+        : "Tes dernières séances rapides ont été dures : je te propose des allures un peu plus douces.",
   };
 }
 
@@ -303,7 +295,7 @@ export function toActivity(run: ActivityView, session: SessionView | null): Acti
   const paceS = run.distM > 0 ? (run.durMin * 60_000) / run.distM : 0;
   return {
     id: run.id,
-    title: planned ? TITLES[planned.type] : "Course libre",
+    title: planned ? `${TITLES[planned.type]} ${agreeWith(planned.type, "fait")}` : "Course libre",
     receivedAt: clockOf(run.start),
     distanceKm: Math.round(run.distM / 100) / 10,
     duration: clockDuration(run.durMin),
@@ -311,7 +303,7 @@ export function toActivity(run: ActivityView, session: SessionView | null): Acti
     mainPace: paceS ? paceText([paceS, paceS]) : "",
     verdict: planned
       ? `Prévu ${duration(Math.round(planned.durMin))}, fait en ${duration(Math.round(run.durMin))}`
-      : "Hors programme, comptée dans ton volume",
+      : "Course en plus, je la compte dans ta semaine.",
     askFeel: run.feel === undefined,
     feel: run.answeredFeel && FEELS[run.answeredFeel],
   };
@@ -337,7 +329,7 @@ export function toToday(
           daysLeft: daysBetween(today.date, goal.date),
         }
       : undefined,
-    session: today.session && shown(today.session) ? toRun(today.session) : undefined,
+    session: today.session && shown(today.session) ? { ...toRun(today.session), lightened: today.note } : undefined,
     // A morning jog does not hide the evening session still ahead.
     activity:
       today.activity && (today.session?.status !== "planned" || today.activity.sessionId === today.session.id)
@@ -508,7 +500,7 @@ export function toMoveOptions(slots: MoveSlots): MoveOptions {
     slots: slots.best.map((b) => ({
       date: dateOf(b.slot.start),
       start: clockOf(b.slot.start),
-      why: b.reason,
+      why: capitalize(b.reason),
       consequence,
     })),
     blocked: [...blocked].map(([date, reason]) => ({ date, reason })),
@@ -574,10 +566,11 @@ export function toPreviewRows(preview: UnavailablePreview, today: string): Chang
   ];
 }
 
-function toWidget(widget: ChatWidget): Widget | undefined {
+function toWidget(widget: ChatWidget, question: string): Widget | undefined {
   switch (widget.type) {
     case "choices":
-      return { type: "choices", label: "Ta réponse", options: widget.options };
+      // The question itself names the buttons for VoiceOver: every answer group is not just « Ta réponse ».
+      return { type: "choices", label: question || "Ta réponse", options: widget.options };
     case "slider":
       return { type: "scale", label: widget.label };
     case "slots":
@@ -587,7 +580,7 @@ function toWidget(widget: ChatWidget): Widget | undefined {
         slots: widget.slots.map((s) => ({
           date: dateOf(s.slot.start),
           start: clockOf(s.slot.start),
-          why: s.reason,
+          why: capitalize(s.reason),
           consequence: "",
         })),
       };
@@ -638,7 +631,7 @@ export function toChatEvents(event: ChatStreamEvent, draft: { id: string; text: 
 /** One screen message per widget, the text on the first, so each widget keeps its own answer. */
 export function toMessages(message: ServerMessage): ChatMessage[] {
   const role = message.role === "anna" ? "user" : "reggie";
-  const widgets = message.widgets.flatMap((w) => toWidget(w) ?? []);
+  const widgets = message.widgets.flatMap((w) => toWidget(w, message.text) ?? []);
   if (widgets.length === 0) return [{ id: message.id, role, text: message.text }];
   return widgets.map((widget, i) => ({
     id: i === 0 ? message.id : `${message.id}-${i}`,

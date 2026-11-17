@@ -68,7 +68,7 @@ const onFever: Handler = ({ pending, session, text, api, changed }) => {
         )
       : changed(
           change,
-          "Un rhume, alors. Tes séances restent en endurance fondamentale, sans fractionné, jusqu'à ce que ça aille mieux.",
+          "Un rhume, alors. Tes séances restent en footing tranquille, sans fractionné, jusqu'à ce que ça aille mieux.",
         );
   })();
 };
@@ -95,10 +95,10 @@ const onPain: Handler = ({ pending, text, session, today, api, memory, say }) =>
     yield say(
       high
         ? `Je te conseille le repos ou du vélo ce soir. Si tu veux courir, 20 min tranquille, et arrête-toi si ça monte. Si ça dure plus de 3 jours, montre ton ${pending.zone.toLowerCase()} à un kiné.`
-        : "Pas de fractionné ce soir. Un footing en endurance fondamentale ne devrait pas aggraver ça. Arrête-toi si la douleur monte.",
+        : "Pas de fractionné ce soir. Un footing tranquille ne devrait pas aggraver ça. Arrête-toi si la douleur monte.",
     );
     const preview = {
-      title: high ? "Footing tranquille · 20 min" : "Endurance fondamentale · 30 min",
+      title: high ? "Footing tranquille · 20 min" : "Footing tranquille · 30 min",
       detail: `${slotLabel(session, today)} · allure 6:30 à 7:00`,
     };
     yield say("", {
@@ -180,7 +180,7 @@ const onHealth: Handler = ({ text, say, pause }) => {
     await pause(1600);
     yield topic === SHIN
       ? say(
-          "Une douleur au tibia en courant vient souvent d'une hausse trop rapide du volume. Je ne pose pas de diagnostic : si ça dure plus de 3 jours ou dépasse 4 sur 10, montre-la à un kiné ou un médecin.",
+          "Une douleur au tibia en courant vient souvent d'une hausse trop rapide du nombre de kilomètres. Je ne pose pas de diagnostic : si ça dure plus de 3 jours ou dépasse 4 sur 10, montre-la à un kiné ou un médecin.",
           { source: SHIN },
         )
       : say(
@@ -206,7 +206,7 @@ const onWhy: Handler = (t) =>
 
 const onBetter: Handler = (t) =>
   t.text.includes("mieux")
-    ? reply("Bonne nouvelle. Encore 3 jours en endurance fondamentale, puis ton plan reprend normalement.")(t)
+    ? reply("Bonne nouvelle. Encore 3 jours de footing tranquille, puis ton plan reprend normalement.")(t)
     : undefined;
 
 const HANDLERS = [

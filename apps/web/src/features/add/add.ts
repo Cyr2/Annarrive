@@ -16,7 +16,8 @@ export const repeatLabel = (repeat: Repeat) => REPEATS.find((r) => r.value === r
 /** "Lundi 20:00 · chaque semaine", or "Pas placée cette semaine". */
 export function strengthWhen(template: Strength): string {
   if (!template.placed) return "Pas placée cette semaine";
-  return `${weekdayName(template.weekday)} ${template.start} · ${repeatLabel(template.repeat).toLowerCase()}`;
+  const when = `${weekdayName(template.weekday)} ${template.start}`;
+  return template.repeat === "never" ? when : `${when} · ${repeatLabel(template.repeat).toLowerCase()}`;
 }
 
 /** "Lundi 20:00", for the Programme list where the row is narrow. */
@@ -55,7 +56,7 @@ export function revisionEvent(form: Form): NewEvent {
 }
 
 export function busyEvent(form: Form): NewEvent {
-  return { kind: "busy", title: form.title.trim() || "Indispo", date: form.date, start: form.start, end: form.end };
+  return { kind: "busy", title: form.title.trim() || "Occupée", date: form.date, start: form.start, end: form.end };
 }
 
 /** Whether "Ajouter" can be pressed: a day, and a time (a révision) or a span that ends after it starts. */

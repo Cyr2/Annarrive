@@ -10,7 +10,7 @@ const LENGTHS = [
 
 type Props = { kind: "revision" | "busy"; form: Form; today: string; onChange: (patch: Partial<Form>) => void };
 
-/** Révision (length in buttons, day, time, repeat) or Indispo (optional title, day, start and end). */
+/** Révision (length in buttons, day, time, repeat) or Occupée (optional title, day, start and end). */
 export function EventForm({ kind, form, today, onChange: set }: Props) {
   return (
     <>

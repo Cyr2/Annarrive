@@ -4,7 +4,7 @@ import { ApiError } from "./errors.ts";
 import { serverMessage } from "./http.ts";
 
 const OFFLINE = "Pas de connexion au serveur : vérifie ton réseau, puis réessaie.";
-const UNEXPECTED = "Le serveur a répondu de travers : recharge l'app, puis réessaie.";
+const UNEXPECTED = "Ça n'a pas marché : recharge l'app, puis réessaie.";
 
 /** Signing in happens before any session, so these calls skip the app's client and its 401 handling. */
 async function post(path: string, body?: unknown, fetcher: typeof fetch = fetch): Promise<unknown> {
@@ -18,7 +18,7 @@ async function post(path: string, body?: unknown, fetcher: typeof fetch = fetch)
   });
   if (!response.ok) {
     const message = await serverMessage(response);
-    throw new ApiError(response.status, message ?? `Le serveur a répondu ${response.status} : réessaie.`);
+    throw new ApiError(response.status, message ?? "Ça n'a pas marché : réessaie dans un instant.");
   }
   return response.status === 204 ? undefined : response.json().catch(() => undefined);
 }

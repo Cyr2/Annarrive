@@ -20,7 +20,7 @@ export function PlaceStep({ template, slot, today, onChange }: Props) {
             {duration(template.durationMin)}, {repeatLabel(template.repeat).toLowerCase()}
           </span>
         </span>
-        {template.legs && <LegsTag />}
+        {template.legs && !/jambe/i.test(template.name) && <LegsTag />}
       </Surface>
       <Group>
         <RowInput

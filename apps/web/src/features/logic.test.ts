@@ -147,7 +147,7 @@ describe("move", () => {
     expect(shortMoment({ date: "2026-11-18", start: "18:00" }, MONDAY)).toBe("mercredi 18:00");
     expect(shortMoment({ date: MONDAY, start: "7:30" }, MONDAY)).toBe("aujourd'hui à 7:30");
     expect(consequenceOf({ date: MONDAY, start: "19:30" }, options)).toBe("Rien d'autre ne bouge.");
-    expect(consequenceOf({ date: "2026-11-20", start: "18:00" }, options)).toMatch(/^Reggie vérifie/);
+    expect(consequenceOf({ date: "2026-11-20", start: "18:00" }, options)).toMatch(/^Si autre chose doit bouger/);
   });
   it("lists days and half hours", () => {
     expect(dayChoices(MONDAY, options)[5]?.blocked).toBe("Samedi est un jour sans course");
@@ -170,7 +170,7 @@ describe("add", () => {
   it("builds revisions and busy slots", () => {
     const form = { title: " ", date: MONDAY, start: "14:00", end: "16:00", minutes: 90, repeat: "weekly" as const };
     expect(revisionEvent(form)).toMatchObject({ end: "15:30", repeat: "weekly" });
-    expect(busyEvent(form).title).toBe("Indispo");
+    expect(busyEvent(form).title).toBe("Occupée");
     expect(isValidSpan("14:00", "9:00")).toBe(false);
     expect(isValidSpan("9:00", "14:00")).toBe(true);
     const draft = { title: "", date: MONDAY, start: "14:00", end: "9:00", minutes: 60, repeat: "never" as const };

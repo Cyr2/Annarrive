@@ -1,5 +1,5 @@
 import type { Activity, Feel, Run } from "../../api/schemas.ts";
-import { addDays, decimal } from "../../lib/date.ts";
+import { addDays, decimal, relativeMoment } from "../../lib/date.ts";
 import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
 import { Chip } from "../../ui/controls.tsx";
 import { Icon } from "../../ui/Icon.tsx";
@@ -12,7 +12,7 @@ import { Figure, ToneWash } from "./parts.tsx";
 // A no-break space keeps the "?" with its word.
 const FEEL_QUESTION = "Comment c'était ?";
 
-const FEELS: { value: Feel; label: string }[] = [
+export const FEELS: { value: Feel; label: string }[] = [
   { value: "easy", label: "Facile" },
   { value: "fine", label: "Correct" },
   { value: "hard", label: "Dur" },
@@ -47,8 +47,12 @@ export function AfterRun({ activity, next, today }: { activity: Activity; next?:
         </p>
       </Surface>
 
-      {activity.askFeel && <FeelPicker activity={activity} />}
-      <NoteForReggie title={activity.title} />
+      {activity.askFeel && (
+        <FeelPicker id={activity.id} feel={activity.feel} onPick={(feel) => logFeel(activity.id, feel)} />
+      )}
+      <NoteForReggie
+        context={`${activity.title}, ${relativeMoment(today, activity.receivedAt, today).replace(/^\S/, (c) => c.toLowerCase())}`}
+      />
       {next?.date === addDays(today, 1) ? (
         <NextRun run={next} today={today} label="Demain" />
       ) : (
@@ -61,26 +65,28 @@ export function AfterRun({ activity, next, today }: { activity: Activity; next?:
   );
 }
 
-function FeelPicker({ activity }: { activity: Activity }) {
+/** Sends her answer: the id is the run's, or the session's when no run from the watch matched it. */
+export const logFeel = (id: string, feel: Feel) => usePlan.getState().run((api) => api.logFeel(id, feel));
+
+/** « Comment c'était ? » with its three answers: after a run, and after « Oui, je l'ai faite ». */
+export function FeelPicker({ id, feel, onPick }: { id: string; feel?: Feel; onPick: (feel: Feel) => void }) {
   return (
-    <section className="flex flex-col gap-2">
+    <section className="flex flex-col gap-2" data-feel-for={id}>
       <div className="flex flex-col gap-0.5 px-1">
         <h2 className="t-title">{FEEL_QUESTION}</h2>
         <span className="t-cap" aria-live="polite">
-          {activity.feel
-            ? "Noté. Reggie en tient compte pour la suite."
-            : "Ta montre ne te l'a pas demandé cette fois."}
+          {feel ? "Noté. Reggie en tient compte pour la suite." : "Ça m'aide à régler tes prochaines séances."}
         </span>
       </div>
       <ChoiceGroup label={FEEL_QUESTION} className="grid grid-cols-3 gap-2">
-        {FEELS.map((feel) => (
+        {FEELS.map((choice) => (
           <Chip
-            key={feel.value}
-            selected={activity.feel === feel.value}
+            key={choice.value}
+            selected={feel === choice.value}
             className="w-full"
-            onClick={() => void usePlan.getState().run((api) => api.logFeel(activity.id, feel.value))}
+            onClick={() => onPick(choice.value)}
           >
-            {feel.label}
+            {choice.label}
           </Chip>
         ))}
       </ChoiceGroup>

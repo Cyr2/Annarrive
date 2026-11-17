@@ -11,7 +11,7 @@ const TITLES: Record<string, string> = {
   Fractionné: "Fractionné en côte, retour en descente",
   "Haut du corps": "Renforcement haut du corps et gainage",
   Français: "Français langue étrangère, expression écrite",
-  "Footing facile": "Footing facile en endurance fondamentale",
+  "Footing facile": "Footing facile et tranquille",
   "Sortie longue": "Sortie longue avec la fin à allure semi",
 };
 

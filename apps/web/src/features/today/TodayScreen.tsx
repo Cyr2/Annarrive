@@ -13,7 +13,7 @@ import { changeOptions, moveOptions } from "../useLoad.ts";
 import { RefreshRow } from "../week/RefreshRow.tsx";
 import { AfterRun } from "./AfterRun.tsx";
 import { DayAgenda } from "./DayAgenda.tsx";
-import { DidYouRun } from "./DidYouRun.tsx";
+import { ConfirmZone } from "./DidYouRun.tsx";
 import { ProposalCard } from "./ProposalCard.tsx";
 import { ReggieNote } from "./ReggieNote.tsx";
 import { RestCard } from "./RestCard.tsx";
@@ -38,7 +38,7 @@ export function TodayScreen() {
     return (
       <Screen>
         <h1 className="sr-only-label">Aujourd'hui</h1>
-        <LoadFailed title="Plan indisponible" what="ton plan" onRetry={() => void usePlan.getState().load()} />
+        <LoadFailed title="Pas de réseau ?" what="ton plan" onRetry={() => void usePlan.getState().load()} />
       </Screen>
     );
   }
@@ -78,7 +78,7 @@ export function TodayScreen() {
       )}
 
       {unwellText && <Unwell text={unwellText} />}
-      {!activity && toConfirm && <DidYouRun run={toConfirm} today={date} />}
+      {!activity && <ConfirmZone toConfirm={toConfirm} today={date} />}
       {activity && <AfterRun activity={activity} next={next} today={date} />}
       {!activity && session && (
         <>

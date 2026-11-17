@@ -17,7 +17,7 @@ type Kind = "strength" | "revision" | "busy";
 const KINDS: { value: Kind; label: string }[] = [
   { value: "strength", label: "Muscu" },
   { value: "revision", label: "Révision" },
-  { value: "busy", label: "Indispo" },
+  { value: "busy", label: "Occupée" },
 ];
 
 /**

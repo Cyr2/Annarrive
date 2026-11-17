@@ -25,21 +25,21 @@ export const STEPS = [
 export type Step = (typeof STEPS)[number];
 
 export const COPY: Record<Step, { title: string; lead: string }> = {
-  welcome: { title: "Annarrivé", lead: "Ton plan de course, rangé autour de tes cours et envoyé sur ta montre." },
-  race: { title: "Ta course", lead: "La distance et la date. Sans course, on entretient ta forme." },
-  target: { title: "Ton chrono", lead: "Choisis le temps que tu vises, ou simplement de la finir." },
+  welcome: { title: "Annarrivé", lead: "Ton coach de course à pied." },
+  race: { title: "Ton objectif", lead: "La distance et la date. Sans objectif, on entretient ta forme." },
+  target: { title: "Ton chrono", lead: "Choisis le temps que tu vises, ou simplement de finir." },
   week: { title: "Ta semaine", lead: "Combien de fois tu cours, et les jours que tu gardes libres." },
   hours: { title: "Tes horaires", lead: "Tes courses se placent dans cette plage, jamais trop près du coucher." },
   strength: { title: "Ta muscu", lead: "Facultatif. Ajoute tes séances habituelles, tes courses se placent autour." },
   health: { title: "Ta santé", lead: "Pour démarrer à la bonne intensité. Tout se change ensuite dans Programme." },
-  connect: { title: "Tes cours et tes alertes", lead: "Ton emploi du temps, puis les notifications." },
-  summary: { title: "Ton plan est prêt", lead: "Touche une ligne pour la changer, puis lance-toi." },
+  connect: { title: "Tes cours et tes notifications", lead: "Ton emploi du temps, puis les notifications." },
+  summary: { title: "Tout est bon ?", lead: "Touche une ligne pour la changer, puis lance-toi." },
 };
 
 export const DISTANCES = [
   { value: 5000, label: "5 km" },
   { value: 10000, label: "10 km" },
-  { value: 21097.5, label: "Semi" },
+  { value: 21097.5, label: "Semi-marathon" },
   { value: 42195, label: "Marathon" },
 ] as const;
 type DistanceM = (typeof DISTANCES)[number]["value"];
@@ -54,7 +54,7 @@ export type Draft = {
   startTime: string;
   /** Her target in seconds, typed in the h and min boxes; 0 until she types one. */
   targetSec: number;
-  /** "La finir": no target time. */
+  /** "Juste finir": no target time. */
   finish: boolean;
   runsPerWeek: Profile["runsPerWeek"];
   bedtime: string;
@@ -106,7 +106,7 @@ export function distanceOf(draft: Draft): DistanceM | undefined {
   return DISTANCES.map((d) => d.value).reduce<DistanceM>(closest, 5000);
 }
 
-/** Target in minutes; undefined for "La finir" or boxes left empty. */
+/** Target in minutes; undefined for "Juste finir" or boxes left empty. */
 export function targetOf(draft: Draft): number | undefined {
   return draft.finish || draft.targetSec <= 0 ? undefined : draft.targetSec / 60;
 }
@@ -120,9 +120,9 @@ export function feasibilityInput(draft: Draft): FeasibilityInput | undefined {
 
 function raceIssue(draft: Draft, today: string): string | undefined {
   if (draft.race === "none") return undefined;
-  if (draft.race === undefined) return "Choisis ta distance, ou juste entretenir ta forme.";
+  if (draft.race === undefined) return "Choisis une distance, ou « Pas d'objectif ».";
   if (!distanceOf(draft)) return "Indique la distance en km.";
-  if (!draft.date || draft.date <= today) return "Choisis la date de ta course.";
+  if (!draft.date || draft.date <= today) return "Choisis la date de ton objectif.";
   return undefined;
 }
 
@@ -132,8 +132,9 @@ export function issue(step: Step, draft: Draft, today: string): string | undefin
   if (step === "week" && 7 - draft.noRunDays.length < draft.runsPerWeek)
     return `Garde au moins ${draft.runsPerWeek} jours pour courir.`;
   if (step === "hours" && minutesOf(draft.latestEnd) <= minutesOf(draft.earliest))
-    return "« Pas après » doit venir après « pas avant ».";
-  if (step === "target" && !draft.finish && draft.targetSec <= 0) return "Écris ton chrono, ou choisis de la finir.";
+    return "L'heure de fin doit venir après l'heure de début.";
+  if (step === "target" && !draft.finish && draft.targetSec <= 0)
+    return "Écris ton chrono, ou choisis « Juste finir ».";
   if (step === "strength" && draft.strength.some((s) => !s.name.trim())) return "Donne un nom à chaque séance.";
   if (step === "health" && draft.pain && !draft.zone) return "Dis où tu as mal.";
   if (step === "connect" && draft.icsUrl.trim() && !checkIcsUrl(draft.icsUrl).url)

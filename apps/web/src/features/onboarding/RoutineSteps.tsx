@@ -56,7 +56,12 @@ export function HoursStep() {
           value={draft.latestEnd}
           onChange={(latestEnd) => update({ latestEnd })}
         />
-        <RowInput label="Coucher" type="time" value={draft.bedtime} onChange={(bedtime) => update({ bedtime })} />
+        <RowInput
+          label="Heure de coucher"
+          type="time"
+          value={draft.bedtime}
+          onChange={(bedtime) => update({ bedtime })}
+        />
       </Group>
     </Section>
   );
@@ -97,7 +102,7 @@ function StrengthCard({ item, index }: { item: StrengthDraft; index: number }) {
         className="self-start px-4"
         onClick={() => update({ strength: strength.filter((s) => s.id !== item.id) })}
       >
-        Retirer cette séance
+        Supprimer cette séance
       </TextButton>
     </Section>
   );

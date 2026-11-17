@@ -270,8 +270,16 @@ export function generatePlan(
   const peak = peakVolume(d, start.v0, loadWeeks, maxWeekly(history, now) || start.v0);
   const curve = volumeCurve(split, start.v0, peak.vPeak, cycle, d);
   const warnings: Warning[] = [];
-  if (split.short) warnings.push({ ruleId: "P5", message: "Plan court pour cette distance" });
-  if (peak.warning) warnings.push({ ruleId: "P8", message: "Volume de pointe sous le minimum conseillé" });
+  if (split.short)
+    warnings.push({
+      ruleId: "P5",
+      message: "Ton plan est court pour cette distance : il avance quand même à ton rythme",
+    });
+  if (peak.warning)
+    warnings.push({
+      ruleId: "P8",
+      message: "Peu de semaines avant ton objectif : ton plan monte moins haut que d'habitude, il reste fait pour toi",
+    });
   const first = nextMonday(now);
   const weeks = curve.map((volumeMin, i): PlanWeek => {
     const phase = phaseAt(split, i);

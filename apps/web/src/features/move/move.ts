@@ -1,7 +1,7 @@
 import type { MoveOptions, Slot } from "../../api/schemas.ts";
 import { addDays, minutesOf, relativeMoment, timeOf } from "../../lib/date.ts";
 
-/** "ce soir 19:30", "mercredi 18:00": the end of "Déplacer à …". */
+/** "ce soir 19:30", "mercredi 18:00": the end of "Déplacer : …". */
 export function shortMoment(slot: Slot, today: string): string {
   return relativeMoment(slot.date, slot.start, today)
     .replace(/^\S/, (c) => c.toLowerCase())
@@ -28,5 +28,5 @@ export function dayChoices(monday: string, options: MoveOptions): DayChoice[] {
 /** What else moves if she picks this slot. A free choice gets no promise beyond the rules check. */
 export function consequenceOf(slot: Slot, options: MoveOptions): string {
   const proposed = options.slots.find((s) => s.date === slot.date && s.start === slot.start);
-  return proposed?.consequence ?? "Reggie vérifie les règles de ton plan en déplaçant la séance.";
+  return proposed?.consequence ?? "Si autre chose doit bouger, je te le dis après.";
 }

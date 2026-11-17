@@ -23,11 +23,11 @@ test("Programme : une course dimanche fait de la fin de semaine une semaine de c
   await expect(changed).toBeVisible();
 
   await page.getByRole("link", { name: "Semaine" }).click();
-  await expect(sunday).toContainText("Ta course");
+  await expect(sunday).toContainText("Jour J");
   expect(await week.allInnerTexts()).not.toEqual(thisWeek);
 
   await changed.getByRole("button", { name: "Annuler" }).click();
-  await expect(banner(page, "Modification annulée")).toBeVisible();
-  await expect(sunday).not.toContainText("Ta course");
+  await expect(banner(page, "Changement annulé")).toBeVisible();
+  await expect(sunday).not.toContainText("Jour J");
   expect(await week.allInnerTexts()).toEqual(thisWeek);
 });

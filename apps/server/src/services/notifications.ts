@@ -1,7 +1,7 @@
 import type { PlannedSession, PushSubscriptionInput } from "@annarrive/protocol";
 import { z } from "zod";
 import type { Stores } from "../storage/stores.ts";
-import { dateOf, frenchMoment, frenchWeekday } from "../time.ts";
+import { dateOf, frenchClock, frenchMoment, frenchWeekday } from "../time.ts";
 
 /** Sends one Web Push message; rejects with a `statusCode` when the push service refuses it. */
 export type PushSender = (subscription: PushSubscriptionInput, payload: string) => Promise<unknown>;
@@ -43,10 +43,14 @@ export class NotificationService {
 
   runMoved(before: PlannedSession, after: PlannedSession): Promise<void> {
     const sameDay = dateOf(before.start) === dateOf(after.start);
-    const to = sameDay ? after.start.slice(11, 16) : frenchMoment(after.start);
+    const day = frenchWeekday(dateOf(before.start));
+    // A move here always comes from a class that changed: say so, so it never looks like a whim.
+    const body = sameDay
+      ? `Un cours a bougé ${day} : ta course passe à ${frenchClock(after.start)}.`
+      : `Un cours a bougé : ta course de ${day} passe à ${frenchMoment(after.start)}.`;
     return this.#broadcast({
       title: "Course déplacée",
-      body: `Ta course de ${frenchWeekday(dateOf(before.start))} passe à ${to}.`,
+      body,
       url: "/",
     });
   }

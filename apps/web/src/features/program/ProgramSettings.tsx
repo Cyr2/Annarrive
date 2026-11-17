@@ -1,4 +1,5 @@
 import type { Program, Settings } from "../../api/schemas.ts";
+import { PRIVACY_NOTE } from "../../lib/privacy.ts";
 import { Group, RowButton, Section } from "../../ui/List.tsx";
 import { TextButton } from "../../ui/TextButton.tsx";
 import { strengthShort } from "../add/add.ts";
@@ -47,10 +48,7 @@ export function ProgramSettings({ program }: { program: Program }) {
 
       <Watch watch={program.watch} />
 
-      <Section
-        title="Santé et confidentialité"
-        footnote="Tes données restent sur le serveur de l'app. Rien n'est partagé."
-      >
+      <Section title="Santé et confidentialité" footnote={PRIVACY_NOTE}>
         <Group>
           <SwitchRow
             title="Sommeil et fréquence cardiaque"
@@ -60,7 +58,7 @@ export function ProgramSettings({ program }: { program: Program }) {
           />
           <SwitchRow
             title="Cycle menstruel"
-            detail="Désactivé par défaut. Activé, tu peux signaler un symptôme à Reggie. Tes séances ne suivent jamais la phase du cycle."
+            detail="Tu peux signaler un symptôme à Reggie. Tes séances ne suivent jamais la phase du cycle."
             checked={settings.cycle}
             onChange={(on) => (on ? show({ kind: "cycle" }) : toggle({ cycle: false }))}
           />
@@ -70,7 +68,7 @@ export function ProgramSettings({ program }: { program: Program }) {
       {push !== "loading" && push !== "hidden" && (
         <Section
           title="Notifications"
-          footnote="Ta semaine prête le dimanche soir, et une course déplacée quand un cours change."
+          footnote="Ta semaine le dimanche soir, une course déplacée quand un cours change, et un mot pour Reggie après chaque course."
         >
           <Group>
             <NotificationsRow />

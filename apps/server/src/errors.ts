@@ -71,12 +71,12 @@ export class TimetableError extends AppError {
 
 export class GarminNotConfiguredError extends AppError {
   constructor() {
-    super(503, "La montre n'est pas reliée : ajoute BRIDGE_URL et BRIDGE_SECRET aux variables du serveur.");
+    super(503, "Ta montre n'est pas encore reliée. L'envoi reprendra dès que Darius aura fini le réglage.");
   }
 }
 
 export class TimetableNotConfiguredError extends AppError {
   constructor() {
-    super(503, "Aucun lien d'emploi du temps : colle-le dans Programme, Connexions, Emploi du temps.");
+    super(503, "Aucun lien d'emploi du temps : ajoute-le dans Programme, Emploi du temps.");
   }
 }

@@ -234,7 +234,7 @@ export function createMockApi({
         return rows;
       }),
     skip: (id) =>
-      commit("Séance passée", () => {
+      commit("Séance sautée", () => {
         remove(id);
         return undefined;
       }),
@@ -244,7 +244,7 @@ export function createMockApi({
         return undefined;
       }),
     feelBetter: () =>
-      commit("Ça va mieux : encore 3 jours en endurance fondamentale, puis retour normal", () => {
+      commit("Ça va mieux : 3 jours de footing tranquille, puis tes séances reprennent", () => {
         state.unwell = false;
         return undefined;
       }),

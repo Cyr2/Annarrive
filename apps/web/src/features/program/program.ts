@@ -64,10 +64,11 @@ export function secondsOf(targetTime: string | undefined): number {
   return h * 3600 + m * 60 + s;
 }
 
-/** Days to the race, as the card's big figure. */
-export function countdown(date: string, today: string): { value: string; unit?: string } {
+/** Days to the goal, as the card's big figure; its label says the day itself and the days after it. */
+export function countdown(date: string, today: string): { value: string; unit?: string; label?: string } {
   const days = daysBetween(today, date);
-  if (days <= 0) return { value: "Jour J" };
+  if (days === 0) return { value: "Bonne course", label: "C'est aujourd'hui" };
+  if (days < 0) return { value: "Terminé", label: "Ton objectif est passé" };
   return { value: String(days), unit: days > 1 ? "jours" : "jour" };
 }
 
@@ -75,8 +76,8 @@ export function countdown(date: string, today: string): { value: string; unit?: 
 export const PHASE_TEXT: Record<string, string> = {
   Base: "Courir souvent et facile, pour construire ton endurance.",
   Développement: "Le rythme monte, avec des séances plus soutenues.",
-  Spécifique: "Des séances à l'allure de ta course.",
-  Affûtage: "Moins de volume, pour arriver fraîche le jour J.",
+  Spécifique: "Des séances à l'allure de ton objectif.",
+  Affûtage: "Moins de kilomètres, pour arriver fraîche le jour J.",
 };
 
 /** The watch's link, in Programme and its sheet; unknown when the server could not reach it. */

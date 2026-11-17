@@ -67,7 +67,7 @@ export const TONES: Record<Tone, ToneStyle> = {
     mid: "bg-class",
     color: "var(--color-class)",
     deep: "text-class-deep",
-    label: "Indispo",
+    label: "Occupée",
     icon: "busy",
   },
   rest: {

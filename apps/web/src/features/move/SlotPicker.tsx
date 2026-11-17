@@ -58,7 +58,7 @@ export function SlotPicker({ open, onOpen, monday, options, today, value, onChan
       </ChoiceGroup>
       {!value && days.some((d) => d.blocked) && (
         <p className="t-cap m-0 px-4">
-          Un cadenas : ce jour casse une règle de ton plan. Touche-le pour savoir laquelle.
+          Les jours marqués vont contre une règle de ton plan. Touche-en un pour savoir laquelle.
         </p>
       )}
       {blocked && (

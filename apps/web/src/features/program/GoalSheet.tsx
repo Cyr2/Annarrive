@@ -13,7 +13,7 @@ import { secondsOf } from "./program.ts";
 
 const MODES = [
   { value: "time", label: "Viser un chrono" },
-  { value: "finish", label: "La finir" },
+  { value: "finish", label: "Juste finir" },
 ];
 
 /** "1:48:00" with hours always written, so the server never reads "48:00" as 48 hours. */
@@ -22,7 +22,7 @@ const fullClock = (seconds: number) => {
   return `${Math.floor(seconds / 3600)}:${pad(Math.floor(seconds / 60) % 60)}:${pad(seconds % 60)}`;
 };
 
-/** Modifier l'objectif: her race, date and target in h and min boxes, or "La finir". What changes comes before Valider. */
+/** Modifier l'objectif: her race, date and target in h and min boxes, or "Juste finir". What changes comes before Valider. */
 export default function GoalSheet(sheet: SheetProps<"goal">) {
   const plan = usePlan();
   const goal = plan.program?.goal;

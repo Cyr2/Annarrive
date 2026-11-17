@@ -47,6 +47,7 @@ export function Notifications() {
       <Group>
         <Note icon="week">Le dimanche soir : ta semaine est prête.</Note>
         <Note icon="move">Quand un cours change : la course déplacée, et où.</Note>
+        <Note icon="reggie">Après une course : un mot pour Reggie, si tu veux.</Note>
       </Group>
       {state !== "on" && (
         <Button variant="tinted" tone="action" disabled={state === "asking"} onClick={() => void ask()}>

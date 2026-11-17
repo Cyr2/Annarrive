@@ -178,6 +178,20 @@ describe("Garmin activities", () => {
     expect(t.services.fitness.pending().map((p) => p.ruleId)).toEqual(["RC5"]);
   });
 
+  it("takes Anna's feel for a session she confirmed without a run, and tells the coach", async () => {
+    const evaluateFeels = vi.fn<CoachPort["evaluateFeels"]>(() => null);
+    const t = garminSetup({ ...fakeCoach, evaluateFeels });
+    t.stores.plannedSession.put({ ...session("noWatch", "2026-11-15T18:00"), status: "done" });
+    await t.login();
+
+    expect((await t.call("POST", "/api/activities/noWatch/feel", { feel: "hard" })).status).toBe(204);
+
+    expect(t.stores.sessionFeel.get("noWatch")).toEqual({ id: "noWatch", feel: "hard" });
+    expect(evaluateFeels.mock.calls[0]?.[0].feels).toEqual([
+      { sessionId: "noWatch", date: "2026-11-15", feel: "hard", rpeTarget: 3 },
+    ]);
+  });
+
   it("gives the watch's last sync time, null before the first one", async () => {
     const t = garminSetup();
     await t.login();
@@ -493,7 +507,7 @@ describe("watch sync", () => {
     await plain.login();
     expect(await plain.call("POST", "/api/watch/sync")).toEqual({
       status: 503,
-      json: { error: "La montre n'est pas reliée : ajoute BRIDGE_URL et BRIDGE_SECRET aux variables du serveur." },
+      json: { error: "Ta montre n'est pas encore reliée. L'envoi reprendra dès que Darius aura fini le réglage." },
     });
   });
 });

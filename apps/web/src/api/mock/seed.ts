@@ -30,7 +30,7 @@ export const easyRun = (start: string, durationMin: number, title = "Footing fac
   intensity: "easy",
   pace: "6:15 à 6:45",
   steps: [{ label: `${durationMin} min en endurance`, pace: "6:15 à 6:45 /km", tone: "plain" }],
-  why: "Du volume facile : c'est lui qui construit ton endurance sans te fatiguer.",
+  why: "Des kilomètres faciles : ils construisent ton endurance sans te fatiguer.",
 });
 
 const LONG: RunSeed = {
@@ -48,10 +48,10 @@ const LONG: RunSeed = {
 };
 
 const STRIDES: RunSeed = {
-  ...easyRun("17:30", 40, "Footing et lignes droites"),
+  ...easyRun("17:30", 40, "Footing et accélérations"),
   steps: [
     { label: "30 min en endurance", pace: "6:15 à 6:45 /km", tone: "plain" },
-    { label: "6 lignes droites de 20 s", pace: "vite et relâché", tone: "hard" },
+    { label: "6 accélérations de 20 s", pace: "vite et relâché", tone: "hard" },
   ],
 };
 
@@ -91,7 +91,7 @@ export const STRENGTH: Strength[] = [
   },
   {
     id: "s-full",
-    name: "Full body",
+    name: "Haut et bas du corps",
     legs: true,
     weekday: 5,
     start: "11:00",
