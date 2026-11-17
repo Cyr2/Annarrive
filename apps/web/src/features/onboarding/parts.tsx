@@ -4,7 +4,7 @@ import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
 import { Chip } from "../../ui/controls.tsx";
 import { Icon } from "../../ui/Icon.tsx";
 import { Surface } from "../../ui/Surface.tsx";
-import { type Draft, STEPS, type Step } from "./onboarding.ts";
+import { type Draft, questionSteps, type Step } from "./onboarding.ts";
 import { useOnboarding } from "./store.ts";
 
 /** Small pieces shared by the onboarding steps. */
@@ -83,17 +83,22 @@ export function Card({ children, className }: { children: ReactNode; className?:
   return <Surface className={cx("flex flex-col gap-3 p-4", className)}>{children}</Surface>;
 }
 
-/** Progress: a thin bar in the action blue, filling step by step. */
-export function Dots({ step }: { step: Step }) {
-  const at = STEPS.indexOf(step);
+/** Progress: one short segment per step she answers, filled in the action blue up to the current one. */
+export function Progress({ step }: { step: Step }) {
+  const steps = questionSteps(useDraft());
+  const at = steps.indexOf(step);
   return (
-    <div role="img" aria-label={`Étape ${at + 1} sur ${STEPS.length}`} className="flex flex-1 justify-center px-4">
-      <span className="h-1.5 w-full max-w-60 overflow-hidden rounded-full bg-hairline-strong">
+    <div
+      role="img"
+      aria-label={`Étape ${at + 1} sur ${steps.length}`}
+      className="flex flex-1 justify-center gap-1.5 px-4"
+    >
+      {steps.map((s, i) => (
         <span
-          className="tab-pill block h-full rounded-full bg-action"
-          style={{ width: `${((at + 1) / STEPS.length) * 100}%` }}
+          key={s}
+          className={cx("select-anim h-1.5 max-w-10 flex-1 rounded-full", i <= at ? "bg-action" : "bg-hairline-strong")}
         />
-      </span>
+      ))}
     </div>
   );
 }

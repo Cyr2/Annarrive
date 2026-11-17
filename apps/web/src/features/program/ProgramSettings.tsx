@@ -1,38 +1,28 @@
 import type { Program, Settings } from "../../api/schemas.ts";
-import { Dot } from "../../ui/bits.tsx";
-import { Switch } from "../../ui/controls.tsx";
 import { Group, RowButton, Section } from "../../ui/List.tsx";
 import { TextButton } from "../../ui/TextButton.tsx";
 import { strengthShort } from "../add/add.ts";
 import { usePlan } from "../plan/store.ts";
 import { NotificationsRow } from "../push/NotificationsRow.tsx";
-import { type SettingKey, useSheet } from "../sheets/store.ts";
-import { SETTING_LABELS, settingValue } from "./program.ts";
-import { TimetableRow } from "./TimetableRow.tsx";
+import { usePush } from "../push/store.ts";
+import { useSheet } from "../sheets/store.ts";
+import { Hours, Runs, Watch } from "./SettingGroups.tsx";
+import { SwitchRow } from "./SwitchRow.tsx";
+import { TimetableRows } from "./TimetableRow.tsx";
 
-const TRAINING: SettingKey[] = ["runsPerWeek", "noRunDays", "notBefore", "notAfter", "bedtime"];
-
-/** The settings groups of the Programme tab: training limits, strength, connections, health, stop. */
+/** The settings of the Programme tab, one group per subject, in the order she is likely to need them. */
 export function ProgramSettings({ program }: { program: Program }) {
   const show = useSheet((s) => s.show);
-  const { apply } = usePlan.getState();
-  const toggle = (patch: Partial<Settings>) => void apply((api) => api.updateSettings(patch), { quiet: true });
+  const push = usePush((s) => s.status);
+  const { settings } = program;
+  const toggle = (patch: Partial<Settings>) =>
+    void usePlan.getState().apply((api) => api.updateSettings(patch), { quiet: true });
   return (
     <>
-      <Section title="Entraînement" footnote="Reggie place tes courses dans ces limites, autour de tes cours.">
-        <Group>
-          {TRAINING.map((key) => (
-            <RowButton
-              key={key}
-              label={SETTING_LABELS[key]}
-              value={settingValue(key, program.settings)}
-              onClick={() => show({ kind: "setting", key })}
-            />
-          ))}
-        </Group>
-      </Section>
+      <Runs settings={settings} />
+      <Hours settings={settings} />
 
-      <Section title="Séances de muscu">
+      <Section title="Muscu">
         <Group>
           {program.strength.map((t) => (
             <RowButton
@@ -42,62 +32,54 @@ export function ProgramSettings({ program }: { program: Program }) {
               onClick={() => show({ kind: "strength", templateId: t.id })}
             />
           ))}
-          <RowButton tone="link" label="+ Nouvelle séance" onClick={() => show({ kind: "strength" })} />
+          <RowButton tone="link" label="Ajouter une séance" onClick={() => show({ kind: "strength" })} />
         </Group>
       </Section>
 
       <Section
-        title="Connexions"
-        footnote="Colle le lien ICS de ton emploi du temps. Il se relit tout seul plusieurs fois par jour : actualise si un cours vient d'être annulé."
+        title="Emploi du temps"
+        footnote="Il se relit tout seul plusieurs fois par jour. Actualise si un cours vient d'être annulé."
       >
         <Group>
-          <TimetableRow program={program} />
-          <RowButton
-            label={
-              <span className="flex flex-col">
-                <span className="t-body">Montre Garmin</span>
-                <span className="t-cap flex items-center gap-1.5">
-                  <Dot size="md" className={program.watch.connected ? "bg-easy" : "bg-warn"} />
-                  {program.watch.model} · {program.watch.connected ? "connectée" : "déconnectée"}
-                </span>
-              </span>
-            }
-            onClick={() => show({ kind: "watch" })}
-          />
+          <TimetableRows program={program} />
         </Group>
       </Section>
+
+      <Watch watch={program.watch} />
 
       <Section
         title="Santé et confidentialité"
         footnote="Tes données restent sur le serveur de l'app. Rien n'est partagé."
       >
         <Group>
-          <div className="row">
-            <span id="h-sleep" className="t-body">
-              Sommeil et fréquence cardiaque
-            </span>
-            <Switch
-              checked={program.settings.recoveryData}
-              labelledBy="h-sleep"
-              onChange={(recoveryData) => toggle({ recoveryData })}
-            />
-          </div>
-          <div className="row">
-            <span id="h-cycle" className="t-body">
-              Cycle menstruel
-            </span>
-            <Switch
-              checked={program.settings.cycle}
-              labelledBy="h-cycle"
-              onChange={(on) => (on ? show({ kind: "cycle" }) : toggle({ cycle: false }))}
-            />
-          </div>
-          <NotificationsRow />
+          <SwitchRow
+            title="Sommeil et fréquence cardiaque"
+            detail="Lus sur ta Garmin, pour alléger une séance après une mauvaise nuit."
+            checked={settings.recoveryData}
+            onChange={(recoveryData) => toggle({ recoveryData })}
+          />
+          <SwitchRow
+            title="Cycle menstruel"
+            detail="Désactivé par défaut. Activé, tu peux signaler un symptôme à Reggie. Tes séances ne suivent jamais la phase du cycle."
+            checked={settings.cycle}
+            onChange={(on) => (on ? show({ kind: "cycle" }) : toggle({ cycle: false }))}
+          />
         </Group>
       </Section>
 
+      {push !== "loading" && push !== "hidden" && (
+        <Section
+          title="Notifications"
+          footnote="Ta semaine prête le dimanche soir, et une course déplacée quand un cours change."
+        >
+          <Group>
+            <NotificationsRow />
+          </Group>
+        </Section>
+      )}
+
       {!program.maintenance && (
-        <Group>
+        <Group className="mt-2">
           <TextButton tone="danger" className="min-h-13 w-full" onClick={() => show({ kind: "stop" })}>
             Arrêter ce programme
           </TextButton>

@@ -4,6 +4,7 @@ import { useSignedOut } from "./api/session.ts";
 import { SignedOut } from "./features/auth/SignedOut.tsx";
 import { needsOnboarding } from "./features/onboarding/done.ts";
 import { usePlan } from "./features/plan/store.ts";
+import { skyPhase } from "./features/program/sky.ts";
 import { usePush } from "./features/push/store.ts";
 import { SheetHost } from "./features/sheets/SheetHost.tsx";
 import { TodayScreen } from "./features/today/TodayScreen.tsx";
@@ -36,6 +37,7 @@ export function App() {
   if (location !== first.current) first.current = null;
 
   const signedOut = useSignedOut((s) => s.signedOut);
+  const phase = usePlan((s) => skyPhase(s.program, s.today?.date));
   const [onboarding, setOnboarding] = useState(false);
 
   useEffect(() => {
@@ -59,7 +61,7 @@ export function App() {
 
   return (
     <>
-      <Sky />
+      <Sky phase={phase} />
       <div key={location} className={first.current ? undefined : "screen-in"}>
         <Suspense fallback={null}>
           <Switch>

@@ -1,7 +1,11 @@
 import { useEffect } from "react";
 import { addDays } from "../../lib/date.ts";
 import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
+import { SegmentedControl } from "../../ui/controls.tsx";
+import { Icon } from "../../ui/Icon.tsx";
 import { Group, RowInput } from "../../ui/List.tsx";
+import { TimeWheels } from "../../ui/TimeWheels.tsx";
+import { TargetTag, VERDICT_KIND } from "../program/TargetTag.tsx";
 import { DISTANCES, distanceOf, type Race } from "./onboarding.ts";
 import { BigChoice, Card, update, useDraft } from "./parts.tsx";
 import { useOnboarding } from "./store.ts";
@@ -56,92 +60,54 @@ export function RaceStep() {
   );
 }
 
-const VERDICTS = {
-  atteignable: {
-    label: "Atteignable",
-    tone: "bg-easy-wash text-easy-deep",
-    text: "Ton plan est construit pour ce chrono.",
-  },
-  ambitieux: {
-    label: "Ambitieux",
-    tone: "bg-warn-wash text-warn-deep",
-    text: "Un beau défi. Ton plan t'en rapproche semaine après semaine, et on fait le point en route.",
-  },
-};
+const VERDICT_TEXT = {
+  atteignable: "Ton plan est construit pour ce chrono.",
+  ambitieux: "Un beau défi. Ton plan t'en rapproche semaine après semaine, et on fait le point en route.",
+} as const;
 
-function TimeBox({
-  label,
-  unit,
-  value,
-  onChange,
-}: {
-  label: string;
-  unit: string;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <label className="surface flex min-w-0 flex-1 items-baseline justify-center gap-1 px-3 py-2" data-variant="inset">
-      <span className="sr-only-label">{label}</span>
-      <input
-        inputMode="numeric"
-        maxLength={2}
-        placeholder="0"
-        value={value}
-        onChange={(e) => onChange(e.target.value.replace(/\D/g, ""))}
-        className="t-figure w-full min-w-0 border-0 bg-transparent text-right text-ink"
-      />
-      <span className="t-strong flex-none text-ink-2">{unit}</span>
-    </label>
-  );
-}
+const MODES = [
+  { value: "time", label: "Viser un chrono" },
+  { value: "finish", label: "La finir" },
+] as const;
 
 export function TargetStep() {
   const draft = useDraft();
   const verdict = useOnboarding((s) => s.verdict);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: asks again when the typed time changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: asks again when the wheels rest on a new time
   useEffect(() => {
-    // Asks once she stops typing.
     const timer = setTimeout(() => void useOnboarding.getState().checkTarget(), 400);
     return () => clearTimeout(timer);
-  }, [draft.hours, draft.minutes]);
-  const shown = verdict ? VERDICTS[verdict] : undefined;
+  }, [draft.targetSec, draft.finish]);
+  const shown = verdict && !draft.finish && draft.targetSec > 0 ? verdict : undefined;
   return (
     <>
-      <Card>
-        <div className="flex gap-2">
-          <TimeBox label="Heures" unit="h" value={draft.hours} onChange={(hours) => update({ hours })} />
-          <TimeBox label="Minutes" unit="min" value={draft.minutes} onChange={(minutes) => update({ minutes })} />
-        </div>
-      </Card>
-      <div aria-live="polite" className="flex flex-col items-start gap-2 px-1">
+      <SegmentedControl
+        label="Ton objectif"
+        items={[...MODES]}
+        value={draft.finish ? "finish" : "time"}
+        onChange={(mode) => update({ finish: mode === "finish" })}
+      />
+      {draft.finish ? (
+        <Card className="flex-row items-start">
+          <Icon name="flag" className="mt-px flex-none text-ink-2" />
+          <p className="t-body m-0">Franchir la ligne, à ton rythme. Ton plan te prépare à la finir sereine.</p>
+        </Card>
+      ) : (
+        <Card className="px-2 py-2">
+          <TimeWheels seconds={draft.targetSec} onChange={(targetSec) => update({ targetSec })} />
+        </Card>
+      )}
+      <div aria-live="polite" className="flex min-h-16 flex-col items-start gap-2 px-1">
         {shown && (
           <>
-            <span className={`t-label rounded-full px-3 py-1 ${shown.tone}`}>{shown.label}</span>
-            <p className="t-sub m-0">{shown.text}</p>
+            <TargetTag kind={VERDICT_KIND[shown]} />
+            <p className="t-sub m-0">{VERDICT_TEXT[shown]}</p>
           </>
         )}
-        {verdict === null && <p className="t-sub m-0">On saura te le dire après tes premières courses.</p>}
+        {verdict === null && !draft.finish && draft.targetSec > 0 && (
+          <p className="t-sub m-0">On saura te le dire après tes premières courses.</p>
+        )}
       </div>
     </>
-  );
-}
-
-export function RunsStep() {
-  const { runsPerWeek } = useDraft();
-  return (
-    <ChoiceGroup label="Courses par semaine" className="grid grid-cols-3 gap-2">
-      {([3, 4, 5] as const).map((n) => (
-        <BigChoice
-          key={n}
-          className="min-h-24 text-center"
-          mark={false}
-          label={<span className="t-figure">{n}</span>}
-          detail="par semaine"
-          on={runsPerWeek === n}
-          onClick={() => update({ runsPerWeek: n })}
-        />
-      ))}
-    </ChoiceGroup>
   );
 }

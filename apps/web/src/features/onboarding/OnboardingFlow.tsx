@@ -5,12 +5,11 @@ import { SPRING_STEP } from "../../lib/motion.ts";
 import { Button, IconButton } from "../../ui/controls.tsx";
 import { LogoSlot } from "../../ui/LogoSlot.tsx";
 import { Sky } from "../../ui/Sky.tsx";
-import { TextButton } from "../../ui/TextButton.tsx";
-import { ConsentsStep, NotificationsStep, PainStep, TimetableStep } from "./CareSteps.tsx";
-import { COPY, issue, type Step } from "./onboarding.ts";
-import { Dots, update } from "./parts.tsx";
-import { RaceStep, RunsStep, TargetStep } from "./RaceSteps.tsx";
-import { BedtimeStep, LimitsStep, StrengthStep } from "./RoutineSteps.tsx";
+import { ConnectStep, HealthStep } from "./CareSteps.tsx";
+import { COPY, type Draft, issue, type Step } from "./onboarding.ts";
+import { Progress } from "./parts.tsx";
+import { RaceStep, TargetStep } from "./RaceSteps.tsx";
+import { HoursStep, StrengthStep, WeekStep } from "./RoutineSteps.tsx";
 import { SummaryStep, WelcomeStep } from "./Summary.tsx";
 import { useOnboarding } from "./store.ts";
 
@@ -18,18 +17,22 @@ const BODIES: Record<Step, () => ReactNode> = {
   welcome: WelcomeStep,
   race: RaceStep,
   target: TargetStep,
-  runs: RunsStep,
-  bedtime: BedtimeStep,
-  limits: LimitsStep,
+  week: WeekStep,
+  hours: HoursStep,
   strength: StrengthStep,
-  pain: PainStep,
-  consents: ConsentsStep,
-  timetable: TimetableStep,
-  notifications: NotificationsStep,
+  health: HealthStep,
+  connect: ConnectStep,
   summary: SummaryStep,
 };
 
-const LABELS: Partial<Record<Step, string>> = { welcome: "Commencer", summary: "C'est parti" };
+/** The main button says what it does: an empty muscu step is skipped, not continued. */
+function primaryLabel(step: Step, draft: Draft, sending: boolean): string {
+  if (sending) return "Création de ton plan";
+  if (step === "welcome") return "Commencer";
+  if (step === "summary") return "C'est parti";
+  if (step === "strength" && draft.strength.length === 0) return "Passer cette étape";
+  return "Continuer";
+}
 
 // The new screen comes from the side she is heading to; under reduced motion MotionConfig keeps only the fade.
 const slide = {
@@ -38,17 +41,37 @@ const slide = {
   exit: (d: number) => ({ x: `${d * -30}%`, opacity: 0 }),
 };
 
-/** One question per screen, full screen over the app (no tab bar), sliding with a spring. */
-export function OnboardingFlow({ onDone }: { onDone: () => void }) {
-  const { step, direction, draft, today, sending } = useOnboarding();
-  const { next, back, submit } = useOnboarding.getState();
-  const title = useRef<HTMLHeadingElement>(null);
-  const blocked = issue(step, draft, today);
-  const Body = BODIES[step];
+// A long step fades out above the button instead of being cut flat (a mask: only its alpha counts).
+const FADE_BOTTOM = "linear-gradient(to bottom, #000 calc(100% - 24px), transparent)";
 
+function Title({ step }: { step: Step }) {
+  const title = useRef<HTMLHeadingElement>(null);
   // VoiceOver starts each screen on its question.
   // biome-ignore lint/correctness/useExhaustiveDependencies: refocuses on each new step
   useEffect(() => title.current?.focus({ preventScroll: true }), [step]);
+  const welcome = step === "welcome";
+  return (
+    <div className={cx("flex flex-col gap-2", welcome && "items-center pt-[8vh] pb-2 text-center")}>
+      {welcome && <LogoSlot size={96} className="mb-3" />}
+      <h1
+        ref={title}
+        id="onboarding-title"
+        tabIndex={-1}
+        className={cx(welcome ? "t-figure" : "t-large", "m-0 outline-none")}
+      >
+        {COPY[step].title}
+      </h1>
+      <p className={cx("m-0", welcome ? "t-body max-w-xs text-ink-2" : "t-sub")}>{COPY[step].lead}</p>
+    </div>
+  );
+}
+
+/** A few grouped questions per screen, full screen over the app (no tab bar), sliding with a spring. */
+export function OnboardingFlow({ onDone }: { onDone: () => void }) {
+  const { step, direction, draft, today, sending } = useOnboarding();
+  const { next, back, submit } = useOnboarding.getState();
+  const blocked = issue(step, draft, today);
+  const Body = BODIES[step];
 
   const primary = async () => {
     if (step !== "summary") return next();
@@ -64,16 +87,14 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
     >
       <Sky />
       <header
-        className="relative mx-auto flex w-full max-w-xl items-center gap-2 px-2"
+        className={cx(
+          "relative mx-auto flex w-full max-w-xl items-center gap-2 px-2",
+          step === "welcome" && "invisible",
+        )}
         style={{ paddingTop: "max(12px, env(safe-area-inset-top))" }}
       >
-        <IconButton
-          icon="chevronLeft"
-          label="Retour"
-          onClick={back}
-          className={cx(step === "welcome" && "invisible")}
-        />
-        <Dots step={step} />
+        <IconButton icon="chevronLeft" label="Retour" onClick={back} />
+        {step === "summary" ? <span className="flex-1" /> : <Progress step={step} />}
         <span className="size-11 flex-none" />
       </header>
       <MotionConfig reducedMotion="user">
@@ -88,15 +109,10 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
               exit="exit"
               transition={SPRING_STEP}
               className="absolute inset-0 overflow-y-auto overscroll-contain"
+              style={{ maskImage: FADE_BOTTOM, WebkitMaskImage: FADE_BOTTOM }}
             >
-              <div className="mx-auto flex max-w-xl flex-col gap-5 px-4 pt-4 pb-6">
-                <div className={cx("flex flex-col gap-2", step === "welcome" && "items-start pt-[14vh]")}>
-                  {step === "welcome" && <LogoSlot size={88} className="mb-4" />}
-                  <h1 ref={title} id="onboarding-title" tabIndex={-1} className="t-large outline-none">
-                    {COPY[step].title}
-                  </h1>
-                  <p className="t-sub m-0">{COPY[step].lead}</p>
-                </div>
+              <div className="mx-auto flex max-w-xl flex-col gap-6 px-4 pt-3 pb-8">
+                <Title step={step} />
                 <Body />
               </div>
             </motion.section>
@@ -111,19 +127,8 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
           {step === "welcome" ? "" : (blocked ?? "")}
         </p>
         <Button variant="filled" size="large" disabled={Boolean(blocked) || sending} onClick={() => void primary()}>
-          {sending ? "Création de ton plan" : (LABELS[step] ?? "Continuer")}
+          {primaryLabel(step, draft, sending)}
         </Button>
-        {step === "strength" && (
-          <TextButton
-            className="self-center"
-            onClick={() => {
-              update({ strength: [] });
-              next();
-            }}
-          >
-            Plus tard
-          </TextButton>
-        )}
       </footer>
     </div>
   );

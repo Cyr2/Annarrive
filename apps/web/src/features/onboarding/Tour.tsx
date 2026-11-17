@@ -14,12 +14,25 @@ const BUBBLES = [
   },
   {
     target: "[role='navigation'] a[href='/semaine']",
-    text: "Semaine montre tes courses, tes cours et ta muscu, jour par jour.",
+    text: "Semaine montre tes courses, tes cours et ta muscu. Appuie sur une séance et glisse-la vers un autre jour pour la déplacer.",
   },
-  { target: undefined, text: "Dans Semaine, appuie sur une séance et glisse-la vers un autre jour pour la déplacer." },
+  {
+    target: "[role='navigation'] a[href='/programme']",
+    text: "Programme garde ton objectif, les étapes de ton plan et tes réglages.",
+  },
 ];
 
 const PAD = 8;
+/** The bubble's column: 16 px gutters, at most 384 px wide, centered. */
+const BUBBLE_MAX = 384;
+const ARROW = 14;
+
+/** Where the arrow sits along the bubble: under the target's center, kept off the rounded corners. */
+function arrowLeft(rect: DOMRect): number {
+  const width = Math.min(innerWidth - 32, BUBBLE_MAX);
+  const left = (innerWidth - width) / 2;
+  return Math.min(Math.max(rect.left + rect.width / 2 - left, 28), width - 28);
+}
 
 function useTargetRect(selector: string | undefined) {
   const [rect, setRect] = useState<DOMRect>();
@@ -83,9 +96,22 @@ export function Tour({ onEnd }: { onEnd: () => void }) {
             initial={{ opacity: 0, y: above ? 8 : -8, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={SPRING_BUBBLE}
-            data-variant="card"
-            className="surface flex flex-col gap-4 p-5"
+            data-variant="sheet"
+            className="surface relative flex flex-col gap-4 rounded-card p-5 shadow-float"
           >
+            {rect && (
+              <span
+                aria-hidden="true"
+                data-variant="sheet"
+                className="surface absolute rotate-45 rounded-[3px] shadow-none"
+                style={{
+                  width: ARROW,
+                  height: ARROW,
+                  left: arrowLeft(rect) - ARROW / 2,
+                  ...(above ? { bottom: -ARROW / 2 + 1 } : { top: -ARROW / 2 + 1 }),
+                }}
+              />
+            )}
             <p className="t-body m-0">{bubble?.text}</p>
             <div ref={actions} className="flex items-center gap-2">
               <span className="t-cap flex-1">

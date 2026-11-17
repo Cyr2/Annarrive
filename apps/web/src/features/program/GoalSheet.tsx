@@ -1,24 +1,38 @@
 import { useState } from "react";
 import type { GoalInput } from "../../api/client.ts";
-import { Button } from "../../ui/controls.tsx";
-import { Group, RowInput, RowSelect } from "../../ui/List.tsx";
+import { Button, SegmentedControl } from "../../ui/controls.tsx";
+import { Group, RowInput, RowSelect, Section } from "../../ui/List.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
 import { Surface } from "../../ui/Surface.tsx";
+import { TimeWheels } from "../../ui/TimeWheels.tsx";
 import { todayOf } from "../plan/selectors.ts";
 import { usePlan } from "../plan/store.ts";
 import type { SheetProps } from "../sheets/SheetHost.tsx";
 import { goalSummary, RACES } from "./goal.ts";
+import { secondsOf } from "./program.ts";
 
-/** Modifier l'objectif: her race, date and (optional) target. A summary of what changes comes before Valider. */
+const MODES = [
+  { value: "time", label: "Viser un chrono" },
+  { value: "finish", label: "La finir" },
+];
+
+/** "1:48:00" with hours always written, so the server never reads "48:00" as 48 hours. */
+const fullClock = (seconds: number) => {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${Math.floor(seconds / 3600)}:${pad(Math.floor(seconds / 60) % 60)}:${pad(seconds % 60)}`;
+};
+
+/** Modifier l'objectif: her race, date and target on the wheels, or "La finir". What changes comes before Valider. */
 export default function GoalSheet(sheet: SheetProps<"goal">) {
   const plan = usePlan();
   const goal = plan.program?.goal;
   const [draft, setDraft] = useState<GoalInput | undefined>(goal && { ...goal });
+  const [finish, setFinish] = useState(!goal?.targetTime);
   if (!goal || !draft) return null;
   const set = (patch: Partial<GoalInput>) => setDraft({ ...draft, ...patch });
-  const validTime = !draft.targetTime || /^\d{1,2}:\d{2}(:\d{2})?$/.test(draft.targetTime);
+  const seconds = secondsOf(draft.targetTime);
+  const input = { ...draft, targetTime: finish || seconds === 0 ? undefined : draft.targetTime };
   const save = async () => {
-    const input = { ...draft, targetTime: draft.targetTime || undefined };
     if (await plan.apply((api) => api.updateGoal(input))) sheet.onOpenChange(false);
   };
   return (
@@ -26,7 +40,12 @@ export default function GoalSheet(sheet: SheetProps<"goal">) {
       {...sheet}
       title="Ton objectif"
       footer={
-        <Button variant="filled" size="large" disabled={!validTime || !draft.date} onClick={() => void save()}>
+        <Button
+          variant="filled"
+          size="large"
+          disabled={!draft.date || (!finish && seconds === 0)}
+          onClick={() => void save()}
+        >
           Valider
         </Button>
       }
@@ -39,19 +58,26 @@ export default function GoalSheet(sheet: SheetProps<"goal">) {
           onChange={(race) => set({ race, distanceKm: RACES.find((r) => r.race === race)?.km ?? draft.distanceKm })}
         />
         <RowInput label="Date" type="date" min={todayOf(plan)} value={draft.date} onChange={(date) => set({ date })} />
-        <RowInput
-          label="Chrono visé"
-          value={draft.targetTime ?? ""}
-          placeholder="Facultatif, ex. : 1:48:00"
-          onChange={(targetTime) => set({ targetTime })}
-        />
       </Group>
-      <p className="t-cap m-0 px-4">
-        C'est toi qui choisis ton chrono. Sans chrono, l'objectif est de finir, à ton rythme.
-      </p>
+      <Section
+        title="Ton chrono"
+        footnote="C'est toi qui le choisis. Sans chrono, l'objectif est de finir, à ton rythme."
+      >
+        <SegmentedControl
+          label="Ton chrono"
+          items={MODES}
+          value={finish ? "finish" : "time"}
+          onChange={(mode) => setFinish(mode === "finish")}
+        />
+        {!finish && (
+          <Surface variant="inset" className="px-2 py-2">
+            <TimeWheels seconds={seconds} onChange={(s) => set({ targetTime: fullClock(s) })} />
+          </Surface>
+        )}
+      </Section>
       <Surface variant="inset" className="flex flex-col gap-1 p-4">
         <span className="t-strong">Ce qui change</span>
-        <span className="t-body">{goalSummary(goal, draft)}</span>
+        <span className="t-body">{goalSummary(goal, input)}</span>
       </Surface>
     </Sheet>
   );

@@ -26,6 +26,8 @@ export type OnboardingState = {
   update: (patch: Partial<Draft>) => void;
   next: () => void;
   back: () => void;
+  /** From the summary, straight to the step of a line she wants to change. */
+  goTo: (step: Step) => void;
   checkTarget: () => Promise<void>;
   checkTimetable: () => Promise<void>;
   submit: () => Promise<boolean>;
@@ -68,7 +70,8 @@ export function createOnboardingStore(
     },
 
     update(patch) {
-      const target = "race" in patch || "otherKm" in patch || "date" in patch || "hours" in patch || "minutes" in patch;
+      const target =
+        "race" in patch || "otherKm" in patch || "date" in patch || "targetSec" in patch || "finish" in patch;
       set((s) => ({ draft: { ...s.draft, ...patch }, ...(target ? { verdict: undefined } : {}) }));
     },
 
@@ -81,6 +84,10 @@ export function createOnboardingStore(
     back() {
       const { step, draft } = get();
       set({ step: nextStep(step, draft, -1), direction: -1 });
+    },
+
+    goTo(step) {
+      set({ step, direction: -1 });
     },
 
     async checkTarget() {

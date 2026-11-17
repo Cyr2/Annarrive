@@ -80,6 +80,7 @@ Other utilities: `.row` (grouped list row with hairlines between rows), `.hairli
 - **`List`**: `Section` (caption title and footnote), `Group` (an inset surface), `RowButton` (label, value, chevron), `RowSelect` (native iOS wheel), `RowInput` (text, date, time). Dates and times show the app's own wording ("lundi 16 novembre", "7:30") over the native field, which still opens the iOS wheel. Placeholders start with "Ex. :".
 - **`PaceValue`** `value, unit?, size?: "figure" | "num" | "title" | "strong", rolling?`. Every pace, time, duration or distance. Always ink and tabular; the unit is smaller in `ink-2`; `rolling` makes digits roll when the value changes.
 - **`SessionShape`** `steps, tone`. The session drawn as rounded bars: warm-up, one bar per repeat (with its recovery low between), cool-down; height is effort, color is the type. Use it wherever a session is shown in some size: day card, detail, and next on Semaine rows, Reggie's widgets, the move and change sheets. Logic in `session-shape.ts` (tested).
+- **`TimeWheels`** `seconds, onChange, maxHours?`. A duration on three iOS-like wheels (hours, minutes, seconds), scroll-snapped, a spinbutton each for VoiceOver and the keyboard. Her target time, never a proposed one.
 - **`SessionChip`** `tone, children?`. The type as a pill (wash, dot, deep label). Defaults to the type's name ("Intense"); pass the session's title to name it.
 - **`IconTile`**, **`Dot`**, **`Typing`** (`text?` for "Je vérifie"), **`RollingText`** in `bits.tsx`. A `Dot` always goes with a word.
 - **`tones.ts`**: `Tone` and `TONES`.
