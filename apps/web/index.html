@@ -18,24 +18,8 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <!-- What Aujourd'hui reads, fetched while the app's script downloads rather than after it (api/http.ts).
-         After the script and styles, which matter more. -->
-    <link rel="preload" href="/api/today" as="fetch" crossorigin />
-    <link rel="preload" href="/api/program" as="fetch" crossorigin />
-    <link rel="preload" href="/api/proposals" as="fetch" crossorigin />
-    <link rel="preload" href="/api/timetable" as="fetch" crossorigin />
-    <script>
-      // This week and the next, numbered like isoWeek() in lib/date.ts: the week of their Thursday.
-      for (const offset of [0, 7]) {
-        const thursday = new Date();
-        thursday.setHours(12, 0, 0, 0);
-        thursday.setDate(thursday.getDate() - ((thursday.getDay() + 6) % 7) + 3 + offset);
-        const year = thursday.getFullYear();
-        const week = Math.floor(Math.round((thursday - new Date(year, 0, 1, 12)) / 864e5) / 7) + 1;
-        const link = Object.assign(document.createElement("link"), { rel: "preload", as: "fetch", crossOrigin: "" });
-        link.href = `/api/weeks/${year}-W${String(week).padStart(2, "0")}`;
-        document.head.append(link);
-      }
-    </script>
+    <!-- What Aujourd'hui reads, in one request, fetched while the app's script downloads rather than after it
+         (api/http.ts). After the script and styles, which matter more. -->
+    <link rel="preload" href="/api/first-screen" as="fetch" crossorigin />
   </body>
 </html>

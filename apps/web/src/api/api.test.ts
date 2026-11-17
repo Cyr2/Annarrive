@@ -235,6 +235,21 @@ describe("http client, reading", () => {
     });
   });
 
+  it("reads the first screen in one request at launch, then each route on its own", async () => {
+    const paths = ["/today", "/program", "/proposals", "/timetable", "/weeks/2026-W47", "/weeks/2026-W48"];
+    const first = Object.fromEntries(paths.map((p) => [p, reads[`GET /api${p}` as keyof typeof reads]]));
+    const { api, fetcher } = server({ ...reads, "GET /api/first-screen": first });
+    const asked = () => fetcher.mock.calls.map(([url]) => String(url));
+
+    const [today, week] = await Promise.all([api.today(), api.week(0)]);
+    expect(today.session?.id).toBe("s1");
+    expect(week.items.length).toBeGreaterThan(0);
+    expect(asked()).toEqual(["/api/first-screen"]);
+
+    await api.today();
+    expect(asked()).toContain("/api/today");
+  });
+
   it("shows today's run once done, asking the feel only when the watch did not", async () => {
     const run = { id: "garmin:1", start: "2026-11-16T18:02", durMin: 51.2, distM: 8300, sessionId: "s1" };
     const done = { ...SESSION, status: "done" };

@@ -27,7 +27,7 @@ const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 /** Largest JSON body the API reads: a chat message is at most 2000 characters. */
 const MAX_BODY_BYTES = 64 * 1024;
 
-/** CSP hashes of the built page's inline scripts (service worker registration, week preloads), so only they run. */
+/** CSP hashes of the built page's inline scripts (service worker registration), so only they run. */
 export function inlineScriptHashes(webDist: string | undefined): string[] {
   if (!webDist) return [];
   let html: string;

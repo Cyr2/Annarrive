@@ -29,6 +29,12 @@ const TABS: Tab[] = [
   { href: "/reggie", label: "Reggie", icon: "reggie", preload: loadReggie },
 ];
 
+/** After the first screen's render has settled. Safari has no requestIdleCallback: a timeout stands in. */
+function whenIdle(task: () => void) {
+  if (typeof requestIdleCallback === "function") requestIdleCallback(task, { timeout: 2000 });
+  else setTimeout(task, 500);
+}
+
 export function App() {
   const [location, navigate] = useLocation();
   const active = TABS.some((tab) => tab.href === location) ? location : null;
@@ -41,14 +47,16 @@ export function App() {
   const [onboarding, setOnboarding] = useState(false);
 
   useEffect(() => {
-    // Aujourd'hui first: nothing else competes with its requests or delays its paint.
+    // Aujourd'hui first: nothing else competes with its requests or delays its paint, then the rest waits for idle.
     void usePlan
       .getState()
       .load()
-      .then(() => {
-        void usePush.getState().check();
-        void needsOnboarding().then(setOnboarding);
-      });
+      .then(() =>
+        whenIdle(() => {
+          void usePush.getState().check();
+          void needsOnboarding().then(setOnboarding);
+        }),
+      );
   }, []);
 
   if (signedOut)

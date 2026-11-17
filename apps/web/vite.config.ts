@@ -44,6 +44,8 @@ export default defineConfig({
   ],
   build: {
     rolldownOptions: {
+      // A zod schema nobody reads (server inputs, Garmin) is dropped instead of being built at every launch.
+      treeshake: { manualPureFunctions: ["z"] },
       output: {
         // Everything the first screen needs in one file: each extra chunk costs a round trip on a phone.
         codeSplitting: { groups: [{ name: "app", tags: ["$initial"] }] },
