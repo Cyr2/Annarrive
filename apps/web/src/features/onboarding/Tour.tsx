@@ -1,7 +1,8 @@
 import { MotionConfig, motion } from "motion/react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { SPRING_BUBBLE, SPRING_STEP } from "../../lib/motion.ts";
-import { Button } from "../../ui/Button.tsx";
+import { Button } from "../../ui/controls.tsx";
+import { TextButton } from "../../ui/TextButton.tsx";
 import { usePlan } from "../plan/store.ts";
 
 /** The guided tour over Aujourd'hui: what each part is for, shown once. A missing target centers the bubble. */
@@ -11,7 +12,10 @@ const BUBBLES = [
     target: "[data-tour='actions']",
     text: "Reggie répond à tes questions. Déplacer, Changer et Pas dispo règlent un imprévu en deux gestes.",
   },
-  { target: "nav a[href='/semaine']", text: "Semaine montre tes courses, tes cours et ta muscu, jour par jour." },
+  {
+    target: "[role='navigation'] a[href='/semaine']",
+    text: "Semaine montre tes courses, tes cours et ta muscu, jour par jour.",
+  },
   { target: undefined, text: "Dans Semaine, appuie sur une séance et glisse-la vers un autre jour pour la déplacer." },
 ];
 
@@ -79,20 +83,16 @@ export function Tour({ onEnd }: { onEnd: () => void }) {
             initial={{ opacity: 0, y: above ? 8 : -8, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={SPRING_BUBBLE}
-            // Solid enough to read over the dimmed screen.
-            className="glass flex flex-col gap-4 rounded-card bg-glass-solid p-5"
+            data-variant="card"
+            className="surface flex flex-col gap-4 p-5"
           >
             <p className="t-body m-0">{bubble?.text}</p>
             <div ref={actions} className="flex items-center gap-2">
               <span className="t-cap flex-1">
                 {index + 1} sur {BUBBLES.length}
               </span>
-              {!last && (
-                <Button variant="link" onClick={onEnd}>
-                  Passer
-                </Button>
-              )}
-              <Button variant="tintedBlue" onClick={() => (last ? onEnd() : setIndex(index + 1))}>
+              {!last && <TextButton onClick={onEnd}>Passer</TextButton>}
+              <Button variant="filled" onClick={() => (last ? onEnd() : setIndex(index + 1))}>
                 {last ? "C'est compris" : "Suivant"}
               </Button>
             </div>

@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import type { Strength } from "../../api/schemas.ts";
 import { addDays, duration, mondayOf, weekdayName } from "../../lib/date.ts";
-import { Button } from "../../ui/Button.tsx";
+import { Switch } from "../../ui/controls.tsx";
 import { Group, RowInput, RowSelect, Section } from "../../ui/List.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
-import { Switch } from "../../ui/Switch.tsx";
+import { TextButton } from "../../ui/TextButton.tsx";
 import { REPEATS } from "../add/add.ts";
 import { todayOf } from "../plan/selectors.ts";
 import { usePlan } from "../plan/store.ts";
@@ -60,7 +60,7 @@ function StrengthForm({ saved, sheet }: FormProps) {
       }}
     >
       <Group>
-        <RowInput label="Nom" value={draft.name} placeholder="Jambes" onChange={(name) => set({ name })} />
+        <RowInput label="Nom" value={draft.name} placeholder="Ex. : Jambes" onChange={(name) => set({ name })} />
       </Group>
       <Section footnote="Reggie ne met pas de séance dure ni de sortie longue dans les 24 h qui suivent.">
         <Group>
@@ -90,27 +90,28 @@ function StrengthForm({ saved, sheet }: FormProps) {
       </Group>
       {saved && !confirm && (
         <Group>
-          <Button variant="danger" onClick={() => setConfirm(true)}>
+          <TextButton tone="danger" className="min-h-13 w-full" onClick={() => setConfirm(true)}>
             Supprimer la séance
-          </Button>
+          </TextButton>
         </Group>
       )}
       {saved && confirm && (
         <Section title={`Supprimer ${saved.name} ?`}>
           <Group>
-            <Button
-              variant="danger"
+            <TextButton
+              tone="danger"
+              className="min-h-13 w-full"
               onClick={() => void run((api) => api.deleteStrength(saved.id, "all", thisWeek(saved)))}
             >
               Cette semaine et les suivantes
-            </Button>
-            <Button
-              variant="danger"
-              className="hairline-top"
+            </TextButton>
+            <TextButton
+              tone="danger"
+              className="hairline-top min-h-13 w-full"
               onClick={() => void run((api) => api.deleteStrength(saved.id, "one", thisWeek(saved)))}
             >
               Cette semaine seulement
-            </Button>
+            </TextButton>
           </Group>
         </Section>
       )}

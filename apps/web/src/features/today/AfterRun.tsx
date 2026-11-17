@@ -1,9 +1,11 @@
 import { useState } from "react";
 import type { Activity, Feel, Run } from "../../api/schemas.ts";
 import { addDays, decimal } from "../../lib/date.ts";
-import { Glass } from "../../ui/Glass.tsx";
+import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
+import { Chip, IconButton } from "../../ui/controls.tsx";
 import { Icon } from "../../ui/Icon.tsx";
-import { Segmented } from "../../ui/Segmented.tsx";
+import { PaceValue } from "../../ui/PaceValue.tsx";
+import { Surface } from "../../ui/Surface.tsx";
 import { usePlan } from "../plan/store.ts";
 import { useChat } from "../reggie/store.ts";
 import { useGo } from "../useGo.ts";
@@ -27,9 +29,9 @@ export function AfterRun({ activity, next, today }: { activity: Activity; next?:
   };
   return (
     <>
-      <Glass as="article" className="flex flex-col gap-4 rounded-card p-5">
+      <Surface as="article" className="flex flex-col gap-4 p-5">
         <div className="flex items-center gap-3">
-          <span className="flex size-10 flex-none items-center justify-center rounded-full bg-intense text-on-accent">
+          <span className="flex size-10 flex-none items-center justify-center rounded-full bg-easy-wash text-easy-deep">
             <Icon name="check" size={20} stroke={2.6} />
           </span>
           <div className="flex flex-col">
@@ -38,15 +40,15 @@ export function AfterRun({ activity, next, today }: { activity: Activity; next?:
           </div>
         </div>
         <dl className="m-0 grid grid-cols-3 gap-2">
-          <Figure label="Distance" value={decimal(activity.distanceKm)} unit=" km" />
+          <Figure label="Distance" value={decimal(activity.distanceKm)} unit="km" />
           <Figure label="Durée" value={activity.duration} />
-          <Figure label={activity.mainPaceLabel} value={activity.mainPace} accent />
+          <Figure label={activity.mainPaceLabel} value={activity.mainPace} />
         </dl>
         <p className="t-body hairline-top m-0 flex items-center gap-2 pt-4">
-          <Icon name="checkCircle" size={18} stroke={2.4} className="flex-none text-intense-ink" />
+          <Icon name="checkCircle" size={18} stroke={2.4} className="flex-none text-easy-deep" />
           {activity.verdict}
         </p>
-      </Glass>
+      </Surface>
 
       {activity.askFeel && (
         <section className="flex flex-col gap-2">
@@ -54,55 +56,53 @@ export function AfterRun({ activity, next, today }: { activity: Activity; next?:
             <h2 className="t-title">Comment c'était ?</h2>
             <span className="t-cap">Ta montre ne te l'a pas demandé cette fois</span>
           </div>
-          <Segmented
-            size="md"
-            label="Comment c'était ?"
-            items={FEELS}
-            value={activity.feel}
-            onChange={(feel) => void usePlan.getState().run((api) => api.logFeel(activity.id, feel))}
-          />
+          <ChoiceGroup label="Comment c'était ?" className="grid grid-cols-3 gap-2">
+            {FEELS.map((feel) => (
+              <Chip
+                key={feel.value}
+                selected={activity.feel === feel.value}
+                className="w-full"
+                onClick={() => void usePlan.getState().run((api) => api.logFeel(activity.id, feel.value))}
+              >
+                {feel.label}
+              </Chip>
+            ))}
+          </ChoiceGroup>
         </section>
       )}
 
       <section className="flex flex-col gap-2">
-        <label htmlFor="note" className="t-title px-1">
+        <label htmlFor="note" className="t-title flex items-center gap-2 px-1">
+          <span aria-hidden="true" className="size-2.5 rounded-full bg-reggie" />
           Un mot pour Reggie
         </label>
-        <div className="flex items-end gap-2 rounded-group bg-surface p-2">
+        <Surface variant="inset" className="flex items-end gap-2 p-2">
           <textarea
             id="note"
             rows={2}
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Facultatif. Mollet un peu raide sur la fin…"
-            className="t-body min-w-0 flex-1 resize-none rounded-xl border-0 bg-transparent p-2 text-text"
+            className="t-body min-w-0 flex-1 resize-none rounded-xl border-0 bg-transparent p-2 text-ink outline-none"
           />
-          <button
-            type="button"
-            aria-label="Envoyer à Reggie"
-            onClick={sendNote}
-            className="press flex size-11 flex-none items-center justify-center rounded-full border-0 bg-assistant text-on-accent"
-          >
-            <Icon name="send" size={20} stroke={2.4} />
-          </button>
-        </div>
+          <IconButton icon="send" label="Envoyer à Reggie" variant="filled" tone="reggie" onClick={sendNote} />
+        </Surface>
       </section>
 
-      <div className="flex min-h-14 items-center justify-between rounded-group bg-surface px-4">
+      <Surface variant="inset" className="flex min-h-14 items-center justify-between px-4">
         <span className="t-sub">Demain</span>
         <span className="t-strong">{next?.date === addDays(today, 1) ? next.title : "Repos"}</span>
-      </div>
+      </Surface>
     </>
   );
 }
 
-function Figure({ label, value, unit, accent }: { label: string; value: string; unit?: string; accent?: boolean }) {
+function Figure({ label, value, unit }: { label: string; value: string; unit?: string }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex min-w-0 flex-col gap-1">
       <dt className="t-cap">{label}</dt>
-      <dd className={accent ? "t-num m-0 text-intense-ink" : "t-num m-0"}>
-        {value}
-        {unit && <span className="t-sub">{unit}</span>}
+      <dd className="m-0">
+        <PaceValue value={value} unit={unit} size="num" />
       </dd>
     </div>
   );

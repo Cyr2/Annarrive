@@ -22,7 +22,7 @@ async function pressAndDrag(page: Page, item: Locator, target?: Locator) {
       const to = await target.boundingBox();
       if (!to) throw new Error("Cible invisible");
       await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 15 });
-      await expect(slot).toHaveClass(/border-assistant/, { timeout: 500 });
+      await expect(slot).toHaveClass(/border-action/, { timeout: 500 });
     }).toPass();
   }
 }

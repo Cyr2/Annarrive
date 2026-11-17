@@ -1,8 +1,8 @@
 import { useId } from "react";
 import { weekdayName } from "../../lib/date.ts";
-import { Button } from "../../ui/Button.tsx";
+import { Button, Switch } from "../../ui/controls.tsx";
 import { Group, RowInput, RowSelect, Section } from "../../ui/List.tsx";
-import { Switch } from "../../ui/Switch.tsx";
+import { TextButton } from "../../ui/TextButton.tsx";
 import type { StrengthDraft } from "./onboarding.ts";
 import { DayChips, update, useDraft } from "./parts.tsx";
 
@@ -52,7 +52,12 @@ function StrengthCard({ item, index }: { item: StrengthDraft; index: number }) {
   return (
     <Section title={`Séance ${index + 1}`}>
       <Group>
-        <RowInput label="Nom" placeholder="Haut du corps" value={item.name} onChange={(name) => change({ name })} />
+        <RowInput
+          label="Nom"
+          placeholder="Ex. : Haut du corps"
+          value={item.name}
+          onChange={(name) => change({ name })}
+        />
         <div className="row">
           <span id={legsId} className="t-body">
             Travaille les jambes
@@ -67,13 +72,13 @@ function StrengthCard({ item, index }: { item: StrengthDraft; index: number }) {
         />
         <RowInput label="Heure" type="time" value={item.start} onChange={(start) => change({ start })} />
       </Group>
-      <Button
-        variant="link"
-        className="self-start px-4 text-danger"
+      <TextButton
+        tone="danger"
+        className="self-start px-4"
         onClick={() => update({ strength: strength.filter((s) => s.id !== item.id) })}
       >
         Retirer cette séance
-      </Button>
+      </TextButton>
     </Section>
   );
 }
@@ -89,7 +94,7 @@ export function StrengthStep() {
       {strength.map((item, i) => (
         <StrengthCard key={item.id} item={item} index={i} />
       ))}
-      <Button variant="glass" icon="plus" className="px-4" onClick={add}>
+      <Button icon="plus" onClick={add}>
         {strength.length ? "Ajouter une autre séance" : "Ajouter une séance"}
       </Button>
     </>

@@ -54,7 +54,8 @@ const securityHeaders = (scriptHashes: string[]) =>
       imgSrc: ["'self'", "data:", "blob:"],
       fontSrc: ["'self'"],
       connectSrc: ["'self'"],
-      workerSrc: ["'self'"],
+      // blob: for glisse's rim encoder, a worker built from its own script (patches/glisse@0.6.0.patch).
+      workerSrc: ["'self'", "blob:"],
       manifestSrc: ["'self'"],
       objectSrc: ["'none'"],
       baseUri: ["'none'"],
@@ -104,8 +105,32 @@ export function rateLimit(max: number, windowMs: number, now: () => number = Dat
 // base64url only, so the token can sit in the page's HTML as is.
 const loginTokenSchema = z.string().regex(/^[\w-]{1,200}$/, "Lien de connexion incomplet");
 
+/**
+ * The login page's look: the app's « Ciel du matin » tokens (apps/web/src/styles/tokens.css), copied by value
+ * because this page is served before the app and loads nothing else. The logo keeps its slot, as in the app.
+ */
+const LOGIN_CSS = [
+  "*{box-sizing:border-box}",
+  "html{background:#f7f9fb;color:#23303d;font:17px/1.35 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;-webkit-font-smoothing:antialiased}",
+  "body{margin:0;min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:max(24px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom));background:linear-gradient(180deg,#fde7da 0%,#f3ecf6 34%,#e6f1f8 68%,#f7f9fb 100%) fixed}",
+  "main{width:100%;max-width:400px;display:flex;flex-direction:column;align-items:center;gap:16px;padding:32px 24px;text-align:center;border-radius:24px;background:rgb(255 255 255/.84);box-shadow:inset 0 0 0 .5px rgb(255 255 255/.9),inset 0 1px 0 rgb(255 255 255/.95),0 10px 28px -6px rgb(35 48 61/.12)}",
+  ".logo{width:72px;height:72px;border-radius:20px;display:grid;place-items:center;background:#fbfcfd;box-shadow:0 4px 14px -6px rgb(35 48 61/.2);color:#8a949e;font-weight:700;font-size:20px}",
+  "h1{margin:0;font-size:28px;line-height:34px;font-weight:700;letter-spacing:-.022em}",
+  "p{margin:0;color:#5a6673}",
+  "form{width:100%}",
+  "button{width:100%;min-height:50px;border:0;border-radius:25px;background:#3d6a9e;color:#fff;font:600 17px -apple-system,BlinkMacSystemFont,system-ui,sans-serif;box-shadow:0 10px 30px -8px rgb(35 48 61/.22);cursor:pointer}",
+  "button:focus-visible{outline:2px solid #3d6a9e;outline-offset:3px}",
+  ".notice{color:#875a0a;background:#fcf0d9;border-radius:16px;padding:10px 14px;font-size:15px}",
+].join("");
+
 const loginPage = (content: string) =>
-  `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="referrer" content="no-referrer"><title>Connexion à Talaria</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;padding:16px;box-sizing:border-box;font:17px system-ui,-apple-system,sans-serif;text-align:center}h1{font-size:28px}button{font:600 17px system-ui,-apple-system,sans-serif;min-height:44px;padding:0 24px;border:0;border-radius:12px;background:#0a7cff;color:#fff}</style></head><body><main><h1>Talaria</h1>${content}</main></body></html>`;
+  `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="referrer" content="no-referrer"><meta name="theme-color" content="#FDE7DA"><meta name="color-scheme" content="light"><title>Connexion à Talaria</title><style>${LOGIN_CSS}</style></head><body><main><span class="logo" role="img" aria-label="Talaria">T</span>${content}</main></body></html>`;
+
+/** A login that failed: what happened, and the way out. */
+const loginError = (message: string) =>
+  loginPage(
+    `<h1>Connexion impossible</h1><p class="notice" role="alert">${message}</p><p>Ce lien a peut-être déjà servi ou expiré. Demande un nouveau lien de connexion.</p>`,
+  );
 
 export type AppOptions = { services: Services; sessionSecret: string; webDist?: string | undefined };
 
@@ -132,7 +157,7 @@ export function createApp({ services, sessionSecret, webDist }: AppOptions): Hon
     c.header("Cache-Control", "no-store");
     return c.html(
       loginPage(
-        `<form method="post" action="/api/auth/login"><input type="hidden" name="token" value="${token}"><button type="submit">Se connecter</button></form>`,
+        `<h1>Bienvenue sur Talaria</h1><p>Ce lien ouvre Talaria sur ce téléphone. Tu restes connectée ensuite.</p><form method="post" action="/api/auth/login"><input type="hidden" name="token" value="${token}"><button type="submit">Se connecter</button></form>`,
       ),
     );
   });
@@ -145,7 +170,7 @@ export function createApp({ services, sessionSecret, webDist }: AppOptions): Hon
       if (site && site !== "same-origin") throw new AppError(403, "Ouvre ton lien de connexion directement.");
       sessionId = services.auth.login(loginTokenSchema.parse((await c.req.parseBody()).token));
     } catch (error) {
-      if (error instanceof AppError) return c.html(loginPage(`<p>${error.message}</p>`), error.status);
+      if (error instanceof AppError) return c.html(loginError(error.message), error.status);
       throw error;
     }
     await setSignedCookie(c, SESSION_COOKIE, sessionId, sessionSecret, {

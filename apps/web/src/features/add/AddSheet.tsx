@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { mondayOf } from "../../lib/date.ts";
-import { Segmented } from "../../ui/Segmented.tsx";
+import { SegmentedControl } from "../../ui/controls.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
 import { todayOf } from "../plan/selectors.ts";
 import { usePlan } from "../plan/store.ts";
@@ -29,7 +29,7 @@ export default function AddSheet({ spec, ...sheet }: SheetProps<"add">) {
 
   return (
     <Sheet {...sheet} title="Ajouter">
-      <Segmented label="Type" items={KINDS} value={kind} onChange={setKind} />
+      <SegmentedControl label="Type" items={KINDS} value={kind} onChange={setKind} />
       {kind === "strength" && (
         <StrengthList
           templates={plan.program?.strength ?? []}

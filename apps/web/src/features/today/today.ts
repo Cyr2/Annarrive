@@ -1,6 +1,5 @@
 import type { Item, Run, WatchStatus, Week } from "../../api/schemas.ts";
 import { addDays, addMinutes, dayName, minutesOf, relativeMoment, span } from "../../lib/date.ts";
-import type { Mood } from "../../ui/Screen.tsx";
 import type { Tone } from "../../ui/tones.ts";
 import type { SheetSpec } from "../sheets/store.ts";
 
@@ -8,7 +7,7 @@ export function toneOf(item: Item): Tone {
   return item.kind === "run" ? item.intensity : item.kind;
 }
 
-const DOT_ORDER: Tone[] = ["hard", "revision", "strength", "class"];
+const DOT_ORDER: Tone[] = ["hard", "long", "easy", "revision", "strength", "class"];
 
 /** The seven days of "Cette semaine": letter, number, and one dot per kind of thing planned. */
 export function weekStrip(week: Week, today: string) {
@@ -17,7 +16,7 @@ export function weekStrip(week: Week, today: string) {
     const kinds = new Set(
       week.items
         .filter((item) => item.date === date && !("cancelled" in item && item.cancelled))
-        .map((item): Tone => (item.kind === "run" ? "hard" : item.kind === "busy" ? "class" : item.kind)),
+        .map((item): Tone => (item.kind === "run" ? item.intensity : item.kind === "busy" ? "class" : item.kind)),
     );
     return {
       date,
@@ -53,12 +52,6 @@ export const WATCH_LABEL: Record<WatchStatus, string> = {
   sending: "Envoi à ta montre…",
   failed: "Pas envoyée, réessayer",
 };
-
-export function moodOf(run: Run | undefined, done: boolean): Mood {
-  if (done) return "done";
-  if (!run) return "rest";
-  return run.intensity === "hard" ? "run" : run.intensity;
-}
 
 /** Changes when what the card shows changes, so the card can turn over to its new content. */
 export function contentKey(run: Run): string {

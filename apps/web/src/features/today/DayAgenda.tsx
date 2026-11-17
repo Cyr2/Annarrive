@@ -1,6 +1,7 @@
 import type { Item } from "../../api/schemas.ts";
 import { cx } from "../../lib/cx.ts";
 import { IconTile } from "../../ui/bits.tsx";
+import { Surface } from "../../ui/Surface.tsx";
 import { useSheet } from "../sheets/store.ts";
 import { agenda, itemTime, sheetFor, toneOf } from "./today.ts";
 
@@ -12,7 +13,7 @@ export function DayAgenda({ items, date }: { items: Item[]; date: string }) {
   return (
     <section className="flex flex-col gap-2">
       <h2 className="t-title px-1">Ma journée</h2>
-      <ul className="m-0 list-none rounded-group bg-surface px-0 py-1">
+      <Surface as="ul" variant="inset" className="m-0 list-none px-0 py-1">
         {list.map((item, index) => {
           const cancelled = "cancelled" in item && item.cancelled;
           return (
@@ -20,12 +21,12 @@ export function DayAgenda({ items, date }: { items: Item[]; date: string }) {
               <button
                 type="button"
                 onClick={() => show(sheetFor(item))}
-                className="flex w-full items-center gap-3 border-0 bg-transparent px-4 text-left text-text"
+                className="flex w-full items-center gap-3 border-0 bg-transparent px-4 text-left text-ink"
               >
                 <IconTile tone={toneOf(item)} />
                 <span
                   className={cx(
-                    "flex min-h-15 flex-1 flex-col justify-center",
+                    "flex min-h-15 flex-1 flex-col justify-center py-2.5",
                     index < list.length - 1 && "border-b-[0.5px] border-hairline",
                   )}
                 >
@@ -40,7 +41,7 @@ export function DayAgenda({ items, date }: { items: Item[]; date: string }) {
             </li>
           );
         })}
-      </ul>
+      </Surface>
     </section>
   );
 }

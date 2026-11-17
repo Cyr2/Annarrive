@@ -1,9 +1,9 @@
-import { Glass } from "../../ui/Glass.tsx";
+import { Surface } from "../../ui/Surface.tsx";
 import { usePlan } from "../plan/store.ts";
 import { type Entry, useChat } from "./store.ts";
 import { ChangeCard, Choices, Preview, Scale, Slots } from "./widgets.tsx";
 
-/** One message: her bubble in black on the right, Reggie's in glass on the left, then his widget 60 ms later. */
+/** One message: hers in the action blue on the right, Reggie's on a surface edged in his green on the left, then his widget 60 ms later. */
 export function Message({ entry, today }: { entry: Entry; today: string }) {
   return (
     <>
@@ -14,19 +14,19 @@ export function Message({ entry, today }: { entry: Entry; today: string }) {
 }
 
 function UserBubble({ text }: { text: string }) {
-  return <div className="msg bubble-user t-body max-w-[78%] self-end bg-text px-4 py-3 text-on-accent">{text}</div>;
+  return <div className="msg bubble-user t-body max-w-[78%] self-end bg-action px-4 py-3 text-on-color">{text}</div>;
 }
 
 function ReggieBubble({ entry }: { entry: Entry }) {
   return (
-    <Glass className="msg bubble-reggie t-body flex max-w-[84%] flex-col gap-2 self-start px-4 py-3">
+    <Surface variant="widget" className="msg bubble-reggie t-body flex max-w-[84%] flex-col gap-2 self-start px-4 py-3">
       <span>{entry.text}</span>
       {entry.source && (
-        <a href={entry.source.url} target="_blank" rel="noopener noreferrer" className="t-cap text-link underline">
+        <a href={entry.source.url} target="_blank" rel="noopener noreferrer" className="t-cap text-action underline">
           Source : {entry.source.label}
         </a>
       )}
-    </Glass>
+    </Surface>
   );
 }
 

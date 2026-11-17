@@ -1,39 +1,21 @@
-import { type ButtonHTMLAttributes, type ReactNode, useState } from "react";
+import { useState } from "react";
 import { cx } from "../lib/cx.ts";
 import { Icon, type IconName } from "./Icon.tsx";
 import { TONES, type Tone } from "./tones.ts";
 
 /** Small presentation pieces shared by the screens. */
 
-/** 32 px rounded square with the kind's icon, as in every list of the mockups. */
+/** 32 px rounded square with the kind's icon: its wash, the icon in its deep tone. */
 export function IconTile({ tone, icon }: { tone: Tone; icon?: IconName }) {
+  const style = TONES[tone];
   return (
-    <span className={cx("flex size-8 flex-none items-center justify-center rounded-tile", TONES[tone].tile)}>
-      <Icon name={icon ?? TONES[tone].icon} size={18} />
+    <span className={cx("flex size-8 flex-none items-center justify-center rounded-tile", style.wash, style.deep)}>
+      <Icon name={icon ?? style.icon} size={18} />
     </span>
   );
 }
 
-type ChipProps = ButtonHTMLAttributes<HTMLButtonElement> & { children: ReactNode; icon?: IconName };
-
-/** Glass pill: Reggie shortcuts. */
-export function Chip({ children, icon, className, type = "button", ...rest }: ChipProps) {
-  return (
-    <button
-      type={type}
-      className={cx(
-        "glass press t-label inline-flex min-h-11 flex-none items-center gap-2 rounded-full border-0 px-4 text-text shadow-glass-flat",
-        className,
-      )}
-      {...rest}
-    >
-      {icon && <Icon name={icon} size={16} />}
-      {children}
-    </button>
-  );
-}
-
-/** Colored dot: week legend, timetable status. */
+/** Colored dot: week strip, status lines. Never the only carrier of a meaning: a word goes with it. */
 export function Dot({ className, size = "sm" }: { className: string; size?: "sm" | "md" }) {
   return (
     <span
@@ -43,13 +25,19 @@ export function Dot({ className, size = "sm" }: { className: string; size?: "sm"
   );
 }
 
-/** Three dots while Reggie thinks. */
-export function Typing({ label = "Reggie écrit" }: { label?: string }) {
+/** Reggie's dots while he thinks, with what he is doing when it takes longer ("Je vérifie"). */
+export function Typing({ label = "Reggie écrit", text }: { label?: string; text?: string }) {
   return (
-    <div role="status" aria-label={label} className="glass bubble-reggie flex gap-1.5 self-start px-4 py-3.5">
+    <div
+      role="status"
+      aria-label={label}
+      data-variant="widget"
+      className="surface msg bubble-reggie t-body flex items-center gap-1.5 self-start px-4 py-3.5"
+    >
       <span className="typing-dot" />
       <span className="typing-dot" />
       <span className="typing-dot" />
+      {text && <span className="pl-1.5">{text}</span>}
     </div>
   );
 }

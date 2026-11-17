@@ -1,8 +1,10 @@
 import { type ReactNode, useId } from "react";
 import { cx } from "../lib/cx.ts";
+import { longDate } from "../lib/date.ts";
 import { Icon } from "./Icon.tsx";
+import { Surface } from "./Surface.tsx";
 
-/** iOS grouped list pieces: a white rounded group, rows with hairlines, a caption header and a footnote. */
+/** iOS grouped list pieces: an inset surface, rows with hairlines, a caption header and a footnote. */
 
 export function Section({ title, footnote, children }: { title?: string; footnote?: string; children: ReactNode }) {
   return (
@@ -15,35 +17,34 @@ export function Section({ title, footnote, children }: { title?: string; footnot
 }
 
 export function Group({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cx("group", className)}>{children}</div>;
+  return (
+    <Surface variant="inset" className={cx("flex flex-col", className)}>
+      {children}
+    </Surface>
+  );
 }
 
-const Chevron = () => <Icon name="chevronRight" size={14} stroke={2.5} className="flex-none text-text-faint" />;
+const Chevron = () => <Icon name="chevronRight" size={14} stroke={2.5} className="flex-none text-ink-3" />;
 
 type RowButtonProps = {
   label: ReactNode;
   value?: ReactNode;
   onClick: () => void;
-  tall?: boolean;
   tone?: "plain" | "link";
 };
 
 /** A row that opens something: label left, current value and a chevron right. */
-export function RowButton({ label, value, onClick, tall = false, tone = "plain" }: RowButtonProps) {
+export function RowButton({ label, value, onClick, tone = "plain" }: RowButtonProps) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={cx(
-        "row border-0 bg-transparent p-0 pr-4 text-left",
-        tall && "min-h-16",
-        tone === "link" && "justify-start text-link",
-      )}
+      className={cx("row bg-transparent p-0 pr-4 text-left", tone === "link" && "justify-start text-action")}
     >
-      <span className="t-body min-w-0 py-3">{label}</span>
+      <span className="t-body min-w-0 py-2">{label}</span>
       {tone === "plain" && (
         // A long value ("Lundi, Mercredi, Samedi, Dimanche") wraps instead of running over the label.
-        <span className="t-body flex min-w-0 max-w-[55%] items-center gap-2 text-right text-text-secondary">
+        <span className="t-body flex min-w-0 max-w-[55%] items-center gap-2 text-right text-ink-2">
           <span className="min-w-0">{value}</span>
           <Chevron />
         </span>
@@ -63,11 +64,11 @@ type SelectProps<T extends string> = {
 export function RowSelect<T extends string>({ label, value, options, onChange }: SelectProps<T>) {
   const id = useId();
   return (
-    <div className="row">
+    <div className="row focus-within:rounded-row focus-within:outline-2 focus-within:outline-action">
       <label htmlFor={id} className="t-body">
         {label}
       </label>
-      <span className="flex items-center gap-2 text-text-secondary">
+      <span className="flex items-center gap-2 text-ink-2">
         <select
           id={id}
           value={value}
@@ -75,7 +76,7 @@ export function RowSelect<T extends string>({ label, value, options, onChange }:
             const picked = options.find((o) => o.value === e.target.value);
             if (picked) onChange(picked.value);
           }}
-          className="min-h-11 appearance-none border-0 bg-transparent text-right text-text-secondary"
+          className="min-h-11 appearance-none border-0 bg-transparent text-right text-ink outline-none"
         >
           {options.map((o) => (
             <option key={o.value} value={o.value}>
@@ -99,14 +100,29 @@ type InputProps = {
   inputMode?: "decimal" | "numeric";
 };
 
-/** A row with an editable value on the right: name, time, date. 16 px so iOS never zooms in. */
+/** How a date or a time reads in the app ("lundi 16 novembre", "7:30"), whatever the native field shows. */
+function shown(type: InputProps["type"], value: string): string | undefined {
+  if (!value || type === "text") return undefined;
+  return type === "date" ? longDate(value) : value.replace(/^0(\d)/, "$1");
+}
+
+/**
+ * A row with an editable value on the right: name, time, date. 16 px so iOS never zooms in. A date or a time
+ * shows the app's own wording, with the native field laid over it to open the iOS wheel.
+ */
 export function RowInput({ label, value, onChange, type = "text", placeholder, min, inputMode }: InputProps) {
   const id = useId();
+  const text = shown(type, value);
   return (
-    <div className="row">
+    <div className="row relative focus-within:rounded-row focus-within:outline-2 focus-within:outline-action">
       <label htmlFor={id} className="t-body flex-none">
         {label}
       </label>
+      {text && (
+        <span aria-hidden="true" className="t-body pointer-events-none absolute right-4 text-ink">
+          {text}
+        </span>
+      )}
       <input
         id={id}
         type={type}
@@ -116,7 +132,10 @@ export function RowInput({ label, value, onChange, type = "text", placeholder, m
         inputMode={inputMode}
         placeholder={placeholder}
         onChange={(e) => onChange(type === "time" ? e.target.value.replace(/^0(\d)/, "$1") : e.target.value)}
-        className="t-body min-h-11 min-w-0 flex-1 border-0 bg-transparent text-right text-text-secondary"
+        className={cx(
+          "t-body min-h-11 min-w-0 flex-1 border-0 bg-transparent text-right text-ink outline-none",
+          text && "opacity-0",
+        )}
       />
     </div>
   );

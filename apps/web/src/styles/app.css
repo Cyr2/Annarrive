@@ -1,20 +1,26 @@
 @import "tailwindcss";
 @import "./tokens.css";
 @import "./motion.css";
+@import "./surfaces.css";
+@import "./controls.css";
 
 /* In the base layer, so every Tailwind utility and component class can override it. */
 @layer base {
   html {
-    background: var(--color-bg);
-    color: var(--color-text);
+    color-scheme: light;
+    /* Under the sky, for the instant before it paints and behind a sheet's page as it steps back. */
+    background: var(--color-sky-4);
+    color: var(--color-ink);
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
     font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
     -webkit-tap-highlight-color: transparent;
     -webkit-text-size-adjust: 100%;
     /* No pull to refresh or page bounce: they fight the sheets and the week drag. */
     overscroll-behavior: none;
   }
 
+  /* No background on body: it would paint over the sky, which sits at z-index -1. */
   body {
     margin: 0;
     min-height: 100dvh;
@@ -27,6 +33,12 @@
   select {
     font: inherit;
     font-size: max(16px, 1em);
+    color: inherit;
+  }
+
+  ::placeholder {
+    color: var(--color-ink-3);
+    opacity: 1;
   }
 
   button,
@@ -53,12 +65,12 @@
   }
 
   a {
-    color: var(--color-link);
+    color: var(--color-action);
     text-decoration: none;
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-assistant);
+    outline: 2px solid var(--color-action);
     outline-offset: 2px;
   }
 }
@@ -69,16 +81,17 @@
     margin: 0;
     font-size: 28px;
     font-weight: 700;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.022em;
     line-height: 34px;
   }
   .t-title {
     margin: 0;
     font-size: 20px;
     font-weight: 700;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.012em;
     line-height: 25px;
   }
+  /* Big tabular numbers: durations, paces, a target time. */
   .t-figure {
     font-size: 40px;
     font-weight: 700;
@@ -105,7 +118,7 @@
     font-size: 15px;
     font-weight: 400;
     line-height: 20px;
-    color: var(--color-text-secondary);
+    color: var(--color-ink-2);
   }
   /* 15 px label in the text color: chips, segments, small buttons. */
   .t-label {
@@ -117,7 +130,7 @@
     font-size: 13px;
     font-weight: 500;
     line-height: 18px;
-    color: var(--color-text-secondary);
+    color: var(--color-ink-2);
   }
   .t-tab {
     font-size: 11px;
@@ -125,56 +138,30 @@
     line-height: 13px;
   }
 
-  .glass {
-    background: var(--color-glass);
-    -webkit-backdrop-filter: var(--blur-glass);
-    backdrop-filter: var(--blur-glass);
-    box-shadow: var(--shadow-glass);
-  }
-  .glass-bar {
-    background: var(--color-glass-bar);
-    -webkit-backdrop-filter: var(--blur-bar);
-    backdrop-filter: var(--blur-bar);
-    box-shadow: var(--shadow-glass-bar);
-  }
-
-  .group {
-    display: flex;
-    flex-direction: column;
-    background: var(--color-surface);
-    border-radius: var(--radius-row);
-  }
+  /* A grouped list's row: label left, value right, hairline between rows. */
   .row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
     min-height: 52px;
-    margin-left: var(--space-gutter);
-    padding-right: var(--space-gutter);
-    color: var(--color-text);
+    margin-left: var(--spacing-gutter);
+    padding-block: 6px;
+    padding-right: var(--spacing-gutter);
+    color: var(--color-ink);
   }
   .row + .row {
     border-top: 0.5px solid var(--color-hairline);
   }
-
   .hairline-top {
     border-top: 0.5px solid var(--color-hairline-strong);
   }
 
-  /* glisse controls take the app's colors (and stay light: the app has no dark theme yet). */
-  .ui-switch,
-  .ui-slider {
-    --lg-on: var(--color-success);
-    --lg-fill: var(--color-assistant);
-    --lg-track: var(--color-switch-off);
-    --lg-rail: var(--color-fill);
-  }
-
-  .bubble-reggie {
+  /* [class]: as specific as a surface variant, so the bubble keeps its tail. */
+  .bubble-reggie[class] {
     border-radius: var(--radius-bubble) var(--radius-bubble) var(--radius-bubble) var(--radius-tail);
   }
-  .bubble-user {
+  .bubble-user[class] {
     border-radius: var(--radius-bubble) var(--radius-bubble) var(--radius-tail) var(--radius-bubble);
   }
 
@@ -186,13 +173,9 @@
     clip-path: inset(50%);
     white-space: nowrap;
   }
-}
 
-@media (prefers-reduced-transparency: reduce) {
-  .glass,
-  .glass-bar {
-    background: var(--color-glass-solid);
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
+  /* A scroller's edges fade instead of cutting a row in half (sheet bodies, the chip rows). */
+  .fade-x {
+    mask-image: linear-gradient(90deg, transparent, #fff 16px, #fff calc(100% - 16px), transparent);
   }
 }

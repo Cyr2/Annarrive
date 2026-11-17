@@ -1,4 +1,5 @@
-/* Every animation of docs/interactions.md lives here, with its reduced-motion fallback (150 ms fades). */
+/* Every CSS animation of docs/interactions.md lives here, with its reduced-motion fallback (150 ms fades).
+   The springs (sheets, onboarding, tour) are in lib/motion.ts. */
 
 /* Button press: 96 % while held, back in 120 ms. */
 .press {
@@ -86,7 +87,7 @@
   width: 8px;
   height: 8px;
   border-radius: 4px;
-  background: var(--color-text-faint);
+  background: var(--color-reggie);
   animation: blink var(--duration-typing) ease-in-out infinite;
 }
 .typing-dot:nth-child(2) {
@@ -96,11 +97,12 @@
   animation-delay: 0.4s;
 }
 
-/* Tab change: 200 ms cross-fade (view transition), the active pill slides. */
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation-duration: var(--duration-tab);
-  animation-timing-function: var(--ease-out);
+/*
+ * Tab change: the new screen fades in over 200 ms while the tab bar's selection springs across.
+ * A document view transition crashed WebKit whenever the new screen was taller than the old one.
+ */
+.screen-in {
+  animation: fade-in var(--duration-tab) var(--ease-out) both;
 }
 .tab-pill {
   transition: transform var(--duration-tab) var(--ease-in-out);
@@ -113,15 +115,6 @@
   transition:
     transform var(--duration-press) var(--ease-out),
     box-shadow var(--duration-press) var(--ease-out);
-}
-
-/* Sheets: rise from the bottom without bounce, about 350 ms. */
-:root [data-vaul-drawer][data-vaul-drawer-direction="bottom"] {
-  animation-duration: var(--duration-sheet);
-  animation-timing-function: var(--ease-drawer);
-}
-:root [data-vaul-overlay] {
-  animation-duration: var(--duration-sheet);
 }
 
 /* Undo toast: rises 12 px while fading in. */
@@ -170,17 +163,9 @@
   .select-anim {
     transition-duration: var(--duration-fade);
   }
-  ::view-transition-old(root),
-  ::view-transition-new(root) {
+  .screen-in {
     animation-duration: var(--duration-fade);
-  }
-  :root [data-vaul-drawer][data-vaul-drawer-direction="bottom"][data-state="open"] {
-    animation-name: fade-in;
-    animation-duration: var(--duration-fade);
-  }
-  :root [data-vaul-drawer][data-vaul-drawer-direction="bottom"][data-state="closed"] {
-    animation-name: fade-out;
-    animation-duration: var(--duration-fade);
+    animation-timing-function: linear;
   }
   [data-sonner-toaster] [data-sonner-toast][data-y-position="bottom"] {
     --y: none;

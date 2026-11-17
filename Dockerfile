@@ -7,6 +7,7 @@ WORKDIR /app
 
 FROM base AS build
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+COPY patches patches
 COPY apps/web/package.json apps/web/
 COPY apps/server/package.json apps/server/
 COPY packages/coach/package.json packages/coach/

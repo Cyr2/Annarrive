@@ -1,8 +1,9 @@
 import { useState } from "react";
 import type { GoalInput } from "../../api/client.ts";
-import { Button } from "../../ui/Button.tsx";
+import { Button } from "../../ui/controls.tsx";
 import { Group, RowInput, RowSelect } from "../../ui/List.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
+import { Surface } from "../../ui/Surface.tsx";
 import { todayOf } from "../plan/selectors.ts";
 import { usePlan } from "../plan/store.ts";
 import type { SheetProps } from "../sheets/SheetHost.tsx";
@@ -21,7 +22,15 @@ export default function GoalSheet(sheet: SheetProps<"goal">) {
     if (await plan.apply((api) => api.updateGoal(input))) sheet.onOpenChange(false);
   };
   return (
-    <Sheet {...sheet} title="Ton objectif">
+    <Sheet
+      {...sheet}
+      title="Ton objectif"
+      footer={
+        <Button variant="filled" size="large" disabled={!validTime || !draft.date} onClick={() => void save()}>
+          Valider
+        </Button>
+      }
+    >
       <Group>
         <RowSelect
           label="Course"
@@ -33,20 +42,17 @@ export default function GoalSheet(sheet: SheetProps<"goal">) {
         <RowInput
           label="Chrono visé"
           value={draft.targetTime ?? ""}
-          placeholder="Facultatif, 1:48:00"
+          placeholder="Facultatif, ex. : 1:48:00"
           onChange={(targetTime) => set({ targetTime })}
         />
       </Group>
       <p className="t-cap m-0 px-4">
         C'est toi qui choisis ton chrono. Sans chrono, l'objectif est de finir, à ton rythme.
       </p>
-      <div className="flex flex-col gap-1 rounded-group bg-surface p-4">
+      <Surface variant="inset" className="flex flex-col gap-1 p-4">
         <span className="t-strong">Ce qui change</span>
         <span className="t-body">{goalSummary(goal, draft)}</span>
-      </div>
-      <Button disabled={!validTime || !draft.date} onClick={() => void save()}>
-        Valider
-      </Button>
+      </Surface>
     </Sheet>
   );
 }

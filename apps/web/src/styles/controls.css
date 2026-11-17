@@ -1,0 +1,184 @@
+/*
+ * glisse adjustments (ui/controls.tsx). Unlayered and doubled with glisse's own class, so they beat its
+ * stylesheet, which it prepends to <head>.
+ */
+
+/* ---- Button: 44 px, 50 px for a view's main action ---- */
+
+.ui-button.lg-button {
+  height: var(--size-target);
+  min-width: var(--size-target);
+  padding-inline: 18px;
+  border-radius: calc(var(--size-target) / 2);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--color-ink);
+  transition:
+    background-color var(--duration-select) ease,
+    scale var(--duration-press) var(--ease-out);
+}
+.ui-button.lg-button[data-size="large"] {
+  height: var(--size-control);
+  padding-inline: 24px;
+  border-radius: calc(var(--size-control) / 2);
+  font-size: 17px;
+}
+.ui-button.lg-button[data-icon="only"] {
+  width: var(--size-target);
+  padding: 0;
+}
+.ui-button.lg-button[data-size="large"][data-icon="only"] {
+  width: var(--size-control);
+}
+.ui-button.lg-button[data-size="round"] {
+  width: var(--size-action);
+  height: var(--size-action);
+  padding: 0;
+  border-radius: 50%;
+}
+.ui-button.lg-button[data-size="round"] > svg {
+  width: 24px;
+  height: 24px;
+}
+/* A long label in a narrow sheet wraps on two lines rather than pushing the page sideways. */
+.ui-button.lg-button {
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.15;
+}
+.ui-button.lg-button:active:not(:disabled) {
+  scale: 0.96;
+}
+
+/* Tones: action (blue), reggie (green), danger. The filled button takes the tone as its fill. */
+.ui-button.lg-button[data-tone="action"] {
+  --lg-tint: var(--color-action);
+}
+.ui-button.lg-button[data-tone="reggie"] {
+  --lg-tint: var(--color-reggie);
+}
+.ui-button.lg-button[data-tone="danger"] {
+  --lg-tint: var(--color-danger);
+}
+.ui-button.lg-button[data-variant="filled"] {
+  color: var(--color-on-color);
+  box-shadow: var(--shadow-float);
+}
+/* Tinted: a wash of the tone with its label, for a secondary action that still belongs to the moment. */
+.ui-button.lg-button[data-tinted] {
+  background-color: color-mix(in srgb, var(--lg-tint, var(--color-ink)) 12%, rgb(255 255 255 / 0.7));
+  color: var(--lg-tint, var(--color-ink));
+}
+.ui-button.lg-button[data-tinted]:active:not(:disabled) {
+  background-color: color-mix(in srgb, var(--lg-tint, var(--color-ink)) 20%, rgb(255 255 255 / 0.7));
+}
+/* Disabled never fades the action color: a quiet track and a faint label, the reason said above it. */
+.ui-button.lg-button:disabled,
+.ui-button.lg-button[data-variant="filled"]:disabled {
+  opacity: 1;
+  background-color: rgb(35 48 61 / 0.07);
+  color: var(--color-ink-3);
+  box-shadow: none;
+}
+
+/* ---- Chip: a 44 px pill, selected with an action ring and a check ---- */
+
+.ui-chip.lg-button {
+  height: var(--size-target);
+  padding-inline: 16px;
+  border-radius: var(--radius-pill);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-ink);
+  flex: none;
+}
+.ui-chip.lg-button[data-icon] {
+  padding-left: 12px;
+}
+.ui-chip.lg-button[data-icon] > svg {
+  width: 16px;
+  height: 16px;
+}
+.ui-chip.lg-button[aria-pressed="true"] {
+  background-color: var(--color-action-wash);
+  box-shadow: var(--shadow-ring);
+  color: var(--color-action);
+}
+.ui-chip.lg-button[data-tone="reggie"][aria-pressed="true"] {
+  background-color: var(--color-reggie-wash);
+  box-shadow: inset 0 0 0 2px var(--color-reggie);
+  color: var(--color-reggie);
+}
+/* Once a question is answered the other replies step back, still readable. */
+.ui-chip.lg-button:disabled {
+  opacity: 0.55;
+  background-color: var(--lg-glass);
+}
+.ui-chip.lg-button[aria-pressed="true"]:disabled {
+  opacity: 1;
+}
+
+/* ---- Segmented control: fills its container, whatever the number of segments ---- */
+
+.ui-segmented-box {
+  container-type: inline-size;
+}
+.ui-segmented.lg-segmented {
+  --lg-tab-width: calc(100cqw / var(--lg-tabs));
+  --lg-tab-height: var(--size-target);
+  --lg-thumb-inset: 3px;
+  display: flex;
+}
+.ui-segmented.lg-segmented :is(.lg-tab, .lg-tab-copy) {
+  font-size: 15px;
+  font-weight: 500;
+}
+.ui-segmented.lg-segmented :is(.lg-tab, .lg-tab-copy)[data-selected] {
+  font-weight: 600;
+}
+.ui-segmented.lg-segmented .lg-segmented-thumb {
+  box-shadow: 0 2px 8px rgb(35 48 61 / 0.12);
+}
+
+/* ---- Tab bar: iOS 26's floating bar, the current tab in the action blue (Reggie's in his green) ---- */
+
+.ui-tab-bar.lg-tab-bar[data-icons] {
+  --lg-tab-width: min(80px, calc((100vw - 40px) / 4));
+  --lg-tab-height: 54px;
+  box-shadow: var(--shadow-float);
+}
+.ui-tab-bar.lg-tab-bar:has(.lg-tab[data-selected][href="/reggie"]) {
+  --lg-tab-selected: var(--color-reggie);
+  --lg-selection: var(--color-reggie-wash);
+}
+.ui-tab-bar.lg-tab-bar[data-icons] :is(.lg-tab, .lg-tab-copy) {
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.ui-tab-bar.lg-tab-bar .lg-tab-icon > svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* ---- Field, switch, slider ---- */
+
+.ui-input.lg-input {
+  height: var(--size-control);
+  max-width: none;
+  padding-right: 4px;
+  border-radius: calc(var(--size-control) / 2);
+}
+.ui-input.lg-input input {
+  font-size: 17px;
+}
+.ui-switch.lg-switch,
+.ui-slider.lg-slider {
+  flex: none;
+}
+.ui-slider.lg-slider {
+  flex: 1;
+  --lg-fill: var(--color-ink-2);
+}

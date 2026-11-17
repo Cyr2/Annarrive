@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Button } from "../../ui/Button.tsx";
+import { Button } from "../../ui/controls.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
+import { TextButton } from "../../ui/TextButton.tsx";
 import { findRun, todayOf } from "../plan/selectors.ts";
 import { usePlan } from "../plan/store.ts";
 import { AskReggie } from "../reggie/AskReggie.tsx";
@@ -15,10 +16,12 @@ import { canContinue, type Draft, EMPTY, nextStep, type Step, toInput } from "./
 export default function UnavailableSheet({ spec, ...sheet }: SheetProps<"unavailable">) {
   const plan = usePlan();
   const show = useSheet((s) => s.show);
-  const [step, setStep] = useState<Step>("reason");
+  // The steps she went through, so the chevron can take her back one.
+  const [trail, setTrail] = useState<Step[]>(["reason"]);
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const run = findRun(plan, spec.id);
   if (!run) return null;
+  const step = trail.at(-1) ?? "reason";
   const today = todayOf(plan);
   const input = toInput(draft, run.id);
   const update = (patch: Partial<Draft>) => setDraft({ ...draft, ...patch });
@@ -26,7 +29,7 @@ export default function UnavailableSheet({ spec, ...sheet }: SheetProps<"unavail
   const next = () => {
     const target = nextStep(step, draft);
     if (target === "move") show({ kind: "move", id: run.id });
-    else if (target !== "reggie") setStep(target);
+    else if (target !== "reggie") setTrail([...trail, target]);
   };
   const validate = async () => {
     if (input && (await plan.apply((api) => api.unavailable(input)))) sheet.onOpenChange(false);
@@ -34,16 +37,36 @@ export default function UnavailableSheet({ spec, ...sheet }: SheetProps<"unavail
   const feelBetter = async () => {
     if (await plan.apply((api) => api.feelBetter())) sheet.onOpenChange(false);
   };
+  const toReggie = step === "reason" && draft.reason === "other";
 
   return (
-    <Sheet {...sheet} title="Pas dispo">
+    <Sheet
+      {...sheet}
+      title="Pas dispo"
+      onBack={trail.length > 1 ? () => setTrail(trail.slice(0, -1)) : undefined}
+      footer={
+        toReggie ? undefined : (
+          <>
+            {step === "summary" ? (
+              <Button variant="filled" size="large" disabled={!input} onClick={() => void validate()}>
+                Valider
+              </Button>
+            ) : (
+              <Button variant="filled" size="large" disabled={!canContinue(step, draft)} onClick={next}>
+                Continuer
+              </Button>
+            )}
+            {step === "reason" && <TextButton onClick={() => void feelBetter()}>Ça va mieux</TextButton>}
+          </>
+        )
+      }
+    >
       {step === "reason" && <ReasonStep draft={draft} today={today} onChange={update} />}
       {step === "fever" && <FeverStep fever={draft.fever} onChange={(fever) => update({ fever })} />}
       {step === "zone" && <ZoneStep zone={draft.zone} onChange={(zone) => update({ zone })} />}
       {step === "pain" && <PainStep pain={draft.pain} zone={draft.zone} onChange={(pain) => update({ pain })} />}
       {step === "summary" && input && <Summary input={input} />}
-
-      {step === "reason" && draft.reason === "other" ? (
+      {toReggie && (
         <AskReggie
           context={`Pas dispo · ${sessionContext(run, today)}`}
           sessionId={run.id}
@@ -51,19 +74,6 @@ export default function UnavailableSheet({ spec, ...sheet }: SheetProps<"unavail
           placeholder="Ce qui se passe"
           onSent={() => sheet.onOpenChange(false)}
         />
-      ) : step === "summary" ? (
-        <Button disabled={!input} onClick={() => void validate()}>
-          Valider
-        </Button>
-      ) : (
-        <Button disabled={!canContinue(step, draft)} onClick={next}>
-          Continuer
-        </Button>
-      )}
-      {step === "reason" && (
-        <Button variant="tinted" onClick={() => void feelBetter()}>
-          Ça va mieux
-        </Button>
       )}
     </Sheet>
   );

@@ -1,4 +1,5 @@
-import { Button } from "../../ui/Button.tsx";
+import { Button } from "../../ui/controls.tsx";
+import { EmptyState } from "../../ui/EmptyState.tsx";
 import { Icon } from "../../ui/Icon.tsx";
 import { RoundAction } from "../../ui/RoundAction.tsx";
 import { Screen } from "../../ui/Screen.tsx";
@@ -11,7 +12,7 @@ import { DayAgenda } from "./DayAgenda.tsx";
 import { ProposalCard } from "./ProposalCard.tsx";
 import { RestCard } from "./RestCard.tsx";
 import { RunCard } from "./RunCard.tsx";
-import { moodOf, sessionContext } from "./today.ts";
+import { sessionContext } from "./today.ts";
 import { WeekStrip } from "./WeekStrip.tsx";
 
 /** Aujourd'hui: run day, rest day or after the run (design/Main, Repos, Apres). */
@@ -23,14 +24,23 @@ export function TodayScreen() {
 
   if (status === "error") {
     return (
-      <Screen mood="rest">
+      <Screen>
         <h1 className="t-large">Aujourd'hui</h1>
-        <p className="t-body m-0">Impossible de charger ton plan pour l'instant.</p>
-        <Button onClick={() => void usePlan.getState().load()}>Réessayer</Button>
+        <EmptyState
+          icon="info"
+          title="Plan indisponible"
+          action={
+            <Button variant="filled" icon="change" onClick={() => void usePlan.getState().load()}>
+              Réessayer
+            </Button>
+          }
+        >
+          Impossible de charger ton plan pour l'instant. Vérifie ta connexion, puis réessaie.
+        </EmptyState>
       </Screen>
     );
   }
-  if (!today || !week) return <Screen mood="rest">{null}</Screen>;
+  if (!today || !week) return <Screen>{null}</Screen>;
 
   const { session, activity, next, goal, date } = today;
   const askReggie = () => {
@@ -41,7 +51,7 @@ export function TodayScreen() {
   };
 
   return (
-    <Screen mood={moodOf(session, Boolean(activity))}>
+    <Screen>
       {goal && (
         <a
           href="/programme"
@@ -49,7 +59,7 @@ export function TodayScreen() {
             e.preventDefault();
             go("/programme");
           }}
-          className="glass press t-label inline-flex min-h-11 items-center gap-2 self-start rounded-full px-4 text-text"
+          className="ui-glass press t-label inline-flex min-h-11 items-center gap-2 self-start rounded-full px-4 text-ink"
         >
           <Icon name="flag" size={16} />
           {goal.label} · J-{goal.daysLeft}
@@ -61,7 +71,7 @@ export function TodayScreen() {
         <>
           <RunCard run={session} today={date} />
           <div data-tour="actions" className="grid grid-cols-4 gap-2">
-            <RoundAction label="Reggie" icon="reggie" main onClick={askReggie} />
+            <RoundAction label="Reggie" icon="reggie" reggie onClick={askReggie} />
             <RoundAction label="Déplacer" icon="move" onClick={() => show({ kind: "move", id: session.id })} />
             <RoundAction label="Changer" icon="change" onClick={() => show({ kind: "change", id: session.id })} />
             <RoundAction label="Pas dispo" icon="close" onClick={() => show({ kind: "unavailable", id: session.id })} />

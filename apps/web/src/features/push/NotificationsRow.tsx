@@ -1,4 +1,4 @@
-import { Switch } from "../../ui/Switch.tsx";
+import { Switch } from "../../ui/controls.tsx";
 import type { PushStatus } from "./push.ts";
 import { usePush } from "./store.ts";
 

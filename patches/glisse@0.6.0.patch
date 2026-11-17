@@ -1,0 +1,252 @@
+diff --git a/dist/index.cjs b/dist/index.cjs
+index f62917dd478b60076df29d2c3b44ccb60ba2c562..074e5783815415433ac63ce01d28d94ceb9410bf 100644
+--- a/dist/index.cjs
++++ b/dist/index.cjs
+@@ -1978,6 +1978,58 @@ function parseColour(context, colour) {
+ 	];
+ }
+ const rims = /* @__PURE__ */ new Map();
++/** The rim each element last asked for: a rim encoded late never replaces a newer one. */
++const rimKeys = /* @__PURE__ */ new WeakMap();
++/**
++* Talaria (after Annamour): the rim's PNG is encoded in a worker (OffscreenCanvas), not on the main thread:
++* toDataURL blocked a phone's first paint for tens of ms per glass. Without workers it falls back to toDataURL.
++*/
++let rimEncoder;
++let rimJobs = 0;
++const rimPending = /* @__PURE__ */ new Map();
++const RIM_WORKER = "onmessage=async({data:{id,columns,rows,data}})=>{try{const canvas=new OffscreenCanvas(columns,rows);canvas.getContext(\"2d\").putImageData(new ImageData(data,columns,rows),0,0);postMessage({id,blob:await canvas.convertToBlob()})}catch{postMessage({id,blob:null})}}";
++function rimWorker() {
++	if (rimEncoder !== void 0) return rimEncoder;
++	rimEncoder = null;
++	if (typeof Worker !== "function" || typeof OffscreenCanvas !== "function") return null;
++	try {
++		rimEncoder = new Worker(URL.createObjectURL(new Blob([RIM_WORKER], { type: "text/javascript" })));
++		rimEncoder.onmessage = ({ data: { id, blob } }) => {
++			const job = rimPending.get(id);
++			rimPending.delete(id);
++			job?.(blob);
++		};
++	} catch {
++		rimEncoder = null;
++	}
++	return rimEncoder;
++}
++function encodeOnPage(columns, rows, data) {
++	const canvas = document.createElement("canvas");
++	canvas.width = columns;
++	canvas.height = rows;
++	const context = canvas.getContext("2d");
++	if (!context) return null;
++	const image = context.createImageData(columns, rows);
++	image.data.set(data);
++	context.putImageData(image, 0, 0);
++	return canvas.toDataURL();
++}
++function encodeRim(columns, rows, data) {
++	const worker = rimWorker();
++	if (!worker) {
++		const href = encodeOnPage(columns, rows, data);
++		return Promise.resolve(href ? `url("${href}")` : "none");
++	}
++	return new Promise((resolve) => {
++		const id = ++rimJobs;
++		rimPending.set(id, (blob) => {
++			const href = blob ? URL.createObjectURL(blob) : encodeOnPage(columns, rows, data);
++			resolve(href ? `url("${href}")` : "none");
++		});
++		worker.postMessage({ id, columns, rows, data });
++	});
++}
+ let palette;
+ function paintRim(element) {
+ 	const style = getComputedStyle(element);
+@@ -1999,19 +2051,20 @@ function paintRim(element) {
+ 	let url = rims.get(key);
+ 	if (!url) {
+ 		const { columns, rows, data } = rimMap(shape, shine, density, edge);
+-		const canvas = document.createElement("canvas");
+-		canvas.width = columns;
+-		canvas.height = rows;
+-		const context = canvas.getContext("2d");
+-		if (!context) return;
+-		const image = context.createImageData(columns, rows);
+-		image.data.set(data);
+-		context.putImageData(image, 0, 0);
+-		url = `url("${canvas.toDataURL()}")`;
++		url = encodeRim(columns, rows, data).then((done) => {
++			rims.set(key, done);
++			return done;
++		});
+ 		rims.set(key, url);
+ 	}
+-	element.style.setProperty("--lg-rim", url);
+-	element.setAttribute("data-rim", "");
++	rimKeys.set(element, key);
++	const apply = (value) => {
++		if (rimKeys.get(element) !== key || !element.isConnected) return;
++		element.style.setProperty("--lg-rim", value);
++		element.setAttribute("data-rim", "");
++	};
++	if (typeof url === "string") apply(url);
++	else url.then(apply);
+ }
+ const repaints = /* @__PURE__ */ new Set();
+ let unwatch;
+@@ -2070,7 +2123,8 @@ function refitting(element, fit, properties) {
+ 	};
+ }
+ /** Only Chromium applies SVG filters to the live backdrop. */
+-const refractsBackdrop = () => /Chrom(?:e|ium)\//.test(navigator.userAgent);
++/** Talaria: bending is drawn on the CPU every frame and its maps cost ~200 ms to compute; phones and touch screens keep the frost and the lit rim instead. */
++const refractsBackdrop = () => /Chrom(?:e|ium)\//.test(navigator.userAgent) && !/\b(?:Mobi|Android)/.test(navigator.userAgent) && matchMedia("(pointer: fine)").matches;
+ const MARK = "data-glisse-backdrop";
+ function visibleBox(element) {
+ 	let { left, top, right, bottom } = element.getBoundingClientRect();
+@@ -2149,7 +2203,19 @@ function useRefraction(ref, selection = false, bendsBackdrop = true) {
+ 	(0, react.useEffect)(() => {
+ 		const element = ref.current;
+ 		if (!element) return;
+-		if (selection) return refitting(element, () => fitSelection(element, bendsBackdrop && refractsBackdrop()), bendsBackdrop ? SELECTION_PROPERTIES : SELECTION_PROPERTIES.filter((name) => name !== "--lg-filter")).stop;
++		if (selection) {
++			const fit = () => refitting(element, () => fitSelection(element, bendsBackdrop && refractsBackdrop()), bendsBackdrop ? SELECTION_PROPERTIES : SELECTION_PROPERTIES.filter((name) => name !== "--lg-filter")).stop;
++			if (refractsBackdrop()) return fit();
++			/** Talaria: where nothing bends, the held lens's rim is only seen once a finger lands, and computing its maps on mount cost a phone's first 400 ms: they wait for that first touch. */
++			const bar = element.parentElement;
++			let stop;
++			const start = () => { stop ??= fit(); };
++			bar?.addEventListener("pointerdown", start, { once: true, capture: true });
++			return () => {
++				bar?.removeEventListener("pointerdown", start, { capture: true });
++				stop?.();
++			};
++		}
+ 		const source = findBackdrop(element);
+ 		const fitting = source ? bend(element, source) : refitting(element, () => {
+ 			paintRim(element);
+diff --git a/dist/index.js b/dist/index.js
+index 28f6a21d345f76bb92e6d0ba7c95013bec7165cd..89c20709baaa6b301923812323aa24332934bcfa 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -1977,6 +1977,58 @@ function parseColour(context, colour) {
+ 	];
+ }
+ const rims = /* @__PURE__ */ new Map();
++/** The rim each element last asked for: a rim encoded late never replaces a newer one. */
++const rimKeys = /* @__PURE__ */ new WeakMap();
++/**
++* Talaria (after Annamour): the rim's PNG is encoded in a worker (OffscreenCanvas), not on the main thread:
++* toDataURL blocked a phone's first paint for tens of ms per glass. Without workers it falls back to toDataURL.
++*/
++let rimEncoder;
++let rimJobs = 0;
++const rimPending = /* @__PURE__ */ new Map();
++const RIM_WORKER = "onmessage=async({data:{id,columns,rows,data}})=>{try{const canvas=new OffscreenCanvas(columns,rows);canvas.getContext(\"2d\").putImageData(new ImageData(data,columns,rows),0,0);postMessage({id,blob:await canvas.convertToBlob()})}catch{postMessage({id,blob:null})}}";
++function rimWorker() {
++	if (rimEncoder !== void 0) return rimEncoder;
++	rimEncoder = null;
++	if (typeof Worker !== "function" || typeof OffscreenCanvas !== "function") return null;
++	try {
++		rimEncoder = new Worker(URL.createObjectURL(new Blob([RIM_WORKER], { type: "text/javascript" })));
++		rimEncoder.onmessage = ({ data: { id, blob } }) => {
++			const job = rimPending.get(id);
++			rimPending.delete(id);
++			job?.(blob);
++		};
++	} catch {
++		rimEncoder = null;
++	}
++	return rimEncoder;
++}
++function encodeOnPage(columns, rows, data) {
++	const canvas = document.createElement("canvas");
++	canvas.width = columns;
++	canvas.height = rows;
++	const context = canvas.getContext("2d");
++	if (!context) return null;
++	const image = context.createImageData(columns, rows);
++	image.data.set(data);
++	context.putImageData(image, 0, 0);
++	return canvas.toDataURL();
++}
++function encodeRim(columns, rows, data) {
++	const worker = rimWorker();
++	if (!worker) {
++		const href = encodeOnPage(columns, rows, data);
++		return Promise.resolve(href ? `url("${href}")` : "none");
++	}
++	return new Promise((resolve) => {
++		const id = ++rimJobs;
++		rimPending.set(id, (blob) => {
++			const href = blob ? URL.createObjectURL(blob) : encodeOnPage(columns, rows, data);
++			resolve(href ? `url("${href}")` : "none");
++		});
++		worker.postMessage({ id, columns, rows, data });
++	});
++}
+ let palette;
+ function paintRim(element) {
+ 	const style = getComputedStyle(element);
+@@ -1998,19 +2050,20 @@ function paintRim(element) {
+ 	let url = rims.get(key);
+ 	if (!url) {
+ 		const { columns, rows, data } = rimMap(shape, shine, density, edge);
+-		const canvas = document.createElement("canvas");
+-		canvas.width = columns;
+-		canvas.height = rows;
+-		const context = canvas.getContext("2d");
+-		if (!context) return;
+-		const image = context.createImageData(columns, rows);
+-		image.data.set(data);
+-		context.putImageData(image, 0, 0);
+-		url = `url("${canvas.toDataURL()}")`;
++		url = encodeRim(columns, rows, data).then((done) => {
++			rims.set(key, done);
++			return done;
++		});
+ 		rims.set(key, url);
+ 	}
+-	element.style.setProperty("--lg-rim", url);
+-	element.setAttribute("data-rim", "");
++	rimKeys.set(element, key);
++	const apply = (value) => {
++		if (rimKeys.get(element) !== key || !element.isConnected) return;
++		element.style.setProperty("--lg-rim", value);
++		element.setAttribute("data-rim", "");
++	};
++	if (typeof url === "string") apply(url);
++	else url.then(apply);
+ }
+ const repaints = /* @__PURE__ */ new Set();
+ let unwatch;
+@@ -2069,7 +2122,8 @@ function refitting(element, fit, properties) {
+ 	};
+ }
+ /** Only Chromium applies SVG filters to the live backdrop. */
+-const refractsBackdrop = () => /Chrom(?:e|ium)\//.test(navigator.userAgent);
++/** Talaria: bending is drawn on the CPU every frame and its maps cost ~200 ms to compute; phones and touch screens keep the frost and the lit rim instead. */
++const refractsBackdrop = () => /Chrom(?:e|ium)\//.test(navigator.userAgent) && !/\b(?:Mobi|Android)/.test(navigator.userAgent) && matchMedia("(pointer: fine)").matches;
+ const MARK = "data-glisse-backdrop";
+ function visibleBox(element) {
+ 	let { left, top, right, bottom } = element.getBoundingClientRect();
+@@ -2148,7 +2202,19 @@ function useRefraction(ref, selection = false, bendsBackdrop = true) {
+ 	useEffect(() => {
+ 		const element = ref.current;
+ 		if (!element) return;
+-		if (selection) return refitting(element, () => fitSelection(element, bendsBackdrop && refractsBackdrop()), bendsBackdrop ? SELECTION_PROPERTIES : SELECTION_PROPERTIES.filter((name) => name !== "--lg-filter")).stop;
++		if (selection) {
++			const fit = () => refitting(element, () => fitSelection(element, bendsBackdrop && refractsBackdrop()), bendsBackdrop ? SELECTION_PROPERTIES : SELECTION_PROPERTIES.filter((name) => name !== "--lg-filter")).stop;
++			if (refractsBackdrop()) return fit();
++			/** Talaria: where nothing bends, the held lens's rim is only seen once a finger lands, and computing its maps on mount cost a phone's first 400 ms: they wait for that first touch. */
++			const bar = element.parentElement;
++			let stop;
++			const start = () => { stop ??= fit(); };
++			bar?.addEventListener("pointerdown", start, { once: true, capture: true });
++			return () => {
++				bar?.removeEventListener("pointerdown", start, { capture: true });
++				stop?.();
++			};
++		}
+ 		const source = findBackdrop(element);
+ 		const fitting = source ? bend(element, source) : refitting(element, () => {
+ 			paintRim(element);

@@ -1,9 +1,11 @@
 import { useState } from "react";
 import type { Strength } from "../../api/schemas.ts";
-import { Button } from "../../ui/Button.tsx";
 import { IconTile } from "../../ui/bits.tsx";
+import { Button } from "../../ui/controls.tsx";
 import { Icon } from "../../ui/Icon.tsx";
 import { Group, RowInput, Section } from "../../ui/List.tsx";
+import { Surface } from "../../ui/Surface.tsx";
+import { TextButton } from "../../ui/TextButton.tsx";
 import { usePlan } from "../plan/store.ts";
 import { useSheet } from "../sheets/store.ts";
 import { strengthEvent, strengthWhen, usualDate } from "./add.ts";
@@ -17,7 +19,7 @@ export function StrengthList({ templates, monday, today, close }: Props) {
   return (
     <>
       <Section title="Tes séances de muscu">
-        <ul className="group m-0 list-none p-0">
+        <Surface as="ul" variant="inset" className="m-0 flex list-none flex-col p-0">
           {templates.map((t) => (
             <li key={t.id} className="flex flex-col">
               <div className="flex items-center gap-3 pl-4">
@@ -25,7 +27,7 @@ export function StrengthList({ templates, monday, today, close }: Props) {
                 <button
                   type="button"
                   onClick={() => show({ kind: "strength", templateId: t.id })}
-                  className="flex min-h-15 flex-1 flex-col justify-center border-0 bg-transparent p-0 text-left text-text"
+                  className="flex min-h-15 flex-1 flex-col justify-center border-0 bg-transparent p-0 text-left text-ink"
                 >
                   <span className="flex items-center gap-2">
                     <span className="t-body">{t.name}</span>
@@ -33,26 +35,25 @@ export function StrengthList({ templates, monday, today, close }: Props) {
                   </span>
                   <span className="t-cap">{strengthWhen(t)}</span>
                 </button>
-                <Button
-                  variant="link"
-                  className="t-strong pr-4"
+                <TextButton
+                  className="t-strong mr-3 font-semibold"
                   onClick={() => setPlacing(placing === t.id ? undefined : t.id)}
                 >
                   Placer
-                </Button>
+                </TextButton>
               </div>
               {placing === t.id && (
                 <PlaceForm template={t} date={usualDate(t, monday, today)} today={today} close={close} />
               )}
             </li>
           ))}
-        </ul>
+        </Surface>
       </Section>
       <Group>
         <button
           type="button"
           onClick={() => show({ kind: "strength" })}
-          className="t-body flex min-h-13 items-center gap-3 border-0 bg-transparent px-4 text-link"
+          className="t-body flex min-h-13 items-center gap-3 border-0 bg-transparent px-4 text-action"
         >
           <Icon name="plus" size={20} stroke={2.25} />
           Nouvelle séance de muscu
@@ -67,7 +68,7 @@ export function StrengthList({ templates, monday, today, close }: Props) {
 }
 
 export function LegsTag() {
-  return <span className="t-cap rounded-tile bg-class-wash px-2 py-0.5 text-class-ink">Jambes</span>;
+  return <span className="t-cap rounded-tile bg-strength-wash px-2 py-0.5 text-strength-deep">Jambes</span>;
 }
 
 function PlaceForm({
@@ -98,7 +99,7 @@ function PlaceForm({
         />
         <RowInput label="Heure" type="time" value={slot.start} onChange={(s) => setSlot({ ...slot, start: s })} />
       </div>
-      <Button disabled={!slot.date || !slot.start} onClick={() => void add()}>
+      <Button variant="filled" disabled={!slot.date || !slot.start} onClick={() => void add()}>
         Ajouter
       </Button>
     </div>

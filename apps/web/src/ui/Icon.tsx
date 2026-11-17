@@ -55,8 +55,10 @@ const PATHS = {
   chevronRight: <path d="M9 6l6 6-6 6" />,
   clock: <path d="M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />,
   moon: <path d="M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10z" />,
-  sick: <path d="M9 3h6M12 3v4M8 7h8l1 14H7L8 7z" />,
-  pain: <path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10z" />,
+  sick: <path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0z" />,
+  pain: (
+    <path d="M22 12h-2.5a2 2 0 0 0-1.9 1.5l-2.4 8.3a.3.3 0 0 1-.5 0L9.2 2.2a.3.3 0 0 0-.5 0l-2.3 8.3A2 2 0 0 1 4.5 12H2" />
+  ),
   arc: <path d="M4 18c4-8 12-8 16 0" />,
 } satisfies Record<string, ReactNode>;
 

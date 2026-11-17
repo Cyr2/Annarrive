@@ -59,12 +59,12 @@ export function RaceStep() {
 const VERDICTS = {
   atteignable: {
     label: "Atteignable",
-    tone: "bg-easy-wash text-easy-ink",
+    tone: "bg-easy-wash text-easy-deep",
     text: "Ton plan est construit pour ce chrono.",
   },
   ambitieux: {
     label: "Ambitieux",
-    tone: "bg-intense-wash text-intense-ink",
+    tone: "bg-warn-wash text-warn-deep",
     text: "Un beau défi. Ton plan t'en rapproche semaine après semaine, et on fait le point en route.",
   },
 };
@@ -81,7 +81,7 @@ function TimeBox({
   onChange: (v: string) => void;
 }) {
   return (
-    <label className="flex min-w-0 flex-1 items-baseline justify-center gap-1 rounded-row bg-surface px-3 py-2">
+    <label className="surface flex min-w-0 flex-1 items-baseline justify-center gap-1 px-3 py-2" data-variant="inset">
       <span className="sr-only-label">{label}</span>
       <input
         inputMode="numeric"
@@ -89,9 +89,9 @@ function TimeBox({
         placeholder="0"
         value={value}
         onChange={(e) => onChange(e.target.value.replace(/\D/g, ""))}
-        className="t-figure w-full min-w-0 border-0 bg-transparent text-right text-text"
+        className="t-figure w-full min-w-0 border-0 bg-transparent text-right text-ink"
       />
-      <span className="t-strong flex-none text-text-secondary">{unit}</span>
+      <span className="t-strong flex-none text-ink-2">{unit}</span>
     </label>
   );
 }

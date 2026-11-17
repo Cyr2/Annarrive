@@ -1,5 +1,5 @@
 import { ago } from "../../lib/date.ts";
-import { Button } from "../../ui/Button.tsx";
+import { Button } from "../../ui/controls.tsx";
 import { Group } from "../../ui/List.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
 import { usePlan } from "../plan/store.ts";
@@ -21,12 +21,12 @@ export default function WatchSheet(sheet: SheetProps<"watch">) {
         {rows.map((row) => (
           <div key={row.label} className="row">
             <span className="t-body">{row.label}</span>
-            <span className="t-body text-text-secondary">{row.value}</span>
+            <span className="t-body text-ink-2">{row.value}</span>
           </div>
         ))}
       </Group>
       <p className="t-cap m-0 px-4">Chaque séance est envoyée dans ton calendrier Garmin, donc sur ta montre.</p>
-      <Button variant="tinted" onClick={() => void run((api) => api.reconnectWatch())}>
+      <Button variant="tinted" size="large" onClick={() => void run((api) => api.reconnectWatch())}>
         Reconnecter
       </Button>
     </Sheet>

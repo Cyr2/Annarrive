@@ -3,7 +3,8 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 
-const BACKGROUND = "#F2F2F7";
+// The top of the sky (styles/tokens.css): the status bar and the splash blend into it.
+const BACKGROUND = "#FDE7DA";
 
 export default defineConfig({
   plugins: [

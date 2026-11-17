@@ -2,7 +2,10 @@ import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { type ReactNode, useEffect, useRef } from "react";
 import { cx } from "../../lib/cx.ts";
 import { SPRING_STEP } from "../../lib/motion.ts";
-import { Button, IconButton } from "../../ui/Button.tsx";
+import { Button, IconButton } from "../../ui/controls.tsx";
+import { LogoSlot } from "../../ui/LogoSlot.tsx";
+import { Sky } from "../../ui/Sky.tsx";
+import { TextButton } from "../../ui/TextButton.tsx";
 import { ConsentsStep, NotificationsStep, PainStep, TimetableStep } from "./CareSteps.tsx";
 import { COPY, issue, type Step } from "./onboarding.ts";
 import { Dots, update } from "./parts.tsx";
@@ -57,14 +60,9 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
       role="dialog"
       aria-modal="true"
       aria-labelledby="onboarding-title"
-      className="fixed inset-0 z-50 flex flex-col bg-bg"
+      className="fixed inset-0 z-50 flex flex-col"
     >
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-140 [background:var(--backdrop-long)]"
-      >
-        <div className="absolute inset-x-0 bottom-0 h-60 bg-linear-to-b from-transparent to-bg" />
-      </div>
+      <Sky />
       <header
         className="relative mx-auto flex w-full max-w-xl items-center gap-2 px-2"
         style={{ paddingTop: "max(12px, env(safe-area-inset-top))" }}
@@ -92,13 +90,9 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
               className="absolute inset-0 overflow-y-auto overscroll-contain"
             >
               <div className="mx-auto flex max-w-xl flex-col gap-5 px-4 pt-4 pb-6">
-                <div className="flex flex-col gap-2">
-                  <h1
-                    ref={title}
-                    id="onboarding-title"
-                    tabIndex={-1}
-                    className={cx("t-large outline-none", step === "welcome" && "pt-[18vh]")}
-                  >
+                <div className={cx("flex flex-col gap-2", step === "welcome" && "items-start pt-[14vh]")}>
+                  {step === "welcome" && <LogoSlot size={88} className="mb-4" />}
+                  <h1 ref={title} id="onboarding-title" tabIndex={-1} className="t-large outline-none">
                     {COPY[step].title}
                   </h1>
                   <p className="t-sub m-0">{COPY[step].lead}</p>
@@ -116,12 +110,11 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
         <p aria-live="polite" className="t-cap m-0 min-h-4.5 text-center">
           {step === "welcome" ? "" : (blocked ?? "")}
         </p>
-        <Button disabled={Boolean(blocked) || sending} onClick={() => void primary()}>
+        <Button variant="filled" size="large" disabled={Boolean(blocked) || sending} onClick={() => void primary()}>
           {sending ? "Création de ton plan" : (LABELS[step] ?? "Continuer")}
         </Button>
         {step === "strength" && (
-          <Button
-            variant="link"
+          <TextButton
             className="self-center"
             onClick={() => {
               update({ strength: [] });
@@ -129,7 +122,7 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
             }}
           >
             Plus tard
-          </Button>
+          </TextButton>
         )}
       </footer>
     </div>

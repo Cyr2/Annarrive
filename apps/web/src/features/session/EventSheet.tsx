@@ -1,9 +1,10 @@
 import { useState } from "react";
 import type { CalendarEvent } from "../../api/schemas.ts";
 import { dayTitle, minutesOf, span } from "../../lib/date.ts";
-import { Button } from "../../ui/Button.tsx";
+import { Button } from "../../ui/controls.tsx";
 import { Group, RowInput, Section } from "../../ui/List.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
+import { TextButton } from "../../ui/TextButton.tsx";
 import { findItem, todayOf } from "../plan/selectors.ts";
 import { usePlan } from "../plan/store.ts";
 import type { SheetProps } from "../sheets/SheetHost.tsx";
@@ -35,18 +36,18 @@ function ClassCard({ event, ...sheet }: Props) {
       <Group>
         <div className="row">
           <span className="t-body">Jour</span>
-          <span className="t-body text-text-secondary">{dayTitle(event.date)}</span>
+          <span className="t-body text-ink-2">{dayTitle(event.date)}</span>
         </div>
         <div className="row">
           <span className="t-body">Horaire</span>
-          <span className="t-body text-text-secondary">{span(event.start, event.end)}</span>
+          <span className="t-body text-ink-2">{span(event.start, event.end)}</span>
         </div>
       </Group>
       <p className="t-cap m-0 px-4">
         Vient de ton emploi du temps, qui se relit tout seul. Un cours ne se déplace pas, mais tu peux dire qu'il n'a
         pas lieu : le créneau se libère.
       </p>
-      <Button variant={event.cancelled ? "tinted" : "primary"} onClick={() => void toggle()}>
+      <Button variant="tinted" size="large" onClick={() => void toggle()}>
         {event.cancelled ? "Le cours a lieu finalement" : "Ce cours n'a pas lieu"}
       </Button>
     </Sheet>
@@ -82,9 +83,13 @@ function EditEvent({ event, today, ...sheet }: Props & { today: string }) {
       </Group>
       <Section footnote="Si une course tombe sur ce créneau, Reggie la déplace et te le dit.">
         <Group>
-          <Button variant="danger" onClick={() => void run((api) => api.deleteEvent(event.id, "one", event.date))}>
+          <TextButton
+            tone="danger"
+            className="min-h-13 w-full"
+            onClick={() => void run((api) => api.deleteEvent(event.id, "one", event.date))}
+          >
             Supprimer
-          </Button>
+          </TextButton>
         </Group>
       </Section>
     </Sheet>

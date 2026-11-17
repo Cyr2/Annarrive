@@ -12,7 +12,7 @@ export default function ProgramScreen() {
     void usePlan.getState().loadProgram();
   }, []);
   return (
-    <Screen mood="run">
+    <Screen>
       <h1 className="t-large">Programme</h1>
       {program && today && <GoalCard program={program} today={today} />}
       {program && <ProgramSettings program={program} />}
