@@ -1,3 +1,4 @@
+import { useDeferredValue, useEffect, useState } from "react";
 import { Button } from "../../ui/controls.tsx";
 import { EmptyState } from "../../ui/EmptyState.tsx";
 import { Icon } from "../../ui/Icon.tsx";
@@ -17,12 +18,35 @@ import { RunCard } from "./RunCard.tsx";
 import { sessionContext } from "./today.ts";
 import { WeekStrip } from "./WeekStrip.tsx";
 
+let firstDayDrawn = false;
+
+/**
+ * The first time the day shows after launch, the week strip and « Ma journée » under its card wait for the frame
+ * after: the card lays out and paints alone, in a shorter task. Every later visit draws them at once.
+ */
+function useBelowCard(ready: boolean) {
+  const [shown, setShown] = useState(firstDayDrawn);
+  useEffect(() => {
+    if (!ready || shown) return;
+    const frame = requestAnimationFrame(() =>
+      setTimeout(() => {
+        firstDayDrawn = true;
+        setShown(true);
+      }),
+    );
+    return () => cancelAnimationFrame(frame);
+  }, [ready, shown]);
+  return shown;
+}
+
 /** Aujourd'hui: run day, rest day or after the run. */
 export function TodayScreen() {
-  const { status, today, weeks } = usePlan();
+  // Deferred: the screen built from the plan renders in short slices rather than in one long task.
+  const { status, today, weeks } = useDeferredValue(usePlan());
   const show = useSheet((s) => s.show);
   const go = useGo();
   const week = weeks[0];
+  const belowCard = useBelowCard(Boolean(today && week));
 
   if (status === "error") {
     return (
@@ -100,8 +124,8 @@ export function TodayScreen() {
         <ProposalCard key={p.id} proposal={p} />
       ))}
 
-      {!activity && <WeekStrip week={week} today={date} legend={Boolean(session)} />}
-      {!activity && <DayAgenda items={week.items} date={date} />}
+      {belowCard && !activity && <WeekStrip week={week} today={date} legend={Boolean(session)} />}
+      {belowCard && !activity && <DayAgenda items={week.items} date={date} />}
     </Screen>
   );
 }

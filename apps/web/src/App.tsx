@@ -8,6 +8,7 @@ import { skyPhase } from "./features/program/sky.ts";
 import { usePush } from "./features/push/store.ts";
 import { SheetHost } from "./features/sheets/SheetHost.tsx";
 import { TodayScreen } from "./features/today/TodayScreen.tsx";
+import { whenIdle } from "./lib/idle.ts";
 import { type Tab, TabBar } from "./ui/controls.tsx";
 import { Sky } from "./ui/Sky.tsx";
 import { ToastHost } from "./ui/ToastHost.tsx";
@@ -28,12 +29,6 @@ const TABS: Tab[] = [
   { href: "/programme", label: "Programme", icon: "flag", preload: loadProgram },
   { href: "/reggie", label: "Reggie", icon: "reggie", preload: loadReggie },
 ];
-
-/** After the first screen's render has settled. Safari has no requestIdleCallback: a timeout stands in. */
-function whenIdle(task: () => void) {
-  if (typeof requestIdleCallback === "function") requestIdleCallback(task, { timeout: 2000 });
-  else setTimeout(task, 500);
-}
 
 export function App() {
   const [location, navigate] = useLocation();

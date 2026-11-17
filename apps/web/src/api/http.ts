@@ -20,6 +20,7 @@ import {
 } from "@annarrive/protocol";
 import { z } from "zod";
 import { addDays, addMinutes, isoWeek, minutesOf, mondayOf, toIso } from "../lib/date.ts";
+import { yieldToMain } from "../lib/idle.ts";
 import type { Api } from "./client.ts";
 import { ApiError } from "./errors.ts";
 import {
@@ -152,7 +153,10 @@ export function createHttpApi(
       json = fromFirst(path).finally(() => pending.delete(path));
       pending.set(path, json);
     }
-    return parse(await json, schema);
+    const body = await json;
+    // Each answer parses in a task of its own: the six of the first screen in one go held the main thread too long.
+    await yieldToMain();
+    return parse(body, schema);
   };
   const change = async (method: string, path: string, body?: unknown) =>
     toChange(await call(method, path, changeResponseSchema, body));
