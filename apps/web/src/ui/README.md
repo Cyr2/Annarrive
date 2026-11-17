@@ -71,7 +71,7 @@ Other utilities: `.row` (grouped list row with hairlines between rows), `.hairli
 
 - **`Sky`** `phase?: "base" | "build" | "peak" | "race"`. Mounted once in `App.tsx` (and inside the onboarding overlay). The phase warms the top glow a touch toward race week, never brighter. Never add a background to a screen.
 - **`Screen`** a tab's page: safe-area top, room for the tab bar at the bottom, 16 px gutters, 24 px between blocks. No props for color.
-- **`LogoSlot`** `size?`. The logo's place (rounded square, like the app icon) with a neutral placeholder. Do not draw a logo; swap the inside when the real one exists.
+- **`LogoSlot`** `size?`. The logo (bib on the peach sky, `public/logo.svg`), rounded like the app icon. Sources live in `design/logo/`.
 - **`EmptyState`** `icon, title, children?, action?`. Nothing to show or a failed load: icon, one sentence, always a way forward (a button).
 
 ### Content

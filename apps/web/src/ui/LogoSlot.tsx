@@ -1,20 +1,6 @@
 import { cx } from "../lib/cx.ts";
 
-/**
- * Where Annarrivé's logo goes. The logo is being designed separately: this keeps its place and size (a rounded
- * square, like the app icon) without inventing a mark. Swap the inside for the logo once it exists.
- */
+/** Annarrivé's logo: the bib icon, drawn as the app icon (its rounded square is part of the file). */
 export function LogoSlot({ size = 72, className }: { size?: number; className?: string }) {
-  return (
-    <span
-      role="img"
-      aria-label="Annarrivé"
-      className={cx("surface flex flex-none items-center justify-center", className)}
-      style={{ width: size, height: size, borderRadius: size * 0.28 }}
-    >
-      <span aria-hidden="true" className="t-title text-ink-3">
-        A
-      </span>
-    </span>
-  );
+  return <img src="/logo.svg" alt="Annarrivé" width={size} height={size} className={cx("flex-none", className)} />;
 }
