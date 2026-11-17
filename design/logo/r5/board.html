@@ -1,0 +1,56 @@
+<!doctype html><html lang="fr"><meta charset="utf-8"><style>
+*{box-sizing:border-box;margin:0}
+body{font-family:-apple-system,"SF Pro Display","Segoe UI",sans-serif;color:#23303D;background:#FBF8F6;padding:44px;width:1600px}
+h1{font-size:32px;font-weight:800}.sub{color:#5B6775;font-size:16px;margin:6px 0 28px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:22px}
+.card{background:#fff;border-radius:28px;padding:24px;box-shadow:0 1px 2px rgba(35,48,61,.05),0 8px 24px rgba(35,48,61,.06)}
+.icon{width:200px;height:200px;border-radius:22.4%;margin:0 auto;position:relative;overflow:hidden;box-shadow:0 6px 18px rgba(35,48,61,.10);flex:none}
+.icon::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 1px 0 rgba(255,255,255,.9),inset 0 0 0 1px rgba(255,255,255,.5);background:radial-gradient(120% 60% at 30% 0%,rgba(255,255,255,.45),transparent 60%)}
+.icon svg{position:absolute;inset:0;width:100%;height:100%}
+.peach{background:linear-gradient(170deg,#FCD7C4 0%,#F8BFA9 55%,#F5B3BE 100%)}
+.cream{background:linear-gradient(170deg,#FFF8F2 0%,#FDE9DE 55%,#FADDE2 100%)}
+.small{display:flex;gap:14px;align-items:flex-end;justify-content:center;margin-top:18px}
+.small .icon{box-shadow:0 2px 6px rgba(35,48,61,.12)}
+h2{font-size:20px;font-weight:800;margin-top:20px}
+p{font-size:15px;color:#5B6775;margin-top:6px;line-height:1.4}
+.shelf{margin-top:28px;display:flex;gap:30px;align-items:center;background:linear-gradient(180deg,#CFE0EF,#F3ECF6 60%,#FDE7DA);border-radius:32px;padding:26px 36px}
+.shelf .t{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px}
+.ph{width:64px;height:64px;border-radius:22.4%;box-shadow:0 4px 12px rgba(35,48,61,.12);display:flex;align-items:center;justify-content:center}
+.ph i{display:block;background:#fff;border-radius:50%}
+</style>
+<svg width="0" height="0" style="position:absolute">
+<!-- Smaller bib: 150x108, rotated -6deg, more air around it in the tile. -->
+<symbol id="bibFill" viewBox="0 0 256 256"><g transform="rotate(-6 128 128)"><rect x="53" y="74" width="150" height="108" rx="18" fill="#fff"/><g fill="#F5B3BE"><circle cx="70" cy="91" r="5"/><circle cx="186" cy="91" r="5"/><circle cx="70" cy="165" r="5"/><circle cx="186" cy="165" r="5"/></g></g></symbol>
+<symbol id="bibLine" viewBox="0 0 256 256"><g transform="rotate(-6 128 128)" style="color:var(--c)"><rect x="53" y="74" width="150" height="108" rx="18" fill="none" stroke="currentColor" stroke-width="8"/><g fill="currentColor"><circle cx="72" cy="93" r="5"/><circle cx="184" cy="93" r="5"/><circle cx="72" cy="163" r="5"/><circle cx="184" cy="163" r="5"/></g></g></symbol>
+<!-- Thin hand-written A (feutre), drawn at 72% inside the bib. -->
+<symbol id="aThin" viewBox="0 0 256 256"><g transform="rotate(-6 128 128) translate(128 128) scale(.66) translate(-132 -131)"><path d="M94 180c8-30 22-68 36-98c10 30 22 62 34 92M100 152c22-8 46-12 72-12" fill="none" stroke="var(--a,#EE8A68)" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/></g></symbol>
+</svg>
+<body>
+<h1>Dossard · plus fin, plus graphique</h1>
+<p class="sub">Dossard plus petit, A au trait fin écrit à la main. Quatre façons de l'habiller.</p>
+<div class="grid">
+ <div class="card"><div class="icon peach"><svg viewBox="0 0 256 256"><use href="#bibFill"/><use href="#aThin"/></svg></div>
+  <div class="small"><div class="icon peach" style="width:60px;height:60px"><svg viewBox="0 0 256 256"><use href="#bibFill"/><use href="#aThin"/></svg></div><div class="icon peach" style="width:40px;height:40px"><svg viewBox="0 0 256 256"><use href="#bibFill"/><use href="#aThin"/></svg></div></div>
+  <h2>1 · Papier</h2><p>Dossard blanc plein mais plus petit, A fin au feutre corail.</p></div>
+ <div class="card"><div class="icon cream"><svg viewBox="0 0 256 256" style="--c:#EE8A68"><use href="#bibLine"/><use href="#aThin"/></svg></div>
+  <div class="small"><div class="icon cream" style="width:60px;height:60px"><svg viewBox="0 0 256 256" style="--c:#EE8A68"><use href="#bibLine"/><use href="#aThin"/></svg></div><div class="icon cream" style="width:40px;height:40px"><svg viewBox="0 0 256 256" style="--c:#EE8A68"><use href="#bibLine"/><use href="#aThin"/></svg></div></div>
+  <h2>2 · Trait corail</h2><p>Tout au trait, corail sur fond crème : dossard en contour, A à la main.</p></div>
+ <div class="card"><div class="icon peach"><svg viewBox="0 0 256 256" style="--c:#fff;--a:#fff"><use href="#bibLine"/><use href="#aThin"/></svg></div>
+  <div class="small"><div class="icon peach" style="width:60px;height:60px"><svg viewBox="0 0 256 256" style="--c:#fff;--a:#fff"><use href="#bibLine"/><use href="#aThin"/></svg></div><div class="icon peach" style="width:40px;height:40px"><svg viewBox="0 0 256 256" style="--c:#fff;--a:#fff"><use href="#bibLine"/><use href="#aThin"/></svg></div></div>
+  <h2>3 · Trait blanc</h2><p>Tout au trait blanc sur le dégradé pêche à rose, comme dessiné à la craie.</p></div>
+ <div class="card"><div class="icon cream"><svg viewBox="0 0 256 256" style="--c:#F5B3BE"><use href="#bibLine"/><use href="#aThin"/></svg></div>
+  <div class="small"><div class="icon cream" style="width:60px;height:60px"><svg viewBox="0 0 256 256" style="--c:#F5B3BE"><use href="#bibLine"/><use href="#aThin"/></svg></div><div class="icon cream" style="width:40px;height:40px"><svg viewBox="0 0 256 256" style="--c:#F5B3BE"><use href="#bibLine"/><use href="#aThin"/></svg></div></div>
+  <h2>4 · Deux tons</h2><p>Dossard en contour rose, A corail : le A ressort, le dossard reste discret.</p></div>
+</div>
+<div class="shelf">
+ <div class="t"><div class="ph" style="background:#FC5200"><i style="width:26px;height:26px"></i></div>Course</div>
+ <div class="t"><div class="ph" style="background:#111"><i style="width:28px;height:10px;border-radius:5px"></i></div>Run</div>
+ <div class="t"><div class="icon peach" style="width:64px;height:64px;margin:0"><svg viewBox="0 0 256 256"><use href="#bibFill"/><use href="#aThin"/></svg></div>1</div>
+ <div class="t"><div class="icon cream" style="width:64px;height:64px;margin:0"><svg viewBox="0 0 256 256" style="--c:#EE8A68"><use href="#bibLine"/><use href="#aThin"/></svg></div>2</div>
+ <div class="t"><div class="icon peach" style="width:64px;height:64px;margin:0"><svg viewBox="0 0 256 256" style="--c:#fff;--a:#fff"><use href="#bibLine"/><use href="#aThin"/></svg></div>3</div>
+ <div class="t"><div class="icon cream" style="width:64px;height:64px;margin:0"><svg viewBox="0 0 256 256" style="--c:#F5B3BE"><use href="#bibLine"/><use href="#aThin"/></svg></div>4</div>
+ <div class="t"><div class="ph" style="background:#000"><i style="width:34px;height:34px;background:none;border:5px solid #A6FF00"></i></div>Forme</div>
+ <div class="t"><div class="ph" style="background:#fff"><i style="width:30px;height:30px;background:#E8483C"></i></div>Calendrier</div>
+ <p style="margin-left:auto;max-width:260px">Voisinage : pavés génériques, pas les vrais logos.</p>
+</div>
+</body></html>
