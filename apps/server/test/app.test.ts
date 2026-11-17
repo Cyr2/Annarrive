@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { healthSchema } from "@talaria/protocol";
+import { healthSchema } from "@annarrive/protocol";
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
 import { createApp, rateLimit } from "../src/app.ts";
@@ -40,18 +40,18 @@ describe("server", () => {
   });
 
   it("serves the app shell for client-side routes", async () => {
-    const webDist = await mkdtemp(join(tmpdir(), "talaria-web-"));
-    await writeFile(join(webDist, "index.html"), "<!doctype html><title>Talaria</title>");
+    const webDist = await mkdtemp(join(tmpdir(), "annarrive-web-"));
+    await writeFile(join(webDist, "index.html"), "<!doctype html><title>Annarrivé</title>");
     const { services } = setup();
     const response = await createApp({ services, sessionSecret: SECRET, webDist }).request("/semaine");
     expect(response.status).toBe(200);
-    expect(await response.text()).toContain("Talaria");
+    expect(await response.text()).toContain("Annarrivé");
   });
 
   it("serves hashed assets compressed and cached for good", async () => {
-    const webDist = await mkdtemp(join(tmpdir(), "talaria-web-"));
+    const webDist = await mkdtemp(join(tmpdir(), "annarrive-web-"));
     await mkdir(join(webDist, "assets"));
-    await writeFile(join(webDist, "assets", "index-abc.js"), "console.log('Talaria');\n".repeat(100));
+    await writeFile(join(webDist, "assets", "index-abc.js"), "console.log('Annarrivé');\n".repeat(100));
     const { services } = setup();
     const app = createApp({ services, sessionSecret: SECRET, webDist });
     const response = await app.request("/assets/index-abc.js", { headers: { "accept-encoding": "gzip" } });
@@ -63,8 +63,8 @@ describe("server", () => {
 
 describe("hardening", () => {
   it("sends the security headers on the API and on the app", async () => {
-    const webDist = await mkdtemp(join(tmpdir(), "talaria-web-"));
-    await writeFile(join(webDist, "index.html"), "<!doctype html><title>Talaria</title>");
+    const webDist = await mkdtemp(join(tmpdir(), "annarrive-web-"));
+    await writeFile(join(webDist, "index.html"), "<!doctype html><title>Annarrivé</title>");
     const { services } = setup();
     const app = createApp({ services, sessionSecret: SECRET, webDist });
     for (const path of ["/api/health", "/semaine"]) {
@@ -83,7 +83,7 @@ describe("hardening", () => {
   });
 
   it("lets the built page's own inline scripts run, and only those", async () => {
-    const webDist = await mkdtemp(join(tmpdir(), "talaria-web-"));
+    const webDist = await mkdtemp(join(tmpdir(), "annarrive-web-"));
     await writeFile(
       join(webDist, "index.html"),
       `<script type="module" src="/assets/index.js"></script><script id="sw">register()</script><script>preload()</script>`,
@@ -105,9 +105,10 @@ describe("hardening", () => {
 
     expect((await post({ "sec-fetch-site": "cross-site" })).status).toBe(403);
     expect((await post({ "sec-fetch-site": "same-site" })).status).toBe(403);
-    expect((await post({ origin: "https://evil.test", host: "talaria.test" })).status).toBe(403);
+    expect((await post({ origin: "https://evil.test", host: "annarrive.test" })).status).toBe(403);
     expect(
-      (await post({ origin: "https://talaria.test", host: "talaria.test", "sec-fetch-site": "same-origin" })).status,
+      (await post({ origin: "https://annarrive.test", host: "annarrive.test", "sec-fetch-site": "same-origin" }))
+        .status,
     ).not.toBe(403);
     const read = await t.app.request("/api/today", { headers: { cookie, "sec-fetch-site": "cross-site" } });
     expect(read.status).toBe(200);
@@ -153,7 +154,7 @@ describe("login", () => {
     expect(response.status).toBe(302);
     expect(response.headers.get("location")).toBe("/");
     const cookie = response.headers.get("set-cookie") ?? "";
-    expect(cookie).toMatch(/^__Host-talaria_session=/);
+    expect(cookie).toMatch(/^__Host-annarrive_session=/);
     expect(cookie).toContain("Path=/");
     expect(cookie).toContain("Max-Age=15552000");
     expect(cookie).toContain("HttpOnly");
@@ -164,7 +165,7 @@ describe("login", () => {
 
   it("opening the link only shows a Se connecter button, so a message preview does not use it up", async () => {
     const t = setup();
-    const link = new URL(t.services.auth.createLoginLink("https://talaria.test"));
+    const link = new URL(t.services.auth.createLoginLink("https://annarrive.test"));
     const token = link.searchParams.get("token") ?? "";
 
     const preview = await t.app.request(`${link.pathname}${link.search}`);
@@ -181,7 +182,7 @@ describe("login", () => {
 
   it("logs in once per link: a second POST is refused with a French page", async () => {
     const t = setup();
-    const token = new URL(t.services.auth.createLoginLink("https://talaria.test")).searchParams.get("token") ?? "";
+    const token = new URL(t.services.auth.createLoginLink("https://annarrive.test")).searchParams.get("token") ?? "";
     expect((await postLogin(t.app, token)).status).toBe(302);
 
     const second = await postLogin(t.app, token);
@@ -193,14 +194,14 @@ describe("login", () => {
 
   it("refuses a link older than 15 minutes", async () => {
     const t = setup();
-    const late = new URL(t.services.auth.createLoginLink("https://talaria.test")).searchParams.get("token") ?? "";
+    const late = new URL(t.services.auth.createLoginLink("https://annarrive.test")).searchParams.get("token") ?? "";
     t.setNow(new Date(MONDAY_8AM.getTime() + 15 * 60_000));
     expect((await postLogin(t.app, late)).status).toBe(401);
   });
 
   it("refuses a login form posted from another site without using up the link", async () => {
     const t = setup();
-    const token = new URL(t.services.auth.createLoginLink("https://talaria.test")).searchParams.get("token") ?? "";
+    const token = new URL(t.services.auth.createLoginLink("https://annarrive.test")).searchParams.get("token") ?? "";
     expect((await postLogin(t.app, token, "cross-site")).status).toBe(403);
     expect((await postLogin(t.app, token)).status).toBe(302);
   });
@@ -219,7 +220,9 @@ describe("login", () => {
 
   it("refuses a forged cookie", async () => {
     const t = setup();
-    const response = await t.app.request("/api/today", { headers: { cookie: "talaria_session=forged.c2lnbmF0dXJl" } });
+    const response = await t.app.request("/api/today", {
+      headers: { cookie: "annarrive_session=forged.c2lnbmF0dXJl" },
+    });
     expect(response.status).toBe(401);
   });
 

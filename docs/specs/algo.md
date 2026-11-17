@@ -1,4 +1,4 @@
-# Talaria : spécification de l'algorithme (`packages/coach`)
+# Annarrivé : spécification de l'algorithme (`packages/coach`)
 
 Consolide `research/01` à `05` et applique les décisions produit. Cible : un paquet TypeScript de fonctions pures (aucune E/S, aucune horloge interne, aucun hasard), testé à 90 %. Toutes les valeurs ci-dessous sont des constantes nommées, globales, identiques pour tous les coureurs. Aucune valeur propre à Anna n'est codée.
 

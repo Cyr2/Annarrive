@@ -58,7 +58,7 @@ const recorded: unknown[] = [
     parent_tool_use_id: null,
     message: {
       content: [
-        { type: "tool_use", name: "mcp__talaria__get_today", input: {} },
+        { type: "tool_use", name: "mcp__annarrive__get_today", input: {} },
         { type: "text", text: "x" },
       ],
     },
@@ -111,9 +111,9 @@ describe("Reggie's SDK options", () => {
       includePartialMessages: true,
     });
     expect(options.disallowedTools).toEqual(expect.arrayContaining(["Bash", "Read", "Write", "Edit"]));
-    expect(options.allowedTools).toContain("mcp__talaria__move_session");
-    expect(options.allowedTools?.filter((t) => !t.startsWith("mcp__talaria__"))).toEqual(["WebSearch", "WebFetch"]);
-    expect(Object.keys(options.mcpServers ?? {})).toEqual(["talaria"]);
+    expect(options.allowedTools).toContain("mcp__annarrive__move_session");
+    expect(options.allowedTools?.filter((t) => !t.startsWith("mcp__annarrive__"))).toEqual(["WebSearch", "WebFetch"]);
+    expect(Object.keys(options.mcpServers ?? {})).toEqual(["annarrive"]);
     expect(options.hooks?.PreToolUse?.[0]?.matcher).toBe("WebSearch|WebFetch");
   });
 

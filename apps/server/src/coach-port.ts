@@ -5,7 +5,7 @@ import {
   phaseSplit,
   predictTime,
   totalWeeks,
-} from "@talaria/coach";
+} from "@annarrive/coach";
 import type {
   CalendarEvent,
   ChangeOption,
@@ -20,7 +20,7 @@ import type {
   Proposal,
   Slot,
   Unavailable,
-} from "@talaria/protocol";
+} from "@annarrive/protocol";
 import type { Activity, FitnessEstimate } from "./storage/stores.ts";
 import { addMinutes } from "./time.ts";
 
@@ -50,7 +50,7 @@ export type CoachResult = { state: CoachState; changes: CoachNote[]; warnings: C
 /** The M5 `dailyDecision` action, with the state where today's session is already lightened. */
 export type DailyDecisionResult = CoachResult & { action: "keep" | "easier" | "shorter" | "proposeRest" | "none" };
 /**
- * The slice of `@talaria/coach` the server calls, with the signatures of docs/specs/algo.md.
+ * The slice of `@annarrive/coach` the server calls, with the signatures of docs/specs/algo.md.
  * Every result is final: the coach has already run `guards.validateWeek` on it.
  * The last four methods have no counterpart in the first port: the server needs them to bootstrap
  * fitness, recalibrate (M8) and time the morning decision (D1) without holding any rule itself.
@@ -110,7 +110,7 @@ export function slotFor(session: PlannedSession, start: string): Slot {
   return { start, end: addMinutes(start, session.durMin) };
 }
 
-/** Already the real `@talaria/coach`: onboarding needs it before the rest of the coach is wired. */
+/** Already the real `@annarrive/coach`: onboarding needs it before the rest of the coach is wired. */
 export function coachFeasibility(
   goal: FeasibilityInput,
   history: Activity[],

@@ -19,7 +19,7 @@ function readMessage(event) {
     // A payload that is not JSON still shows, with the app name.
   }
   return {
-    title: typeof data.title === "string" ? data.title : "Talaria",
+    title: typeof data.title === "string" ? data.title : "Annarrivé",
     body: typeof data.body === "string" ? data.body : "",
     url: sameOrigin(data.url),
   };

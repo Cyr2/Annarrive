@@ -7,7 +7,7 @@ import {
   type ChatStreamEvent,
   type ChatWidget,
   chatWidgetSchema,
-} from "@talaria/protocol";
+} from "@annarrive/protocol";
 import { AppError } from "../errors.ts";
 import type { ReggieRun } from "../reggie/agent.ts";
 import { reggieTools } from "../reggie/tools.ts";

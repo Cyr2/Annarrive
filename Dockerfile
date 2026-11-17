@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# Talaria: one container, the API server also serves the built PWA.
+# Annarrivé: one container, the API server also serves the built PWA.
 
 FROM node:26-alpine AS base
 RUN npm install -g pnpm@12.18.0
@@ -18,10 +18,10 @@ RUN pnpm install --frozen-lockfile
 COPY apps/web apps/web
 COPY apps/server apps/server
 COPY packages packages
-RUN pnpm --filter @talaria/web build
+RUN pnpm --filter @annarrive/web build
 # Keep only what the server needs at runtime.
 RUN rm -rf node_modules apps/*/node_modules packages/*/node_modules \
- && pnpm install --prod --frozen-lockfile --filter "@talaria/server..."
+ && pnpm install --prod --frozen-lockfile --filter "@annarrive/server..."
 
 FROM node:26-alpine AS run
 ENV NODE_ENV=production \

@@ -1,4 +1,4 @@
-import { chatRequestSchema } from "@talaria/protocol";
+import { chatRequestSchema } from "@annarrive/protocol";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { InvalidInputError } from "../errors.ts";

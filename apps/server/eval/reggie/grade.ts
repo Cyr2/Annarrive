@@ -1,4 +1,4 @@
-import type { ChatContext, ChatWidget, HealthStatus, PlannedSession, ProfilePatch } from "@talaria/protocol";
+import type { ChatContext, ChatWidget, HealthStatus, PlannedSession, ProfilePatch } from "@annarrive/protocol";
 
 /** A tool call to expect: input keys must match; an array lists the accepted values. */
 export type CallMatcher = { name: string; input?: Record<string, unknown> };

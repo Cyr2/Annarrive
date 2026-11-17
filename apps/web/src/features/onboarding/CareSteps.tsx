@@ -27,7 +27,7 @@ export function HealthStep() {
       {draft.pain && draft.zone && (
         <PainLevel pain={draft.level} zone={draft.zone} onChange={(level) => update({ level })} />
       )}
-      <Section title="Ce que Talaria lit" footnote="Tes données restent sur le serveur de l'app. Rien n'est partagé.">
+      <Section title="Ce qu'Annarrivé lit" footnote="Tes données restent sur le serveur de l'app. Rien n'est partagé.">
         <Group>
           <SwitchRow
             title="Sommeil et fréquence cardiaque"

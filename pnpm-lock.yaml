@@ -163,7 +163,7 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
-  glisse@0.6.0: dfbb5fc5b4560401119c21dd8567ec42abaed2213397963aa6b091bbf5fe1ed3
+  glisse@0.6.0: 7d5b0b80fd303e7fb2960fe1e6b3b8ae7bda946fb89fe0e75635d0b71f41b384
 
 importers:
 
@@ -178,18 +178,18 @@ importers:
 
   apps/server:
     dependencies:
+      '@annarrive/coach':
+        specifier: workspace:*
+        version: link:../../packages/coach
+      '@annarrive/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
       '@anthropic-ai/claude-agent-sdk':
         specifier: ^0.3.325
         version: 0.3.325(@anthropic-ai/sdk@1.8.0(zod@4.6.7))(@modelcontextprotocol/sdk@1.32.2(supports-color@7.2.0)(zod@4.6.7))(zod@4.6.7)
       '@hono/node-server':
         specifier: ^2.1.8
         version: 2.1.8(hono@4.13.18)
-      '@talaria/coach':
-        specifier: workspace:*
-        version: link:../../packages/coach
-      '@talaria/protocol':
-        specifier: workspace:*
-        version: link:../../packages/protocol
       hono:
         specifier: ^4.13.18
         version: 4.13.18
@@ -224,6 +224,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@annarrive/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -233,12 +236,9 @@ importers:
       '@dnd-kit/utilities':
         specifier: ^3.2.2
         version: 3.2.2(react@19.3.1)
-      '@talaria/protocol':
-        specifier: workspace:*
-        version: link:../../packages/protocol
       glisse:
         specifier: ^0.6.0
-        version: 0.6.0(patch_hash=dfbb5fc5b4560401119c21dd8567ec42abaed2213397963aa6b091bbf5fe1ed3)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 0.6.0(patch_hash=7d5b0b80fd303e7fb2960fe1e6b3b8ae7bda946fb89fe0e75635d0b71f41b384)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       lucide-react:
         specifier: ^1.73.0
         version: 1.73.0(@types/react@19.3.0)(react@19.3.1)
@@ -6809,7 +6809,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  glisse@0.6.0(patch_hash=dfbb5fc5b4560401119c21dd8567ec42abaed2213397963aa6b091bbf5fe1ed3)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+  glisse@0.6.0(patch_hash=7d5b0b80fd303e7fb2960fe1e6b3b8ae7bda946fb89fe0e75635d0b71f41b384)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
       react: 19.3.1
       react-dom: 19.3.1(react@19.3.1)

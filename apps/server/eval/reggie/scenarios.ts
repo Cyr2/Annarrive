@@ -1,4 +1,4 @@
-import type { PlannedSession } from "@talaria/protocol";
+import type { PlannedSession } from "@annarrive/protocol";
 import { MODIFYING, type Scenario } from "./grade.ts";
 
 /** Every scenario runs on Monday 16 November 2026, 08:00 in Paris, with this week. */

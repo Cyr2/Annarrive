@@ -1,4 +1,4 @@
-import { workoutRequestSchema } from "@talaria/protocol";
+import { workoutRequestSchema } from "@annarrive/protocol";
 import { describe, expect, it } from "vitest";
 import { toWorkoutRequest, watchStatus, workoutHash } from "../src/garmin/workout.ts";
 import { session } from "./helpers.ts";

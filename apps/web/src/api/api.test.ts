@@ -1,4 +1,4 @@
-import type { CalendarEvent, SessionView } from "@talaria/protocol";
+import type { CalendarEvent, SessionView } from "@annarrive/protocol";
 import { describe, expect, it, vi } from "vitest";
 import { ApiError, errorMessage } from "./errors.ts";
 import { createHttpApi, isHealthy, sse } from "./http.ts";

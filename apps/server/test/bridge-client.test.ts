@@ -1,4 +1,4 @@
-import type { WorkoutRequest } from "@talaria/protocol";
+import type { WorkoutRequest } from "@annarrive/protocol";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   BridgeError,

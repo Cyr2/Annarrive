@@ -1,4 +1,3 @@
-import { tool } from "@anthropic-ai/claude-agent-sdk";
 import {
   type ChangeResponse,
   type ChatWidget,
@@ -9,13 +8,14 @@ import {
   painSiteSchema,
   profilePatchSchema,
   unavailableSchema,
-} from "@talaria/protocol";
+} from "@annarrive/protocol";
+import { tool } from "@anthropic-ai/claude-agent-sdk";
 import { ZodError, z } from "zod";
 import { AppError } from "../errors.ts";
 import type { PlanService } from "../services/plan.ts";
 import { isoWeekOf } from "../time.ts";
 
-export const MCP_SERVER = "talaria";
+export const MCP_SERVER = "annarrive";
 
 type ToolResult = { content: { type: "text"; text: string }[]; isError?: boolean };
 

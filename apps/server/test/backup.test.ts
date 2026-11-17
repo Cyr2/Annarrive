@@ -8,7 +8,7 @@ import { openDatabase } from "../src/storage/db.ts";
 
 describe("backupDatabase", () => {
   it("writes a readable copy of the live database", () => {
-    const dir = mkdtempSync(join(tmpdir(), "talaria-backup-"));
+    const dir = mkdtempSync(join(tmpdir(), "annarrive-backup-"));
     const db = openDatabase(join(dir, "data"));
     db.prepare("INSERT INTO meta (id, data) VALUES (?, ?)").run("probe", '{"ok":true}');
 
@@ -20,23 +20,24 @@ describe("backupDatabase", () => {
   });
 
   it("replaces the copy when it runs twice the same day", () => {
-    const dir = mkdtempSync(join(tmpdir(), "talaria-backup-"));
+    const dir = mkdtempSync(join(tmpdir(), "annarrive-backup-"));
     const db = openDatabase(":memory:");
     backupDatabase(db, dir, "2026-11-16");
     backupDatabase(db, dir, "2026-11-16");
-    expect(readdirSync(dir)).toEqual(["talaria-2026-11-16.db"]);
+    expect(readdirSync(dir)).toEqual(["annarrive-2026-11-16.db"]);
   });
 
   it("keeps 30 days of copies and leaves other files alone", () => {
-    const dir = mkdtempSync(join(tmpdir(), "talaria-backup-"));
-    for (const name of ["talaria-2026-10-17.db", "talaria-2026-10-18.db", "notes.txt"]) {
+    const dir = mkdtempSync(join(tmpdir(), "annarrive-backup-"));
+    for (const name of ["annarrive-2026-10-17.db", "talaria-2026-10-16.db", "annarrive-2026-10-18.db", "notes.txt"]) {
       writeFileSync(join(dir, name), "");
     }
 
     backupDatabase(openDatabase(":memory:"), dir, "2026-11-16");
 
-    expect(existsSync(join(dir, "talaria-2026-10-17.db"))).toBe(false);
-    expect(existsSync(join(dir, "talaria-2026-10-18.db"))).toBe(true);
+    expect(existsSync(join(dir, "annarrive-2026-10-17.db"))).toBe(false);
+    expect(existsSync(join(dir, "talaria-2026-10-16.db"))).toBe(false);
+    expect(existsSync(join(dir, "annarrive-2026-10-18.db"))).toBe(true);
     expect(existsSync(join(dir, "notes.txt"))).toBe(true);
   });
 });

@@ -1,4 +1,9 @@
-import { changeOptionsSchema, changeResponseSchema, chatHistorySchema, chatStreamEventSchema } from "@talaria/protocol";
+import {
+  changeOptionsSchema,
+  changeResponseSchema,
+  chatHistorySchema,
+  chatStreamEventSchema,
+} from "@annarrive/protocol";
 import { describe, expect, it } from "vitest";
 import { type ReggieRun, ReggieUnavailableError } from "../src/reggie/agent.ts";
 import { session, setup } from "./helpers.ts";

@@ -17,7 +17,7 @@ import {
   timetableStatusSchema,
   unavailablePreviewSchema,
   watchInfoSchema,
-} from "@talaria/protocol";
+} from "@annarrive/protocol";
 import { z } from "zod";
 import { addDays, addMinutes, isoWeek, minutesOf, mondayOf, toIso } from "../lib/date.ts";
 import type { Api } from "./client.ts";

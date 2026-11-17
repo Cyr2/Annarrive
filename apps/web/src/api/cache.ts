@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { todaySchema, weekSchema } from "./schemas.ts";
 
-const KEY = "talaria.firstScreen";
+const KEY = "annarrive.firstScreen";
 
 const firstScreenSchema = z.object({ today: todaySchema, week: weekSchema });
 export type FirstScreen = z.infer<typeof firstScreenSchema>;

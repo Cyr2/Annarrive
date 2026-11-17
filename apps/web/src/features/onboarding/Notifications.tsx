@@ -32,7 +32,7 @@ async function enablePush(): Promise<PushState> {
 const PUSH_TEXT: Partial<Record<PushState, string>> = {
   on: "Notifications activées.",
   denied: "Refusées. Tu pourras les activer dans les réglages de l'iPhone.",
-  unsupported: "Ouvre Talaria depuis ton écran d'accueil pour les activer.",
+  unsupported: "Ouvre Annarrivé depuis ton écran d'accueil pour les activer.",
   failed: "Ça n'a pas marché. Tu pourras réessayer dans Programme.",
 };
 

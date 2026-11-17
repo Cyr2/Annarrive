@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { ChangeResponse, Feel, Proposal } from "@talaria/protocol";
+import type { ChangeResponse, Feel, Proposal } from "@annarrive/protocol";
 import type { CoachPort } from "../coach-port.ts";
 import { NotFoundError, ReadOnlyError } from "../errors.ts";
 import type { Activity, Stores } from "../storage/stores.ts";

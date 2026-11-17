@@ -22,7 +22,7 @@ import type {
   Unavailable,
   UnavailablePreview,
   WatchInfo,
-} from "@talaria/protocol";
+} from "@annarrive/protocol";
 import { daysBetween, decimal, duration, minutesOf, relativeDay, timeOf, weekday } from "../lib/date.ts";
 import type { GoalInput, NewEvent, UnavailableInput } from "./client.ts";
 import { ApiError } from "./errors.ts";

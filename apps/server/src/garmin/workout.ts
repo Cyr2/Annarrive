@@ -4,7 +4,7 @@ import {
   type WatchStatus,
   type WorkoutRequest,
   type WorkoutStep,
-} from "@talaria/protocol";
+} from "@annarrive/protocol";
 import { addDays, dateOf } from "../time.ts";
 
 type Step = PlannedSession["steps"][number];

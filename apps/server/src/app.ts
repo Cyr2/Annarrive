@@ -2,8 +2,8 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { Health } from "@annarrive/protocol";
 import { serveStatic } from "@hono/node-server/serve-static";
-import type { Health } from "@talaria/protocol";
 import { type Context, Hono, type Next } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { compress } from "hono/compress";
@@ -21,8 +21,8 @@ import type { Services } from "./services/index.ts";
 z.config(z.locales.fr());
 
 export const VERSION = "0.1.0";
-// Sent as `__Host-talaria_session`: https only, this host only, so a sibling subdomain cannot plant one.
-const SESSION_COOKIE = "talaria_session";
+// Sent as `__Host-annarrive_session`: https only, this host only, so a sibling subdomain cannot plant one.
+const SESSION_COOKIE = "annarrive_session";
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 /** Largest JSON body the API reads: a chat message is at most 2000 characters. */
 const MAX_BODY_BYTES = 64 * 1024;
@@ -81,7 +81,7 @@ export async function sameOrigin(c: Context, next: Next): Promise<void> {
     const foreign = site
       ? site !== "same-origin"
       : origin !== undefined && URL.parse(origin)?.host !== c.req.header("host");
-    if (foreign) throw new AppError(403, "Requête refusée : elle doit venir de l'app Talaria.");
+    if (foreign) throw new AppError(403, "Requête refusée : elle doit venir de l'app Annarrivé.");
   }
   await next();
 }
@@ -132,14 +132,14 @@ const LOGIN_CSS = [
 
 /** Server pages of the login: the app's sky, the logo's slot, a title and one sentence, then what to do. */
 const loginPage = (title: string, lead: string, actions: string) =>
-  `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="referrer" content="no-referrer"><meta name="theme-color" content="#FDE7DA"><meta name="color-scheme" content="light"><title>Connexion à Talaria</title><style>${LOGIN_CSS}</style></head><body><header><span class="logo" role="img" aria-label="Talaria">T</span><h1>${title}</h1>${lead}</header><main>${actions}</main></body></html>`;
+  `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="referrer" content="no-referrer"><meta name="theme-color" content="#FDE7DA"><meta name="color-scheme" content="light"><title>Connexion à Annarrivé</title><style>${LOGIN_CSS}</style></head><body><header><span class="logo" role="img" aria-label="Annarrivé">A</span><h1>${title}</h1>${lead}</header><main>${actions}</main></body></html>`;
 
 /** A login that failed: what happened, and the way out. */
 const loginError = (message: string) =>
   loginPage(
     "Connexion impossible",
     `<p class="notice" role="alert">${message}</p>`,
-    `<p>Un lien sert une seule fois et expire au bout de 15 minutes. Demande un nouveau lien, puis ouvre-le directement.</p><a class="quiet" href="/">Ouvrir Talaria</a>`,
+    `<p>Un lien sert une seule fois et expire au bout de 15 minutes. Demande un nouveau lien, puis ouvre-le directement.</p><a class="quiet" href="/">Ouvrir Annarrivé</a>`,
   );
 
 export type AppOptions = { services: Services; sessionSecret: string; webDist?: string | undefined };
@@ -168,8 +168,8 @@ export function createApp({ services, sessionSecret, webDist }: AppOptions): Hon
     if (!parsed.success) return c.html(loginError("Ce lien de connexion est incomplet : copie-le en entier."), 400);
     return c.html(
       loginPage(
-        "Bienvenue sur Talaria",
-        "<p>Ce lien ouvre Talaria sur ce téléphone.</p>",
+        "Bienvenue sur Annarrivé",
+        "<p>Ce lien ouvre Annarrivé sur ce téléphone.</p>",
         `<form method="post" action="/api/auth/login"><input type="hidden" name="token" value="${parsed.data}"><button type="submit">Se connecter</button></form><small>Pas de mot de passe : tu restes connectée ensuite.</small>`,
       ),
     );

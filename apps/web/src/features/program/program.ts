@@ -1,4 +1,4 @@
-import { icsUrlSchema } from "@talaria/protocol";
+import { icsUrlSchema } from "@annarrive/protocol";
 import type { Program, Settings } from "../../api/schemas.ts";
 import { daysBetween, longDate, weekdayName } from "../../lib/date.ts";
 import type { SettingKey } from "../sheets/store.ts";

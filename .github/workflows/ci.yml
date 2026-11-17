@@ -53,9 +53,9 @@ jobs:
       - name: Build
         run: pnpm build
       - name: Install WebKit (Safari on iPhone)
-        run: pnpm --filter @talaria/e2e exec playwright install --with-deps webkit
+        run: pnpm --filter @annarrive/e2e exec playwright install --with-deps webkit
       - name: Playwright (iPhone 15, WebKit)
-        run: pnpm --filter @talaria/e2e e2e
+        run: pnpm --filter @annarrive/e2e e2e
       - name: Traces of the failed tests
         if: failure()
         uses: actions/upload-artifact@v4
@@ -88,15 +88,15 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Build the app image
-        run: docker build -t talaria .
+        run: docker build -t annarrive .
       - name: The app starts and answers its health check
         run: |
-          docker run -d --name talaria -p 8787:8787 -e SESSION_SECRET="$(openssl rand -hex 32)" talaria
+          docker run -d --name annarrive -p 8787:8787 -e SESSION_SECRET="$(openssl rand -hex 32)" annarrive
           for i in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:8787/api/health; then exit 0; fi
             sleep 1
           done
-          docker logs talaria
+          docker logs annarrive
           exit 1
       - name: Build the bridge image
         run: docker build -t garmin-bridge apps/garmin-bridge

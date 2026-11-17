@@ -1,5 +1,5 @@
 /** Set once onboarding is over, so the app never even loads its chunk again. Kept apart: the first screen reads it. */
-export const DONE_KEY = "talaria.onboarding";
+export const DONE_KEY = "annarrive.onboarding";
 
 export function isOnboarded(): boolean {
   try {

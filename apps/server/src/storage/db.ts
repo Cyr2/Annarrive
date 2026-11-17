@@ -1,4 +1,4 @@
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, renameSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { z } from "zod";
@@ -34,17 +34,27 @@ const migrations: string[] = [
   documentTable("proposal"),
 ];
 
-/** `:memory:` for tests, otherwise `talaria.db` inside `dataDir`. */
+/** `:memory:` for tests, otherwise `annarrive.db` inside `dataDir`. */
 export function openDatabase(dataDir: string | ":memory:"): DatabaseSync {
   let path = dataDir;
   if (dataDir !== ":memory:") {
     mkdirSync(dataDir, { recursive: true });
-    path = join(dataDir, "talaria.db");
+    path = join(dataDir, "annarrive.db");
+    renameLegacyFile(dataDir, path);
   }
   const db = new DatabaseSync(path);
   db.exec("PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;");
   migrate(db);
   return db;
+}
+
+/** The app was called Talaria: its database keeps its data under the new name, with its WAL files. */
+function renameLegacyFile(dataDir: string, path: string): void {
+  const legacy = join(dataDir, "talaria.db");
+  if (!existsSync(legacy) || existsSync(path)) return;
+  for (const suffix of ["", "-wal", "-shm"]) {
+    if (existsSync(legacy + suffix)) renameSync(legacy + suffix, path + suffix);
+  }
 }
 
 function migrate(db: DatabaseSync): void {

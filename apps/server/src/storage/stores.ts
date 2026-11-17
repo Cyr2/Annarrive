@@ -12,7 +12,7 @@ import {
   profileSchema,
   programSchema,
   proposalSchema,
-} from "@talaria/protocol";
+} from "@annarrive/protocol";
 import { z } from "zod";
 import { addMinutes } from "../time.ts";
 import { DocumentStore } from "./store.ts";

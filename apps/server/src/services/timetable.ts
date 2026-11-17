@@ -3,7 +3,7 @@ import type { ClientRequest, IncomingMessage } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { BlockList, isIP, type LookupFunction } from "node:net";
 import type { DatabaseSync } from "node:sqlite";
-import type { CalendarEvent, TimetableRefresh, TimetableStatus } from "@talaria/protocol";
+import type { CalendarEvent, TimetableRefresh, TimetableStatus } from "@annarrive/protocol";
 import { sync as ical } from "node-ical";
 import { z } from "zod";
 import { TimetableError, TimetableNotConfiguredError } from "../errors.ts";

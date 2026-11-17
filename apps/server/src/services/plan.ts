@@ -21,7 +21,7 @@ import type {
   UnavailablePreview,
   UpdateEventInput,
   Week,
-} from "@talaria/protocol";
+} from "@annarrive/protocol";
 import { type CoachPort, type CoachResult, type CoachState, type DailyDecisionResult, slotFor } from "../coach-port.ts";
 import { InvalidInputError, NotFoundError, ReadOnlyError } from "../errors.ts";
 import { watchStatus } from "../garmin/workout.ts";

@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { buildSession, isHard, paces } from "@talaria/coach";
+import { buildSession, isHard, paces } from "@annarrive/coach";
 import {
   type CalendarEvent,
   changeResponseSchema,
@@ -7,7 +7,7 @@ import {
   type PlannedSession,
   proposalSchema,
   unavailablePreviewSchema,
-} from "@talaria/protocol";
+} from "@annarrive/protocol";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { coachAdapter, toSession } from "../src/coach-adapter.ts";
