@@ -1,0 +1,55 @@
+<!doctype html><html lang="fr"><meta charset="utf-8"><style>
+*{box-sizing:border-box;margin:0}
+body{font-family:-apple-system,"SF Pro Display","Segoe UI",sans-serif;color:#23303D;background:#F7F9FB;padding:44px;width:1600px}
+h1{font-size:32px;font-weight:800}.sub{color:#5B6775;font-size:16px;margin:6px 0 28px}
+h2{font-size:15px;font-weight:700;color:#5B6775;margin:0 0 14px}
+.row{display:flex;gap:40px;align-items:flex-start}
+.phone{width:390px;height:780px;border-radius:52px;padding:14px;background:#DDE3EA;flex:none}
+.screen{width:100%;height:100%;border-radius:40px;overflow:hidden;position:relative}
+.wall{background:linear-gradient(180deg,#B9D3EA 0%,#E6F1F8 40%,#F3ECF6 70%,#FDE7DA 100%)}
+.sky{background:linear-gradient(180deg,#E6F1F8 0%,#F3ECF6 55%,#FDE7DA 100%)}
+.grid{display:grid;grid-template-columns:repeat(4,64px);gap:26px 22px;padding:70px 28px 0;justify-content:space-between}
+.app{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:11px}
+.ph{width:64px;height:64px;border-radius:22.4%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(35,48,61,.12)}
+.ph i{display:block;background:#fff;border-radius:50%}
+.ico{width:64px;height:64px;border-radius:22.4%;box-shadow:0 4px 12px rgba(35,48,61,.12)}
+.login{display:flex;flex-direction:column;align-items:center;padding:120px 28px 0;text-align:center}
+.word{font-size:34px;font-weight:800;letter-spacing:-.5px;margin-top:22px}
+.hello{font-size:17px;color:#5B6775;margin-top:8px}
+.btn{position:absolute;bottom:60px;left:28px;right:28px;height:52px;border-radius:26px;background:#3D6A9E;color:#fff;font-size:17px;font-weight:600;display:flex;align-items:center;justify-content:center}
+.sizes{display:flex;gap:22px;align-items:flex-end}
+.cap{font-size:13px;color:#5B6775;margin-top:10px}
+.tab{display:flex;align-items:center;gap:8px;background:#E9ECEF;border-radius:10px 10px 0 0;padding:8px 14px;font-size:13px;width:260px}
+</style><body>
+<h1>Annarrivé · dossard 14</h1><p class="sub">Version retenue : dossard droit, 14 en grand, ANNARRIVÉ en petit en bas. Textes convertis en formes.</p>
+<div class="row">
+ <div>
+  <h2>Icône</h2>
+  <img src="annarrive-icone.svg" width="260" height="260" alt="">
+  <h2 style="margin-top:30px">Tailles réelles</h2>
+  <div class="sizes"><img src="annarrive-icone.svg" width="120"><img src="annarrive-icone.svg" width="60"><img src="annarrive-icone.svg" width="40"><img src="annarrive-favicon.svg" width="32"><img src="annarrive-favicon.svg" width="16"></div>
+  <p class="cap">120 · 60 (écran d'accueil) · 40 · favicon 32 · 16 (version simplifiée)</p>
+  <div class="tab" style="margin-top:22px"><img src="annarrive-favicon.svg" width="16">Annarrivé</div>
+  <h2 style="margin-top:30px">Une couleur</h2>
+  <div class="sizes"><img src="annarrive-une-couleur.svg" width="110"><span style="background:#EE8A68;border-radius:18px;display:inline-block"><img src="annarrive-blanc.svg" width="110"></span></div>
+  <h2 style="margin-top:30px">Avec le nom</h2>
+  <img src="annarrive-horizontal.svg" height="80">
+ </div>
+ <div><h2>Écran d'accueil</h2>
+  <div class="phone"><div class="screen wall"><div class="grid">
+   <div class="app"><div class="ph" style="background:#fff"><i style="width:30px;height:30px;background:#E8483C"></i></div>Calendrier</div>
+   <div class="app"><div class="ph" style="background:#FC5200"><i style="width:26px;height:26px"></i></div>Course</div>
+   <div class="app"><div class="ph" style="background:#111"><i style="width:28px;height:10px;border-radius:5px"></i></div>Run</div>
+   <div class="app"><div class="ph" style="background:#000"><i style="width:34px;height:34px;background:none;border:5px solid #A6FF00"></i></div>Forme</div>
+   <div class="app"><img class="ico" src="annarrive-icone.svg">Annarrivé</div>
+   <div class="app"><div class="ph" style="background:#34C759"><i style="width:28px;height:28px"></i></div>Messages</div>
+   <div class="app"><div class="ph" style="background:#1E88E5"><i style="width:24px;height:24px"></i></div>Garmin</div>
+   <div class="app"><div class="ph" style="background:#FFCC00"><i style="width:26px;height:26px"></i></div>Notes</div>
+  </div></div></div><p class="cap">Applis voisines : pavés génériques, pas de vrais logos</p></div>
+ <div><h2>Connexion (LogoSlot 80 px)</h2>
+  <div class="phone"><div class="screen sky">
+   <div class="login"><img src="annarrive-icone.svg" width="80" height="80"><div class="word">Annarrivé</div>
+   <p class="hello">Ouvre le lien reçu par mail pour te connecter.</p></div>
+   <div class="btn">Renvoyer le lien</div>
+  </div></div></div>
+</div></body></html>
