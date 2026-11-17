@@ -130,7 +130,7 @@ const LOGIN_CSS = [
   // The app's calm sky: a soft apricot wash fading to warm near-white, still (no script, no animation on a page seen for a second).
   "body{margin:0;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:24px;padding:max(24px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom));background:radial-gradient(70% 30% at 15% 0%,rgb(255 218 196/.26),rgb(255 218 196/0)),linear-gradient(180deg,#fdede3 0%,#fdf1ea 18%,#fbf6f2 40%,#f9f6f3 100%) fixed}",
   "header{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;max-width:400px}",
-  ".logo{width:80px;height:80px;border-radius:22px;display:grid;place-items:center;margin-bottom:8px;background:rgb(255 255 255/.55);-webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);box-shadow:inset 0 0 0 .5px rgb(255 255 255/.75),inset 0 1px 0 rgb(255 255 255/.95),0 1px 3px rgb(90 40 10/.07),0 10px 32px rgb(90 40 10/.11);color:#8a949e;font-weight:700;font-size:20px}",
+  ".logo{width:80px;height:80px;margin-bottom:8px;display:block}",
   "h1{margin:0;font-size:28px;line-height:34px;font-weight:700;letter-spacing:-.022em}",
   "p{margin:0;color:#434e5a}",
   "main{width:100%;max-width:400px;display:flex;flex-direction:column;gap:12px;text-align:center}",
@@ -147,7 +147,7 @@ const LOGIN_CSS = [
 
 /** Server pages of the login: the app's sky, the logo's slot, a title and one sentence, then what to do. */
 const loginPage = (font: string, title: string, lead: string, actions: string) =>
-  `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="referrer" content="no-referrer"><meta name="theme-color" content="#FDEDE3"><meta name="color-scheme" content="light"><title>Connexion à Annarrivé</title><style>${font}${LOGIN_CSS}</style></head><body><header><span class="logo" role="img" aria-label="Annarrivé">A</span><h1>${title}</h1>${lead}</header><main>${actions}</main></body></html>`;
+  `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="referrer" content="no-referrer"><meta name="theme-color" content="#FDEDE3"><meta name="color-scheme" content="light"><title>Connexion à Annarrivé</title><style>${font}${LOGIN_CSS}</style></head><body><header><img class="logo" src="/logo.svg" alt="Annarrivé" width="80" height="80"><h1>${title}</h1>${lead}</header><main>${actions}</main></body></html>`;
 
 /** A login that failed: what happened, and the way out. */
 const loginError = (font: string, message: string) =>
