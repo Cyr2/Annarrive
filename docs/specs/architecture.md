@@ -50,13 +50,13 @@ Pourquoi ce découpage :
 
 - **Notifications** : Web Push (clés VAPID en variables d'environnement). iOS 26 les accepte pour une PWA installée sur l'écran d'accueil. L'abonnement est revérifié à chaque ouverture de l'app.
 - **Connexion** : quelques comptes fixes (Anna, Darius, l'instance de test), créés en ligne de commande, sans inscription publique. Toute connexion pose une session de 180 jours dans un cookie httpOnly `__Host-annarrive_session`.
-  - Premier accès sur un appareil : identifiant et mot de passe (hash scrypt, 5 essais ratés bloquent les mots de passe 15 min). L'écran « Tu es connectée » propose ensuite « Utiliser Face ID », qui enregistre une clé d'accès (passkey WebAuthn, authentificateur de l'appareil, clé découvrable, vérification de l'utilisateur exigée).
+  - Premier accès sur un appareil : identifiant et mot de passe (hash scrypt ; par adresse IP, 5 essais ratés bloquent les mots de passe 15 min et au plus 10 essais par minute, derrière Traefik l'adresse est la dernière de X-Forwarded-For). L'écran « Tu es connectée » propose ensuite « Utiliser Face ID », qui enregistre une clé d'accès (passkey WebAuthn, authentificateur de l'appareil, clé découvrable, vérification de l'utilisateur exigée).
   - Ensuite : un seul bouton « Se connecter avec Face ID », sans rien taper ; là où le navigateur le permet, la clé est aussi proposée dans les suggestions du champ Identifiant. Le site des clés (rpID) est l'hôte de `PUBLIC_URL`. Défis gardés 5 min côté serveur, à usage unique ; compteur de signature vérifié par `@simplewebauthn/server`.
   - Secours : le mot de passe marche toujours, et le lien à usage unique reste pour l'admin.
   - Commandes (dans le conteneur, depuis `/app/apps/server` ; en local, `pnpm --filter @annarrive/server <users|login-link> …`) :
-    - `node --import tsx src/cli/users.ts password <nom>` : crée le compte s'il manque, lui donne un nouveau mot de passe et l'affiche une fois.
+    - `node --import tsx src/cli/users.ts password <nom>` : crée le compte s'il manque, lui donne un nouveau mot de passe, l'affiche une fois et ferme les sessions du compte.
     - `node --import tsx src/cli/users.ts list` : comptes et clés d'accès (id, ajout, dernier usage).
-    - `node --import tsx src/cli/users.ts revoke <id>` : supprime une clé d'accès (téléphone perdu).
+    - `node --import tsx src/cli/users.ts revoke <id>` : supprime une clé d'accès (téléphone perdu) et ferme les sessions du compte.
     - `node --import tsx src/cli/login-link.ts [nom]` : lien de connexion valable 15 min. Avec un nom, il mène ensuite à l'offre Face ID.
 
 ### apps/garmin-bridge

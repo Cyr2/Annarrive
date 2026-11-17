@@ -6,7 +6,7 @@ import { createStores } from "../storage/stores.ts";
 import { systemClock } from "../time.ts";
 
 const USAGE = `Comptes d'Annarrivé :
-  users.ts password <nom>   crée le compte s'il manque et lui donne un nouveau mot de passe (affiché une fois)
+  users.ts password <nom>   crée le compte s'il manque, lui donne un nouveau mot de passe (affiché une fois) et ferme ses sessions
   users.ts list             liste les comptes et leurs clés d'accès (Face ID)
   users.ts revoke <id>      supprime une clé d'accès (téléphone perdu) et ferme les sessions du compte`;
 

@@ -159,7 +159,7 @@ Tutoiement, phrases courtes, pas de point d'exclamation en série, pas d'emoji. 
 |---|---|
 | « Se connecter avec Face ID » (bouton principal, absent si le navigateur n'a pas WebAuthn) | Ouvre Face ID sur les clés d'accès du site, sans rien taper. Réussi : l'app se recharge, connectée. Fenêtre fermée : rien ne s'affiche. Clé refusée ou inconnue : message en haut, le mot de passe reste possible |
 | Champ Identifiant | Là où le navigateur le permet, propose aussi la clé d'accès dans ses suggestions ; la choisir connecte comme le bouton |
-| « Se connecter » (identifiant et mot de passe, actif quand les deux sont remplis) | Réussi : écran « Tu es connectée » si l'appareil a Face ID, sinon l'app directement. Raté : « Identifiant ou mot de passe incorrect. » ; après 5 ratés, mots de passe bloqués 15 min (Face ID reste possible) |
+| « Se connecter » (identifiant et mot de passe, actif quand les deux sont remplis) | Réussi : écran « Tu es connectée » si l'appareil a Face ID, sinon l'app directement. Raté : « Identifiant ou mot de passe incorrect. » ; après 5 ratés depuis une même adresse, mots de passe bloqués 15 min pour cette adresse (Face ID et le lien restent possibles) |
 
 Écran « Tu es connectée » (`/face-id`), après un mot de passe ou un lien de connexion fait pour un compte :
 

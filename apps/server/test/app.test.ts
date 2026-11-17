@@ -237,15 +237,4 @@ describe("login", () => {
     });
     expect(response.status).toBe(401);
   });
-
-  it("blocks login for 15 minutes after 5 wrong links", async () => {
-    const t = setup();
-    for (let i = 0; i < 5; i++) expect((await postLogin(t.app, "wrong")).status).toBe(401);
-    const blocked = await postLogin(t.app, "wrong");
-    expect(blocked.status).toBe(429);
-    expect((await t.login()).status).toBe(429);
-
-    t.setNow(new Date(MONDAY_8AM.getTime() + 15 * 60_000));
-    expect((await t.login()).status).toBe(302);
-  });
 });

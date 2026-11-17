@@ -8,6 +8,7 @@ import {
   passwordLoginSchema,
   registrationResponseSchema,
 } from "@annarrive/protocol";
+import { getConnInfo } from "@hono/node-server/conninfo";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { type Context, Hono, type Next } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -106,18 +107,43 @@ export async function sameOrigin(c: Context, next: Next): Promise<void> {
   await next();
 }
 
-/** A fixed window per route: one user, so one counter; it bounds the cost of a stolen session or a stuck client. */
-export function rateLimit(max: number, windowMs: number, now: () => number = Date.now) {
-  let windowStart = 0;
-  let count = 0;
-  return async (_c: Context, next: Next): Promise<void> => {
+/**
+ * The client's address. Behind Coolify's Traefik the right-most X-Forwarded-For entry is the one Traefik saw,
+ * the others are whatever the client sent; without a proxy, the socket's.
+ */
+export function clientIp(c: Context): string {
+  const forwarded = c.req.header("x-forwarded-for")?.split(",").at(-1)?.trim();
+  if (forwarded) return forwarded;
+  try {
+    return getConnInfo(c).remote.address ?? "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
+/**
+ * A fixed window per route. Signed-in routes keep one counter (one user: it bounds the cost of a stolen session
+ * or a stuck client); the login routes pass `keyOf: clientIp`, so one address cannot lock everyone out.
+ */
+export function rateLimit(
+  max: number,
+  windowMs: number,
+  now: () => number = Date.now,
+  keyOf: (c: Context) => string = () => "",
+) {
+  const windows = new Map<string, { start: number; count: number }>();
+  return async (c: Context, next: Next): Promise<void> => {
     const t = now();
-    if (t - windowStart >= windowMs) {
-      windowStart = t;
-      count = 0;
+    // Expired windows go once there are many, so a spread of addresses cannot grow the map for ever.
+    if (windows.size > 1000) for (const [key, w] of windows) if (t - w.start >= windowMs) windows.delete(key);
+    const key = keyOf(c);
+    let w = windows.get(key);
+    if (!w || t - w.start >= windowMs) {
+      w = { start: t, count: 0 };
+      windows.set(key, w);
     }
-    count += 1;
-    if (count > max) throw new AppError(429, "Trop de demandes d'un coup : attends une minute, puis réessaie.");
+    w.count += 1;
+    if (w.count > max) throw new AppError(429, "Trop de demandes d'un coup : attends une minute, puis réessaie.");
     await next();
   };
 }
@@ -233,13 +259,14 @@ export function createApp({ services, sessionSecret, webDist }: AppOptions): Hon
     return c.redirect(opened.userId ? "/face-id" : "/");
   });
 
-  // Signing in: no session yet, so these come before the session check, each with its own guards.
-  app.post("/api/auth/password", sameOrigin, jsonBodyLimit, async (c) => {
+  // Signing in: no session yet, so these come before the session check, each with its own guards, counted per
+  // client address. Each password costs a scrypt (32 MiB, a thread of the pool): 10 a minute per client.
+  app.post("/api/auth/password", sameOrigin, rateLimit(10, 60_000, Date.now, clientIp), jsonBodyLimit, async (c) => {
     const { username, password } = passwordLoginSchema.parse(await c.req.json());
-    await startSession(c, await services.auth.passwordLogin(username, password));
+    await startSession(c, await services.auth.passwordLogin(username, password, clientIp(c)));
     return c.body(null, 204);
   });
-  app.post("/api/auth/passkey/options", sameOrigin, rateLimit(30, 60_000), async (c) =>
+  app.post("/api/auth/passkey/options", sameOrigin, rateLimit(30, 60_000, Date.now, clientIp), async (c) =>
     c.json(await services.auth.passkeyLoginOptions()),
   );
   app.post("/api/auth/passkey", sameOrigin, jsonBodyLimit, async (c) => {

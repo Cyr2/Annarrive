@@ -50,12 +50,18 @@ beforeEach(() => {
 });
 
 /** A browser on the app: keeps the session cookie it is given, as Safari does. */
-function device(t: ReturnType<typeof setup>) {
+function device(t: ReturnType<typeof setup>, ip = "203.0.113.7") {
   let cookie = "";
   const post = async (path: string, body?: unknown, site = "same-origin") => {
     const response = await t.app.request(path, {
       method: "POST",
-      headers: { cookie, "content-type": "application/json", "sec-fetch-site": site },
+      // As Traefik forwards it: whatever the client claimed first, then its real address last.
+      headers: {
+        cookie,
+        "content-type": "application/json",
+        "sec-fetch-site": site,
+        "x-forwarded-for": `10.9.9.9, ${ip}`,
+      },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     const set = response.headers.get("set-cookie")?.split(";")[0];
@@ -122,11 +128,40 @@ describe("password", () => {
     expect((await phone.post("/api/auth/password", { username: "<script>", password })).status).toBe(400);
   });
 
-  it("a new password from the CLI replaces the old one", async () => {
+  it("a new password from the CLI replaces the old one and ends the account's sessions", async () => {
     const { t, password, phone } = await withAccount();
+    await phone.post("/api/auth/password", { username: "anna", password });
     const fresh = await t.services.auth.resetPassword("anna");
+    expect(await phone.get("/api/today")).toBe(401);
     expect((await phone.post("/api/auth/password", { username: "anna", password })).status).toBe(401);
     expect((await phone.post("/api/auth/password", { username: "anna", password: fresh })).status).toBe(204);
+  });
+
+  it("blocks only the client that failed: Anna, from her own address, still gets in", async () => {
+    const { t, password } = await withAccount();
+    const attacker = device(t, "198.51.100.1");
+    for (let i = 0; i < 6; i++) await attacker.post("/api/auth/password", { username: "anna", password: "nope" });
+    expect((await attacker.post("/api/auth/password", { username: "anna", password })).status).toBe(429);
+    expect((await device(t).post("/api/auth/password", { username: "anna", password })).status).toBe(204);
+  });
+
+  it("counts parallel attempts too: no more than 5 guesses get checked", async () => {
+    const { phone } = await withAccount();
+    const guesses = await Promise.all(
+      Array.from({ length: 10 }, () => phone.post("/api/auth/password", { username: "anna", password: "nope" })),
+    );
+    expect(guesses.filter((g) => g.status === 401)).toHaveLength(5);
+    expect(guesses.filter((g) => g.status === 429)).toHaveLength(5);
+  });
+
+  it("limits each client to 10 password requests a minute, right or wrong", async () => {
+    const { t, password, phone } = await withAccount();
+    for (let i = 0; i < 10; i++)
+      expect((await phone.post("/api/auth/password", { username: "anna", password })).status).toBe(204);
+    expect((await phone.post("/api/auth/password", { username: "anna", password })).status).toBe(429);
+    expect((await device(t, "198.51.100.2").post("/api/auth/password", { username: "anna", password })).status).toBe(
+      204,
+    );
   });
 });
 
@@ -136,6 +171,13 @@ describe("login link", () => {
     const token = new URL(t.services.auth.createLoginLink("https://annarrive.test", "anna")).searchParams.get("token");
     const response = await postLogin(t.app, token ?? "");
     expect(response.headers.get("location")).toBe("/face-id");
+  });
+
+  it("still works after any number of wrong links or passwords: it is the admin's way back", async () => {
+    const { t } = await withAccount();
+    for (let i = 0; i < 10; i++) expect((await postLogin(t.app, `wrong${i}`)).status).toBe(401);
+    for (let i = 0; i < 6; i++) await device(t).post("/api/auth/password", { username: "anna", password: "nope" });
+    expect((await t.login()).status).toBe(302);
   });
 
   it("refuses to make a link for an unknown account", () => {
@@ -216,6 +258,16 @@ describe("adding Face ID", () => {
     });
   });
 
+  it("refuses a passkey whose id is already stored, whoever holds it", async () => {
+    const { t } = await withPasskey();
+    const password = await t.services.auth.resetPassword("darius");
+    const other = device(t, "198.51.100.4");
+    await other.post("/api/auth/password", { username: "darius", password });
+    const options = await other.post("/api/passkeys/options");
+    expect((await other.post("/api/passkeys", attestation(options.json.challenge))).status).toBe(400);
+    expect(t.stores.passkey.get("cred-1")?.userId).toBe("anna");
+  });
+
   it("refuses a malformed answer before any check", async () => {
     const { phone, password } = await withAccount();
     await phone.post("/api/auth/password", { username: "anna", password });
@@ -229,6 +281,19 @@ describe("signing in with Face ID", () => {
     const { json } = await device(setup()).post("/api/auth/passkey/options");
     expect(json).toMatchObject({ rpId: "annarrive.test", userVerification: "required" });
     expect(json.allowCredentials ?? []).toEqual([]);
+  });
+
+  it("limits options per client, so a flood from one address cannot stop Anna's Face ID", async () => {
+    const { t } = await withPasskey();
+    const flood = device(t, "198.51.100.3");
+    const phone = device(t);
+    const options = await phone.post("/api/auth/passkey/options");
+    for (let i = 0; i < 30; i++) await flood.post("/api/auth/passkey/options");
+    for (let i = 0; i < 30; i++) await device(t, `198.51.100.${10 + i}`).post("/api/auth/passkey/options");
+    expect((await flood.post("/api/auth/passkey/options")).status).toBe(429);
+    expect((await phone.post("/api/auth/passkey/options")).status).toBe(200);
+    // Her challenge, asked before the flood, is still there.
+    expect((await phone.post("/api/auth/passkey", assertion(options.json.challenge))).status).toBe(204);
   });
 
   it("opens a session for the passkey's account and keeps its new counter", async () => {

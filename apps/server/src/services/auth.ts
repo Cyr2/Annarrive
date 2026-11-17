@@ -25,7 +25,8 @@ const MAX_FAILURES = 5;
 const FAILURE_WINDOW_MS = 15 * 60_000;
 /** How long Face ID may take to answer, and so how long its challenge stays valid. */
 const CHALLENGE_MS = 5 * 60_000;
-const MAX_CHALLENGES = 50;
+/** Expiry bounds the pool already; the cap only stops a flood from many addresses growing it past a few MB. */
+const MAX_CHALLENGES = 1000;
 /** Checked against when the name is unknown, so a wrong name takes as long as a wrong password. */
 const DECOY_HASH = hashPassword(randomBytes(16).toString("hex"));
 
@@ -43,7 +44,8 @@ export class AuthService {
   readonly #clock: Clock;
   readonly #rpId: string;
   readonly #origin: string;
-  #failures: number[] = [];
+  /** Recent password attempts per client address (each one counted until it succeeds). */
+  readonly #attempts = new Map<string, number[]>();
   // shortcut: challenges live in memory, so a restart during a Face ID prompt fails it once; fine for one process.
   readonly #challenges = new Map<string, Challenge>();
 
@@ -64,27 +66,28 @@ export class AuthService {
     return new URL(`/api/auth/login?token=${token}`, publicUrl).toString();
   }
 
-  /** Consumes the link and returns a new session id, with the account it opens. */
+  /**
+   * Consumes the link and returns a new session id, with the account it opens. No lockout: a 256-bit token
+   * cannot be guessed, and the admin's way back must not be blocked by someone else's failures.
+   */
   login(token: string): { sessionId: string; userId: string | undefined } {
-    this.#checkFailures();
     const now = this.#clock();
     const link = this.#stores.loginToken.get(hash(token));
-    if (!link || link.usedAt || link.expiresAt <= now.toISOString()) {
-      this.#failures.push(now.getTime());
-      throw new InvalidLoginLinkError();
-    }
+    if (!link || link.usedAt || link.expiresAt <= now.toISOString()) throw new InvalidLoginLinkError();
     this.#stores.loginToken.put({ ...link, usedAt: now.toISOString() });
     return { sessionId: this.#openSession(link.userId), userId: link.userId };
   }
 
-  async passwordLogin(username: string, password: string): Promise<string> {
-    this.#checkFailures();
+  /** `client` is the caller's address: 5 failures block that address for 15 minutes, not everyone. */
+  async passwordLogin(username: string, password: string, client: string): Promise<string> {
+    // Counted before the check, so parallel requests cannot all slip in under the limit.
+    const attempt = this.#countAttempt(client);
     const stored = this.#stores.user.get(username)?.passwordHash;
     const ok = await verifyPassword(password, stored ?? (await DECOY_HASH));
-    if (!stored || !ok) {
-      this.#failures.push(this.#clock().getTime());
-      throw new WrongPasswordError();
-    }
+    if (!stored || !ok) throw new WrongPasswordError();
+    const attempts = this.#attempts.get(client) ?? [];
+    const index = attempts.indexOf(attempt);
+    if (index >= 0) attempts.splice(index, 1);
     return this.#openSession(username);
   }
 
@@ -173,6 +176,9 @@ export class AuthService {
     }
     if (!result.verified) throw new InvalidInputError("Face ID n'a pas été enregistré : réessaie.");
     const { credential } = result.registrationInfo;
+    // Never replace a stored passkey, whoever holds it: that would hand its id to another key.
+    if (this.#stores.passkey.get(credential.id))
+      throw new InvalidInputError("Cette clé d'accès est déjà enregistrée : connecte-toi avec Face ID.");
     this.#stores.passkey.put({
       id: credential.id,
       userId,
@@ -183,10 +189,11 @@ export class AuthService {
     });
   }
 
-  /** CLI: creates the account if needed and gives it a new password, returned once in clear. */
+  /** CLI: creates the account if needed and gives it a new password, returned once in clear; its sessions end. */
   async resetPassword(userId: string): Promise<string> {
     const password = newPassword();
     this.#stores.user.put({ id: userId, passwordHash: await hashPassword(password) });
+    this.#endSessions(userId);
     return password;
   }
 
@@ -207,19 +214,31 @@ export class AuthService {
     const passkey = this.#stores.passkey.get(passkeyId);
     if (!passkey) throw new NotFoundError(`Aucune clé d'accès « ${passkeyId} ».`);
     this.#stores.passkey.delete(passkeyId);
-    for (const session of this.#stores.authSession.list())
-      if (session.userId === passkey.userId) this.#stores.authSession.delete(session.id);
+    this.#endSessions(passkey.userId);
   }
 
   #passkeysOf(userId: string): Passkey[] {
     return this.#stores.passkey.list().filter((p) => p.userId === userId);
   }
 
-  // shortcut: one global limit, not per IP (few users); a flood can delay a password login by 15 min, never Face ID.
-  #checkFailures(): void {
+  /** Records a password attempt for `client`, or refuses it once 5 are pending or failed within 15 minutes. */
+  #countAttempt(client: string): number {
     const now = this.#clock().getTime();
-    this.#failures = this.#failures.filter((t) => now - t < FAILURE_WINDOW_MS);
-    if (this.#failures.length >= MAX_FAILURES) throw new TooManyAttemptsError();
+    // Old addresses go once there are many, so a spread of them cannot grow the map for ever.
+    if (this.#attempts.size > 1000)
+      for (const [key, times] of this.#attempts)
+        if (times.every((t) => now - t >= FAILURE_WINDOW_MS)) this.#attempts.delete(key);
+    const recent = (this.#attempts.get(client) ?? []).filter((t) => now - t < FAILURE_WINDOW_MS);
+    if (recent.length >= MAX_FAILURES) throw new TooManyAttemptsError();
+    recent.push(now);
+    this.#attempts.set(client, recent);
+    return now;
+  }
+
+  /** Ends every session of an account: after a new password or a revoked passkey, nothing old stays open. */
+  #endSessions(userId: string): void {
+    for (const session of this.#stores.authSession.list())
+      if (session.userId === userId) this.#stores.authSession.delete(session.id);
   }
 
   #openSession(userId: string | undefined): string {
