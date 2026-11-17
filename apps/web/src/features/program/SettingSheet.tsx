@@ -1,10 +1,9 @@
 import { useState } from "react";
 import type { Settings } from "../../api/schemas.ts";
-import { cx } from "../../lib/cx.ts";
 import { weekdayName } from "../../lib/date.ts";
-import { Button } from "../../ui/Button.tsx";
+import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
+import { Button, Chip, SegmentedControl } from "../../ui/controls.tsx";
 import { Group, RowInput, Section } from "../../ui/List.tsx";
-import { Segmented } from "../../ui/Segmented.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
 import { usePlan } from "../plan/store.ts";
 import type { SheetProps } from "../sheets/SheetHost.tsx";
@@ -30,10 +29,17 @@ export default function SettingSheet({ spec, ...sheet }: SheetProps<"setting">) 
     if (done) sheet.onOpenChange(false);
   };
   return (
-    <Sheet {...sheet} title={SETTING_LABELS[key]} action={{ label: "OK", onClick: () => void save() }}>
+    <Sheet
+      {...sheet}
+      title={SETTING_LABELS[key]}
+      footer={
+        <Button variant="filled" size="large" onClick={() => void save()}>
+          Enregistrer
+        </Button>
+      }
+    >
       {key === "runsPerWeek" && (
-        <Segmented
-          size="md"
+        <SegmentedControl
           label={SETTING_LABELS[key]}
           items={COUNTS}
           value={String(draft.runsPerWeek)}
@@ -58,7 +64,6 @@ export default function SettingSheet({ spec, ...sheet }: SheetProps<"setting">) 
           ? "Reggie finit tes courses au moins 1 h avant ton coucher."
           : "La semaine en cours et les suivantes sont réorganisées. Ce que tu as déplacé à la main reste en place."}
       </p>
-      <Button onClick={() => void save()}>Enregistrer</Button>
     </Sheet>
   );
 }
@@ -66,26 +71,21 @@ export default function SettingSheet({ spec, ...sheet }: SheetProps<"setting">) 
 function DayToggles({ days, onChange }: { days: number[]; onChange: (days: number[]) => void }) {
   return (
     <Section title="Jours sans course">
-      <div className="grid grid-cols-7 gap-1">
+      <ChoiceGroup label="Jours sans course" className="flex flex-wrap gap-2">
         {Array.from({ length: 7 }, (_, i) => {
           const on = days.includes(i);
           return (
-            <button
+            <Chip
               key={weekdayName(i)}
-              type="button"
-              aria-pressed={on}
+              selected={on}
               aria-label={weekdayName(i)}
               onClick={() => onChange(on ? days.filter((d) => d !== i) : [...days, i].sort())}
-              className={cx(
-                "select-anim t-label min-h-11 rounded-full border-0",
-                on ? "bg-assistant text-on-accent" : "bg-surface text-text",
-              )}
             >
               {weekdayName(i).slice(0, 3)}
-            </button>
+            </Chip>
           );
         })}
-      </div>
+      </ChoiceGroup>
     </Section>
   );
 }

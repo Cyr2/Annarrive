@@ -15,7 +15,7 @@ import { consequenceOf, dayChoices, shortMoment, timeChoices } from "./move/move
 import { findItem, findRun, todayOf } from "./plan/selectors.ts";
 import { goalSummary } from "./program/goal.ts";
 import { checkIcsUrl, phaseBar, raceLine, settingValue } from "./program/program.ts";
-import { agenda, contentKey, itemTime, moodOf, sessionContext, sheetFor, toneOf, weekStrip } from "./today/today.ts";
+import { agenda, contentKey, itemTime, sessionContext, sheetFor, toneOf, weekStrip } from "./today/today.ts";
 import { canContinue, EMPTY, nextStep, painAdvice, toInput } from "./unavailable/unavailable.ts";
 import { dropTargets, isDraggable, moveItem, refreshLine, weekDays, weekHeading } from "./week/week.ts";
 
@@ -47,11 +47,7 @@ describe("today", () => {
     expect(sessionContext(run, MONDAY)).toBe("Fractionné, ce soir 18:00");
   });
 
-  it("picks the mood, the tone and what a tap opens", () => {
-    expect(moodOf(run, false)).toBe("run");
-    expect(moodOf(undefined, false)).toBe("rest");
-    expect(moodOf(run, true)).toBe("done");
-    expect(moodOf({ ...run, intensity: "long" }, false)).toBe("long");
+  it("picks the tone and what a tap opens", () => {
     expect(toneOf(run)).toBe("hard");
     expect(sheetFor(run)).toEqual({ kind: "session", id: run.id });
     const strength = week.items.find((i) => i.kind === "strength");

@@ -28,8 +28,8 @@ type SheetState = {
   closed: () => void;
 };
 
-/** Vaul's closing slide (its TRANSITIONS.DURATION). */
-export const SHEET_CLOSE_MS = 500;
+/** A sheet's closing slide (EXIT_SHEET in lib/motion.ts) and a margin: the content unmounts once it is out of sight. */
+export const SHEET_CLOSE_MS = 320;
 
 export const useSheet = create<SheetState>((set, get) => ({
   open: false,
@@ -38,7 +38,7 @@ export const useSheet = create<SheetState>((set, get) => ({
     set({ queued: spec });
     get().close();
   },
-  // Vaul reports the end of its closing slide only when it closed itself, never when `open` turns false.
+  // The sheet's content stays mounted until its slide is over, then a queued sheet rises.
   close() {
     if (!get().open) return;
     set({ open: false });

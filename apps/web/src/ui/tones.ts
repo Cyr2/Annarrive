@@ -1,89 +1,37 @@
 import type { IconName } from "./Icon.tsx";
 
-/** Colors of a session or calendar kind, as Tailwind classes built from the tokens. */
+/** What a session or a calendar item is. Its three tones come from tokens.css. */
 export type Tone = "hard" | "easy" | "long" | "class" | "revision" | "strength" | "busy" | "rest" | "other";
 
 type ToneStyle = {
-  /** Pale row or card background. */ wash: string;
-  /** Square icon tile in a list. */ tile: string;
-  /** Strong text on the wash. */ deep: string;
-  /** Secondary text on the wash. */ ink: string;
-  /** Week dot. */ dot: string;
+  /** Background of a row, a chip or a card corner. */ wash: string;
+  /** Bars and dots. */ mid: string;
+  /** Text and icons on white or on the wash (4.5:1). */ deep: string;
+  /** What the chip says. */ label: string;
   icon: IconName;
 };
 
 // Written out in full so Tailwind finds every class in the source.
 export const TONES: Record<Tone, ToneStyle> = {
-  hard: {
-    wash: "bg-intense-wash",
-    tile: "bg-intense text-on-accent",
-    deep: "text-intense-deep",
-    ink: "text-intense-ink",
-    dot: "bg-intense",
-    icon: "run",
-  },
-  easy: {
-    wash: "bg-easy-wash",
-    tile: "bg-easy text-on-accent",
-    deep: "text-easy-deep",
-    ink: "text-easy-ink",
-    dot: "bg-intense",
-    icon: "run",
-  },
-  long: {
-    wash: "bg-long-wash",
-    tile: "bg-long text-on-accent",
-    deep: "text-long-deep",
-    ink: "text-long-ink",
-    dot: "bg-intense",
-    icon: "run",
-  },
-  class: {
-    wash: "bg-transparent",
-    tile: "bg-class-wash text-class-ink",
-    deep: "text-text",
-    ink: "text-class-ink",
-    dot: "bg-class",
-    icon: "class",
-  },
+  hard: { wash: "bg-intense-wash", mid: "bg-intense", deep: "text-intense-deep", label: "Intense", icon: "run" },
+  easy: { wash: "bg-easy-wash", mid: "bg-easy", deep: "text-easy-deep", label: "Facile", icon: "run" },
+  long: { wash: "bg-long-wash", mid: "bg-long", deep: "text-long-deep", label: "Longue", icon: "run" },
   revision: {
-    wash: "bg-transparent",
-    tile: "bg-revision-wash text-revision-ink",
-    deep: "text-text",
-    ink: "text-revision-ink",
-    dot: "bg-revision",
+    wash: "bg-revision-wash",
+    mid: "bg-revision",
+    deep: "text-revision-deep",
+    label: "Révision",
     icon: "revision",
   },
   strength: {
-    wash: "bg-transparent",
-    tile: "bg-class-wash text-class-ink",
-    deep: "text-text",
-    ink: "text-class-ink",
-    dot: "bg-strength",
+    wash: "bg-strength-wash",
+    mid: "bg-strength",
+    deep: "text-strength-deep",
+    label: "Muscu",
     icon: "strength",
   },
-  busy: {
-    wash: "bg-transparent",
-    tile: "bg-class-wash text-class-ink",
-    deep: "text-text",
-    ink: "text-class-ink",
-    dot: "bg-class",
-    icon: "busy",
-  },
-  rest: {
-    wash: "bg-fill",
-    tile: "bg-class-wash text-class-ink",
-    deep: "text-text",
-    ink: "text-class-ink",
-    dot: "bg-class",
-    icon: "moon",
-  },
-  other: {
-    wash: "bg-fill",
-    tile: "bg-class-wash text-class-ink",
-    deep: "text-text",
-    ink: "text-class-ink",
-    dot: "bg-class",
-    icon: "info",
-  },
+  class: { wash: "bg-class-wash", mid: "bg-class", deep: "text-class-deep", label: "Cours", icon: "class" },
+  busy: { wash: "bg-class-wash", mid: "bg-class", deep: "text-class-deep", label: "Indispo", icon: "busy" },
+  rest: { wash: "bg-class-wash", mid: "bg-class", deep: "text-class-deep", label: "Repos", icon: "moon" },
+  other: { wash: "bg-class-wash", mid: "bg-class", deep: "text-class-deep", label: "Autre", icon: "info" },
 };

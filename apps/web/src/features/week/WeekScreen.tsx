@@ -2,10 +2,11 @@ import { DndContext, DragOverlay } from "@dnd-kit/core";
 import { useEffect, useState } from "react";
 import { useSearch } from "wouter";
 import { ago, daysBetween, mondayOf } from "../../lib/date.ts";
-import { Button, IconButton } from "../../ui/Button.tsx";
 import { Dot } from "../../ui/bits.tsx";
-import { Glass } from "../../ui/Glass.tsx";
+import { IconButton } from "../../ui/controls.tsx";
 import { Screen } from "../../ui/Screen.tsx";
+import { Surface } from "../../ui/Surface.tsx";
+import { TextButton } from "../../ui/TextButton.tsx";
 import { todayOf } from "../plan/selectors.ts";
 import { usePlan } from "../plan/store.ts";
 import { useSheet } from "../sheets/store.ts";
@@ -42,7 +43,7 @@ export default function WeekScreen() {
 
   const heading = week && weekHeading(week);
   return (
-    <Screen mood="week">
+    <Screen>
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h1 className="t-large">Semaine</h1>
@@ -50,28 +51,29 @@ export default function WeekScreen() {
             <IconButton
               icon="plus"
               label="Ajouter"
-              tone="dark"
+              variant="tinted"
+              tone="action"
               onClick={() => show({ kind: "add", date: week?.monday })}
             />
           )}
         </div>
-        <Glass className="flex items-center justify-between rounded-seg px-1">
-          <IconButton icon="chevronLeft" label="Semaine précédente" size={18} onClick={() => setOffset(offset - 1)} />
+        <Surface variant="inset" className="flex items-center justify-between gap-1 rounded-full p-1">
+          <IconButton icon="chevronLeft" label="Semaine précédente" onClick={() => setOffset(offset - 1)} />
           <div className="flex flex-col items-center text-center">
             <span className="t-strong">{heading?.range ?? " "}</span>
             <span className="t-cap">{week?.readOnly ? "Semaine passée, en lecture seule" : heading?.summary}</span>
           </div>
-          <IconButton icon="chevronRight" label="Semaine suivante" size={18} onClick={() => setOffset(offset + 1)} />
-        </Glass>
+          <IconButton icon="chevronRight" label="Semaine suivante" onClick={() => setOffset(offset + 1)} />
+        </Surface>
         <div className="flex items-center justify-between px-1">
           <span className="t-cap flex items-center gap-1.5">
-            <Dot size="md" className="bg-success" />
+            <Dot size="md" className="bg-easy" />
             {refreshed ??
               (week?.timetableCheckedAt ? `Emploi du temps à jour ${ago(week.timetableCheckedAt, new Date())}` : "")}
           </span>
-          <Button variant="link" icon="change" className="t-label" onClick={() => void refresh()}>
+          <TextButton icon="change" className="t-label" onClick={() => void refresh()}>
             Actualiser
-          </Button>
+          </TextButton>
         </div>
       </div>
 

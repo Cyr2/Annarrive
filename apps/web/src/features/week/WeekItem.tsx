@@ -23,28 +23,22 @@ export function ItemRow({ item, lifted = false }: { item: Item; lifted?: boolean
     <div
       className={cx(
         "flex min-h-14 items-center gap-3 rounded-row px-3 py-2 text-left",
-        isRun ? tone.wash : "bg-surface",
+        isRun ? tone.wash : lifted ? "bg-on-color" : "bg-transparent",
         lifted && "lifted",
       )}
     >
       <IconTile tone={toneOf(item)} />
       <span className="flex flex-1 flex-col">
-        <span
-          className={cx(
-            isRun ? "t-strong" : "t-body",
-            isRun ? tone.deep : "text-text",
-            cancelled && "line-through opacity-60",
-          )}
-        >
+        <span className={cx(isRun ? "t-strong" : "t-body", "text-ink", cancelled && "line-through opacity-60")}>
           {item.title}
         </span>
         <span className="t-cap">{meta(item)}</span>
       </span>
       {item.kind === "strength" && item.legs && <LegsTag />}
       {item.kind === "class" ? (
-        <Icon name="busy" size={16} className="text-text-faint" />
+        <Icon name="busy" size={16} className="text-ink-3" />
       ) : (
-        <span className="text-text-faint">
+        <span className="text-ink-3">
           <Grip />
         </span>
       )}

@@ -1,5 +1,7 @@
-import { Button } from "../../ui/Button.tsx";
+import { Button } from "../../ui/controls.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
+import { Surface } from "../../ui/Surface.tsx";
+import { TextButton } from "../../ui/TextButton.tsx";
 import { usePlan } from "../plan/store.ts";
 import type { SheetProps } from "../sheets/SheetHost.tsx";
 
@@ -10,8 +12,19 @@ export default function CycleSheet(sheet: SheetProps<"cycle">) {
     if (await apply((api) => api.updateSettings({ cycle: true }), { quiet: true })) sheet.onOpenChange(false);
   };
   return (
-    <Sheet {...sheet} title="Cycle menstruel">
-      <div className="t-body flex flex-col gap-3 rounded-group bg-surface p-4">
+    <Sheet
+      {...sheet}
+      title="Cycle menstruel"
+      footer={
+        <>
+          <Button variant="filled" size="large" onClick={() => void agree()}>
+            J'accepte et j'active
+          </Button>
+          <TextButton onClick={() => sheet.onOpenChange(false)}>Pas maintenant</TextButton>
+        </>
+      }
+    >
+      <Surface variant="inset" className="t-body flex flex-col gap-3 p-4">
         <p className="m-0">
           Si tu l'actives, tu peux signaler à Reggie un symptôme lié à ton cycle (douleurs, fatigue). Il en tient compte
           comme pour toute fatigue.
@@ -20,11 +33,7 @@ export default function CycleSheet(sheet: SheetProps<"cycle">) {
           L'app ne change jamais tes séances selon la phase de ton cycle. Tes données restent sur le serveur de l'app et
           tu peux désactiver ce réglage à tout moment.
         </p>
-      </div>
-      <Button onClick={() => void agree()}>J'accepte et j'active</Button>
-      <Button variant="tinted" onClick={() => sheet.onOpenChange(false)}>
-        Pas maintenant
-      </Button>
+      </Surface>
     </Sheet>
   );
 }

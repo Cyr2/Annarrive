@@ -1,9 +1,8 @@
 import { useEffect, useId, useState } from "react";
 import { onboardingApi } from "../../api/onboarding.ts";
-import { Button } from "../../ui/Button.tsx";
+import { Button, Switch } from "../../ui/controls.tsx";
 import { Icon, type IconName } from "../../ui/Icon.tsx";
 import { Group } from "../../ui/List.tsx";
-import { Switch } from "../../ui/Switch.tsx";
 import { PainStep as PainLevel, ZoneStep } from "../unavailable/steps.tsx";
 import { BigChoice, Card, update, useDraft } from "./parts.tsx";
 import { useOnboarding } from "./store.ts";
@@ -72,7 +71,7 @@ export function ConsentsStep() {
 function Note({ icon, children }: { icon: IconName; children: string }) {
   return (
     <Card className="flex-row items-start">
-      <Icon name={icon} className="mt-px flex-none text-assistant" />
+      <Icon name={icon} className="mt-px flex-none text-action" />
       <p className="t-body m-0">{children}</p>
     </Card>
   );
@@ -127,7 +126,7 @@ export function NotificationsStep() {
       <Note icon="week">Le dimanche soir : ta semaine est prête.</Note>
       <Note icon="move">Quand un cours change : la course déplacée, et où.</Note>
       {state === "on" ? null : (
-        <Button variant="tintedBlue" disabled={state === "asking"} onClick={() => void ask()}>
+        <Button variant="tinted" tone="action" disabled={state === "asking"} onClick={() => void ask()}>
           Activer les notifications
         </Button>
       )}

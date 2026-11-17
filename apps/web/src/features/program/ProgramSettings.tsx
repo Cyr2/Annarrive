@@ -1,8 +1,8 @@
 import type { Program, Settings } from "../../api/schemas.ts";
-import { Button } from "../../ui/Button.tsx";
 import { Dot } from "../../ui/bits.tsx";
+import { Switch } from "../../ui/controls.tsx";
 import { Group, RowButton, Section } from "../../ui/List.tsx";
-import { Switch } from "../../ui/Switch.tsx";
+import { TextButton } from "../../ui/TextButton.tsx";
 import { strengthShort } from "../add/add.ts";
 import { usePlan } from "../plan/store.ts";
 import { NotificationsRow } from "../push/NotificationsRow.tsx";
@@ -53,12 +53,11 @@ export function ProgramSettings({ program }: { program: Program }) {
         <Group>
           <TimetableRow program={program} />
           <RowButton
-            tall
             label={
               <span className="flex flex-col">
                 <span className="t-body">Montre Garmin</span>
                 <span className="t-cap flex items-center gap-1.5">
-                  <Dot size="md" className={program.watch.connected ? "bg-success" : "bg-danger"} />
+                  <Dot size="md" className={program.watch.connected ? "bg-easy" : "bg-warn"} />
                   {program.watch.model} · {program.watch.connected ? "connectée" : "déconnectée"}
                 </span>
               </span>
@@ -99,9 +98,9 @@ export function ProgramSettings({ program }: { program: Program }) {
 
       {!program.maintenance && (
         <Group>
-          <Button variant="danger" onClick={() => show({ kind: "stop" })}>
+          <TextButton tone="danger" className="min-h-13 w-full" onClick={() => show({ kind: "stop" })}>
             Arrêter ce programme
-          </Button>
+          </TextButton>
         </Group>
       )}
     </>

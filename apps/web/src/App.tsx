@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Redirect, Route, Switch, useLocation } from "wouter";
 import { useSignedOut } from "./api/session.ts";
 import { SignedOut } from "./features/auth/SignedOut.tsx";
@@ -7,8 +7,8 @@ import { usePlan } from "./features/plan/store.ts";
 import { usePush } from "./features/push/store.ts";
 import { SheetHost } from "./features/sheets/SheetHost.tsx";
 import { TodayScreen } from "./features/today/TodayScreen.tsx";
-import { withTransition } from "./lib/transition.ts";
-import { type Tab, TabBar } from "./ui/TabBar.tsx";
+import { type Tab, TabBar } from "./ui/controls.tsx";
+import { Sky } from "./ui/Sky.tsx";
 import { ToastHost } from "./ui/ToastHost.tsx";
 
 // The first screen ships in the initial file; the other tabs load on demand (or when a finger lands on their tab).
@@ -30,7 +30,10 @@ const TABS: Tab[] = [
 
 export function App() {
   const [location, navigate] = useLocation();
-  const active = TABS.findIndex((tab) => tab.href === location);
+  const active = TABS.some((tab) => tab.href === location) ? location : null;
+  // The first screen paints at once (it is the LCP); every screen after it fades in.
+  const first = useRef<string | null>(location);
+  if (location !== first.current) first.current = null;
 
   const signedOut = useSignedOut((s) => s.signedOut);
   const [onboarding, setOnboarding] = useState(false);
@@ -46,11 +49,18 @@ export function App() {
       });
   }, []);
 
-  if (signedOut) return <SignedOut />;
+  if (signedOut)
+    return (
+      <>
+        <Sky />
+        <SignedOut />
+      </>
+    );
 
   return (
     <>
-      <div data-vaul-drawer-wrapper="" className="min-h-dvh bg-bg">
+      <Sky />
+      <div key={location} className={first.current ? undefined : "screen-in"}>
         <Suspense fallback={null}>
           <Switch>
             <Route path="/" component={TodayScreen} />
@@ -62,8 +72,8 @@ export function App() {
             </Route>
           </Switch>
         </Suspense>
-        <TabBar tabs={TABS} active={active} onNavigate={(href) => withTransition(() => navigate(href))} />
       </div>
+      <TabBar tabs={TABS} active={active} onNavigate={navigate} />
       <SheetHost />
       <ToastHost />
       {onboarding && (

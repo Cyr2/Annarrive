@@ -1,8 +1,7 @@
 import { useLocation } from "wouter";
-import { withTransition } from "../lib/transition.ts";
 
-/** Navigates to another tab with the same cross-fade as the tab bar. */
+/** Navigates to another tab, as the tab bar does (the new screen fades in, see App.tsx). */
 export function useGo() {
   const [, navigate] = useLocation();
-  return (href: string) => withTransition(() => navigate(href));
+  return (href: string) => navigate(href);
 }

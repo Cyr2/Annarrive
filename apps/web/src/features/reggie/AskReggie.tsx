@@ -1,5 +1,5 @@
 import { useId, useState } from "react";
-import { IconButton } from "../../ui/Button.tsx";
+import { IconButton, Input } from "../../ui/controls.tsx";
 import { useGo } from "../useGo.ts";
 import { useChat } from "./store.ts";
 
@@ -26,20 +26,27 @@ export function AskReggie({ context, sessionId, onSent, label = "Autre chose ? D
         send();
       }}
     >
-      <label htmlFor={id} className="t-cap px-4">
+      <label htmlFor={id} className="t-cap flex items-center gap-1.5 px-4">
+        <span aria-hidden="true" className="size-2 rounded-full bg-reggie" />
         {label}
       </label>
-      <div className="flex items-center gap-2 rounded-full bg-surface py-1.5 pr-1.5 pl-4">
-        <input
+      <div className="flex items-center gap-2">
+        <Input
           id={id}
-          type="text"
-          enterKeyHint="send"
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={setText}
           placeholder={placeholder ?? "Par exemple : je cours avec une amie"}
-          className="t-body min-h-10 min-w-0 flex-1 border-0 bg-transparent text-text"
+          className="flex-1"
         />
-        <IconButton type="submit" icon="send" label="Envoyer à Reggie" tone="blueTint" size={18} />
+        <IconButton
+          type="submit"
+          icon="send"
+          label="Envoyer à Reggie"
+          variant="tinted"
+          tone="reggie"
+          size="large"
+          disabled={!text.trim()}
+        />
       </div>
     </form>
   );

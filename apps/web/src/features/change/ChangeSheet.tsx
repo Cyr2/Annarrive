@@ -2,12 +2,13 @@ import { useState } from "react";
 import type { ChangeOption, ChangeOptionId } from "../../api/schemas.ts";
 import { cx } from "../../lib/cx.ts";
 import { duration, relativeMoment } from "../../lib/date.ts";
-import { Button } from "../../ui/Button.tsx";
 import { IconTile } from "../../ui/bits.tsx";
 import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
+import { Button } from "../../ui/controls.tsx";
 import type { IconName } from "../../ui/Icon.tsx";
+import { SessionChip } from "../../ui/SessionShape.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
-import { TONES } from "../../ui/tones.ts";
+import { Surface } from "../../ui/Surface.tsx";
 import { findRun, todayOf } from "../plan/selectors.ts";
 import { usePlan } from "../plan/store.ts";
 import { AskReggie } from "../reggie/AskReggie.tsx";
@@ -30,7 +31,15 @@ export default function ChangeSheet({ spec, ...sheet }: SheetProps<"change">) {
     if (chosen && (await plan.apply((api) => api.change(run.id, chosen.id)))) sheet.onOpenChange(false);
   };
   return (
-    <Sheet {...sheet} title="Changer la séance">
+    <Sheet
+      {...sheet}
+      title="Changer la séance"
+      footer={
+        <Button variant="filled" size="large" disabled={!chosen} onClick={() => void validate()}>
+          Valider{chosen ? ` : ${chosen.title.toLowerCase()}` : ""}
+        </Button>
+      }
+    >
       <p className="t-cap m-0 px-4">
         Même moment, {relativeMoment(run.date, run.start, today).toLowerCase()}. Prévu : {run.title.toLowerCase()}
         {run.mainSet ? ` ${run.mainSet}` : ""}, {duration(run.durationMin)}.
@@ -51,18 +60,12 @@ export default function ChangeSheet({ spec, ...sheet }: SheetProps<"change">) {
         </ChoiceGroup>
       )}
       {chosen && (
-        <div
-          key={chosen.id}
-          className={cx("flip-in flex flex-col gap-1 rounded-group px-4 py-3", TONES[chosen.intensity].wash)}
-        >
-          <span className={cx("t-title", TONES[chosen.intensity].deep)}>{chosen.title}</span>
-          <span className={cx("t-body", TONES[chosen.intensity].ink)}>{chosen.detail}</span>
-        </div>
+        <Surface key={chosen.id} variant="inset" className="flip-in flex flex-col gap-1.5 px-4 py-3">
+          <SessionChip tone={chosen.intensity}>{chosen.title}</SessionChip>
+          <span className="t-body">{chosen.detail}</span>
+        </Surface>
       )}
       <AskReggie context={sessionContext(run, today)} sessionId={run.id} onSent={() => sheet.onOpenChange(false)} />
-      <Button disabled={!chosen} onClick={() => void validate()}>
-        Valider{chosen ? ` : ${chosen.title.toLowerCase()}` : ""}
-      </Button>
     </Sheet>
   );
 }
@@ -73,9 +76,10 @@ function OptionCard({ option, on, onPick }: { option: ChangeOption; on: boolean;
       type="button"
       aria-pressed={on}
       onClick={onPick}
+      data-variant="inset"
       className={cx(
-        "select-anim press flex min-h-30 flex-col items-start gap-2 rounded-group border-0 bg-surface p-4 text-left text-text",
-        on && "shadow-ring",
+        "surface select-anim press flex min-h-30 min-w-0 flex-col items-start gap-2 border-0 p-4 text-left text-ink",
+        on && "bg-action-wash shadow-ring",
       )}
     >
       <IconTile tone={option.intensity} icon={ICONS[option.id]} />

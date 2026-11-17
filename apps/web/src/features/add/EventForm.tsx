@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { Button } from "../../ui/Button.tsx";
+import { Button, SegmentedControl } from "../../ui/controls.tsx";
 import { Group, RowInput, RowSelect, Section } from "../../ui/List.tsx";
-import { Segmented } from "../../ui/Segmented.tsx";
 import { usePlan } from "../plan/store.ts";
 import { busyEvent, type Form, isValidSpan, REPEATS, revisionEvent } from "./add.ts";
 
@@ -34,7 +33,7 @@ export function EventForm({ kind, date, today, close }: Props) {
     <>
       {kind === "revision" && (
         <Section title="Durée">
-          <Segmented
+          <SegmentedControl
             label="Durée"
             items={LENGTHS}
             value={String(form.minutes)}
@@ -46,7 +45,7 @@ export function EventForm({ kind, date, today, close }: Props) {
         {kind === "busy" && (
           <RowInput
             label="Titre"
-            placeholder="Soirée chez Léa"
+            placeholder="Ex. : Soirée chez Léa"
             value={form.title}
             onChange={(title) => set({ title })}
           />
@@ -68,7 +67,7 @@ export function EventForm({ kind, date, today, close }: Props) {
           ? "Reggie ne place rien sur ce créneau."
           : "Si une course tombe sur ce créneau, Reggie la déplace et te le dit."}
       </p>
-      <Button disabled={!valid} onClick={() => void add()}>
+      <Button variant="filled" size="large" disabled={!valid} onClick={() => void add()}>
         Ajouter
       </Button>
     </>

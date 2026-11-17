@@ -1,5 +1,5 @@
 import { duration, longDate, weekdayName } from "../../lib/date.ts";
-import { Glass } from "../../ui/Glass.tsx";
+import { Surface } from "../../ui/Surface.tsx";
 import { DISTANCES, type Draft, distanceOf, targetOf } from "./onboarding.ts";
 import { useDraft } from "./parts.tsx";
 import { useOnboarding } from "./store.ts";
@@ -45,18 +45,18 @@ export function SummaryStep() {
   const error = useOnboarding((s) => s.error);
   return (
     <>
-      <Glass as="section" aria-label="Récapitulatif" className="rounded-card py-1">
+      <Surface as="section" aria-label="Récapitulatif" className="py-1">
         <dl className="m-0">
           {rows(draft).map(([label, value]) => (
             <div key={label} className="row">
               <dt className="t-body flex-none">{label}</dt>
-              <dd className="t-body m-0 min-w-0 text-right text-text-secondary [overflow-wrap:anywhere]">{value}</dd>
+              <dd className="t-body m-0 min-w-0 text-right text-ink-2 [overflow-wrap:anywhere]">{value}</dd>
             </div>
           ))}
         </dl>
-      </Glass>
+      </Surface>
       {error && (
-        <p role="alert" className="t-sub m-0 px-1 text-danger">
+        <p role="alert" className="t-sub m-0 px-1 text-warn-deep">
           {error}
         </p>
       )}
