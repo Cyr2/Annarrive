@@ -11,8 +11,8 @@ describe("shapeOf", () => {
     ]);
     // The recovery says its minutes: it is a step of its own, not the gap between repeats.
     expect(bars.filter((b) => b.level === 1)).toHaveLength(6);
-    expect(bars[0]).toEqual({ level: 0.52, weight: 3 });
-    expect(bars.at(-1)).toEqual({ level: 0.52, weight: 2 });
+    expect(bars[0]).toEqual({ level: 0.52, weight: 3, kind: "plain" });
+    expect(bars.at(-1)).toEqual({ level: 0.52, weight: 2, kind: "plain" });
   });
 
   it("puts a recovery without duration between the repeats", () => {

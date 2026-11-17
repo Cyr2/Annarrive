@@ -228,22 +228,27 @@ type InputProps = {
   onChange: (value: string) => void;
   placeholder: string;
   className?: string;
+  /** A button drawn inside the field, at its trailing end: the send button. */
+  action?: ReactNode;
 };
 
 /** A free text field in glass (Reggie's composer, "Dis-le à Reggie"). Rows of a form use `RowInput` instead. */
-export function Input({ id, value, onChange, placeholder, className }: InputProps) {
+export function Input({ id, value, onChange, placeholder, className, action }: InputProps) {
   return (
     <Suspense fallback={null}>
-      <LazyInput
-        id={id}
-        type="text"
-        enterKeyHint="send"
-        autoComplete="off"
-        value={value}
-        onValueChange={onChange}
-        placeholder={placeholder}
-        className={cx("ui-input", className)}
-      />
+      <div className={cx("ui-field", className)}>
+        <LazyInput
+          id={id}
+          type="text"
+          enterKeyHint="send"
+          autoComplete="off"
+          value={value}
+          onValueChange={onChange}
+          placeholder={placeholder}
+          className="ui-input"
+        />
+        {action && <span className="ui-field-action">{action}</span>}
+      </div>
     </Suspense>
   );
 }

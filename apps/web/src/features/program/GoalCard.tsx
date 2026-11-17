@@ -24,7 +24,7 @@ function WeekBar({ program }: { program: Program }) {
                 key={week}
                 className={cx(
                   "flex-1 rounded-full",
-                  week === program.weekIndex ? "h-3" : "h-1.5",
+                  week === program.weekIndex ? "h-3 shadow-glow-action" : "h-1.5",
                   week <= program.weekIndex ? "bg-action" : "bg-hairline-strong",
                 )}
               />

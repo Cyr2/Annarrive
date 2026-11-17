@@ -2,7 +2,6 @@ import { daysBetween, longDate, weekdayName } from "../../lib/date.ts";
 import { Icon, type IconName } from "../../ui/Icon.tsx";
 import { Group, RowButton, Section } from "../../ui/List.tsx";
 import { PaceValue } from "../../ui/PaceValue.tsx";
-import { SessionChip, SessionShape } from "../../ui/SessionShape.tsx";
 import { Surface } from "../../ui/Surface.tsx";
 import { clock } from "../program/program.ts";
 import { TargetTag, VERDICT_KIND } from "../program/TargetTag.tsx";
@@ -106,37 +105,18 @@ const PROMISES: [IconName, string][] = [
   ["reggie", "Reggie ajuste ta semaine quand elle change."],
 ];
 
-const EXAMPLE = [
-  { label: "15 min", tone: "plain" },
-  { label: "6 × 800 m", tone: "hard" },
-  { label: "10 min", tone: "muted" },
-] as const;
-
-/** What she is about to get: a session card as the app draws it, and three promises. */
+/** What she is about to get: three promises, under the logo's place. */
 export function WelcomeStep() {
   return (
-    <>
-      <Surface aria-hidden="true" className="flex flex-col gap-3 p-4">
-        <div className="flex items-center justify-between gap-2">
-          <SessionChip tone="hard">Fractionné</SessionChip>
-          <span className="t-cap">Ce soir 18:00</span>
-        </div>
-        <div className="flex items-baseline justify-between gap-2">
-          <PaceValue value="6 × 800 m" size="title" />
-          <PaceValue value="4:55 /km" size="title" />
-        </div>
-        <SessionShape steps={[...EXAMPLE]} tone="hard" />
-      </Surface>
-      <Section>
-        <ul className="m-0 flex list-none flex-col gap-3 p-0 px-1">
-          {PROMISES.map(([icon, text]) => (
-            <li key={icon} className="t-body flex items-center gap-3">
-              <Icon name={icon} size={22} className="flex-none text-ink-2" />
-              {text}
-            </li>
-          ))}
-        </ul>
-      </Section>
-    </>
+    <Section>
+      <ul className="m-0 flex list-none flex-col gap-3 p-0 px-1">
+        {PROMISES.map(([icon, text]) => (
+          <li key={icon} className="t-body flex items-center gap-3">
+            <Icon name={icon} size={22} className="flex-none text-ink-2" />
+            {text}
+          </li>
+        ))}
+      </ul>
+    </Section>
   );
 }

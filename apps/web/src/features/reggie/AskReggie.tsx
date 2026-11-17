@@ -30,24 +30,22 @@ export function AskReggie({ context, sessionId, onSent, label = "Autre chose ? D
         <span aria-hidden="true" className="size-2 rounded-full bg-reggie" />
         {label}
       </label>
-      <div className="flex items-center gap-2">
-        <Input
-          id={id}
-          value={text}
-          onChange={setText}
-          placeholder={placeholder ?? "Par exemple : je cours avec une amie"}
-          className="flex-1"
-        />
-        <IconButton
-          type="submit"
-          icon="send"
-          label="Envoyer à Reggie"
-          variant="tinted"
-          tone="reggie"
-          size="large"
-          disabled={!text.trim()}
-        />
-      </div>
+      <Input
+        id={id}
+        value={text}
+        onChange={setText}
+        placeholder={placeholder ?? "Par exemple : je cours avec une amie"}
+        action={
+          <IconButton
+            type="submit"
+            icon="send"
+            label="Envoyer à Reggie"
+            variant="filled"
+            tone="reggie"
+            disabled={!text.trim()}
+          />
+        }
+      />
     </form>
   );
 }

@@ -62,8 +62,21 @@
 .ui-button.lg-button[data-tone="danger"] {
   --lg-tint: var(--color-danger);
 }
+/* Clear glass with a lit rim and a soft warm shadow, as the cards. */
+.ui-button.lg-button:not([data-variant="filled"]) {
+  box-shadow:
+    var(--surface-rim),
+    0 6px 20px rgb(90 40 10 / 0.1);
+}
+/* A filled button glows in its own color: blue for the action, green for Reggie. */
 .ui-button.lg-button[data-variant="filled"] {
   color: var(--color-on-color);
+  box-shadow: var(--shadow-glow-action);
+}
+.ui-button.lg-button[data-variant="filled"][data-tone="reggie"] {
+  box-shadow: var(--shadow-glow-reggie);
+}
+.ui-button.lg-button[data-variant="filled"][data-tone="danger"] {
   box-shadow: var(--shadow-float);
 }
 /* Tinted: a wash of the tone with its label, for a secondary action that still belongs to the moment. */
@@ -173,6 +186,22 @@
 }
 .ui-input.lg-input input {
   font-size: 17px;
+}
+/* A field with its send button inside, at the trailing end (Reggie's composer, "Dis-le à Reggie"). */
+.ui-field {
+  position: relative;
+  display: flex;
+  min-width: 0;
+}
+.ui-field .ui-input.lg-input {
+  flex: 1;
+  padding-right: calc(var(--size-target) + 6px);
+}
+.ui-field-action {
+  position: absolute;
+  top: 50%;
+  right: 3px;
+  translate: 0 -50%;
 }
 .ui-switch.lg-switch,
 .ui-slider.lg-slider {

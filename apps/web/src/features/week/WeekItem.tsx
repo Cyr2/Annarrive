@@ -18,8 +18,8 @@ function meta(item: Item): string {
 }
 
 /**
- * One line of a day, on a time column. A run sits on its type's wash with a rail of its color; strength and
- * revision get the rail only; a class is plain secondary text with a lock: the backdrop of her week.
+ * One line of a day, on a time column, with a dot of its type's color, as in the iOS calendar's list. A run also
+ * sits on its type's wash; a class is plain secondary text with a lock: the backdrop of her week.
  */
 export function ItemRow({ item, lifted = false }: { item: Item; lifted?: boolean }) {
   const tone = TONES[toneOf(item)];
@@ -40,7 +40,7 @@ export function ItemRow({ item, lifted = false }: { item: Item; lifted?: boolean
       </span>
       <span
         aria-hidden="true"
-        className={cx("w-1 flex-none self-stretch rounded-full", quiet ? "bg-hairline" : tone.mid)}
+        className={cx("size-2.5 flex-none rounded-full", quiet ? "bg-hairline-strong" : tone.mid)}
       />
       <span className="flex min-w-0 flex-1 flex-col">
         <span

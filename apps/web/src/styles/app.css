@@ -167,6 +167,22 @@
     border-radius: var(--radius-bubble) var(--radius-bubble) var(--radius-tail) var(--radius-bubble);
   }
 
+  /* A bar of the session's profile (ui/SessionShape.tsx), in the type's color given as --tone. */
+  .shape-bar {
+    min-width: 3px;
+    flex-basis: 0;
+    border-radius: 6px 6px 3px 3px;
+    background: linear-gradient(to top, color-mix(in srgb, var(--tone) 55%, var(--color-on-color)), var(--tone));
+  }
+  /* Warm-up and cool-down: flat and pale, the frame around the work. */
+  .shape-bar[data-level="plain"] {
+    background: color-mix(in srgb, var(--tone) 50%, var(--color-on-color));
+  }
+  /* A recovery: a low step between the repeats. */
+  .shape-bar[data-level="muted"] {
+    background: color-mix(in srgb, var(--tone) 36%, var(--color-on-color));
+  }
+
   .sr-only-label {
     position: absolute;
     width: 1px;
