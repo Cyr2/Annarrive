@@ -89,7 +89,21 @@ Source : Daniels, *Daniels' Running Formula* (2014/2021) `CE`. Pourcentages ci-d
 | I (intervalle) | VO2(v) ≈ 0,975–1,00 × VDOT ≈ allure tenable ~11 min | 95–100 % | 98–100 % | fractions 3–5 min |
 | R (répétition) | ≈ allure course du mile ; règle d'usage : I − 6 s/400 m `[non vérifié]` | > 100 % | n/a | 200–400 m, récup complète |
 
-**Choix par défaut** : calculer T et I comme vitesses de course de durée fixe (60 min et 11 min) via 1.1 — ces deux ancrages sont cohérents avec les deux jeux de pourcentages et sont reproductibles ; vérifier le résultat contre les tables publiées du livre pour 5 valeurs de VDOT (30, 40, 50, 60, 70) avant mise en production. E affichée comme **plage** (pas une cible).
+**Choix par défaut** (révisé le 17/11/2026, issue #17) : T = v(0,88 × VDOT), I = v(0,975 × VDOT), R = I − 15 s/km (6 s/400 m), M = marathon prédit, E affichée comme **plage** (pas une cible). Les ancrages initiaux « course de 60 min / 11 min » (F(60) = 0,888, F(11) = 1,000) donnaient T trop rapide de 1 à 3 s/km et I, donc R, de 3 à 8 s/km par rapport à la table.
+
+**Vérification contre la table de Daniels** `CE` `[secondaire]` : tables 5.1 (temps de course) et 5.2 (allures) de *Daniels' Running Formula*, 3e éd. 2014, lues dans deux transcriptions indépendantes, le livre et le calculateur officiel (https://vdoto2.com/calculator, accès refusé aux robots) n'ayant pas pu être ouverts :
+- SD Track Mag, « Daniels One Sheet », https://sdtrackmag.com/DanielsOneSheet.pdf : 5 km, T au km, I au 400 m, R au 400 m (colonne R décalée d'une ligne dans la mise en page), VDOT 30 à 85 ;
+- runvdot, https://github.com/tar-chw/runvdot (`frontend/src/data/vdot_training_paces.json` et `vdotTable.json`) : E, M, T, I au km, R au 400 m, temps 5 km à marathon, VDOT 30 à 85. Quelques fautes de frappe (I de VDOT 62, R de VDOT 34 et 60, 5 km de VDOT 66 à 74) ; seules les lignes où les deux copies concordent servent de référence.
+
+Résultats (calcul de contrôle sur chaque VDOT de 30 à 85) :
+- **M** : la formule (marathon prédit) reproduit la table à ±1 s/km. Aucun changement.
+- **T** : la table correspond à VO2(v) = 0,880 × VDOT (écart maximal 1,3 s/km) ; 88 % est le haut de la plage 83–88 % du texte de Daniels.
+- **I** : la table correspond à VO2(v) = 0,975 × VDOT (écart maximal 2,5 s/km, l'arrondi au 400 m de la table valant 2,5 s/km) ; dans la plage 95–100 %.
+- **R** : la table donne I − 6 s/400 m à 1 s près ; I − 15 s/km reste à 4 s/km au plus de la table (R est imprimée au 400 m, à la seconde près).
+- **E** : la 3e éd. donne une seule valeur, ≈ 0,70 × VDOT, comprise dans la plage 0,59–0,74 du texte. La plage chiffrée de la 4e éd. n'a pas été vérifiée.
+- **Temps de course (table 5.1)** : les équations 1.1 retrouvent la table à 0,053 VDOT près de VDOT 32 à 46 (≈ 3 s sur 10 km, 4 à 6 s sur le semi), jusqu'à 0,07 VDOT aux bords (VDOT 30, 85). L'écart vient de la table (arrondie ou calculée autrement), pas d'une équation fausse : aucun changement.
+
+Les cas de test sont dans `packages/coach/test/daniels-table.test.ts`.
 
 ### 2.2 Équivalents dans d'autres systèmes
 
@@ -229,7 +243,7 @@ Unités : v en m/min, t en min, FC en bpm, VDOT en ml·kg⁻¹·min⁻¹. Tous l
 
 **R4 — Prédiction de temps**. Temps sur D = racine de `VDOT·F(t) − VO2(D/t) = 0` (bissection). SI D = 42 195 m ET kilométrage moyen 8 semaines faible ALORS afficher en plus Riegel k = 1,07 et prendre la valeur la plus lente (Vickers 2016). Seuil « faible » : à définir (Q4).
 
-**R5 — Allures**. E = plage [v(0,59·VDOT) ; v(0,74·VDOT)] ; M = vitesse prédite R4 pour 42 195 m ; T = vitesse de course tenable 60 min (F(60)·VDOT) ; I = vitesse tenable 11 min (≈ VDOT) ; R = I − 6 s/400 m. SI CS connue ET T > CS ALORS T = CS.
+**R5 — Allures**. E = plage [v(0,59·VDOT) ; v(0,74·VDOT)] ; M = vitesse prédite R4 pour 42 195 m ; T = v(0,88·VDOT) ; I = v(0,975·VDOT) (table 5.2, §2.1) ; R = I − 6 s/400 m. SI CS connue ET T > CS ALORS T = CS.
 
 **R6 — FCmax**. FCmax = max observé (12 mois, artefacts exclus : durée du pic < 10 s ou saut > 20 bpm/2 s) ; SI aucune FC ≥ 0,95 × Tanaka observée ALORS FCmax = max(observé, 208 − 0,7·âge), flag « estimée ».
 
@@ -260,7 +274,7 @@ Unités : v en m/min, t en min, FC en bpm, VDOT en ml·kg⁻¹·min⁻¹. Tous l
 ## Questions ouvertes
 
 1. **Table de détraining Daniels complète** (lignes 6 j – 10 sem., FVDOT-1/FVDOT-2) : à extraire du livre (4e éd.) ou de https://news.vdoto2.com/?p=1285 avant implémentation.
-2. **Pourcentages M et T de Daniels** : sources tierces divergentes (T 83–88 % vs 85–90 %). Valider l'ancrage « course 60 min / 11 min » contre les tables publiées.
+2. ~~Pourcentages M et T de Daniels~~ : résolu le 17/11/2026 (§2.1). Reste à lire la plage E de la 4e éd. dans le livre.
 3. **Zones Friel en allure et seuils %LTHR** : contrôler dans *The Triathlete's Training Bible* (4e éd.) ; seule la version FC course est recoupée.
 4. **Correction marathon loisir** : coefficients exacts de Vickers 2016 (fichier additionnel 1) et définition chiffrée du « faible kilométrage ».
 5. **vivoactive 4** : aucune validation publiée de sa VO2max ; prédicteur de course probablement absent ; quelles données l'API Garmin expose réellement (VO2max, FC repos, LTHR auto-détectée ?) → à traiter dans le document sur les données.
