@@ -43,10 +43,13 @@ export function predictTime(
 
 const paceOf = (vMpm: number): number => 60_000 / vMpm;
 
-/** F7, s/km. E is a range [fast, slow] (C4). F8: T never faster than critical speed when known. */
+/**
+ * F7, s/km. E is a range [fast, slow] (C4). F8: T never faster than critical speed when known.
+ * T and I at 88 % and 97.5 % of VDOT: the fractions that reproduce Daniels' table 5.2 within 3 s/km from VDOT 30 to 85.
+ */
 export function paces(v: number, criticalSpeedMpm?: number): Paces {
-  const I = paceOf(speedForVo2(fractionF(11) * v));
-  const tSpeed = speedForVo2(fractionF(60) * v);
+  const I = paceOf(speedForVo2(0.975 * v));
+  const tSpeed = speedForVo2(0.88 * v);
   const capped = criticalSpeedMpm !== undefined && tSpeed > criticalSpeedMpm ? criticalSpeedMpm : tSpeed;
   return {
     E: [paceOf(speedForVo2(0.74 * v)), paceOf(speedForVo2(0.59 * v))],

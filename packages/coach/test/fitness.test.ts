@@ -30,10 +30,9 @@ const race = (id: string, start: string, v: number, distM = 5000): Activity => (
 const jog = (id: string, start: string): Activity => ({ id, start, durMin: 40, distM: 7000 });
 const sec = (min: number): number => min * 60;
 
-// F-1 to F-6: the "table" values come from Daniels' tables and are flagged unverified by the spec (Q2);
-// the expected values below are the formula values, which match the tables within the stated tolerance.
+// F-1 to F-6: the expected values are the formula values; daniels-table.test.ts checks them against Daniels' tables.
 describe("vdot (F1 to F3)", () => {
-  it("gives 39.94 for a 24:08 5 km (F-1, Daniels table VDOT 40, unverified)", () => {
+  it("gives 39.94 for a 24:08 5 km (F-1, Daniels table VDOT 40)", () => {
     expect(vdot(5000, 24 + 8 / 60)).toBeCloseTo(39.94, 1);
   });
 
@@ -43,15 +42,15 @@ describe("vdot (F1 to F3)", () => {
     expect(vo2(21097.5 / 110)).toBeCloseTo(34.18, 2);
   });
 
-  it("gives 39.97 for a 3:49:45 marathon (F-3, table VDOT 40, unverified)", () => {
+  it("gives 39.97 for a 3:49:45 marathon (F-3, table VDOT 40)", () => {
     expect(vdot(42195, 229.75)).toBeCloseTo(39.97, 1);
   });
 
-  it("gives 49.97 for a 41:21 10 km (F-4, table VDOT 50, unverified)", () => {
+  it("gives 49.97 for a 41:21 10 km (F-4, table VDOT 50)", () => {
     expect(vdot(10000, 41.35)).toBeCloseTo(49.97, 1);
   });
 
-  it("gives 30.02 and 59.99 at the VDOT 30 and 60 table points (F-5, unverified)", () => {
+  it("gives 30.02 and 59.99 at the VDOT 30 and 60 table points (F-5)", () => {
     expect(vdot(5000, 30 + 40 / 60)).toBeCloseTo(30.02, 1);
     expect(vdot(21097.5, 78.15)).toBeCloseTo(59.99, 1);
   });
@@ -67,7 +66,7 @@ describe("vdot (F1 to F3)", () => {
 });
 
 describe("predictTime (F5, F6)", () => {
-  it("predicts 24:06, 1:31:31 and 2:43:22 within 3 s (F-6; tables 24:08, 1:31:35, 2:43:25 unverified)", () => {
+  it("predicts 24:06, 1:31:31 and 2:43:22 within 3 s (F-6; tables 24:08, 1:31:35, 2:43:25)", () => {
     const cases: [number, number, number][] = [
       [40, 5000, 24 * 60 + 6],
       [50, 21097.5, 3600 + 31 * 60 + 31],
@@ -90,13 +89,13 @@ describe("paces (F7, F8)", () => {
   it("gives the VDOT 40 paces (F-7)", () => {
     const p = paces(40);
     expect(p.E.map(formatPace)).toEqual(["5:51", "6:59"]);
-    expect([p.M, p.T, p.I, p.R].map(formatPace)).toEqual(["5:27", "5:03", "4:36", "4:21"]);
+    expect([p.M, p.T, p.I, p.R].map(formatPace)).toEqual(["5:27", "5:06", "4:41", "4:26"]);
   });
 
   it("gives the VDOT 50 paces (F-8)", () => {
     const p = paces(50);
     expect(p.E.map(formatPace)).toEqual(["4:54", "5:52"]);
-    expect([p.M, p.T, p.I, p.R].map(formatPace)).toEqual(["4:31", "4:13", "3:50", "3:35"]);
+    expect([p.M, p.T, p.I, p.R].map(formatPace)).toEqual(["4:31", "4:15", "3:55", "3:40"]);
   });
 
   it("slows T down to critical speed when T is faster (F8)", () => {
