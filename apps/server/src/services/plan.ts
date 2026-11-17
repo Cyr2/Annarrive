@@ -334,16 +334,26 @@ export class PlanService {
   }
 
   /**
-   * EV14: the plan restarts from the new goal, this week included (what Anna moved stays), and the level
-   * is estimated first if still unknown or provisional. Without a goal (MA8) the current week stays.
+   * EV14: the weeks ahead are regenerated from the new goal (what Anna moved, ran or froze stays) and the level
+   * is estimated first if still unknown or provisional. The current week stays (EV14, MA7) unless it has no
+   * session yet, as on the first goal. Without a goal (MA8) it stays too. Weeks after the next are not stored:
+   * the Sunday job builds them from the same programme.
    */
   updateProgram(input: Program): ChangeResponse {
     const before = this.coachState();
     const today = dateOf(this.#now());
     const sameGoal = JSON.stringify(input.goal) === JSON.stringify(before.program.goal);
-    const program = { ...input, startedOn: sameGoal ? (before.program.startedOn ?? today) : today };
+    // Modifier l'objectif sends the goal alone: the declared time stays for the level estimate (F10).
+    const program = { ...before.program, ...input, startedOn: sameGoal ? (before.program.startedOn ?? today) : today };
     const write: PlanWrite = { table: "program", id: CURRENT, after: { id: CURRENT, value: program } };
-    return this.#rebuild("Objectif modifié", [write], { ...before, program }, before, program.goal !== null);
+    const emptyWeek = !before.sessions.some((s) => dateOf(s.start) < this.#nextMonday());
+    return this.#rebuild(
+      "Objectif modifié",
+      [write],
+      { ...before, program },
+      before,
+      program.goal !== null && emptyWeek,
+    );
   }
 
   /** After a run, when no level was known yet: estimates it and builds the weeks it was missing. */

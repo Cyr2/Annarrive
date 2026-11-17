@@ -12,6 +12,7 @@ import {
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { coachAdapter, toSession } from "../src/coach-adapter.ts";
+import { workoutHash } from "../src/garmin/workout.ts";
 import { addDays, addMinutes } from "../src/time.ts";
 import { fakeBridge, setup } from "./helpers.ts";
 
@@ -111,6 +112,55 @@ describe("coach adapter: building weeks", () => {
     const week = t.services.plan.coachState().sessions.filter((s) => s.start >= "2026-11-16");
     expect(week).toHaveLength(3);
     expect(week.filter((s) => isHard(toSession(s)))).toHaveLength(1);
+  });
+});
+
+describe("coach adapter: a new goal (EV14)", () => {
+  /** Wednesday 18 November 2026, 9:00 in Paris: next Monday is within the watch's 7 days. */
+  const WEDNESDAY = new Date("2026-11-18T08:00:00Z");
+  const NEXT_MONDAY = "2026-11-23";
+
+  it("regenerates next week from the new goal, keeps this week and what she moved, undoes as one, updates the watch", async () => {
+    const bridge = fakeBridge();
+    const t = await ready({ bridge });
+    t.setNow(WEDNESDAY);
+    history(t, "2026-11-16");
+    t.stores.fitnessEstimate.put({ id: "2026-11-01", date: "2026-11-01", vdot: 40, source: "test" });
+    const declaredTime = { distanceM: 10000, minutes: 52 };
+    await t.call("PUT", "/api/program", { goal: { distanceM: 10000, date: "2027-03-14" }, declaredTime });
+    const sessions = () => t.services.plan.coachState().sessions;
+    const thisWeek = () => sessions().filter((s) => s.start < NEXT_MONDAY);
+    const nextWeek = () => sessions().filter((s) => s.start >= NEXT_MONDAY);
+    const quality = nextWeek().find((s) => s.type === "COTES_C");
+    expect(quality).toBeDefined();
+    await change(t, "POST", `/api/sessions/${quality?.id}/move`, { start: "2026-11-27T12:00" });
+    const moved = sessions().find((s) => s.id === quality?.id);
+    const before = { current: thisWeek(), next: nextWeek(), program: t.services.plan.program() };
+
+    const saved = await change(t, "PUT", "/api/program", { goal: { distanceM: 5000, date: "2026-12-06" } });
+
+    expect(saved.change?.summary).toMatch(/^Objectif modifié/);
+    expect(thisWeek()).toEqual(before.current);
+    expect(nextWeek()).not.toEqual(before.next);
+    expect(nextWeek()).toContainEqual(moved);
+    // Her moved hill session stands in for the new week's fartlek: still three runs.
+    expect(
+      nextWeek()
+        .map((s) => s.type)
+        .sort(),
+    ).toEqual(["COTES_C", "E", "L"]);
+    expect(t.services.plan.program()).toEqual({
+      goal: { distanceM: 5000, date: "2026-12-06" },
+      declaredTime,
+      startedOn: "2026-11-18",
+    });
+    const onWatchSoon = () => sessions().filter((s) => s.start >= "2026-11-18" && s.start < "2026-11-25");
+    await vi.waitFor(() => {
+      for (const s of onWatchSoon()) expect(t.stores.watchSync.get(s.id)?.hash).toBe(workoutHash(s));
+    });
+
+    await t.call("POST", `/api/changes/${saved.change?.id}/undo`);
+    expect({ current: thisWeek(), next: nextWeek(), program: t.services.plan.program() }).toEqual(before);
   });
 });
 
