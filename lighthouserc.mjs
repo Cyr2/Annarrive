@@ -19,13 +19,13 @@ const atLeast95 = ["error", { minScore: 0.95 }];
 export default {
   ci: {
     collect: {
-      startServerCommand: "pnpm --filter @talaria/server lighthouse",
+      startServerCommand: "pnpm --filter @annarrive/server lighthouse",
       startServerReadyPattern: "listen",
       url: [`http://localhost:${port}/`],
       numberOfRuns: 3,
       settings: {
         formFactor: "mobile",
-        extraHeaders: JSON.stringify({ Cookie: `__Host-talaria_session=${encodeURIComponent(signed)}` }),
+        extraHeaders: JSON.stringify({ Cookie: `__Host-annarrive_session=${encodeURIComponent(signed)}` }),
       },
     },
     assert: {

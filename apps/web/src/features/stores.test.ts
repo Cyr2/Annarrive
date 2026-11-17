@@ -84,7 +84,7 @@ describe("plan store", () => {
     localStorage.clear();
     const { plan } = setup();
     await plan.getState().load();
-    await vi.waitFor(() => expect(localStorage.getItem("talaria.firstScreen")).toContain(RUN));
+    await vi.waitFor(() => expect(localStorage.getItem("annarrive.firstScreen")).toContain(RUN));
 
     const offline = createPlanStore(() => Promise.reject(new Error("offline")), vi.fn());
     await offline.getState().load();

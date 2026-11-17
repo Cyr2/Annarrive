@@ -1,4 +1,4 @@
-# Audit UI et UX de Talaria (PWA iPhone)
+# Audit UI et UX d'Annarrivé (PWA iPhone)
 
 Branche `audit/ui`, depuis `origin/main` du 17 novembre 2026. Captures à 390 × 844 (profil iPhone 15, WebKit Playwright, échelle 2), app construite (`pnpm build`) servie par `vite preview` avec le mock (`?mock`, `?mock=rest`, `?mock=done`, `?mock=light`, `?mock=worst`, `?mock&onboarding`). La page serveur de connexion est rendue à partir du HTML exact de `apps/server/src/app.ts` (`loginPage`). L'écran « déconnecté » est obtenu en répondant 401 à `/api/*`.
 
@@ -410,8 +410,8 @@ Constat d'ensemble : chaque étape est un écran de réglages vide à 60 %, avec
 
 ### O-01 · critique · Accueil sans identité
 Capture : `onboarding-01-welcome.png`.
-« Talaria » en titre de page standard, deux paragraphes, bouton. Pas de marque, pas d'image, pas de promesse visible.
-Correctif : sur le ciel `--sky`, au tiers haut, le symbole Talaria (l'icône de l'app, 88 px, en verre) puis le nom en 34 gras encre, une promesse en une ligne (« Ton plan de course, rangé autour de tes cours »), et une `Surface card` qui montre en miniature la carte du jour (Fractionné, ce soir 18:00, 4:55) pour dire ce qu'on va obtenir. CTA `--color-action` « Commencer ». Pas de points de progression sur l'accueil.
+« Annarrivé » en titre de page standard, deux paragraphes, bouton. Pas de marque, pas d'image, pas de promesse visible.
+Correctif : sur le ciel `--sky`, au tiers haut, le symbole Annarrivé (l'icône de l'app, 88 px, en verre) puis le nom en 34 gras encre, une promesse en une ligne (« Ton plan de course, rangé autour de tes cours »), et une `Surface card` qui montre en miniature la carte du jour (Fractionné, ce soir 18:00, 4:55) pour dire ce qu'on va obtenir. CTA `--color-action` « Commencer ». Pas de points de progression sur l'accueil.
 
 ### O-02 · critique · Étapes à un seul champ, écran vide
 Captures : `onboarding-05.png` (une seule ligne « Coucher 23:00 »), `onboarding-03.png`, `onboarding-07.png`, `onboarding-10.png`.
@@ -457,8 +457,8 @@ Correctif : découpe (spotlight) sur l'élément expliqué avec voile `--color-s
 
 ### L-01 · critique · Page serveur de connexion non dessinée
 Captures : `login-server.png`, `login-server-error.png`.
-Fond blanc, « Talaria » en Arial gras centré, bouton `#0A7CFF` à 12 px de rayon (le seul de l'app), aucun texte qui dit ce qui va se passer. L'erreur n'est qu'un paragraphe sans action.
-Correctif (dans `loginPage` d'`apps/server/src/app.ts`, CSS en ligne autorisée par la CSP) : fond `--sky` en dégradé CSS, carte verre centrée (rgba blanc 0,6 + `backdrop-filter`, repli plein), icône de l'app 72 px, titre « Bienvenue, Anna » ou « Connexion à Talaria », une phrase « Ce lien ouvre Talaria sur ce téléphone. », bouton pleine largeur 50 px rayon 25 `#3D6A9E`, police `-apple-system`. Erreur : même carte, icône d'alerte, le message du serveur, puis une issue en une phrase (« Ce lien a déjà servi ou a expiré. Demande un nouveau lien. »). `meta theme-color` assorti.
+Fond blanc, « Annarrivé » en Arial gras centré, bouton `#0A7CFF` à 12 px de rayon (le seul de l'app), aucun texte qui dit ce qui va se passer. L'erreur n'est qu'un paragraphe sans action.
+Correctif (dans `loginPage` d'`apps/server/src/app.ts`, CSS en ligne autorisée par la CSP) : fond `--sky` en dégradé CSS, carte verre centrée (rgba blanc 0,6 + `backdrop-filter`, repli plein), icône de l'app 72 px, titre « Bienvenue, Anna » ou « Connexion à Annarrivé », une phrase « Ce lien ouvre Annarrivé sur ce téléphone. », bouton pleine largeur 50 px rayon 25 `#3D6A9E`, police `-apple-system`. Erreur : même carte, icône d'alerte, le message du serveur, puis une issue en une phrase (« Ce lien a déjà servi ou a expiré. Demande un nouveau lien. »). `meta theme-color` assorti.
 
 ### L-02 · critique · Écran déconnecté sans issue
 Capture : `signed-out.png`.

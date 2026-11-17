@@ -5,7 +5,7 @@ import { Surface } from "../../ui/Surface.tsx";
 
 const STEPS: [IconName, string][] = [
   ["reggie", "Ouvre le dernier lien de connexion reçu par message."],
-  ["checkCircle", "Talaria s'ouvre ici, et tu restes connectée."],
+  ["checkCircle", "Annarrivé s'ouvre ici, et tu restes connectée."],
 ];
 
 /**

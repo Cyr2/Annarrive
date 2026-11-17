@@ -9,7 +9,7 @@ import {
   pushKeySchema,
   timetableStatusSchema,
   type Unavailable,
-} from "@talaria/protocol";
+} from "@annarrive/protocol";
 import { api } from "./index.ts";
 
 /**

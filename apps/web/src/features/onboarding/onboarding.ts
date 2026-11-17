@@ -5,7 +5,7 @@ import {
   type Program,
   painSiteSchema,
   type Unavailable,
-} from "@talaria/protocol";
+} from "@annarrive/protocol";
 import { addDays, minutesOf, timeOf, weekday } from "../../lib/date.ts";
 import { checkIcsUrl } from "../program/program.ts";
 
@@ -25,7 +25,7 @@ export const STEPS = [
 export type Step = (typeof STEPS)[number];
 
 export const COPY: Record<Step, { title: string; lead: string }> = {
-  welcome: { title: "Talaria", lead: "Ton plan de course, rangé autour de tes cours et envoyé sur ta montre." },
+  welcome: { title: "Annarrivé", lead: "Ton plan de course, rangé autour de tes cours et envoyé sur ta montre." },
   race: { title: "Ta course", lead: "La distance et la date. Sans course, on entretient ta forme." },
   target: { title: "Ton chrono", lead: "Choisis le temps que tu vises, ou simplement de la finir." },
   week: { title: "Ta semaine", lead: "Combien de fois tu cours, et les jours que tu gardes libres." },

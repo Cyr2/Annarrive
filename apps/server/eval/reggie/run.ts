@@ -1,10 +1,11 @@
 /**
  * Runs the core scenarios (or the ids given) against the real model (REGGIE_MODEL, default sonnet) and prints a pass/fail table.
  * Spends the account's quota: run it on purpose, never in CI.
- *   pnpm --filter @talaria/server eval:reggie [scenario-id ...]
+ *   pnpm --filter @annarrive/server eval:reggie [scenario-id ...]
  */
+
+import type { ChatWidget } from "@annarrive/protocol";
 import { query } from "@anthropic-ai/claude-agent-sdk";
-import type { ChatWidget } from "@talaria/protocol";
 import { coachAdapter } from "../../src/coach-adapter.ts";
 import { createReggie, type ReggieRun } from "../../src/reggie/agent.ts";
 import { createServices } from "../../src/services/index.ts";

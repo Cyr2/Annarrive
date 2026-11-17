@@ -1,6 +1,6 @@
 """Internal HTTP service: the only place that talks to Garmin Connect.
 
-No training logic lives here. The Talaria server asks, this service fetches or sends.
+No training logic lives here. The Annarrivé server asks, this service fetches or sends.
 Reads go through Garmin's official Personal API when GARMIN_API_KEY is set, and fall back field by field
 to the unofficial login (python-garminconnect). Writes always use the unofficial login: the official API is read only.
 """
@@ -256,7 +256,7 @@ def create_workout(garmin: GarminDep, request: WorkoutRequest) -> CreatedWorkout
 
 @app.delete("/workouts/{workout_id}", dependencies=protected, status_code=204)
 def delete_workout(garmin: GarminDep, workout_id: int) -> Response:
-    # Each Talaria workout is a one-off template; deleting it also removes it from the calendar.
+    # Each Annarrivé workout is a one-off template; deleting it also removes it from the calendar.
     try:
         garmin.delete_workout(workout_id)
     except GarminConnectNotFoundError:

@@ -1,4 +1,4 @@
-import { feelInputSchema } from "@talaria/protocol";
+import { feelInputSchema } from "@annarrive/protocol";
 import { Hono } from "hono";
 import type { Services } from "../services/index.ts";
 import { body } from "./plan.ts";

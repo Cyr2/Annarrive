@@ -1,4 +1,4 @@
-import type { CalendarEvent, DeleteEventQuery } from "@talaria/protocol";
+import type { CalendarEvent, DeleteEventQuery } from "@annarrive/protocol";
 import { addDays, dateOf, daysBetween } from "../time.ts";
 
 const stepDays = { weekly: 7, biweekly: 14 } as const;

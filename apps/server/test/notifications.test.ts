@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { pushKeySchema } from "@talaria/protocol";
+import { pushKeySchema } from "@annarrive/protocol";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PushMessage, PushSender } from "../src/services/notifications.ts";
 import { session, setup } from "./helpers.ts";

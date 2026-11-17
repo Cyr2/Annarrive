@@ -1,4 +1,4 @@
-import type { Feasibility } from "@talaria/protocol";
+import type { Feasibility } from "@annarrive/protocol";
 import { create } from "zustand";
 import { type OnboardingApi, onboardingApi } from "../../api/onboarding.ts";
 import { toIso } from "../../lib/date.ts";

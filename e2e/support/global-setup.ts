@@ -23,7 +23,7 @@ async function logIn(browser: Browser, server: Server, use: FullConfig["projects
   const { status, setCookie } = await answered;
   await context.close();
   // `__Host-` cookies must be Secure, which WebKit drops over http://localhost: the tests send it themselves (test.ts).
-  const cookie = setCookie?.match(/^__Host-talaria_session=[^;]+/)?.[0];
+  const cookie = setCookie?.match(/^__Host-annarrive_session=[^;]+/)?.[0];
   if (status !== 302 || !cookie) throw new Error(`Connexion refusée (${status}) : pas de cookie de session.`);
   return cookie;
 }
@@ -33,7 +33,7 @@ async function logIn(browser: Browser, server: Server, use: FullConfig["projects
  * Garmin data, for onboarding. Nothing is built here: `pnpm build` comes first.
  */
 export default async function globalSetup(config: FullConfig) {
-  const root = mkdtempSync(join(tmpdir(), "talaria-e2e-"));
+  const root = mkdtempSync(join(tmpdir(), "annarrive-e2e-"));
   const planDir = join(root, "plan");
   const freshDir = join(root, "fresh");
   await Promise.all([seed(planDir, "plan"), seed(freshDir, "garmin")]);

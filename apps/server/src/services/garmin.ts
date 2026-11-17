@@ -1,4 +1,4 @@
-import type { GarminActivity, GarminDailySignals, PlannedSession } from "@talaria/protocol";
+import type { GarminActivity, GarminDailySignals, PlannedSession } from "@annarrive/protocol";
 import {
   type BridgeClient,
   BridgeUnreachableError,

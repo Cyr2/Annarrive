@@ -3,8 +3,8 @@ import type { PushStatus } from "./push.ts";
 import { usePush } from "./store.ts";
 
 const HINTS: Partial<Record<PushStatus, string>> = {
-  install: "Sur iPhone, ajoute d'abord Talaria à ton écran d'accueil : Partager, puis Sur l'écran d'accueil.",
-  denied: "Refusées : autorise-les dans Réglages, Notifications, Talaria.",
+  install: "Sur iPhone, ajoute d'abord Annarrivé à ton écran d'accueil : Partager, puis Sur l'écran d'accueil.",
+  denied: "Refusées : autorise-les dans Réglages, Notifications, Annarrivé.",
   unsupported: "Ce navigateur ne reçoit pas de notifications.",
 };
 

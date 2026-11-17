@@ -1,4 +1,4 @@
-import { changeResponseSchema, profileSchema, todaySchema, weekSchema } from "@talaria/protocol";
+import { changeResponseSchema, profileSchema, todaySchema, weekSchema } from "@annarrive/protocol";
 import { describe, expect, it } from "vitest";
 import { session, setup } from "./helpers.ts";
 

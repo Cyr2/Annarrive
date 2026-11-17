@@ -1,4 +1,4 @@
-# Talaria : instructions du projet
+# Annarrivé : instructions du projet
 
 Coach de course à pied en PWA pour Anna (iPhone, Garmin vivoactive 4). L'app place ses séances autour de ses cours, les envoie sur sa montre et s'adapte à elle. Interface en français.
 
@@ -14,7 +14,7 @@ Coach de course à pied en PWA pour Anna (iPhone, Garmin vivoactive 4). L'app pl
 
 ## Marque et style
 
-- Nom : **Talaria**. Assistant : **Reggie** (nom fixe, aucune option pour le changer). Le logo se choisit avec Darius : ne jamais en inventer un, garder un emplacement prévu.
+- Nom : **Annarrivé**. Assistant : **Reggie** (nom fixe, aucune option pour le changer). Le logo se choisit avec Darius : ne jamais en inventer un, garder un emplacement prévu.
 - Direction « Ciel du matin » : un ciel d'aube doux derrière chaque écran, surfaces Apple iOS 26 Liquid Glass, police système (SF Pro), titres en gras. Clair, pastel, joyeux, jamais criard. Aucun noir.
 - Palette de départ (tokens dans `apps/web/src/styles/tokens.css`) : ciel `#FDE7DA`, `#F3ECF6`, `#E6F1F8`, `#F7F9FB` ; texte `#23303D` ; actions `#3D6A9E` (bleu crépuscule) ; Reggie `#0B6B52` ; séances en pastel : intensité `#F29C7B`, facile `#7CC8A8`, sortie longue `#8DB3EA`, révision `#8FCFD6`. Une allure ne s'affiche jamais en rouge ou en orange.
 - Un seul matériau : le verre dépoli pour les cartes, feuilles, widgets et listes (`Surface`), glisse pour les petits contrôles (boutons, pastilles, segmentés, onglets, champs, interrupteurs, curseurs), via `apps/web/src/ui/` uniquement.

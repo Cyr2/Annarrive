@@ -1,6 +1,6 @@
-# Talaria
+# Annarrivé
 
-Coach de course à pied en PWA. Talaria place les séances autour de l'emploi du temps, les envoie sur la montre Garmin et s'adapte au sommeil, à la fatigue et aux imprévus. Reggie, l'assistant, répond aux questions et ajuste le plan.
+Coach de course à pied en PWA. Annarrivé place les séances autour de l'emploi du temps, les envoie sur la montre Garmin et s'adapte au sommeil, à la fatigue et aux imprévus. Reggie, l'assistant, répond aux questions et ajuste le plan.
 
 - Produit : `docs/specs/produit.md`
 - Algo : `docs/specs/algo.md`

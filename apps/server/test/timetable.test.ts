@@ -2,7 +2,7 @@ import type { LookupAddress } from "node:dns";
 import { readFileSync } from "node:fs";
 import { createServer, request as httpRequest } from "node:http";
 import type { AddressInfo } from "node:net";
-import { timetableRefreshSchema, timetableStatusSchema } from "@talaria/protocol";
+import { timetableRefreshSchema, timetableStatusSchema } from "@annarrive/protocol";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TimetableError } from "../src/errors.ts";
 import {

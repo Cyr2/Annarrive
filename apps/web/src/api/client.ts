@@ -1,4 +1,4 @@
-import type { ChatContext } from "@talaria/protocol";
+import type { ChatContext } from "@annarrive/protocol";
 import type {
   CalendarEvent,
   ChangeOption,

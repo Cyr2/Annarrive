@@ -1,6 +1,6 @@
-import type { CalEvent, Result, Session, Settings, State } from "@talaria/coach";
-import * as coach from "@talaria/coach";
-import type { CalendarEvent, DailySignal, PlannedSession, Profile } from "@talaria/protocol";
+import type { CalEvent, Result, Session, Settings, State } from "@annarrive/coach";
+import * as coach from "@annarrive/coach";
+import type { CalendarEvent, DailySignal, PlannedSession, Profile } from "@annarrive/protocol";
 import {
   type CoachNote,
   type CoachPort,
@@ -168,7 +168,7 @@ const NO_FITNESS =
   "Reggie a besoin de ton niveau pour préparer ta semaine : indique un chrono récent ou cours avec ta montre.";
 const REST_ADVICE = "Tes signaux de récupération sont bas : repos conseillé aujourd'hui.";
 
-/** The real `CoachPort`: translates the stored shapes and lets `@talaria/coach` decide everything. */
+/** The real `CoachPort`: translates the stored shapes and lets `@annarrive/coach` decide everything. */
 export const coachAdapter: CoachPort = {
   feasibility: coachFeasibility,
   buildWeek(st, weekStart, now) {

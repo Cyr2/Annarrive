@@ -1,7 +1,7 @@
 [project]
 name = "garmin-bridge"
 version = "0.1.0"
-description = "Service interne de Talaria : lit les données Garmin et envoie les séances sur la montre"
+description = "Service interne d'Annarrivé : lit les données Garmin et envoie les séances sur la montre"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi",

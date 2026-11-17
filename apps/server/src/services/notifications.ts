@@ -1,4 +1,4 @@
-import type { PlannedSession, PushSubscriptionInput } from "@talaria/protocol";
+import type { PlannedSession, PushSubscriptionInput } from "@annarrive/protocol";
 import { z } from "zod";
 import type { Stores } from "../storage/stores.ts";
 import { dateOf, frenchMoment, frenchWeekday } from "../time.ts";

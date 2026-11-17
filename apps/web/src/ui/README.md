@@ -1,4 +1,4 @@
-# Talaria UI system: « Ciel du matin »
+# Annarrivé UI system: « Ciel du matin »
 
 Everything a screen draws comes from this folder and from `src/styles/`. A screen (`features/<écran>/`) composes these pieces and never adds its own colors, shadows, radii or blur. If something is missing, add it here, document it below, then use it.
 

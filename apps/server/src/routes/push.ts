@@ -1,4 +1,4 @@
-import { type PushKey, pushSubscriptionInputSchema, pushUnsubscribeInputSchema } from "@talaria/protocol";
+import { type PushKey, pushSubscriptionInputSchema, pushUnsubscribeInputSchema } from "@annarrive/protocol";
 import { Hono } from "hono";
 import type { Services } from "../services/index.ts";
 import { body } from "./plan.ts";

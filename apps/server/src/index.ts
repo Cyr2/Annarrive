@@ -45,5 +45,5 @@ const jobs = createJobs({
 new Scheduler(jobs, systemClock).start();
 
 serve({ fetch: app.fetch, port: config.PORT }, (info) => {
-  console.info(`Talaria écoute sur le port ${info.port}`);
+  console.info(`Annarrivé écoute sur le port ${info.port}`);
 });

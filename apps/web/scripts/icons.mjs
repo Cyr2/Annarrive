@@ -29,7 +29,7 @@ const icons = [
   { file: "icon-maskable-512.png", size: 512, mode: "safe" },
 ];
 
-const work = mkdtempSync(join(tmpdir(), "talaria-icons-"));
+const work = mkdtempSync(join(tmpdir(), "annarrive-icons-"));
 for (const { file, size, mode } of icons) {
   const scale = mode === "safe" ? 0.8 : 1;
   const background = mode === "plain" ? "transparent" : brand;

@@ -1,4 +1,4 @@
-# Talaria : ce que fait chaque bouton
+# Annarrivé : ce que fait chaque bouton
 
 Référence pour les maquettes et le code. Chaque action dit ce qu'elle ouvre, ce que l'app fait, ce qu'Anna voit, et comment revenir en arrière.
 

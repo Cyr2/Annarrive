@@ -17,8 +17,8 @@ export default defineConfig({
       injectRegister: "inline",
       includeAssets: ["icon.svg", "apple-touch-icon.png"],
       manifest: {
-        name: "Talaria",
-        short_name: "Talaria",
+        name: "Annarrivé",
+        short_name: "Annarrivé",
         description: "Ton plan de course, organisé autour de ta semaine",
         lang: "fr",
         start_url: "/",

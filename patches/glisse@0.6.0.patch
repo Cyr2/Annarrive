@@ -9,7 +9,7 @@ index f62917dd478b60076df29d2c3b44ccb60ba2c562..074e5783815415433ac63ce01d28d94c
 +/** The rim each element last asked for: a rim encoded late never replaces a newer one. */
 +const rimKeys = /* @__PURE__ */ new WeakMap();
 +/**
-+* Talaria (after Annamour): the rim's PNG is encoded in a worker (OffscreenCanvas), not on the main thread:
++* Annarrivé (after Annamour): the rim's PNG is encoded in a worker (OffscreenCanvas), not on the main thread:
 +* toDataURL blocked a phone's first paint for tens of ms per glass. Without workers it falls back to toDataURL.
 +*/
 +let rimEncoder;
@@ -98,7 +98,7 @@ index f62917dd478b60076df29d2c3b44ccb60ba2c562..074e5783815415433ac63ce01d28d94c
  }
  /** Only Chromium applies SVG filters to the live backdrop. */
 -const refractsBackdrop = () => /Chrom(?:e|ium)\//.test(navigator.userAgent);
-+/** Talaria: bending is drawn on the CPU every frame and its maps cost ~200 ms to compute; phones and touch screens keep the frost and the lit rim instead. */
++/** Annarrivé: bending is drawn on the CPU every frame and its maps cost ~200 ms to compute; phones and touch screens keep the frost and the lit rim instead. */
 +const refractsBackdrop = () => /Chrom(?:e|ium)\//.test(navigator.userAgent) && !/\b(?:Mobi|Android)/.test(navigator.userAgent) && matchMedia("(pointer: fine)").matches;
  const MARK = "data-glisse-backdrop";
  function visibleBox(element) {
@@ -111,7 +111,7 @@ index f62917dd478b60076df29d2c3b44ccb60ba2c562..074e5783815415433ac63ce01d28d94c
 +		if (selection) {
 +			const fit = () => refitting(element, () => fitSelection(element, bendsBackdrop && refractsBackdrop()), bendsBackdrop ? SELECTION_PROPERTIES : SELECTION_PROPERTIES.filter((name) => name !== "--lg-filter")).stop;
 +			if (refractsBackdrop()) return fit();
-+			/** Talaria: where nothing bends, the held lens's rim is only seen once a finger lands, and computing its maps on mount cost a phone's first 400 ms: they wait for that first touch. */
++			/** Annarrivé: where nothing bends, the held lens's rim is only seen once a finger lands, and computing its maps on mount cost a phone's first 400 ms: they wait for that first touch. */
 +			const bar = element.parentElement;
 +			let stop;
 +			const start = () => { stop ??= fit(); };
@@ -135,7 +135,7 @@ index 28f6a21d345f76bb92e6d0ba7c95013bec7165cd..89c20709baaa6b301923812323aa2433
 +/** The rim each element last asked for: a rim encoded late never replaces a newer one. */
 +const rimKeys = /* @__PURE__ */ new WeakMap();
 +/**
-+* Talaria (after Annamour): the rim's PNG is encoded in a worker (OffscreenCanvas), not on the main thread:
++* Annarrivé (after Annamour): the rim's PNG is encoded in a worker (OffscreenCanvas), not on the main thread:
 +* toDataURL blocked a phone's first paint for tens of ms per glass. Without workers it falls back to toDataURL.
 +*/
 +let rimEncoder;
@@ -224,7 +224,7 @@ index 28f6a21d345f76bb92e6d0ba7c95013bec7165cd..89c20709baaa6b301923812323aa2433
  }
  /** Only Chromium applies SVG filters to the live backdrop. */
 -const refractsBackdrop = () => /Chrom(?:e|ium)\//.test(navigator.userAgent);
-+/** Talaria: bending is drawn on the CPU every frame and its maps cost ~200 ms to compute; phones and touch screens keep the frost and the lit rim instead. */
++/** Annarrivé: bending is drawn on the CPU every frame and its maps cost ~200 ms to compute; phones and touch screens keep the frost and the lit rim instead. */
 +const refractsBackdrop = () => /Chrom(?:e|ium)\//.test(navigator.userAgent) && !/\b(?:Mobi|Android)/.test(navigator.userAgent) && matchMedia("(pointer: fine)").matches;
  const MARK = "data-glisse-backdrop";
  function visibleBox(element) {
@@ -237,7 +237,7 @@ index 28f6a21d345f76bb92e6d0ba7c95013bec7165cd..89c20709baaa6b301923812323aa2433
 +		if (selection) {
 +			const fit = () => refitting(element, () => fitSelection(element, bendsBackdrop && refractsBackdrop()), bendsBackdrop ? SELECTION_PROPERTIES : SELECTION_PROPERTIES.filter((name) => name !== "--lg-filter")).stop;
 +			if (refractsBackdrop()) return fit();
-+			/** Talaria: where nothing bends, the held lens's rim is only seen once a finger lands, and computing its maps on mount cost a phone's first 400 ms: they wait for that first touch. */
++			/** Annarrivé: where nothing bends, the held lens's rim is only seen once a finger lands, and computing its maps on mount cost a phone's first 400 ms: they wait for that first touch. */
 +			const bar = element.parentElement;
 +			let stop;
 +			const start = () => { stop ??= fit(); };

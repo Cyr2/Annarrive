@@ -9,7 +9,7 @@ import {
   garminLapSchema,
   type WorkoutRequest,
   workoutRequestSchema,
-} from "@talaria/protocol";
+} from "@annarrive/protocol";
 import { z } from "zod";
 
 export class BridgeError extends Error {

@@ -1,4 +1,4 @@
-import { type ChatWidget, chatWidgetSchema } from "@talaria/protocol";
+import { type ChatWidget, chatWidgetSchema } from "@annarrive/protocol";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { type ReggieTool, reggieTools } from "../src/reggie/tools.ts";

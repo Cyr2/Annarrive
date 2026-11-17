@@ -11,7 +11,7 @@ import {
   unavailableSchema,
   updateEventInputSchema,
   type WatchInfo,
-} from "@talaria/protocol";
+} from "@annarrive/protocol";
 import { type Context, Hono } from "hono";
 import type { z } from "zod";
 import { GarminNotConfiguredError, InvalidInputError } from "../errors.ts";

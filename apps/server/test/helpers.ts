@@ -1,4 +1,4 @@
-import type { CalendarEvent, HealthStatus, PlannedSession, Unavailable } from "@talaria/protocol";
+import type { CalendarEvent, HealthStatus, PlannedSession, Unavailable } from "@annarrive/protocol";
 import type { Hono } from "hono";
 import { vi } from "vitest";
 import { createApp } from "../src/app.ts";
@@ -200,7 +200,7 @@ export function setup(
       now = instant;
     },
     async login() {
-      const token = new URL(services.auth.createLoginLink("https://talaria.test")).searchParams.get("token") ?? "";
+      const token = new URL(services.auth.createLoginLink("https://annarrive.test")).searchParams.get("token") ?? "";
       const response = await postLogin(app, token);
       cookie = (response.headers.get("set-cookie") ?? "").split(";")[0] ?? "";
       return response;

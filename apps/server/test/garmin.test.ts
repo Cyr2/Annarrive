@@ -1,4 +1,4 @@
-import { type DailySignal, type GarminActivity, todaySchema, weekSchema } from "@talaria/protocol";
+import { type DailySignal, type GarminActivity, todaySchema, weekSchema } from "@annarrive/protocol";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CoachPort } from "../src/coach-port.ts";
 import { BridgeError, BridgeUnreachableError, GarminRateLimitError } from "../src/garmin/bridge-client.ts";

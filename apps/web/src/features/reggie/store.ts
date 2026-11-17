@@ -1,4 +1,4 @@
-import type { ChatContext } from "@talaria/protocol";
+import type { ChatContext } from "@annarrive/protocol";
 import { create } from "zustand";
 import type { Api } from "../../api/client.ts";
 import { ApiError } from "../../api/errors.ts";

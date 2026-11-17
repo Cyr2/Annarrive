@@ -25,7 +25,7 @@ const env = z
   })
   .parse(process.env);
 
-const db = openDatabase(mkdtempSync(join(tmpdir(), "talaria-lighthouse-")));
+const db = openDatabase(mkdtempSync(join(tmpdir(), "annarrive-lighthouse-")));
 const services = createServices({
   db,
   clock: systemClock,

@@ -1,3 +1,4 @@
+import { existsSync, renameSync } from "node:fs";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -10,9 +11,19 @@ import { session } from "./helpers.ts";
 
 describe("database", () => {
   it("creates the tables in DATA_DIR and reopens without migrating twice", async () => {
-    const dir = join(await mkdtemp(join(tmpdir(), "talaria-db-")), "data");
+    const dir = join(await mkdtemp(join(tmpdir(), "annarrive-db-")), "data");
     createStores(openDatabase(dir)).plannedSession.put(session("a", "2026-11-16T18:00"));
     expect(createStores(openDatabase(dir)).plannedSession.get("a")?.start).toBe("2026-11-16T18:00");
+  });
+
+  it("keeps the data of a database created under the old name", async () => {
+    const dir = join(await mkdtemp(join(tmpdir(), "annarrive-db-")), "data");
+    const db = openDatabase(dir);
+    createStores(db).plannedSession.put(session("a", "2026-11-16T18:00"));
+    db.close();
+    renameSync(join(dir, "annarrive.db"), join(dir, "talaria.db"));
+    expect(createStores(openDatabase(dir)).plannedSession.get("a")?.start).toBe("2026-11-16T18:00");
+    expect(existsSync(join(dir, "talaria.db"))).toBe(false);
   });
 
   it("rolls a failed transaction back", () => {
