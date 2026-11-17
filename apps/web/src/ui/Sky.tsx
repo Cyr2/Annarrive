@@ -3,7 +3,7 @@ export type SkyPhase = "base" | "build" | "peak" | "race";
 
 /**
  * « Ciel du matin »: the one backdrop behind the whole app, fixed, under every screen, sheet and onboarding.
- * A warm dawn gradient with its sun and a coral haze. It never moves, so the glass over it stays cheap to blur.
+ * A warm dawn gradient with its sun, a coral haze and two pale cool fields (styles/surfaces.css). It never moves, so the glass over it stays cheap to blur.
  */
 export function Sky({ phase = "base" }: { phase?: SkyPhase }) {
   return (

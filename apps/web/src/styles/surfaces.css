@@ -32,19 +32,37 @@
   height: 60vmax;
   background: var(--sky-haze);
 }
+/* The cool fields: a periwinkle one on the right under the first cards, a mint one low on the left. */
+.sky::before,
+.sky::after {
+  content: "";
+  position: absolute;
+  width: 115vw;
+  height: 55%;
+}
+.sky::before {
+  top: 20%;
+  right: -45vw;
+  background: var(--sky-field-cool);
+}
+.sky::after {
+  bottom: -8%;
+  left: -50vw;
+  background: var(--sky-field-mint);
+}
 
 /* ---- Surfaces (ui/Surface.tsx): the content layer ---- */
 
 @layer components {
   .surface {
     position: relative;
-    background: var(--surface-card);
+    background: var(--surface-sheen), var(--surface-card);
     border-radius: var(--radius-card);
     box-shadow: var(--shadow-card);
   }
   .surface[data-variant="inset"],
   .surface[data-variant="widget"] {
-    background: var(--surface-inset);
+    background: var(--surface-sheen), var(--surface-inset);
     border-radius: var(--radius-inset);
     box-shadow: var(--shadow-inset);
   }
@@ -84,6 +102,26 @@
     backdrop-filter: blur(var(--lg-blur)) saturate(180%);
     box-shadow: var(--surface-rim), var(--shadow-float);
   }
+  /* A toast: the same glass a little denser, set apart from the white cards it passes over. */
+  .ui-glass.ui-toast {
+    --lg-glass: var(--glass-toast);
+    box-shadow: var(--surface-rim), var(--shadow-toast);
+  }
+  /* The tab bar's lit rim before glisse paints its own (ui/controls.tsx loads it after the first gesture). */
+  .ui-tab-bar .lg-tab-bar-glass:not([data-rim]) {
+    box-shadow: var(--surface-rim);
+  }
+}
+
+/* Sonner (ui/Toast.tsx) stretches a toast across the screen and its list one gutter too far right: the pill keeps
+   its own width, centered. Unlayered and as specific as Sonner's own sheet plus one class, so it wins. */
+@media (max-width: 600px) {
+  [data-sonner-toaster] [data-sonner-toast].ui-toast {
+    right: calc(var(--mobile-offset-left) * 2);
+    width: fit-content;
+    max-width: calc(100% - var(--mobile-offset-left) * 2);
+    margin-inline: auto;
+  }
 }
 
 /* ---- Accessibility: solid surfaces without transparency, outlined with more contrast ---- */
@@ -96,6 +134,8 @@
     --surface-on-sheet: var(--color-on-color);
     --lg-glass: var(--surface-solid);
     --glass-float: var(--surface-solid);
+    --glass-toast: var(--surface-solid);
+    --surface-sheen: none;
     --lg-glass-active: #ffffff;
     --lg-blur: 0px;
   }

@@ -14,7 +14,7 @@ export default function ProgramScreen() {
   }, []);
   return (
     <Screen>
-      <h1 className="t-large">Programme</h1>
+      <h1 className="sr-only-label">Programme</h1>
       {program && today && <GoalCard program={program} today={today} />}
       {program && <PlanPhases program={program} />}
       {program && <ProgramSettings program={program} />}

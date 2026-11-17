@@ -42,16 +42,16 @@ export default function WeekScreen() {
   return (
     <Screen>
       <header className="flex flex-col gap-3">
-        <div className="flex items-center justify-between gap-2">
-          <h1 className="t-large">Semaine</h1>
-          {!week?.readOnly && <IconButton icon="plus" label="Ajouter" variant="tinted" tone="action" onClick={add} />}
-        </div>
-        <div className="flex items-center justify-between gap-1">
+        <h1 className="sr-only-label">Semaine</h1>
+        <div className="flex items-center gap-0.5">
           <IconButton icon="chevronLeft" label="Semaine précédente" onClick={() => setOffset(offset - 1)} />
-          <p aria-live="polite" className="t-strong m-0 text-center">
+          <p aria-live="polite" className="t-strong m-0 min-w-0 flex-1 text-center text-balance">
             {heading?.range ?? " "}
           </p>
           <IconButton icon="chevronRight" label="Semaine suivante" onClick={() => setOffset(offset + 1)} />
+          {!week?.readOnly && (
+            <IconButton icon="plus" label="Ajouter" variant="tinted" tone="action" className="ml-2" onClick={add} />
+          )}
         </div>
         {heading && <WeekStrip days={days} heading={heading} readOnly={Boolean(week?.readOnly)} />}
       </header>
