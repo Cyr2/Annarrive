@@ -1,0 +1,38 @@
+<!doctype html><html lang="fr"><meta charset="utf-8"><style>
+*{box-sizing:border-box;margin:0}
+body{font-family:-apple-system,"SF Pro Display","Segoe UI",sans-serif;color:#23303D;background:#FBF8F6;padding:44px;width:1600px}
+h1{font-size:32px;font-weight:800}.sub{color:#5B6775;font-size:16px;margin:6px 0 30px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:26px}
+.card{background:#fff;border-radius:28px;padding:26px;box-shadow:0 1px 2px rgba(35,48,61,.05),0 8px 24px rgba(35,48,61,.06)}
+.icon{width:200px;height:200px;border-radius:22.4%;margin:0 auto;position:relative;overflow:hidden;box-shadow:0 6px 18px rgba(35,48,61,.10)}
+.icon::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 1px 0 rgba(255,255,255,.9),inset 0 0 0 1px rgba(255,255,255,.5);background:radial-gradient(120% 60% at 30% 0%,rgba(255,255,255,.5),transparent 60%)}
+.icon svg{position:absolute;inset:0;width:100%;height:100%}
+.dawn{background:linear-gradient(170deg,#FFF3EA 0%,#FDE2D4 50%,#F9D3DA 100%)}
+.peach{background:linear-gradient(170deg,#FCD7C4 0%,#F8BFA9 55%,#F5B3BE 100%)}
+.small{display:flex;gap:16px;align-items:flex-end;justify-content:center;margin-top:20px}
+.small .icon{box-shadow:0 2px 6px rgba(35,48,61,.12)}
+h2{font-size:20px;font-weight:800;margin-top:22px}
+p{font-size:15px;color:#5B6775;margin-top:6px;line-height:1.4}
+.rec{display:inline-block;font-size:12px;font-weight:700;color:#0B6B52;background:#E3F3EC;border-radius:10px;padding:3px 9px;margin-left:8px;vertical-align:middle}
+</style>
+<svg width="0" height="0" style="position:absolute">
+<symbol id="ruban" viewBox="0 0 256 256"><g fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M62 216L128 46l66 170" stroke="#EE8A68" stroke-width="30"/><path d="M24 150l92 14M140 164l92-14" stroke="#6CC3A0" stroke-width="16"/></g></symbol>
+<symbol id="coureur" viewBox="0 0 256 256"><g fill="none" stroke="#EE8A68" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"><path d="M44 210l96-122 72 116"/><path d="M48 116l58 34h86"/></g><circle cx="168" cy="54" r="24" fill="#F6B860"/></symbol>
+<symbol id="route" viewBox="0 0 256 256"><g fill="none" stroke-linecap="round"><path d="M42 216L108 104M214 216L148 104" stroke="#EE8A68" stroke-width="30"/><path d="M86 168h84" stroke="#EE8A68" stroke-width="16"/></g><circle cx="128" cy="62" r="30" fill="#F6B860"/></symbol>
+<symbol id="dossard" viewBox="0 0 256 256"><path fill="#fff" fill-rule="evenodd" d="M58 50h140a30 30 0 0 1 30 30v96a30 30 0 0 1-30 30H58a30 30 0 0 1-30-30V80a30 30 0 0 1 30-30zm-6 24a9 9 0 1 0 18 0a9 9 0 1 0-18 0zm134 0a9 9 0 1 0 18 0a9 9 0 1 0-18 0zM52 182a9 9 0 1 0 18 0a9 9 0 1 0-18 0zm134 0a9 9 0 1 0 18 0a9 9 0 1 0-18 0z"/><g fill="none" stroke="#EE8A68" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"><path d="M88 178l40-104 40 104M104 140h48"/></g></symbol>
+</svg>
+<body>
+<h1>Annarrivé · pistes « A »</h1>
+<p class="sub">Un A majuscule, un signe de course qu'on comprend tout de suite, que des couleurs claires.</p>
+<div class="grid">
+ <div class="card"><div class="icon dawn"><svg viewBox="0 0 256 256"><use href="#ruban" transform="translate(28 28) scale(.78)"/></svg></div>
+  <div class="small"><div class="icon dawn" style="width:60px;height:60px"><svg viewBox="0 0 256 256"><use href="#ruban" transform="translate(28 28) scale(.78)"/></svg></div><div class="icon dawn" style="width:40px;height:40px"><svg viewBox="0 0 256 256"><use href="#ruban" transform="translate(28 28) scale(.78)"/></svg></div><svg viewBox="0 0 256 256" width="16" height="16"><use href="#ruban"/></svg></div>
+  <h2>1 · Ruban</h2><p>Le A franchit le ruban d'arrivée, qui se casse à son passage.</p></div>
+ <div class="card"><div class="icon dawn"><svg viewBox="0 0 256 256"><use href="#route" transform="translate(28 28) scale(.78)"/></svg></div>
+  <div class="small"><div class="icon dawn" style="width:60px;height:60px"><svg viewBox="0 0 256 256"><use href="#route" transform="translate(28 28) scale(.78)"/></svg></div><div class="icon dawn" style="width:40px;height:40px"><svg viewBox="0 0 256 256"><use href="#route" transform="translate(28 28) scale(.78)"/></svg></div><svg viewBox="0 0 256 256" width="16" height="16"><use href="#route"/></svg></div>
+  <h2>2 · Route</h2><p>Le A est une route qui file vers le soleil levant ; la barre est la ligne d'arrivée.</p></div>
+ <div class="card"><div class="icon peach"><svg viewBox="0 0 256 256"><use href="#dossard" transform="translate(28 28) scale(.78)"/></svg></div>
+  <div class="small"><div class="icon peach" style="width:60px;height:60px"><svg viewBox="0 0 256 256"><use href="#dossard" transform="translate(28 28) scale(.78)"/></svg></div><div class="icon peach" style="width:40px;height:40px"><svg viewBox="0 0 256 256"><use href="#dossard" transform="translate(28 28) scale(.78)"/></svg></div><svg viewBox="0 0 256 256" width="16" height="16" style="background:#F8BFA9;border-radius:3px"><use href="#dossard"/></svg></div>
+  <h2>3 · Dossard<span class="rec">recommandé</span></h2><p>Le A est le numéro d'Anna sur son dossard, épinglé aux quatre coins.</p></div>
+</div>
+</body></html>
