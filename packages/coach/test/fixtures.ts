@@ -53,7 +53,7 @@ export const hard = (id: string, start: string, durMin = 60, extra: Partial<Sess
     ...extra,
   });
 
-/** 6 × 800 m at I pace for VDOT 40 (3.68 min per fraction), recoveries of the same length. */
+/** 6 × 800 m at I pace for VDOT 40 (3.75 min per fraction), recoveries of the same length. */
 export const sixBy800 = (id = "q", start = ""): Session => {
   const frac = (0.8 * P40.I) / 60;
   const steps: Step[] = [
