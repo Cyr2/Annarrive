@@ -5,6 +5,7 @@ import {
   changeResponseSchema,
   type GarminActivity,
   type PlannedSession,
+  programViewSchema,
   proposalSchema,
   unavailablePreviewSchema,
 } from "@annarrive/protocol";
@@ -458,5 +459,37 @@ describe("watch latency", () => {
     await t.call("POST", "/api/sessions/far/move", { start: "2026-11-29T09:00" });
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(bridge.createWorkout).not.toHaveBeenCalled();
+  });
+});
+
+describe("coach adapter: the programme's plan", () => {
+  const program = async (t: Awaited<ReturnType<typeof ready>>) =>
+    programViewSchema.parse((await t.call("GET", "/api/program")).json);
+
+  it("returns the phases from the Monday after the start, and rates her target like onboarding", async () => {
+    const t = await ready();
+    t.setNow(SUNDAY_6PM);
+    expect(await program(t)).toEqual({ goal: null });
+
+    history(t, "2026-11-16");
+    t.stores.fitnessEstimate.put({ id: "2026-11-01", date: "2026-11-01", vdot: 40, source: "test" });
+    const goal = { distanceM: 10000, date: "2027-03-14", targetMin: 52 };
+    await t.call("PUT", "/api/program", { goal });
+    const { plan } = await program(t);
+    expect(plan?.firstMonday).toBe("2026-11-16");
+    expect(plan?.phases.map((p) => p.phase)).toEqual(["base", "dev", "spe", "taper"]);
+    expect(plan?.phases.reduce((sum, p) => sum + p.weeks, 0)).toBe(17);
+    expect(plan?.verdict).toBe("atteignable");
+
+    await t.call("PUT", "/api/program", { goal: { ...goal, targetMin: 30 } });
+    expect((await program(t)).plan?.verdict).toBe("ambitieux");
+    await t.call("PUT", "/api/program", { goal: { distanceM: 10000, date: "2027-03-14" } });
+    expect((await program(t)).plan?.verdict).toBeUndefined();
+  });
+
+  it("has no plan until her level is known", async () => {
+    const t = await ready();
+    await t.call("PUT", "/api/program", { goal: { distanceM: 10000, date: "2027-03-14" } });
+    expect((await program(t)).plan).toBeUndefined();
   });
 });

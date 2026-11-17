@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { FeasibilityClass } from "@annarrive/coach";
 import type {
   ActivityView,
   CalendarEvent,
@@ -16,6 +17,7 @@ import type {
   Profile,
   ProfilePatch,
   Program,
+  ProgramView,
   Today,
   Unavailable,
   UnavailablePreview,
@@ -50,6 +52,12 @@ const eventLabels: Record<CalendarEvent["kind"], string> = {
   revision: "Révision",
   unavailable: "Indispo",
 };
+
+/** P19: the coach's five classes shown as two, so a bold target never reads as a refusal. */
+function verdictOf(cls: FeasibilityClass | null): Feasibility["verdict"] {
+  if (cls === null || cls === "sans-cible") return null;
+  return cls === "ambitieux" || cls === "irréaliste" ? "ambitieux" : "atteignable";
+}
 
 const changeLabels: Record<ChangeOption, string> = {
   shorter: "Séance raccourcie",
@@ -144,12 +152,24 @@ export class PlanService {
     return this.#stores.program.get(CURRENT)?.value ?? { goal: null };
   }
 
+  /** The programme with the plan its weeks follow, for Programme and Semaine. */
+  programView(): ProgramView {
+    const program = this.program();
+    const plan = this.#coach.programPlan(this.coachState(), this.#now());
+    if (!plan) return program;
+    const verdict = verdictOf(plan.feasibility);
+    return {
+      ...program,
+      plan: { firstMonday: plan.firstMonday, phases: plan.phases, ...(verdict ? { verdict } : {}) },
+    };
+  }
+
   /** Onboarding stores the profile last, so a stored profile means it went through. */
   onboarding(): OnboardingStatus {
     return { done: this.#stores.profile.get(CURRENT) !== undefined };
   }
 
-  /** P19: the coach's five classes shown as two, so a bold target never reads as a refusal. */
+  /** P19 on the target she types, before the programme exists. */
   feasibility(goal: FeasibilityInput): Feasibility {
     const now = this.#now();
     const from = addDays(dateOf(now), -EFFORT_DAYS);
@@ -158,9 +178,7 @@ export class PlanService {
       .overlapping(from, now)
       .map((s) => s.vo2max)
       .findLast((v) => v !== undefined);
-    const cls = this.#coach.feasibility(goal, history, vo2max, now);
-    if (cls === null || cls === "sans-cible") return { verdict: null };
-    return { verdict: cls === "ambitieux" || cls === "irréaliste" ? "ambitieux" : "atteignable" };
+    return { verdict: verdictOf(this.#coach.feasibility(goal, history, vo2max, now)) };
   }
 
   today(): Today {

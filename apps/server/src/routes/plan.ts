@@ -69,7 +69,7 @@ export function planRoutes({ plan, changes, timetable, garmin, fitness }: Servic
       .patch("/profile", async (c) => c.json(plan.updateProfile(await body(c, profilePatchSchema))))
       .get("/onboarding", (c) => c.json(plan.onboarding()))
       .post("/feasibility", async (c) => c.json(plan.feasibility(await body(c, feasibilityInputSchema))))
-      .get("/program", (c) => c.json(plan.program()))
+      .get("/program", (c) => c.json(plan.programView()))
       .put("/program", async (c) => c.json(plan.updateProgram(await body(c, programSchema))))
       .post("/changes/:id/undo", (c) => {
         const entry = changes.undo(c.req.param("id"));

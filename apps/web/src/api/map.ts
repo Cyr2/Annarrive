@@ -11,6 +11,7 @@ import type {
   PlannedSession,
   Profile,
   ProfilePatch,
+  ProgramView,
   CalendarEvent as ServerEvent,
   ChatMessage as ServerMessage,
   Program as ServerProgram,
@@ -23,7 +24,7 @@ import type {
   UnavailablePreview,
   WatchInfo,
 } from "@annarrive/protocol";
-import { daysBetween, decimal, duration, minutesOf, relativeDay, timeOf, weekday } from "../lib/date.ts";
+import { daysBetween, decimal, duration, minutesOf, mondayOf, relativeDay, timeOf, weekday } from "../lib/date.ts";
 import type { GoalInput, NewEvent, UnavailableInput } from "./client.ts";
 import { ApiError } from "./errors.ts";
 import type {
@@ -198,8 +199,32 @@ export function toItems(days: DayView[]): Item[] {
   ]);
 }
 
-export function toWeek(week: ServerWeek, monday: string, lastSyncAt: string | null): Week {
-  return { monday, readOnly: week.readOnly, timetableCheckedAt: lastSyncAt ?? "", items: toItems(week.days) };
+type Plan = NonNullable<ProgramView["plan"]>;
+
+const PHASES: Record<Plan["phases"][number]["phase"], string> = {
+  base: "Base",
+  dev: "Développement",
+  spe: "Spécifique",
+  taper: "Affûtage",
+};
+const TARGET_TAGS = { atteignable: "reachable", ambitieux: "ambitious" } as const;
+
+/** The plan week of `monday`, from 1; the week the programme starts in is filled with week 1, as the coach does. */
+export function planWeek(plan: Plan | undefined, monday: string): { index: number; total: number } | undefined {
+  if (!plan) return undefined;
+  const total = plan.phases.reduce((sum, p) => sum + p.weeks, 0);
+  const index = Math.floor(daysBetween(plan.firstMonday, monday) / 7) + 1;
+  return index >= 0 && index <= total ? { index: Math.max(1, index), total } : undefined;
+}
+
+export function toWeek(week: ServerWeek, monday: string, lastSyncAt: string | null, plan?: Plan): Week {
+  return {
+    monday,
+    ...planWeek(plan, monday),
+    readOnly: week.readOnly,
+    timetableCheckedAt: lastSyncAt ?? "",
+    items: toItems(week.days),
+  };
 }
 
 function raceOf(distanceM: number): string {
@@ -350,7 +375,7 @@ function toStrength(days: DayView[]): Strength[] {
 }
 
 export type ProgramParts = {
-  program: ServerProgram;
+  program: ProgramView;
   profile: Profile;
   lastSyncAt: string | null;
   days: DayView[];
@@ -359,7 +384,9 @@ export type ProgramParts = {
 };
 
 export function toProgram({ program, profile, lastSyncAt, days, today, watch }: ProgramParts): Program {
-  const { goal } = program;
+  const { goal, plan } = program;
+  // Before or after the plan, no week is current and no "Semaine X sur Y" is shown.
+  const current = planWeek(plan, mondayOf(today));
   return {
     goal: goal
       ? {
@@ -367,12 +394,13 @@ export function toProgram({ program, profile, lastSyncAt, days, today, watch }: 
           distanceKm: goal.distanceM / 1000,
           date: goal.date,
           targetTime: goal.targetMin ? targetTime(goal.targetMin) : undefined,
+          targetTag: plan?.verdict && TARGET_TAGS[plan.verdict],
         }
       : // Maintenance: "Choisir un objectif" starts from a half marathon in 12 weeks.
         { race: "Semi-marathon", distanceKm: 21.1, date: today },
-    phases: [],
-    weekIndex: 0,
-    weekTotal: 0,
+    phases: (plan?.phases ?? []).filter((p) => p.weeks > 0).map((p) => ({ name: PHASES[p.phase], weeks: p.weeks })),
+    weekIndex: current?.index ?? 0,
+    weekTotal: current?.total ?? 0,
     phaseNote: "",
     maintenance: !goal,
     settings: toSettings(profile),

@@ -171,6 +171,31 @@ const REST_ADVICE = "Tes signaux de récupération sont bas : repos conseillé a
 /** The real `CoachPort`: translates the stored shapes and lets `@annarrive/coach` decide everything. */
 export const coachAdapter: CoachPort = {
   feasibility: coachFeasibility,
+  programPlan(st, now) {
+    const { goal } = st.program;
+    if (!goal || !st.fitness) return null;
+    const plan = coach.programPlan({
+      now,
+      goal,
+      ...(st.program.startedOn ? { planStart: st.program.startedOn } : {}),
+      settings: toSettings(st.settings),
+      history: st.activities,
+      fitness: { vdot: st.fitness.vdot, provisional: st.fitness.provisional === true },
+    });
+    const first = plan.weeks[0];
+    if (!first) return null;
+    const { base, dev, spe, taper } = plan.split;
+    return {
+      firstMonday: first.monday,
+      phases: [
+        { phase: "base", weeks: base },
+        { phase: "dev", weeks: dev },
+        { phase: "spe", weeks: spe },
+        { phase: "taper", weeks: taper },
+      ],
+      feasibility: plan.feasibility.class,
+    };
+  },
   buildWeek(st, weekStart, now) {
     if (!st.fitness) return { state: st, changes: [], warnings: [{ ruleId: "F10", message: NO_FITNESS }] };
     const week = inWeek(weekStart);

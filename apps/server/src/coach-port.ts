@@ -2,6 +2,7 @@ import {
   type FeasibilityClass,
   feasibility,
   initialFitness,
+  type Phase,
   phaseSplit,
   predictTime,
   totalWeeks,
@@ -42,6 +43,13 @@ export type CoachState = {
 
 /** A level change as the coach proposes it, before the server stores it. */
 export type ProposalDraft = Omit<Proposal, "id" | "status" | "decidedOn">;
+
+/** The programme the weeks follow (M2): week 1's Monday, the phases in order, and P19 on her target. */
+export type ProgramPlan = {
+  firstMonday: string;
+  phases: { phase: Phase; weeks: number }[];
+  feasibility: FeasibilityClass;
+};
 
 /** A `Change` or `Warning` of algo.md, reduced to what the screen shows. */
 export type CoachNote = { ruleId: string; message: string };
@@ -98,6 +106,8 @@ export interface CoachPort {
    * M2 `feasibility` (P19, P20) from F10's starting fitness: the class of the target she typed,
    * null when nothing is known of her form yet (NO_FITNESS_DATA). Never proposes a time.
    */
+  /** M2 `generatePlan` as `buildWeek` runs it; null without a goal or a known level. */
+  programPlan(st: CoachState, now: string): ProgramPlan | null;
   feasibility(
     goal: FeasibilityInput,
     history: Activity[],

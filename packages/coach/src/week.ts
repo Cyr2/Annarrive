@@ -3,7 +3,7 @@ import { paces } from "./fitness.ts";
 import { capWeekSpikes, weeklyCaps } from "./guards.ts";
 import { maintenanceWeek, postRaceWeek } from "./maintenance.ts";
 import { placeWeek } from "./placement.ts";
-import { buildWeek, generatePlan } from "./plan.ts";
+import { buildWeek, generatePlan, type Plan } from "./plan.ts";
 import type { Activity, CalEvent, Goal, Paces, Session, Settings, Warning } from "./types.ts";
 
 export type WeekRequest = {
@@ -47,15 +47,27 @@ function longest30d(history: Activity[], now: string): number {
   return recent.length ? Math.max(...recent) : Number.POSITIVE_INFINITY;
 }
 
+/** The programme `planWeek` follows: generated as of its start day, from the runs before it. */
+export function programPlan(
+  r: Pick<WeekRequest, "now" | "planStart" | "settings" | "history" | "fitness"> & { goal: NonNullable<Goal> },
+): Plan {
+  const start = r.planStart ?? r.now;
+  const profile = { level: "regular" as const, runsPerWeek: r.settings.runsPerWeek };
+  return generatePlan(
+    r.goal,
+    profile,
+    r.history.filter((a) => a.start < start),
+    r.fitness,
+    start,
+  );
+}
+
 /** The unplaced sessions the week calls for: plan week (M2), post-race week (P23) or maintenance (M9). */
 function content(r: WeekRequest, p: Paces): WeekPlan {
   const goal = r.goal;
   const history8w = pastWeeks(r.history, r.monday, LOOKBACK_WEEKS);
   if (goal && goal.date >= r.monday) {
-    const start = r.planStart ?? r.now;
-    const profile = { level: "regular" as const, runsPerWeek: r.settings.runsPerWeek };
-    const before = r.history.filter((a) => a.start < start);
-    const plan = generatePlan(goal, profile, before, r.fitness, start);
+    const plan = programPlan({ ...r, goal });
     const first = plan.weeks[0];
     // A programme started mid-week fills the rest of that week with its first plan week.
     const week = plan.weeks.find((w) => w.monday === r.monday) ?? (first && r.monday < first.monday ? first : null);

@@ -10,7 +10,7 @@ import {
   pushKeySchema,
   pushSubscriptionInputSchema,
   changeOptionsSchema as serverChangeOptionsSchema,
-  programSchema as serverProgramSchema,
+  programViewSchema as serverProgramSchema,
   todaySchema as serverTodaySchema,
   weekSchema as serverWeekSchema,
   timetableRefreshSchema,
@@ -198,8 +198,12 @@ export function createHttpApi(
     },
     async week(offset) {
       const monday = addDays(thisMonday(), offset * 7);
-      const [w, status] = await Promise.all([week(monday), get("/timetable", timetableStatusSchema)]);
-      return toWeek(w, monday, status.lastSyncAt);
+      const [w, status, program] = await Promise.all([
+        week(monday),
+        get("/timetable", timetableStatusSchema),
+        get("/program", serverProgramSchema),
+      ]);
+      return toWeek(w, monday, status.lastSyncAt, program.plan);
     },
     async program() {
       const [program, profile, status, days, watch] = await Promise.all([
