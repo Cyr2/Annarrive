@@ -6,6 +6,16 @@
 @import "./surfaces.css";
 @import "./controls.css";
 
+/* Self-hosted so the PWA precaches it and it works offline. Latin only (all the app writes), one variable
+   file for every weight; index.html preloads the same file. */
+@font-face {
+  font-family: "Outfit";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("../../node_modules/@fontsource-variable/outfit/files/outfit-latin-wght-normal.woff2") format("woff2");
+}
+
 /* In the base layer, so every Tailwind utility and component class can override it. */
 @layer base {
   html {
@@ -13,7 +23,7 @@
     /* Under the sky, for the instant before it paints and behind a sheet's page as it steps back. */
     background: var(--color-sky-4);
     color: var(--color-ink);
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    font-family: var(--font-sans);
     font-variant-numeric: tabular-nums;
     -webkit-font-smoothing: antialiased;
     -webkit-tap-highlight-color: transparent;

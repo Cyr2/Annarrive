@@ -25,7 +25,7 @@ export function RefreshRow({ checkedAt }: { checkedAt?: string }) {
     ? "Lecture en cours…"
     : (state.result ?? (checkedAt ? `À jour ${ago(checkedAt, new Date())}` : "Se relit tout seul"));
   return (
-    <Surface variant="inset" className="flex min-h-14 items-center gap-3 py-1 pr-1 pl-4">
+    <Surface variant="inset" className="flex min-h-14 items-center gap-2 py-1 pr-1 pl-4">
       <Icon name={state.result ? "checkCircle" : "class"} size={18} className="flex-none text-ink-2" />
       <span className="flex min-w-0 flex-1 flex-col py-1.5">
         <span className="t-label text-ink">Emploi du temps</span>
@@ -35,7 +35,7 @@ export function RefreshRow({ checkedAt }: { checkedAt?: string }) {
       </span>
       <TextButton
         icon="change"
-        className={cx("t-label flex-none px-3", state.reading && "week-spin")}
+        className={cx("t-label flex-none px-2", state.reading && "week-spin")}
         disabled={state.reading}
         onClick={() => void refresh()}
       >

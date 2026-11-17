@@ -20,6 +20,21 @@ import type { Services } from "./services/index.ts";
 
 z.config(z.locales.fr());
 
+/** The app's built text font (index.html preloads it), so the login pages draw in it too; the system font without a build. */
+export function fontFace(webDist: string | undefined): string {
+  if (!webDist) return "";
+  let html: string;
+  try {
+    html = readFileSync(join(webDist, "index.html"), "utf8");
+  } catch {
+    return "";
+  }
+  const href = /href="(\/assets\/outfit-[\w-]+\.woff2)"/.exec(html)?.[1];
+  return href
+    ? `@font-face{font-family:Outfit;font-weight:400 700;font-display:swap;src:url(${href}) format("woff2")}`
+    : "";
+}
+
 export const VERSION = "0.1.0";
 // Sent as `__Host-annarrive_session`: https only, this host only, so a sibling subdomain cannot plant one.
 const SESSION_COOKIE = "annarrive_session";
@@ -111,7 +126,7 @@ const loginTokenSchema = z.string().regex(/^[\w-]{1,200}$/, "Lien de connexion i
  */
 const LOGIN_CSS = [
   "*{box-sizing:border-box}",
-  "html{background:#f7f9fb;color:#23303d;font:17px/1.35 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%}",
+  "html{background:#f7f9fb;color:#23303d;font:17px/1.35 Outfit,-apple-system,BlinkMacSystemFont,system-ui,sans-serif;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%}",
   // The app's calm sky: a soft apricot wash fading to warm near-white, still (no script, no animation on a page seen for a second).
   "body{margin:0;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:24px;padding:max(24px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom));background:radial-gradient(70% 30% at 15% 0%,rgb(255 218 196/.26),rgb(255 218 196/0)),linear-gradient(180deg,#fdede3 0%,#fdf1ea 18%,#fbf6f2 40%,#f9f6f3 100%) fixed}",
   "header{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;max-width:400px}",
@@ -120,7 +135,7 @@ const LOGIN_CSS = [
   "p{margin:0;color:#434e5a}",
   "main{width:100%;max-width:400px;display:flex;flex-direction:column;gap:12px;text-align:center}",
   "form{width:100%}",
-  "button,.quiet{display:flex;align-items:center;justify-content:center;width:100%;min-height:50px;border:0;border-radius:25px;font:600 17px -apple-system,BlinkMacSystemFont,system-ui,sans-serif;text-decoration:none;cursor:pointer;-webkit-tap-highlight-color:transparent}",
+  "button,.quiet{display:flex;align-items:center;justify-content:center;width:100%;min-height:50px;border:0;border-radius:25px;font:600 17px Outfit,-apple-system,BlinkMacSystemFont,system-ui,sans-serif;text-decoration:none;cursor:pointer;-webkit-tap-highlight-color:transparent}",
   "button{background:#0967d6;color:#fff;box-shadow:inset 0 1px 0 rgb(255 255 255/.35),0 8px 22px rgb(9 103 214/.35)}",
   "button:active,.quiet:active{transform:scale(.97)}",
   ".quiet{background:rgb(255 255 255/.5);-webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);color:#0967d6;box-shadow:inset 0 0 0 .5px rgb(255 255 255/.75),inset 0 1px 0 rgb(255 255 255/.95),0 6px 20px rgb(90 40 10/.1)}",
@@ -131,12 +146,13 @@ const LOGIN_CSS = [
 ].join("");
 
 /** Server pages of the login: the app's sky, the logo's slot, a title and one sentence, then what to do. */
-const loginPage = (title: string, lead: string, actions: string) =>
-  `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="referrer" content="no-referrer"><meta name="theme-color" content="#FDEDE3"><meta name="color-scheme" content="light"><title>Connexion à Annarrivé</title><style>${LOGIN_CSS}</style></head><body><header><span class="logo" role="img" aria-label="Annarrivé">A</span><h1>${title}</h1>${lead}</header><main>${actions}</main></body></html>`;
+const loginPage = (font: string, title: string, lead: string, actions: string) =>
+  `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="referrer" content="no-referrer"><meta name="theme-color" content="#FDEDE3"><meta name="color-scheme" content="light"><title>Connexion à Annarrivé</title><style>${font}${LOGIN_CSS}</style></head><body><header><span class="logo" role="img" aria-label="Annarrivé">A</span><h1>${title}</h1>${lead}</header><main>${actions}</main></body></html>`;
 
 /** A login that failed: what happened, and the way out. */
-const loginError = (message: string) =>
+const loginError = (font: string, message: string) =>
   loginPage(
+    font,
     "Connexion impossible",
     `<p class="notice" role="alert">${message}</p>`,
     `<p>Un lien sert une seule fois et expire au bout de 15 minutes. Demande un nouveau lien, puis ouvre-le directement.</p><a class="quiet" href="/">Ouvrir Annarrivé</a>`,
@@ -148,6 +164,7 @@ export type AppOptions = { services: Services; sessionSecret: string; webDist?: 
 export function createApp({ services, sessionSecret, webDist }: AppOptions): Hono {
   const app = new Hono();
   app.use(securityHeaders(inlineScriptHashes(webDist)));
+  const font = fontFace(webDist);
 
   app.onError((error, c) => {
     if (error instanceof AppError) return c.json({ error: error.message }, error.status);
@@ -165,9 +182,11 @@ export function createApp({ services, sessionSecret, webDist }: AppOptions): Hon
   app.get("/api/auth/login", (c) => {
     const parsed = loginTokenSchema.safeParse(c.req.query("token"));
     c.header("Cache-Control", "no-store");
-    if (!parsed.success) return c.html(loginError("Ce lien de connexion est incomplet : copie-le en entier."), 400);
+    if (!parsed.success)
+      return c.html(loginError(font, "Ce lien de connexion est incomplet : copie-le en entier."), 400);
     return c.html(
       loginPage(
+        font,
         "Bienvenue sur Annarrivé",
         "<p>Ce lien ouvre Annarrivé sur ce téléphone.</p>",
         `<form method="post" action="/api/auth/login"><input type="hidden" name="token" value="${parsed.data}"><button type="submit">Se connecter</button></form><small>Pas de mot de passe : tu restes connectée ensuite.</small>`,
@@ -183,7 +202,7 @@ export function createApp({ services, sessionSecret, webDist }: AppOptions): Hon
       if (site && site !== "same-origin") throw new AppError(403, "Ouvre ton lien de connexion directement.");
       sessionId = services.auth.login(loginTokenSchema.parse((await c.req.parseBody()).token));
     } catch (error) {
-      if (error instanceof AppError) return c.html(loginError(error.message), error.status);
+      if (error instanceof AppError) return c.html(loginError(font, error.message), error.status);
       throw error;
     }
     await setSignedCookie(c, SESSION_COOKIE, sessionId, sessionSecret, {

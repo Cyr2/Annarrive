@@ -61,7 +61,7 @@ Paces, times and distances are never colored: the type is said by a `SessionChip
 
 ### Type (`styles/app.css`)
 
-One scale: `.t-large` 28 (page title, tight tracking), `.t-title` 20 (section), `.t-body` / `.t-strong` 17, `.t-sub` / `.t-label` 15, `.t-cap` 13, `.t-tab` 11. Big numbers: `.t-figure` 40 and `.t-num` 28, tabular, through `PaceValue`. System font (SF Pro on iPhone).
+One scale: `.t-large` 28 (page title, tight tracking), `.t-title` 20 (section), `.t-body` / `.t-strong` 17, `.t-sub` / `.t-label` 15, `.t-cap` 13, `.t-tab` 11. Big numbers: `.t-figure` 40 and `.t-num` 28, tabular, through `PaceValue`. Outfit, self-hosted (latin, one variable file, preloaded by `index.html`), through `--font-sans`.
 
 Other utilities: `.row` (grouped list row with hairlines between rows), `.hairline-top`, `.bubble-reggie` / `.bubble-user`, `.sr-only-label`, `.fade-x` (fading edges of a horizontal scroller), `.press`, `.select-anim`, `.expand`, `.flip-in`, `.roll`, `.msg`, `.lifted`, `.screen-in` (`styles/motion.css`).
 

@@ -20,6 +20,8 @@ export default function Toast() {
         right: "var(--spacing-gutter)",
       }}
       visibleToasts={1}
+      // Sonner's own sheet sets the system font on its list.
+      style={{ fontFamily: "inherit" }}
       toastOptions={{
         unstyled: true,
         classNames: {
