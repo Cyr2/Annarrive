@@ -26,12 +26,28 @@ const PAD = 8;
 /** The bubble's column: 16 px gutters, at most 384 px wide, centered. */
 const BUBBLE_MAX = 384;
 const ARROW = 14;
+/** The room a bubble needs next to its target: three lines of text and its buttons. */
+const BUBBLE_ROOM = 200;
 
 /** Where the arrow sits along the bubble: under the target's center, kept off the rounded corners. */
 function arrowLeft(rect: DOMRect): number {
   const width = Math.min(innerWidth - 32, BUBBLE_MAX);
   const left = (innerWidth - width) / 2;
   return Math.min(Math.max(rect.left + rect.width / 2 - left, 28), width - 28);
+}
+
+/** Where the bubble goes: on the roomier side of its target, or centered when there is none. */
+function placeBubble(rect: DOMRect | undefined) {
+  if (!rect) return { above: false, fits: false, place: { top: "50%", transform: "translateY(-50%)" } };
+  const above = rect.top + rect.height / 2 > innerHeight / 2;
+  // A tall target on a small phone leaves no room on either side: the bubble then sits at the bottom, over it.
+  const fits = (above ? rect.top : innerHeight - rect.bottom) >= BUBBLE_ROOM;
+  const place = !fits
+    ? { bottom: `calc(env(safe-area-inset-bottom) + ${PAD * 2}px)` }
+    : above
+      ? { bottom: innerHeight - rect.top + PAD * 2 }
+      : { top: rect.bottom + PAD * 2 };
+  return { above, fits, place };
 }
 
 function useTargetRect(selector: string | undefined) {
@@ -64,12 +80,7 @@ export function Tour({ onEnd }: { onEnd: () => void }) {
     return () => removeEventListener("keydown", onKey);
   }, [onEnd]);
 
-  const above = rect !== undefined && rect.top + rect.height / 2 > innerHeight / 2;
-  const place = !rect
-    ? { top: "50%", transform: "translateY(-50%)" }
-    : above
-      ? { bottom: innerHeight - rect.top + PAD * 2 }
-      : { top: rect.bottom + PAD * 2 };
+  const { above, fits, place } = placeBubble(rect);
 
   return (
     <MotionConfig reducedMotion="user">
@@ -99,7 +110,7 @@ export function Tour({ onEnd }: { onEnd: () => void }) {
             data-variant="sheet"
             className="surface relative flex flex-col gap-4 rounded-card p-5 shadow-float"
           >
-            {rect && (
+            {rect && fits && (
               <span
                 aria-hidden="true"
                 data-variant="sheet"

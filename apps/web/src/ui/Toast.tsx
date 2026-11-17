@@ -2,6 +2,9 @@ import { useEffect } from "react";
 import { Toaster } from "sonner";
 import { useToastHost } from "./toast.ts";
 
+// Above the tab bar, and above Reggie's field when it is on screen (Composer.tsx sets --composer-height).
+const BOTTOM = "calc(env(safe-area-inset-bottom) + var(--space-above-tabbar) + var(--composer-height, 0px))";
+
 /** The banner sits above the floating tab bar, in control glass (Liquid Glass recipe in CSS: Sonner draws its own element), its action in the action blue. */
 export default function Toast() {
   useEffect(() => {
@@ -10,9 +13,9 @@ export default function Toast() {
   return (
     <Toaster
       position="bottom-center"
-      offset={{ bottom: "calc(env(safe-area-inset-bottom) + var(--space-above-tabbar))" }}
+      offset={{ bottom: BOTTOM }}
       mobileOffset={{
-        bottom: "calc(env(safe-area-inset-bottom) + var(--space-above-tabbar))",
+        bottom: BOTTOM,
         left: "var(--spacing-gutter)",
         right: "var(--spacing-gutter)",
       }}

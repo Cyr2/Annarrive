@@ -23,6 +23,14 @@ describe("shapeOf", () => {
     expect(bars.map((b) => b.level)).toEqual([1, 0.3, 1, 0.3, 1, 0.3, 1]);
   });
 
+  it("draws every block of a step, not only the first", () => {
+    const bars = shapeOf([
+      { label: "10 × 400 m + 5 × 200 m", tone: "hard" },
+      { label: "Récup en trottinant", tone: "muted" },
+    ]);
+    expect(bars.filter((b) => b.level === 1)).toHaveLength(15);
+  });
+
   it("reads hours and minutes, and caps the repeats", () => {
     expect(minutesIn("1 h 10 en endurance")).toBe(70);
     expect(minutesIn("45 min en endurance")).toBe(45);

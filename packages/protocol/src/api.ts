@@ -214,12 +214,34 @@ export type ActivityView = z.infer<typeof activityViewSchema>;
 /** "Comment c'était ?" after a run the watch did not ask about. */
 export const feelInputSchema = z.object({ feel: feelSchema });
 
+export const painSiteSchema = z.enum(["mollet", "genou", "cheville", "hanche", "pied", "autre"]);
+export type PainSite = z.infer<typeof painSiteSchema>;
+
+/** Anna's health status, shaped like `Health` in algo.md M7. */
+export const healthStatusSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("ok") }),
+  z.object({ kind: z.literal("sick"), since: localDateSchema }),
+  z.object({ kind: z.literal("cold"), since: localDateSchema }),
+  z.object({
+    kind: z.literal("pain"),
+    since: localDateSchema,
+    level: z.number().int().min(0).max(10),
+    where: painSiteSchema,
+    until: localDateSchema.optional(),
+    orientationSent: z.boolean(),
+  }),
+  z.object({ kind: z.literal("recovering"), easyUntil: localDateSchema, qEasierUntil: localDateSchema }),
+]);
+export type HealthStatus = z.infer<typeof healthStatusSchema>;
+
 export const todaySchema = z.object({
   date: localDateSchema,
   session: sessionViewSchema.nullable(),
   events: z.array(calendarEventSchema),
   /** The latest run of the day, null before she runs. */
   activity: activityViewSchema.nullable(),
+  /** What she declared (Pas dispo): the app offers « Ça va mieux » only while she is sick or hurt. */
+  health: healthStatusSchema,
 });
 export type Today = z.infer<typeof todaySchema>;
 
@@ -266,26 +288,6 @@ export const pushUnsubscribeInputSchema = pushSubscriptionInputSchema.pick({ end
 /** Null when the server has no VAPID keys: the app then hides the notifications switch. */
 export const pushKeySchema = z.object({ publicKey: z.string().nullable() });
 export type PushKey = z.infer<typeof pushKeySchema>;
-
-export const painSiteSchema = z.enum(["mollet", "genou", "cheville", "hanche", "pied", "autre"]);
-export type PainSite = z.infer<typeof painSiteSchema>;
-
-/** Anna's health status, shaped like `Health` in algo.md M7. */
-export const healthStatusSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("ok") }),
-  z.object({ kind: z.literal("sick"), since: localDateSchema }),
-  z.object({ kind: z.literal("cold"), since: localDateSchema }),
-  z.object({
-    kind: z.literal("pain"),
-    since: localDateSchema,
-    level: z.number().int().min(0).max(10),
-    where: painSiteSchema,
-    until: localDateSchema.optional(),
-    orientationSent: z.boolean(),
-  }),
-  z.object({ kind: z.literal("recovering"), easyUntil: localDateSchema, qEasierUntil: localDateSchema }),
-]);
-export type HealthStatus = z.infer<typeof healthStatusSchema>;
 
 /** "Pas dispo" (algo.md EV7 to EV12); `until` absent means today only, ignored when sick. */
 export const unavailableSchema = z.intersection(
