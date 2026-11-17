@@ -53,6 +53,12 @@ export function RaceStep() {
             value={draft.date}
             onChange={(date) => update({ date })}
           />
+          <RowInput
+            label="Heure de départ"
+            type="time"
+            value={draft.startTime}
+            onChange={(startTime) => update({ startTime })}
+          />
         </Group>
       )}
       {closest && <p className="t-cap m-0 px-4">Ton plan suivra celui du {closest.label.toLowerCase()}.</p>}

@@ -9,7 +9,7 @@ import type { StrengthDraft } from "./onboarding.ts";
 import { BigChoice, DayChips, update, useDraft } from "./parts.tsx";
 
 export function WeekStep() {
-  const { runsPerWeek, noRunDays } = useDraft();
+  const { runsPerWeek, noRunDays, longRunDay } = useDraft();
   return (
     <>
       <Section title="Courses par semaine">
@@ -28,6 +28,16 @@ export function WeekStep() {
       </Section>
       <Section title="Jours sans course" footnote="Facultatif. Laisse vide si tous les jours te vont.">
         <DayChips label="Jours sans course" value={noRunDays} onChange={(days) => update({ noRunDays: days })} />
+      </Section>
+      <Section title="Ta sortie longue" footnote="Le jour où tu as le plus de temps.">
+        <Group>
+          <RowSelect
+            label="Plutôt le"
+            value={String(longRunDay)}
+            options={DAY_OPTIONS}
+            onChange={(day) => update({ longRunDay: Number(day) })}
+          />
+        </Group>
       </Section>
     </>
   );

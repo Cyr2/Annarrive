@@ -17,6 +17,8 @@ test("ajouter une séance de muscu « Travaille les jambes » depuis le + la pla
 
   const added = banner(page, "Muscu ajoutée");
   await expect(added).toBeVisible();
+  // The long runs of this Sunday and the next are now less than 24 h after it: both move, and the banner says so (EV22).
+  await expect(added).toContainText("2 courses déplacées : moins de 24 h après ta séance jambes");
   const saturday = page.locator("#day-2026-11-21").getByRole("button", { name: /Squats/ });
   await expect(saturday).toBeVisible();
   await expect(saturday).toContainText("Jambes");

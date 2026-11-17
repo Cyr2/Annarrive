@@ -33,6 +33,16 @@ describe("buildSession (C1)", () => {
     expect(t.durMin).toBe(40);
   });
 
+  it("builds short hills as real hill sprints inside an easy run (C-9)", () => {
+    const h = buildSession("COTES_C", { ...ctx, phase: "base", durMin: 48 });
+    expect(h.steps.map((s) => s.kind)).toEqual(["warmup", "hills", "recover", "cooldown"]);
+    expect(h.steps[1]).toMatchObject({ reps: 6, durMin: 10 / 60, target: { rpe: 8 } });
+    expect(h.steps[1]?.target.paceSKm).toBeUndefined();
+    expect(h.steps[2]).toMatchObject({ reps: 5, durMin: 1.5 });
+    expect(h.durMin).toBeLessThanOrEqual(48);
+    expect(isHard(h)).toBe(false);
+  });
+
   it("sizes an I to 3 × 3 min with 3 min recoveries (C-2)", () => {
     const i = buildSession("I", ctx);
     expect(work(i)[0]).toMatchObject({ reps: 3, durMin: 3 });

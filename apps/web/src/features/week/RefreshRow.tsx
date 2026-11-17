@@ -8,10 +8,10 @@ import { usePlan } from "../plan/store.ts";
 import { refreshLine } from "./week.ts";
 
 /**
- * At the foot of the week: when the timetable was last read, and Actualiser. It reads itself on its own, so
- * this stays quiet; after a manual read the result stays written here until she leaves the week.
+ * At the foot of the week: when the timetable was last read, and Actualiser. It reads itself on its own; what
+ * such a read changed today stays written here, and after a manual read its result does until she leaves.
  */
-export function RefreshRow({ checkedAt }: { checkedAt?: string }) {
+export function RefreshRow({ checkedAt, change }: { checkedAt?: string; change?: string }) {
   const [state, setState] = useState<{ reading?: boolean; result?: string }>({});
   const refresh = async () => {
     setState({ reading: true });
@@ -23,7 +23,7 @@ export function RefreshRow({ checkedAt }: { checkedAt?: string }) {
   };
   const line = state.reading
     ? "Lecture en cours…"
-    : (state.result ?? (checkedAt ? `À jour ${ago(checkedAt, new Date())}` : "Se relit tout seul"));
+    : (state.result ?? change ?? (checkedAt ? `À jour ${ago(checkedAt, new Date())}` : "Se relit tout seul"));
   return (
     <Surface variant="inset" className="flex min-h-14 items-center gap-2 py-1 pr-1 pl-4">
       <Icon name={state.result ? "checkCircle" : "class"} size={18} className="flex-none text-ink-2" />

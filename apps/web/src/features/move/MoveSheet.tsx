@@ -5,6 +5,7 @@ import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
 import { Button } from "../../ui/controls.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
 import { Surface } from "../../ui/Surface.tsx";
+import { TextButton } from "../../ui/TextButton.tsx";
 import { findRun, todayOf } from "../plan/selectors.ts";
 import { usePlan } from "../plan/store.ts";
 import type { SheetProps } from "../sheets/SheetHost.tsx";
@@ -50,6 +51,8 @@ export default function MoveSheet({ spec, ...sheet }: SheetProps<"move">) {
         >
           {slot ? `Déplacer à ${shortMoment(slot, today)}` : "Choisis un moment"}
         </Button>
+        {/* Skipping is its own decision, never made up later (algo.md EV21). */}
+        <TextButton onClick={() => void act((api) => api.skip(run.id))}>Passer cette séance</TextButton>
       </>
     )
   );

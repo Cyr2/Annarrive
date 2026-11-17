@@ -4,9 +4,11 @@ import {
   type CalendarEvent,
   changeResponseSchema,
   type GarminActivity,
+  moveSlotsSchema,
   type PlannedSession,
   programViewSchema,
   proposalSchema,
+  todaySchema,
   unavailablePreviewSchema,
 } from "@annarrive/protocol";
 import { describe, expect, it, vi } from "vitest";
@@ -228,11 +230,13 @@ describe("coach adapter: Anna's actions", () => {
     expect(t.stores.plannedSession.get("easy")?.start).toBe("2026-11-18T18:00");
   });
 
-  it("proposes move slots with a French reason", async () => {
+  it("proposes move slots with a French reason, the day after among them (A6)", async () => {
     const t = await ready();
     t.stores.plannedSession.put(built("easy", "E", "2026-11-18T18:00"));
-    const slots = (await t.call("GET", "/api/sessions/easy/slots")).json;
-    expect(slots).toMatchObject({ best: expect.arrayContaining([expect.objectContaining({ reason: "même jour" })]) });
+    const slots = moveSlotsSchema.parse((await t.call("GET", "/api/sessions/easy/slots")).json);
+    expect(slots.best).toHaveLength(3);
+    expect(slots.best.every((b) => b.reason.length > 0)).toBe(true);
+    expect(slots.best.some((b) => b.slot.start.startsWith("2026-11-19"))).toBe(true);
   });
 
   it("offers Changer options never above the plan and applies one", async () => {
@@ -340,6 +344,68 @@ describe("coach adapter: Anna's actions", () => {
     const run = t.stores.plannedSession.get("easy");
     expect(run?.start).not.toBe("2026-11-17T14:00");
     expect(run?.start.slice(0, 10)).toBe("2026-11-17");
+  });
+
+  it("moves tonight's long run when she adds legs right after it, and says which and why (EV22)", async () => {
+    const t = await ready();
+    t.stores.plannedSession.put(built("long", "L", "2026-11-16T17:00", 66));
+    const r = await change(t, "POST", "/api/events", {
+      ...legs,
+      start: "2026-11-16T18:30",
+      end: "2026-11-16T19:30",
+    });
+    expect(t.stores.plannedSession.get("long")?.start).not.toBe("2026-11-16T17:00");
+    expect(r.change?.summary).toMatch(
+      /^Muscu ajoutée · Sortie longue passée à .+ : moins d'1 h entre ta course et ta séance jambes$/,
+    );
+    expect(r.warnings.join()).not.toContain("conflit");
+    await t.call("POST", `/api/changes/${r.change?.id}/undo`);
+    expect(t.stores.plannedSession.get("long")?.start).toBe("2026-11-16T17:00");
+  });
+
+  it("asks about a session that is over, then records it done or skipped, never made up (EV21)", async () => {
+    const t = await ready();
+    t.stores.plannedSession.put(built("morning", "E", "2026-11-16T07:00"));
+    t.stores.plannedSession.put(built("later", "E", "2026-11-18T18:00"));
+    const today = async () => todaySchema.parse((await t.call("GET", "/api/today")).json);
+    expect((await today()).toConfirm?.id).toBe("morning");
+
+    const done = await change(t, "POST", "/api/sessions/morning/done");
+    expect(done.change?.summary).toBe("Séance faite");
+    expect(t.stores.plannedSession.get("morning")?.status).toBe("done");
+    expect((await today()).toConfirm).toBeNull();
+
+    await t.call("POST", `/api/changes/${done.change?.id}/undo`);
+    const skipped = await change(t, "POST", "/api/sessions/morning/skip");
+    expect(skipped.change?.summary).toBe("Séance passée");
+    expect(t.stores.plannedSession.get("morning")?.status).toBe("skipped");
+    expect(t.stores.plannedSession.get("later")?.start).toBe("2026-11-18T18:00");
+    // A session still ahead cannot be done yet, but can be passed.
+    expect((await t.call("POST", "/api/sessions/later/done")).status).toBe(400);
+    expect((await change(t, "POST", "/api/sessions/later/skip")).status).toBe(200);
+  });
+
+  it("rebuilds the weeks with her settings at the end of onboarding: every run asked for, none today (P25)", async () => {
+    const t = await ready();
+    t.stores.fitnessEstimate.put({ id: "2026-11-01", date: "2026-11-01", vdot: 40, source: "test" });
+    // Onboarding sends the goal first, with the default profile, then her own settings.
+    await t.call("PUT", "/api/program", { goal: { distanceM: 21097.5, date: "2027-03-14" } });
+    await change(t, "PATCH", "/api/profile", {
+      runsPerWeek: 4,
+      earliest: "17:00",
+      latestEnd: "21:30",
+      noRunDays: [],
+      bedtime: "23:00",
+      useSleepHr: true,
+      travelMin: 0,
+      cycleTracking: false,
+    });
+    const next = t.stores.plannedSession.overlapping("2026-11-23T00:00", "2026-11-30T00:00");
+    expect(next).toHaveLength(4);
+    expect(next.every((s) => s.start.slice(11) >= "17:00")).toBe(true);
+    expect(next.find((s) => s.type === "L")?.start.slice(0, 10)).toBe("2026-11-29");
+    const thisWeek = t.stores.plannedSession.overlapping("2026-11-16T00:00", "2026-11-23T00:00");
+    expect(thisWeek.some((s) => s.start.startsWith("2026-11-16"))).toBe(false);
   });
 
   it("replans the weeks when the settings change", async () => {
@@ -595,7 +661,10 @@ describe("coach adapter: the programme's plan", () => {
     });
 
     await t.call("PUT", "/api/program", { goal: { ...goal, date: "2027-04-11" } });
-    expect((await program(t)).plan?.firstMonday).toBe("2026-11-30");
+    // Restarted on a Wednesday: that week, which runs plan week 1, is « Semaine 1 » and the next one week 2.
+    const restarted = (await program(t)).plan;
+    expect(restarted?.firstMonday).toBe("2026-11-23");
+    expect(restarted?.phases[0]?.weeks).toBeGreaterThan(0);
   });
 
   it("has no plan until her level is known", async () => {

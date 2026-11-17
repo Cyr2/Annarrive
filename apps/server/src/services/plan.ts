@@ -18,6 +18,7 @@ import type {
   ProfilePatch,
   Program,
   ProgramView,
+  SessionView,
   Today,
   Unavailable,
   UnavailablePreview,
@@ -26,9 +27,18 @@ import type {
 } from "@annarrive/protocol";
 import { type CoachPort, type CoachResult, type CoachState, type DailyDecisionResult, slotFor } from "../coach-port.ts";
 import { InvalidInputError, NotFoundError, ReadOnlyError } from "../errors.ts";
-import { watchStatus } from "../garmin/workout.ts";
+import { watchStatus, workoutNames } from "../garmin/workout.ts";
 import type { Activity, Stores } from "../storage/stores.ts";
-import { addDays, type Clock, dateOf, frenchMoment, isoWeekStart, mondayOf, toParisLocal } from "../time.ts";
+import {
+  addDays,
+  addMinutes,
+  type Clock,
+  dateOf,
+  frenchMoment,
+  isoWeekStart,
+  mondayOf,
+  toParisLocal,
+} from "../time.ts";
 import { afterDelete, occurrences } from "./calendar.ts";
 import type { ChangeService, PlanWrite } from "./changes.ts";
 import type { NotificationService } from "./notifications.ts";
@@ -117,6 +127,24 @@ export function movedRunsText(count: number): string {
   return count === 1 ? "1 course déplacée" : `${count} courses déplacées`;
 }
 
+/** « Footing passé », « Sortie longue passée », « Côtes courtes passées ». */
+function movedWord(type: PlannedSession["type"]): string {
+  if (type === "COTES_C" || type === "COTES_L") return "passées";
+  return ["RECUP", "L", "R", "SPE", "RACE"].includes(type) ? "passée" : "passé";
+}
+
+/** One run: which, where to and why (« Sortie longue passée à mercredi 17:00 : moins de 24 h après… »). */
+function movedText(moved: [PlannedSession, PlannedSession][], result: CoachResult): string {
+  const ids = new Set(moved.map(([, s]) => s.id));
+  const why = result.changes.find((c) => c.sessionId !== undefined && ids.has(c.sessionId) && c.message)?.message;
+  const [pair] = moved;
+  const what =
+    moved.length === 1 && pair
+      ? `${workoutNames[pair[1].type]} ${movedWord(pair[1].type)} à ${frenchMoment(pair[1].start)}`
+      : movedRunsText(moved.length);
+  return why ? `${what} : ${why.charAt(0).toLowerCase()}${why.slice(1)}` : what;
+}
+
 /** Pairs [before, after] of the sessions the coach gave a new start. */
 function movedSessions(before: CoachState, result: CoachResult): [PlannedSession, PlannedSession][] {
   return result.state.sessions.flatMap((s) => {
@@ -184,7 +212,8 @@ export class PlanService {
   }
 
   today(): Today {
-    const date = dateOf(this.#now());
+    const now = this.#now();
+    const date = dateOf(now);
     const day = this.#days(date, 1)[0];
     const activity = this.#stores.activity.overlapping(`${date}T00:00`, `${addDays(date, 1)}T00:00`).at(-1);
     return {
@@ -193,7 +222,24 @@ export class PlanService {
       events: day?.events ?? [],
       activity: activity ? toActivityView(activity) : null,
       health: this.health(),
+      toConfirm: this.#toConfirm(now),
     };
+  }
+
+  /**
+   * EV17: the latest session of the window that is over, still planned and matched by no run: the app asks
+   * « Tu l'as faite ? » rather than let it vanish. shortcut: last week's sessions are no longer asked on Monday.
+   */
+  #toConfirm(now: string): SessionView | null {
+    const from = this.#windowStart();
+    const matched = new Set(
+      this.#stores.activity.overlapping(`${from}T00:00`, now).flatMap((a) => (a.sessionId ? [a.sessionId] : [])),
+    );
+    const over = this.#stores.plannedSession
+      .overlapping(`${from}T00:00`, now)
+      .filter((s) => s.status === "planned" && addMinutes(s.start, s.durMin) <= now && !matched.has(s.id))
+      .at(-1);
+    return over ? { ...over, watch: null } : null;
   }
 
   /** Pas dispo's summary: the coach's answer on the current state, never written. */
@@ -220,7 +266,8 @@ export class PlanService {
     const event: CalendarEvent = {
       ...input,
       id: randomUUID(),
-      legs: input.kind === "strength" ? (input.legs ?? true) : undefined,
+      // Only the switch makes a legs day: a client that forgets it must not block her hard runs (H5).
+      legs: input.kind === "strength" ? (input.legs ?? false) : undefined,
       manual: true,
       cancelled: false,
       exceptions: [],
@@ -317,15 +364,26 @@ export class PlanService {
     };
   }
 
+  /**
+   * EV14. The end of onboarding, a new number of runs or a new long-run day change what the weeks hold, not
+   * only where: their automatic sessions still ahead are rebuilt. Other settings move what now breaks a rule.
+   */
   updateProfile(patch: ProfilePatch): ChangeResponse {
     const before = this.coachState();
-    const result = this.#coach.updateSettings(before, patch, this.#now());
-    const write: PlanWrite = {
-      table: "profile",
-      id: CURRENT,
-      after: { id: CURRENT, value: { ...before.settings, ...patch } },
-    };
-    return this.#commit("Réglages enregistrés", [write], before, result);
+    const settings = { ...before.settings, ...patch };
+    const write: PlanWrite = { table: "profile", id: CURRENT, after: { id: CURRENT, value: settings } };
+    const onboarded = !this.#stores.profile.get(CURRENT) && this.#stores.program.get(CURRENT) !== undefined;
+    const reshaped =
+      settings.runsPerWeek !== before.settings.runsPerWeek ||
+      settings.preferredLongDay !== before.settings.preferredLongDay;
+    if (onboarded || reshaped)
+      return this.#rebuild("Réglages enregistrés", [write], { ...before, settings }, before, true);
+    return this.#commit(
+      "Réglages enregistrés",
+      [write],
+      before,
+      this.#coach.updateSettings(before, patch, this.#now()),
+    );
   }
 
   /** The timetable link moves no session by itself: the refresh that follows does. */
@@ -447,6 +505,20 @@ export class PlanService {
     return response;
   }
 
+  /** EV21: « Oui, je l'ai faite » when no synced run matched the session. */
+  confirmDone(id: string): ChangeResponse {
+    const before = this.coachState();
+    this.#upcoming(before, id);
+    return this.#commit("Séance faite", [], before, this.#coach.confirmDone(before, id, this.#now()));
+  }
+
+  /** EV21: « Passer cette séance » or « Non, je l'ai sautée »: skipped, never made up. */
+  skipSession(id: string): ChangeResponse {
+    const before = this.coachState();
+    this.#upcoming(before, id);
+    return this.#commit("Séance passée", [], before, this.#coach.skipSession(before, id, this.#now()));
+  }
+
   /** A Garmin run matched this session: it is done, and Annuler can still reopen it. */
   markDone(id: string): void {
     const session = this.#stores.plannedSession.get(id);
@@ -493,7 +565,8 @@ export class PlanService {
 
   #changeEvent(summary: string, id: string, after: CalendarEvent | null): ChangeResponse {
     const before = this.coachState();
-    const result = this.#coach.onTimetableChange(before, this.#windowEvents({ id, after }), this.#now());
+    // Her own event: a run it now clashes with moves, even tonight (EV22).
+    const result = this.#coach.onTimetableChange(before, this.#windowEvents({ id, after }), this.#now(), true);
     return this.#commit(summary, [{ table: "calendar_event", id, after }], before, result);
   }
 
@@ -520,8 +593,8 @@ export class PlanService {
         .map((s) => ({ table: "planned_session" as const, id: s.id, after: null })),
       ...result.state.sessions.map((s) => ({ table: "planned_session" as const, id: s.id, after: s })),
     ];
-    const moved = movedSessions(before, result).filter(([, s]) => s.id !== movedId).length;
-    const fullSummary = moved > 0 ? `${summary} · ${movedRunsText(moved)}` : summary;
+    const moved = movedSessions(before, result).filter(([, s]) => s.id !== movedId);
+    const fullSummary = moved.length > 0 ? `${summary} · ${movedText(moved, result)}` : summary;
     const entry = this.#changes.record(fullSummary, [...writes, ...stateWrites, ...sessionWrites]);
     return {
       change: entry && { id: entry.id, summary: entry.summary },

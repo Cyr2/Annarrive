@@ -125,7 +125,9 @@ describe("onboarding store", () => {
     });
     expect(await s().submit()).toBe(true);
     expect(calls).toEqual(["saveProgram", "addEvent", "reportPain", "saveProfile"]);
-    expect(api.saveProgram).toHaveBeenCalledWith({ goal: { distanceM: 21097.5, date: "2027-04-11", targetMin: 120 } });
+    expect(api.saveProgram).toHaveBeenCalledWith({
+      goal: { distanceM: 21097.5, date: "2027-04-11", startTime: "09:00", targetMin: 120 },
+    });
     expect(api.addEvent).toHaveBeenCalledWith({
       kind: "strength",
       title: "Jambes",
@@ -138,6 +140,8 @@ describe("onboarding store", () => {
     expect(api.saveProfile).toHaveBeenCalledWith(
       expect.objectContaining({ runsPerWeek: 4, earliest: "07:00", bedtime: "23:30", noRunDays: [3, 7] }),
     );
+    // Sunday is a day without runs here: the long-run day is left to the coach rather than sent.
+    expect(vi.mocked(api.saveProfile).mock.calls[0]?.[0].preferredLongDay).toBeUndefined();
     expect(s().phase).toBe("tour");
   });
 

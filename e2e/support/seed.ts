@@ -39,7 +39,10 @@ if (mode === "plan") {
     travelMin: 0,
     cycleTracking: false,
   });
-  services.plan.updateProgram({ goal: { distanceM: 21097.5, date: "2027-03-14" } });
+  // Her programme started last week: nothing holds today back (a programme never places a run on its first day).
+  const goal = { distanceM: 21097.5, date: "2027-03-14" } as const;
+  createStores(db).program.put({ id: "current", value: { goal, startedOn: addDays(today, -8) } });
+  services.plan.updateProgram({ goal });
   services.plan.createEvent({
     kind: "strength",
     title: "Jambes",

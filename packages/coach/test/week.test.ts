@@ -51,6 +51,21 @@ describe("planWeek (cycle 0.1 buildWeek)", () => {
     expect(validateWeek(weekOf(r, sessions)).ok).toBe(true);
   });
 
+  it("starts a programme the day after: nothing today, every run asked for, the long run on Sunday (P25, PL-13)", () => {
+    // Onboarding on a Tuesday at 8:00, a student's week: classes until 16:30, her runs from 17:00, four a week.
+    const now = `${addDays(MONDAY, 1)}T08:00`;
+    const classes = [0, 1, 2, 3, 4].map((i) =>
+      block(`c${i}`, `${addDays(MONDAY, i)}T08:00`, `${addDays(MONDAY, i)}T16:30`, "class"),
+    );
+    const settings = { ...SETTINGS, runsPerWeek: 4 as const, earliest: "17:00", latestEnd: "21:30" };
+    const { sessions } = planWeek(
+      request({ now, planStart: dateOf(now), settings, cal: [...classes, LEGS], history: [] }),
+    );
+    expect(sessions).toHaveLength(4);
+    expect(sessions.every((s) => dateOf(s.start) > dateOf(now))).toBe(true);
+    expect(sessions.find((s) => s.type === "L")?.start.slice(0, 10)).toBe(addDays(MONDAY, 6));
+  });
+
   it("never places a hard run within 24 h after the legs session (H5)", () => {
     const r = request();
     const legsEnd = LEGS.end;
@@ -166,7 +181,8 @@ describe("race week (P24, H12)", () => {
   it("puts the race on its date in place of the long run, the last Q at J-4 at the latest (P-17)", () => {
     const now = `${addDays(MONDAY, 1)}T12:00`;
     const sessions = raceWeek({ now, planStart: dateOf(now), goal: tenK(SUNDAY) });
-    expect(races(sessions).map((s) => s.start)).toEqual([`${SUNDAY}T07:00`]);
+    // No start time given: the default morning start.
+    expect(races(sessions).map((s) => s.start)).toEqual([`${SUNDAY}T09:00`]);
     expect(races(sessions)[0]?.frozen).toBe(true);
     expect(sessions.some((s) => s.type === "L")).toBe(false);
     expect(sessions).toHaveLength(4);
@@ -205,16 +221,16 @@ describe("race week (P24, H12)", () => {
     for (const s of others(sessions).filter(isHard)) expect(dateOf(s.start) <= "2027-03-17").toBe(true);
   });
 
-  it("places the race after her class that day, even on a day without runs (P-21)", () => {
+  it("places the race at its start time, whatever her calendar or days without runs say (P-21)", () => {
     const now = `${addDays(MONDAY, 1)}T12:00`;
     const sessions = raceWeek({
       now,
       planStart: dateOf(now),
-      goal: tenK(SUNDAY),
+      goal: { ...tenK(SUNDAY), startTime: "10:30" },
       settings: { ...SETTINGS, noRunDays: [6] },
       cal: [LEGS, block("class", `${SUNDAY}T07:00`, `${SUNDAY}T12:00`, "class")],
     });
-    expect(races(sessions).map((s) => s.start)).toEqual([`${SUNDAY}T12:30`]);
+    expect(races(sessions).map((s) => s.start)).toEqual([`${SUNDAY}T10:30`]);
   });
 
   it("keeps what Anna moved and drops the race of an old date (EV-23)", () => {

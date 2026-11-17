@@ -3,7 +3,7 @@ import { addDays, at, dateOf, daysBetween, weekDates } from "./dates.ts";
 import { paces, predictTime } from "./fitness.ts";
 import { capWeekSpikes, weeklyCaps } from "./guards.ts";
 import { maintenanceWeek, postRaceWeek } from "./maintenance.ts";
-import { freeSlots, nearRace, placeWeek } from "./placement.ts";
+import { nearRace, placeWeek } from "./placement.ts";
 import { buildWeek, generatePlan, type Plan, type PlanWeek, taperShares, weekTemplate } from "./plan.ts";
 import type { Activity, CalEvent, Goal, Paces, Session, Settings, Warning } from "./types.ts";
 
@@ -103,11 +103,14 @@ function raceWeek(plan: Plan, monday: string, runsPerWeek: Settings["runsPerWeek
 /** Days after Monday within which the race still bars the week's hard runs (H12 starts three days before it). */
 const RACE_REACH_DAYS = 9;
 
+/** A road race in France most often starts in the morning: the race's hour until she gives it (P24). */
+export const RACE_START = "09:00";
+
 /**
- * P24: the race on its date, at the first hour her calendar leaves free that day. The date is hers, so a day
- * without runs does not move it. Null when the race is too far away to touch the week.
+ * P24: the race on its date and at its start time, set by the organiser: neither her calendar nor a day
+ * without runs moves it. Null when the race is too far away to touch the week.
  */
-function raceSession(r: WeekRequest, p: Paces, cal: CalEvent[]): Session | null {
+function raceSession(r: WeekRequest, p: Paces): Session | null {
   const goal = r.goal;
   if (!goal || goal.date < r.monday || daysBetween(r.monday, goal.date) > RACE_REACH_DAYS) return null;
   const min = goal.targetMin ?? predictTime(r.fitness.vdot, goal.distanceM);
@@ -119,8 +122,7 @@ function raceSession(r: WeekRequest, p: Paces, cal: CalEvent[]): Session | null 
     distM: goal.distanceM,
     racePaceSKm: (min * 60) / (goal.distanceM / 1000),
   });
-  const free = freeSlots(goal.date, cal, { ...r.settings, noRunDays: [] }, s.durMin)[0];
-  return { ...s, start: free?.start ?? at(goal.date, r.settings.earliest), frozen: true };
+  return { ...s, start: at(goal.date, goal.startTime ?? RACE_START), frozen: true };
 }
 
 /**
@@ -187,13 +189,15 @@ export function planWeek(r: WeekRequest): WeekPlan {
     used.add(`${r.monday}-${n}`);
     return `${r.monday}-${n}`;
   };
-  // The past is one long unavailability, so nothing lands before `now`.
+  // The past is one long unavailability, so nothing lands before `now`. P25: nor on the day the programme starts.
+  const startsToday = r.planStart === dateOf(r.now);
+  const pastEnd = startsToday ? `${addDays(dateOf(r.now), 1)}T00:00` : r.now;
   const past: CalEvent[] =
-    r.now > `${r.monday}T00:00`
-      ? [{ id: "past", kind: "unavailable", start: `${r.monday}T00:00`, end: r.now, manual: true }]
+    pastEnd > `${r.monday}T00:00`
+      ? [{ id: "past", kind: "unavailable", start: `${r.monday}T00:00`, end: pastEnd, manual: true }]
       : [];
   const cal = [...r.cal, ...past];
-  const race = raceSession(r, p, cal);
+  const race = raceSession(r, p);
   const raceThisWeek = race !== null && dateOf(race.start) < addDays(r.monday, 7);
   // P24: the race replaces the week's long run, and is never capped like a planned rise.
   const left = withoutKept(race && raceThisWeek ? [...sessions.filter((s) => s.type !== "L"), race] : sessions, kept);

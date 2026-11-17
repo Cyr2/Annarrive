@@ -30,7 +30,7 @@ async function pressAndDrag(page: Page, item: Locator, target?: Locator) {
 
 test("Semaine : appui long puis glisser une course vers un autre jour la déplace", async ({ page }) => {
   await page.goto("/semaine");
-  const run = day(page, "2026-11-18").getByRole("button", { name: /Côtes courtes/ });
+  const run = day(page, "2026-11-19").getByRole("button", { name: /Footing/ });
   await expect(run).toHaveAttribute("aria-roledescription", "séance déplaçable");
 
   const friday = day(page, "2026-11-20");
@@ -39,11 +39,11 @@ test("Semaine : appui long puis glisser une course vers un autre jour la déplac
 
   const moved = banner(page, "Séance déplacée à");
   await expect(moved).toBeVisible();
-  await expect(friday.getByRole("button", { name: /Côtes courtes/ })).toBeVisible();
-  await expect(day(page, "2026-11-18").getByRole("button", { name: /Côtes courtes/ })).toHaveCount(0);
+  await expect(friday.getByRole("button", { name: /Footing/ })).toBeVisible();
+  await expect(day(page, "2026-11-19").getByRole("button", { name: /Footing/ })).toHaveCount(0);
 
   await moved.getByRole("button", { name: "Annuler" }).click();
-  await expect(day(page, "2026-11-18").getByRole("button", { name: /Côtes courtes/ })).toBeVisible();
+  await expect(day(page, "2026-11-19").getByRole("button", { name: /Footing/ })).toBeVisible();
 });
 
 test("Semaine : un cours de l'emploi du temps ne se glisse pas", async ({ page }) => {

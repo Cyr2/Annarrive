@@ -35,7 +35,7 @@ export type UnavailableInput = {
   until?: string;
 };
 
-export type GoalInput = { race: string; distanceKm: number; date: string; targetTime?: string };
+export type GoalInput = { race: string; distanceKm: number; date: string; targetTime?: string; startTime?: string };
 
 export type ChatInput = { text: string; context?: ChatContext };
 
@@ -64,7 +64,10 @@ export interface Api {
   change(sessionId: string, option: ChangeOptionId): Promise<ChangeResult>;
   previewUnavailable(input: UnavailableInput): Promise<ChangeRow[]>;
   unavailable(input: UnavailableInput): Promise<ChangeResult>;
+  /** « Passer cette séance » or « Non, je l'ai sautée »: skipped, never made up. */
   skip(sessionId: string): Promise<ChangeResult>;
+  /** « Oui, je l'ai faite » when no synced run matched the session. */
+  confirmDone(sessionId: string): Promise<ChangeResult>;
   /** "Ça va mieux": easy runs 3 more days, then back to normal. */
   feelBetter(): Promise<ChangeResult>;
   undo(changeId: string): Promise<void>;

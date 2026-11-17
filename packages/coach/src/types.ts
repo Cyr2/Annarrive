@@ -21,7 +21,8 @@ export type PaceZone = "E" | "M" | "T" | "I" | "R" | "race";
 export type Feel = "easy" | "ok" | "hard";
 
 export type Step = {
-  kind: "warmup" | "work" | "recover" | "cooldown" | "strides";
+  /** "hills": short uphill sprints (COTES_C), run on feel. */
+  kind: "warmup" | "work" | "recover" | "cooldown" | "strides" | "hills";
   /** Duration of one repetition. */
   durMin: number;
   distM?: number;
@@ -69,7 +70,8 @@ export type Settings = {
 };
 
 export type GoalDistance = 5000 | 10000 | 21097.5 | 42195;
-export type Goal = { distanceM: GoalDistance; date: string; targetMin?: number } | null;
+/** `startTime` "HH:mm": when the race starts (P24). */
+export type Goal = { distanceM: GoalDistance; date: string; targetMin?: number; startTime?: string } | null;
 
 export type DailySignal = {
   date: string;
@@ -141,7 +143,8 @@ export type State = WeekState & {
 };
 
 export type MoveProposal = { sessionId: string; slots: SlotWithReason[] };
-export type SlotWithReason = { slot: Slot; penalty: number; reason: "same_day" | "no_penalty" | "lowest_penalty" };
+/** `reason` is the short French line the Déplacer sheet shows under the slot (A6). */
+export type SlotWithReason = { slot: Slot; penalty: number; reason: string };
 
 export type Result = {
   ok: boolean;

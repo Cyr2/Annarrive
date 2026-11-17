@@ -10,11 +10,13 @@ import { useSheet } from "../sheets/store.ts";
 import { useGo } from "../useGo.ts";
 import { AfterRun } from "./AfterRun.tsx";
 import { DayAgenda } from "./DayAgenda.tsx";
+import { DidYouRun } from "./DidYouRun.tsx";
 import { ProposalCard } from "./ProposalCard.tsx";
 import { ReggieNote } from "./ReggieNote.tsx";
 import { RestCard } from "./RestCard.tsx";
 import { RunCard } from "./RunCard.tsx";
 import { sessionContext } from "./today.ts";
+import { Unwell } from "./Unwell.tsx";
 import { WeekStrip } from "./WeekStrip.tsx";
 
 /** Aujourd'hui: run day, rest day or after the run. */
@@ -51,7 +53,9 @@ export function TodayScreen() {
     );
   }
 
-  const { session, activity, next, goal, date } = today;
+  const { activity, next, goal, date, toConfirm, unwellText } = today;
+  // Over and unconfirmed: the question replaces the card, it no longer offers to move or change it.
+  const session = today.session?.id === toConfirm?.id ? undefined : today.session;
   const askReggie = () => {
     useChat
       .getState()
@@ -75,6 +79,8 @@ export function TodayScreen() {
         </a>
       )}
 
+      {unwellText && <Unwell text={unwellText} />}
+      {!activity && toConfirm && <DidYouRun run={toConfirm} today={date} />}
       {activity && <AfterRun activity={activity} next={next} today={date} />}
       {!activity && session && (
         <>
@@ -95,7 +101,7 @@ export function TodayScreen() {
           </div>
         </>
       )}
-      {!activity && !session && <RestCard next={next} today={date} />}
+      {!activity && !session && !toConfirm && <RestCard next={next} today={date} />}
       {today.proposals?.map((p) => (
         <ProposalCard key={p.id} proposal={p} />
       ))}

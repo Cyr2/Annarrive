@@ -30,6 +30,7 @@ const garminKinds: Record<Step["kind"], WorkoutStep["kind"]> = {
   warmup: "warmup",
   work: "interval",
   strides: "interval",
+  hills: "interval",
   recover: "recovery",
   cooldown: "cooldown",
 };

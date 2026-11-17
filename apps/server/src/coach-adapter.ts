@@ -9,6 +9,7 @@ import {
   coachFeasibility,
   type DailyDecisionResult,
 } from "./coach-port.ts";
+import { workoutNames } from "./garmin/workout.ts";
 import type { Activity } from "./storage/stores.ts";
 import { addDays, dateOf, mondayOf } from "./time.ts";
 
@@ -82,14 +83,24 @@ const mondays = (now: string): string[] => {
 
 // ---------- Results ----------
 
+/** "Sortie longue de mardi". */
+function sessionName(r: Result, id: string): string {
+  const s = r.state.sessions.find((x) => x.id === id);
+  return s ? `${workoutNames[s.type]} de ${coach.DAY_NAMES[coach.weekday(s.start)]}` : "Une séance proche";
+}
+
 const toNotes = (r: Result): { changes: CoachNote[]; warnings: CoachNote[] } => ({
-  changes: r.changes.map((c) => ({ ruleId: c.ruleId, message: c.detail ?? "" })),
+  changes: r.changes.map((c) => ({
+    ruleId: c.ruleId,
+    message: c.detail ?? "",
+    ...(c.sessionId ? { sessionId: c.sessionId } : {}),
+  })),
   warnings: [
     ...r.warnings.map((w) => ({ ruleId: w.ruleId, message: w.message })),
     // H9: a session starting within 12 h is never moved without her say.
-    ...(r.proposals ?? []).map(() => ({
+    ...(r.proposals ?? []).map((p) => ({
       ruleId: "H9",
-      message: "Une séance proche est en conflit : choisis un autre moment.",
+      message: `${sessionName(r, p.sessionId)} est en conflit : choisis un autre moment ou passe cette séance.`,
     })),
   ],
 });
@@ -158,12 +169,6 @@ function initialFitness(st: CoachState, vo2max: number | undefined, now: string)
   }
 }
 
-const SLOT_REASONS: Record<coach.SlotWithReason["reason"], string> = {
-  same_day: "même jour",
-  no_penalty: "rien ne gêne",
-  lowest_penalty: "le moins gênant",
-};
-
 const NO_FITNESS =
   "Reggie a besoin de ton niveau pour préparer ta semaine : indique un chrono récent ou cours avec ta montre.";
 const REST_ADVICE = "Tes signaux de récupération sont bas : repos conseillé aujourd'hui.";
@@ -185,10 +190,15 @@ export const coachAdapter: CoachPort = {
     const first = plan.weeks[0];
     if (!first) return null;
     const { base, dev, spe, taper } = plan.split;
+    // The week the programme starts in runs plan week 1 too when a day is left after the start day (P25): it
+    // counts as the first base week, so the next one reads « Semaine 2 ».
+    const start = st.program.startedOn ?? dateOf(now);
+    const startMonday = mondayOf(start);
+    const early = addDays(start, 1) < first.monday ? 1 : 0;
     return {
-      firstMonday: first.monday,
+      firstMonday: early ? startMonday : first.monday,
       phases: [
-        { phase: "base", weeks: base },
+        { phase: "base", weeks: base + early },
         { phase: "dev", weeks: dev },
         { phase: "spe", weeks: spe },
         { phase: "taper", weeks: taper },
@@ -227,7 +237,7 @@ export const coachAdapter: CoachPort = {
     const monday = mondayOf(dateOf(session?.start ?? now));
     const r = coach.proposeMoveSlots(sessionId, toState(st, monday, true), now);
     return {
-      best: r.best.map((b) => ({ slot: b.slot, reason: SLOT_REASONS[b.reason] })),
+      best: r.best.map((b) => ({ slot: b.slot, reason: b.reason })),
       forbidden: r.forbidden,
       // A6: a valid slot never forces another run to move.
       sideEffects: [],
@@ -239,7 +249,7 @@ export const coachAdapter: CoachPort = {
     return perWeek(st, now, (w) => coach.updateSettings(w, toSettings(settings), now), { settings });
   },
 
-  onTimetableChange(st, newEvents, now) {
+  onTimetableChange(st, newEvents, now, own = false) {
     // EV15 diffs the imported classes; the events Anna placed are taken as they now are.
     const imported = (e: CalEvent) => !e.manual && (e.kind === "class" || e.kind === "exam");
     const next = newEvents.map(toCalEvent);
@@ -248,6 +258,7 @@ export const coachAdapter: CoachPort = {
         { ...w, cal: [...w.cal.filter(imported), ...next.filter((e) => !imported(e))] },
         next.filter(imported),
         now,
+        own,
       );
     return perWeek(st, now, run, { events: newEvents });
   },
@@ -310,6 +321,14 @@ export const coachAdapter: CoachPort = {
     // If she runs anyway, the watch must carry the adapted run (EV9 to EV12).
     const state = jog ? { ...r.state, sessions: r.state.sessions.map((s) => (s.id === jog.id ? jog : s)) } : r.state;
     return fromResult(st, { ...r, state }, now);
+  },
+
+  confirmDone(st, id, now) {
+    return fromResult(st, coach.confirmDone(toState(st, mondayOf(dateOf(now)), true), id, now), now);
+  },
+
+  skipSession(st, id, now) {
+    return fromResult(st, coach.skipSession(toState(st, mondayOf(dateOf(now)), true), id), now);
   },
 
   feelBetter(st, now) {

@@ -180,10 +180,25 @@ function specific(c: BuildCtx): Step[] {
   return block(km, reps);
 }
 
+/** Hill sprint (Hudson 2008): 10 s uphill, walked back down for full recovery. */
+const HILL_MIN = 10 / 60;
+const HILL_BACK_MIN = 1.5;
+const HILL_COOLDOWN_MIN = 10;
+
+/**
+ * COTES_C inside an easy run: easy warm-up, the hill sprints with their walk back, easy cool-down. The sprints
+ * are run on feel (F16), so they carry no pace.
+ */
 function hillsShort(c: BuildCtx): Step[] {
   const reps = Math.min(6 + 2 * c.progressionStep, 10);
-  const hills = step("strides", 1 / 6, "R", c.paces, 3, { reps });
-  return [step("work", Math.floor((c.durMin ?? 45) - reps / 6), "E", c.paces, RPE.E), hills];
+  const block = reps * HILL_MIN + (reps - 1) * HILL_BACK_MIN;
+  const warmup = Math.max(10, Math.floor((c.durMin ?? 45) - block - HILL_COOLDOWN_MIN));
+  return [
+    step("warmup", warmup, "E", c.paces, RPE.E),
+    { kind: "hills", durMin: HILL_MIN, reps, target: { rpe: 8 } },
+    { kind: "recover", durMin: HILL_BACK_MIN, reps: reps - 1, target: { rpe: 1 } },
+    step("cooldown", HILL_COOLDOWN_MIN, "E", c.paces, RPE.E),
+  ];
 }
 
 function hillsLong(c: BuildCtx): Step[] {
@@ -355,7 +370,9 @@ export function scaleSession(s: Session, f: number, roundTo = 1): Session {
 export function withReps(s: Session, reps: number): Session {
   const n = Math.max(2, reps);
   const steps = s.steps.map((st) =>
-    st.reps === undefined || st.kind === "strides" ? st : { ...st, reps: st.kind === "work" ? n : n - 1 },
+    st.reps === undefined || st.kind === "strides" || st.kind === "hills"
+      ? st
+      : { ...st, reps: st.kind === "work" ? n : n - 1 },
   );
   return { ...s, steps, durMin: total(steps) };
 }

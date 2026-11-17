@@ -13,6 +13,9 @@ import { type Clock, dateOf, frenchWeekday, toParisLocal } from "../time.ts";
 import type { PlanService } from "./plan.ts";
 
 const LAST_SYNC = "timetable.lastSyncAt";
+/** What the last read that changed something said, and when: the app shows it after a read in the background. */
+const LAST_CHANGE = "timetable.lastChange";
+const LAST_CHANGE_AT = "timetable.lastChangeAt";
 const textSchema = z.union([z.string(), z.object({ val: z.string() }).transform((v) => v.val)]);
 const vevent = z.object({
   type: z.literal("VEVENT"),
@@ -220,7 +223,12 @@ export class TimetableService {
   }
 
   status(): TimetableStatus {
-    return { lastSyncAt: this.#stores.meta.get(LAST_SYNC)?.value ?? null };
+    const summary = this.#stores.meta.get(LAST_CHANGE)?.value;
+    const at = this.#stores.meta.get(LAST_CHANGE_AT)?.value;
+    return {
+      lastSyncAt: this.#stores.meta.get(LAST_SYNC)?.value ?? null,
+      ...(summary && at ? { lastChange: { at, summary } } : {}),
+    };
   }
 
   /** The link Anna pasted in Programme wins over the server's `ICS_URL`. */
@@ -249,12 +257,17 @@ export class TimetableService {
     const classes = diffSummary(lines);
     const replan = lines.length > 0 ? await this.#plan.replanAfterTimetable(before, classes) : { change: null };
     const count = (verb: Verb) => lines.filter((l) => l.verb === verb).length;
+    const summary = replan.change?.summary ?? classes;
+    if (summary) {
+      this.#stores.meta.put({ id: LAST_CHANGE, value: summary });
+      this.#stores.meta.put({ id: LAST_CHANGE_AT, value: lastSyncAt });
+    }
     return {
       lastSyncAt,
       added: count("ajouté"),
       changed: count("modifié"),
       removed: count("annulé"),
-      summary: replan.change?.summary ?? classes,
+      summary,
       change: replan.change,
     };
   }
