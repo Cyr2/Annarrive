@@ -472,8 +472,8 @@ describe("http client, changes", () => {
       warnings: ["Repos ou vélo conseillé"],
     };
     expect(toPreviewRows(preview, "2026-11-16")).toEqual([
-      { day: "Aujourd'hui", label: "Footing · 20 min", tone: "easy" },
-      { day: "Demain", label: "Repos", tone: "rest" },
+      { day: "Aujourd'hui", label: "Footing · 20 min", tone: "easy", before: "Fractionné · 50 min · 4:55 /km" },
+      { day: "Demain", label: "Repos", tone: "rest", before: "Fractionné · 50 min · 4:55 /km" },
       { day: "Conseil", label: "Repos ou vélo conseillé", tone: "other" },
     ]);
   });

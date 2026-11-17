@@ -190,7 +190,14 @@ export function createMockApi({
         if (bumped) put({ ...bumped, date: item.date });
         const moved: Run = { ...item, ...slot, watch: "synced" };
         put(moved);
-        return [runRow(moved)];
+        const was = runRow(item);
+        if (item.date === slot.date) return [{ ...runRow(moved), before: was.label }];
+        // Another day: the day she left, then the day she goes to.
+        const swapped = bumped && isRun(bumped) ? runRow({ ...bumped, date: item.date }) : undefined;
+        return [
+          { ...(swapped ?? { day: was.day, label: "Repos", tone: "rest" }), before: was.label },
+          { ...runRow(moved), before: swapped?.label ?? "Repos" },
+        ];
       }),
     async changeOptions(id) {
       await wait();
@@ -198,9 +205,15 @@ export function createMockApi({
     },
     change: (id, option) =>
       commit("Séance changée, ta montre est à jour", () => {
-        const run = applyChange(findRun(id), option);
+        const was = findRun(id);
+        const run = applyChange(was, option);
         put(run);
-        return [runRow(run, `${run.title} · ${duration(run.durationMin)}`)];
+        return [
+          {
+            ...runRow(run, `${run.title} · ${duration(run.durationMin)}`),
+            before: `${was.title} · ${duration(was.durationMin)}`,
+          },
+        ];
       }),
     async previewUnavailable(input) {
       await wait();

@@ -1,5 +1,5 @@
 import { cx } from "../../lib/cx.ts";
-import { duration, relativeMoment } from "../../lib/date.ts";
+import { decimal, duration, relativeMoment } from "../../lib/date.ts";
 import { Button } from "../../ui/controls.tsx";
 import { Icon } from "../../ui/Icon.tsx";
 import { PaceValue } from "../../ui/PaceValue.tsx";
@@ -10,9 +10,10 @@ import { findRun, todayOf } from "../plan/selectors.ts";
 import { usePlan } from "../plan/store.ts";
 import type { SheetProps } from "../sheets/SheetHost.tsx";
 import { useSheet } from "../sheets/store.ts";
-import { WATCH_LABEL } from "../today/today.ts";
+import { ReggieAvatar, ToneWash } from "../today/parts.tsx";
+import { WatchStatus } from "../today/WatchStatus.tsx";
 
-/** Session detail: steps, paces, why this session, and the three ways to adjust it. */
+/** Session detail: when and what, every step with its pace, Reggie's why, and the three ways to adjust it. */
 export default function SessionSheet({ spec, ...sheet }: SheetProps<"session">) {
   const plan = usePlan();
   const show = useSheet((s) => s.show);
@@ -20,22 +21,26 @@ export default function SessionSheet({ spec, ...sheet }: SheetProps<"session">) 
   const today = todayOf(plan);
   if (!run) return null;
   const upcoming = run.date >= today;
+  const facts = [duration(run.durationMin), run.distanceKm && `${decimal(run.distanceKm)} km environ`];
   return (
     <Sheet {...sheet} title={run.title} cancelLabel="Fermer">
-      <Surface variant="inset" className="flex flex-col gap-2 px-4 py-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <SessionChip tone={run.intensity} />
-          {run.watch && (
-            <span className="t-cap flex items-center gap-1">
-              <Icon name="watch" size={16} />
-              {WATCH_LABEL[run.watch]}
-            </span>
-          )}
+      <Surface variant="inset" className="flex flex-col gap-3 overflow-hidden px-4 pt-2 pb-4">
+        <ToneWash tone={run.intensity} />
+        <div className="relative flex flex-wrap items-center justify-between gap-x-2">
+          <span className="t-strong py-2.5">{relativeMoment(run.date, run.start, today)}</span>
+          <WatchStatus run={run} />
         </div>
-        <span className="t-strong">
-          {relativeMoment(run.date, run.start, today)} · {duration(run.durationMin)}
-        </span>
-        <SessionShape steps={run.steps} tone={run.intensity} />
+        <div className="relative flex flex-wrap items-center gap-2">
+          <SessionChip tone={run.intensity} />
+          <span className="t-sub">{facts.filter(Boolean).join(" · ")}</span>
+        </div>
+        <SessionShape steps={run.steps} tone={run.intensity} className="relative h-11" />
+        {run.lightened && (
+          <p className="t-cap relative m-0 flex items-start gap-2 rounded-row bg-warn-wash px-3 py-2 text-warn-deep">
+            <Icon name="info" size={16} className="mt-px flex-none" />
+            {run.lightened}
+          </p>
+        )}
       </Surface>
       <section className="flex flex-col gap-2">
         <h2 className="t-cap m-0 px-4">Étapes</h2>
@@ -48,13 +53,13 @@ export default function SessionSheet({ spec, ...sheet }: SheetProps<"session">) 
           ))}
         </Surface>
       </section>
-      <section className="flex flex-col gap-2">
-        <h2 className="t-cap m-0 px-4">Pourquoi cette séance</h2>
-        <Surface variant="inset" className="t-body m-0 px-4 py-3">
-          {run.why}
-        </Surface>
-      </section>
-      {run.lightened && <p className="t-cap m-0 px-4">{run.lightened}</p>}
+      <Surface as="section" variant="widget" aria-label="Pourquoi cette séance" className="flex gap-3 p-4">
+        <ReggieAvatar />
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span className="t-cap font-semibold text-reggie">Pourquoi cette séance</span>
+          <p className="t-body m-0">{run.why}</p>
+        </div>
+      </Surface>
       {upcoming && (
         <div className="grid grid-cols-3 gap-2">
           <Button onClick={() => show({ kind: "move", id: run.id })}>Déplacer</Button>

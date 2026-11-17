@@ -6,58 +6,59 @@ import { Icon } from "../../ui/Icon.tsx";
 import { PaceValue } from "../../ui/PaceValue.tsx";
 import { SessionChip, SessionShape } from "../../ui/SessionShape.tsx";
 import { Surface } from "../../ui/Surface.tsx";
-import { TONES } from "../../ui/tones.ts";
-import { usePlan } from "../plan/store.ts";
-import { contentKey, WATCH_LABEL } from "./today.ts";
+import { useSheet } from "../sheets/store.ts";
+import { Figure, ToneWash } from "./parts.tsx";
+import { contentKey } from "./today.ts";
+import { WatchStatus } from "./WatchStatus.tsx";
 
-/** The session of the day (design/Main): time and watch status, title, main block and target pace, steps on tap. */
+/**
+ * The session of the day, read in one second: when and whether it is on the watch, what (title, type, shape),
+ * then the two numbers she runs by, duration and target pace. The card opens the detail; the steps unfold in it.
+ */
 export function RunCard({ run, today }: { run: Run; today: string }) {
   const [open, setOpen] = useState(false);
-  const sub = [duration(run.durationMin), run.distanceKm && `${decimal(run.distanceKm)} km environ`]
-    .filter(Boolean)
-    .join(" · ");
+  const show = useSheet((s) => s.show);
+  const sub = [run.mainSet, run.distanceKm && `${decimal(run.distanceKm)} km environ`].filter(Boolean).join(" · ");
+  const longPace = run.pace.length > 5;
   return (
-    <Surface as="article" className="flex flex-col gap-4 overflow-hidden px-5 pt-5 pb-1">
-      {/* The type's wash lights the card's corner: the session reads before a word is read. */}
-      <span
-        aria-hidden="true"
-        className={cx(
-          "pointer-events-none absolute -top-16 -left-16 size-56 rounded-full opacity-70 blur-2xl",
-          TONES[run.intensity].wash,
-        )}
+    <Surface as="article" className="flex flex-col overflow-hidden">
+      <ToneWash tone={run.intensity} />
+      {/* The whole card opens the detail; the watch and the steps toggle sit above this layer. */}
+      <button
+        type="button"
+        aria-label={`Détail de la séance : ${run.title}`}
+        onClick={() => show({ kind: "session", id: run.id })}
+        className="absolute inset-0 rounded-card border-0 bg-transparent"
       />
-      <div className="relative flex items-center justify-between gap-2">
-        <span className="t-strong">
-          {momentLabel(run.date, run.start, today)} · {run.start}
-        </span>
-        <WatchStatus run={run} />
-      </div>
-      <div key={contentKey(run)} className="flip-in relative flex flex-col gap-4">
-        <div className="flex flex-col gap-1.5">
-          <SessionChip tone={run.intensity} />
-          <h1 className="t-large">{run.title}</h1>
-          <span className="t-sub">{sub}</span>
+      <div className="pointer-events-none relative flex flex-col gap-4 px-5 pt-3">
+        <div className="flex flex-wrap items-center justify-between gap-x-3">
+          <span className="t-strong py-2.5">
+            {momentLabel(run.date, run.start, today)} · {run.start}
+          </span>
+          <WatchStatus run={run} className="pointer-events-auto relative" />
+        </div>
+        <div key={contentKey(run)} className="flip-in flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <SessionChip tone={run.intensity} />
+            <h1 className="t-large text-balance">{run.title}</h1>
+            {sub && <span className="t-sub">{sub}</span>}
+          </div>
           {run.lightened && (
-            <span className="t-cap flex items-start gap-1.5 self-start rounded-row bg-warn-wash px-2.5 py-1 text-warn-deep">
+            <p className="t-cap m-0 flex items-start gap-2 rounded-row bg-warn-wash px-3 py-2 text-warn-deep">
               <Icon name="info" size={16} className="mt-px flex-none" />
               {run.lightened}
-            </span>
+            </p>
           )}
-        </div>
-        <SessionShape steps={run.steps} tone={run.intensity} />
-        <div className="hairline-top flex items-end justify-between gap-3 pt-4">
-          <div className="flex min-w-0 flex-col gap-1">
-            <span className="t-cap">{run.mainSet ? "Bloc principal" : "Durée"}</span>
-            <span className="t-title">{run.mainSet ?? duration(run.durationMin)}</span>
-          </div>
-          <div className="flex flex-col items-end gap-1 text-right">
-            <span className="t-cap">Allure cible</span>
-            <PaceValue value={run.pace} unit="/km" size={run.pace.length > 5 ? "title" : "figure"} rolling />
-          </div>
+          <SessionShape steps={run.steps} tone={run.intensity} className="h-11" />
+          {/* A range of paces is too wide for the big size: both figures drop to the smaller one, side by side or stacked. */}
+          <dl className="m-0 flex flex-wrap items-end gap-x-10 gap-y-3">
+            <Figure label="Durée" value={duration(run.durationMin)} size={longPace ? "num" : "figure"} />
+            <Figure label="Allure cible" value={run.pace} unit="/km" size={longPace ? "num" : "figure"} rolling />
+          </dl>
         </div>
       </div>
       <div className="expand relative" data-open={open}>
-        <ol className="m-0 flex list-none flex-col p-0" aria-hidden={!open}>
+        <ol className="m-0 flex list-none flex-col px-5 pt-3" aria-hidden={!open}>
           {run.steps.map((step) => (
             <li key={step.label} className="hairline-top flex min-h-11 items-center justify-between gap-3 py-2">
               <span className={cx("t-body", step.tone === "hard" && "font-semibold")}>{step.label}</span>
@@ -70,34 +71,11 @@ export function RunCard({ run, today }: { run: Run; today: string }) {
         type="button"
         aria-expanded={open}
         onClick={() => setOpen(!open)}
-        className="press t-strong hairline-top relative flex min-h-12 items-center justify-center gap-2 border-x-0 border-b-0 bg-transparent text-ink"
+        className="press t-label hairline-top relative mx-5 mt-4 flex min-h-12 items-center justify-center gap-1.5 border-x-0 border-b-0 bg-transparent text-ink"
       >
-        {open ? "Masquer les étapes" : "Voir les étapes"}
+        {open ? "Masquer les étapes" : `Voir les ${run.steps.length} étapes`}
         <Icon name="chevronDown" size={16} stroke={2.5} className={cx("tab-pill", open && "rotate-180")} />
       </button>
     </Surface>
-  );
-}
-
-function WatchStatus({ run }: { run: Run }) {
-  if (!run.watch) return null;
-  const label = WATCH_LABEL[run.watch];
-  if (run.watch !== "failed") {
-    return (
-      <span className="t-cap flex items-center gap-1">
-        <Icon name="watch" size={16} />
-        {label}
-      </span>
-    );
-  }
-  return (
-    <button
-      type="button"
-      onClick={() => void usePlan.getState().run((api) => api.resendToWatch(run.id))}
-      className="press t-cap flex min-h-11 items-center gap-1.5 rounded-full border-0 bg-warn-wash px-3 font-semibold text-warn-deep"
-    >
-      <Icon name="watch" size={16} />
-      {label}
-    </button>
   );
 }
