@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ApiError, errorMessage } from "./errors.ts";
 import { createHttpApi, isHealthy, sse } from "./http.ts";
 import { mockRequest, pickApi } from "./index.ts";
-import { toGoal, toMoveOptions, toPreviewRows, toProfilePatch, toUnavailable } from "./map.ts";
+import { planWeek, toGoal, toMoveOptions, toPreviewRows, toProfilePatch, toUnavailable } from "./map.ts";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -328,6 +328,42 @@ describe("http client, reading", () => {
     });
     const maintenance = await server({ ...reads, "GET /api/program": { goal: null } }).api.program();
     expect(maintenance.maintenance).toBe(true);
+    expect(maintenance.phases).toEqual([]);
+  });
+
+  it("maps the plan: named phases, the current week in Programme and Semaine, and the target's tag", async () => {
+    const plan = {
+      firstMonday: "2026-11-09",
+      phases: [
+        { phase: "base", weeks: 3 },
+        { phase: "dev", weeks: 0 },
+        { phase: "spe", weeks: 5 },
+        { phase: "taper", weeks: 2 },
+      ],
+      verdict: "ambitieux",
+    };
+    const reading = { ...reads, "GET /api/program": { ...reads["GET /api/program"], plan } };
+    const program = await server(reading).api.program();
+    expect(program.phases).toEqual([
+      { name: "Base", weeks: 3 },
+      { name: "Spécifique", weeks: 5 },
+      { name: "Affûtage", weeks: 2 },
+    ]);
+    expect([program.weekIndex, program.weekTotal]).toEqual([2, 10]);
+    expect(program.goal.targetTag).toBe("ambitious");
+    const week = await server(reading).api.week(0);
+    expect([week.index, week.total]).toEqual([2, 10]);
+    expect((await server(reads).api.program()).goal.targetTag).toBeUndefined();
+  });
+
+  it("counts the week the programme starts in as week 1, and none outside the plan", () => {
+    const plan = { firstMonday: "2026-11-09", phases: [{ phase: "base" as const, weeks: 4 }] };
+    expect(planWeek(plan, "2026-11-02")).toEqual({ index: 1, total: 4 });
+    expect(planWeek(plan, "2026-11-09")).toEqual({ index: 1, total: 4 });
+    expect(planWeek(plan, "2026-11-30")).toEqual({ index: 4, total: 4 });
+    expect(planWeek(plan, "2026-10-26")).toBeUndefined();
+    expect(planWeek(plan, "2026-12-07")).toBeUndefined();
+    expect(planWeek(undefined, "2026-11-09")).toBeUndefined();
   });
 
   it("maps move slots, keeping a day open when one of its times is allowed", () => {

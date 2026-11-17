@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Activity, WeekRequest } from "../src/index.ts";
-import { addDays, checkHard, dateOf, isHard, planWeek, slotOf, validateWeek } from "../src/index.ts";
+import { addDays, checkHard, dateOf, isHard, planWeek, programPlan, slotOf, validateWeek } from "../src/index.ts";
 import { easy, LEGS, MONDAY, SETTINGS } from "./fixtures.ts";
 
 const runs = (weeks: number, perWeek: number, durMin: number, lastMonday = addDays(MONDAY, -7)): Activity[] =>
@@ -94,5 +94,30 @@ describe("planWeek (cycle 0.1 buildWeek)", () => {
   it("aims SPE at the target race pace and plans from the declared start without history", () => {
     const r = request({ history: [], goal: { distanceM: 21097.5, date: "2027-03-21", targetMin: 110 } });
     expect(planWeek(r).sessions.length).toBeGreaterThan(0);
+  });
+});
+
+describe("programPlan", () => {
+  it("counts its weeks from the Monday after the start, whatever the day it is now", () => {
+    const goal = { distanceM: 21097.5, date: "2027-03-21" } as const;
+    const started = programPlan({ ...request({ planStart: addDays(MONDAY, -10) }), goal });
+    const later = programPlan({
+      ...request({ planStart: addDays(MONDAY, -10), now: `${addDays(MONDAY, 20)}T08:00` }),
+      goal,
+    });
+    expect(started.weeks[0]?.monday).toBe(addDays(MONDAY, -7));
+    expect(later.split).toEqual(started.split);
+    expect(started.weeks).toHaveLength(
+      started.split.base + started.split.dev + started.split.spe + started.split.taper,
+    );
+  });
+
+  it("leaves out the runs after the start, as the weeks it fills do", () => {
+    const goal = { distanceM: 21097.5, date: "2027-03-21" } as const;
+    const after = runs(4, 4, 90, addDays(MONDAY, 21));
+    const base = request({ planStart: dateOf(addDays(MONDAY, -1)) });
+    expect(programPlan({ ...base, history: [...base.history, ...after], goal }).v0).toBe(
+      programPlan({ ...base, goal }).v0,
+    );
   });
 });

@@ -55,6 +55,7 @@ function healthAfter(health: HealthStatus, r: Unavailable, now: string): HealthS
 /** Applies every action without any rule: the double the service tests run on (the adapter has its own tests). */
 export const passThroughCoach: CoachPort = {
   feasibility: coachFeasibility,
+  programPlan: () => null,
   buildWeek: (st) => ({ state: st, changes: [], warnings: [] }),
   moveSession: (st, id, slot) => ({
     state: {

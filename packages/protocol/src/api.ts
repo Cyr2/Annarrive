@@ -119,6 +119,23 @@ export const programSchema = z.object({
 });
 export type Program = z.infer<typeof programSchema>;
 
+/** GET /api/program: the stored programme, with the plan the coach follows when there is a goal and a known form. */
+export const programViewSchema = programSchema.extend({
+  plan: z
+    .object({
+      /** Monday of plan week 1 (P3); the week the programme starts in is filled with week 1 too. */
+      firstMonday: localDateSchema,
+      /** P4 to P7, in order; a phase may last 0 weeks. */
+      phases: z.array(
+        z.object({ phase: z.enum(["base", "dev", "spe", "taper"]), weeks: z.number().int().nonnegative() }),
+      ),
+      /** Her target as POST /api/feasibility rates it; absent without a target time. */
+      verdict: feasibilitySchema.shape.verdict.unwrap().optional(),
+    })
+    .optional(),
+});
+export type ProgramView = z.infer<typeof programViewSchema>;
+
 /** A level change the coach proposes (algo.md M8), accepted or declined in one tap. */
 export const proposalSchema = z.object({
   id: z.string(),
