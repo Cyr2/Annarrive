@@ -42,18 +42,12 @@ function upgrade() {
 }
 if (typeof window !== "undefined") for (const type of GESTURE_END) addEventListener(type, upgrade, true);
 
-let held = false;
-if (typeof window !== "undefined") {
-  addEventListener("pointerdown", () => (held = true), true);
-  for (const type of GESTURE_END) addEventListener(type, () => (held = false), true);
-}
-
-/** At idle after the first screen: glisse lands before the first gesture, not during the first sheet's rise. */
+/**
+ * At idle after the first screen: glisse's file is in before the first gesture, so the swap after it is
+ * immediate. The swap itself still waits for that gesture: done at idle, it drew the rims during the launch.
+ */
 export function preloadControls() {
-  void loadGlisse().then(
-    () => !held && !glisse && upgrade(),
-    () => undefined,
-  );
+  loadGlisse().catch(() => undefined);
 }
 
 function subscribe(notify: () => void) {
