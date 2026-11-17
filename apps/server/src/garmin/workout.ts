@@ -100,7 +100,7 @@ export function touchesWatch(mutations: { table: string; before: unknown; after:
 /** "pending" until the content on the watch matches the session, then the last upload's outcome. */
 export function watchStatus(
   session: PlannedSession,
-  sync: { status: "sent" | "failed"; hash: string } | undefined,
+  sync: { status: "sent" | "failed" | "off"; hash: string } | undefined,
   today: string,
 ): WatchStatus | null {
   if (!onWatch(session, today)) return null;

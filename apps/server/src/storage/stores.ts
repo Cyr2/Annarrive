@@ -79,7 +79,8 @@ const pushSubscriptionSchema = z.object({
  */
 const watchSyncSchema = z.object({
   id: z.string(),
-  status: z.enum(["sent", "failed"]),
+  /** "off": not sent, this instance runs with `GARMIN_WRITE=off`. */
+  status: z.enum(["sent", "failed", "off"]),
   hash: z.string(),
   workoutId: z.number().int().optional(),
 });

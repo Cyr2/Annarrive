@@ -51,6 +51,7 @@ export const WATCH_LABEL: Record<WatchStatus, string> = {
   synced: "Sur ta montre",
   sending: "Envoi à ta montre…",
   failed: "Pas sur ta montre",
+  off: "Pas envoyée : envoi coupé sur cette instance",
 };
 
 const REST_LINES = [

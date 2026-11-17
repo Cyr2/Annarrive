@@ -87,7 +87,7 @@ const WHY: Record<RunType, string> = {
   TEST: "Mesure ta forme pour ajuster tes allures.",
 };
 
-const WATCH: Record<ServerWatch, WatchStatus> = { pending: "sending", sent: "synced", failed: "failed" };
+const WATCH: Record<ServerWatch, WatchStatus> = { pending: "sending", sent: "synced", failed: "failed", off: "off" };
 const STEP_LABELS: Record<ServerStep["kind"], string> = {
   warmup: "Échauffement",
   work: "Bloc",

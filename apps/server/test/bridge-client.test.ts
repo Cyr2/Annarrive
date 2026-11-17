@@ -7,6 +7,7 @@ import {
   createBridgeClient,
   GarminAuthError,
   GarminRateLimitError,
+  GarminWriteOffError,
 } from "../src/garmin/bridge-client.ts";
 
 const activity = {
@@ -103,6 +104,21 @@ describe("bridge client", () => {
     await client.deleteWorkout(987);
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe("http://bridge:8000/workouts/987");
     expect(fetchMock.mock.calls[0]?.[1]?.method).toBe("DELETE");
+  });
+
+  it("with writing off, never reaches the bridge for a workout but still reads", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => json([activity]));
+    const client = createBridgeClient({
+      baseUrl: "http://bridge:8000",
+      secret: "s3cret",
+      write: false,
+      fetch: fetchMock,
+    });
+    await expect(client.createWorkout(workout)).rejects.toBeInstanceOf(GarminWriteOffError);
+    await expect(client.deleteWorkout(987)).rejects.toBeInstanceOf(GarminWriteOffError);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(await client.recentActivities()).toEqual([activity]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("maps a 401 to GarminAuthError", async () => {

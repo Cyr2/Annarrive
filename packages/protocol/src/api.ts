@@ -199,7 +199,7 @@ export const changeResponseSchema = z.object({ change: changeSchema.nullable(), 
 export type ChangeResponse = z.infer<typeof changeResponseSchema>;
 
 /** "Sur ta montre", "Envoi à ta montre…", "Pas envoyée, réessayer" (docs/interactions.md). */
-export const watchStatusSchema = z.enum(["pending", "sent", "failed"]);
+export const watchStatusSchema = z.enum(["pending", "sent", "failed", "off"]);
 export type WatchStatus = z.infer<typeof watchStatusSchema>;
 
 /** A session as the screens show it; `watch` is null outside the 7 days sent to the watch. */

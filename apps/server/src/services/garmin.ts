@@ -4,6 +4,7 @@ import {
   BridgeUnreachableError,
   GarminAuthError,
   GarminRateLimitError,
+  GarminWriteOffError,
 } from "../garmin/bridge-client.ts";
 import { onWatch, toWorkoutRequest, workoutHash } from "../garmin/workout.ts";
 import type { Activity, Stores } from "../storage/stores.ts";
@@ -177,6 +178,10 @@ export class GarminService {
         workoutId = (await this.#bridge.createWorkout(toWorkoutRequest(session))).workoutId;
         this.#stores.watchSync.put({ id: session.id, status: "sent", hash, workoutId });
       } catch (error) {
+        if (error instanceof GarminWriteOffError) {
+          this.#stores.watchSync.put({ id: session.id, status: "off", hash, workoutId });
+          continue;
+        }
         this.#stores.watchSync.put({ id: session.id, status: "failed", hash, workoutId });
         console.error(`Montre : séance non envoyée (${errorName(error)})`);
         ok = false;
