@@ -28,10 +28,11 @@ export function TodayScreen() {
   const show = useSheet((s) => s.show);
   const go = useGo();
   const week = weeks[0];
-  // A first launch: the onboarding comes before the plan, never after a glimpse of an empty rest day. A plan with
-  // a goal is someone already set up: it paints at once, without waiting for the server's answer.
+  // A first launch: the onboarding comes before the plan, never after a glimpse of an empty rest day. A goal or a
+  // run this week is someone already set up: it paints at once, without waiting for the server's answer.
   const need = useOnboardingNeed((s) => s.need);
-  const onboarding = need === true || (need === undefined && !today?.goal);
+  const setUp = Boolean(today?.goal) || Boolean(week?.items.some((item) => item.kind === "run"));
+  const onboarding = need === true || (need === undefined && !setUp);
 
   if (status === "error") {
     return (

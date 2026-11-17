@@ -56,8 +56,11 @@ function whenIdle(task: () => void) {
   else setTimeout(task, 500);
 }
 
+const PRELOAD_DELAY_MS = 2000;
+
 /** Everything a first tap would otherwise wait for: the other tabs, the sheets (with motion), the banner, glisse. */
 function preloadAll() {
+  void usePlan.getState().loadProgram();
   for (const screen of [WeekScreen, ProgramScreen, ReggieScreen]) screen.preload();
   loadToast().catch(() => undefined);
   for (const kind of SHEETS) preloadSheet(kind);
@@ -126,12 +129,12 @@ export function App() {
       .then(() =>
         whenIdle(() => {
           void usePush.getState().check();
-          void usePlan.getState().loadProgram();
-          preloadAll();
           import("virtual:pwa-register").then(
             ({ registerSW }) => watchForUpdates(registerSW),
             () => undefined,
           );
+          // Well after the first paint, so it never competes with it: a tap before then preloads what it opens.
+          setTimeout(() => whenIdle(preloadAll), PRELOAD_DELAY_MS);
         }),
       );
   }, []);
