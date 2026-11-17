@@ -6,7 +6,8 @@ const day = (page: Page, date: string) => page.locator(`#day-${date}`);
 
 /** Long press (0.3 s in the app), then a slow drag to `target`'s center. */
 async function pressAndDrag(page: Page, item: Locator, target?: Locator) {
-  await item.scrollIntoViewIfNeeded();
+  // Centered: a row already on screen can sit under the floating tab bar, where the press would land on the bar.
+  await item.evaluate((el) => el.scrollIntoView({ block: "center" }));
   const from = await item.boundingBox();
   if (!from) throw new Error("Élément invisible");
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);

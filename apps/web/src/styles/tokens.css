@@ -113,6 +113,33 @@
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  /* A dropped session settling in its slot: a damped spring, 5 % overshoot, over --duration-settle. */
+  --duration-settle: 450ms;
+  --ease-spring-bounce: linear(
+    0,
+    0.071,
+    0.233,
+    0.424,
+    0.608,
+    0.763,
+    0.882,
+    0.965,
+    1.017,
+    1.044,
+    1.054,
+    1.052,
+    1.045,
+    1.034,
+    1.024,
+    1.015,
+    1.008,
+    1.003,
+    1,
+    0.998,
+    1
+  );
+  /* A held session charging before it lifts (the long press of the week). */
+  --duration-hold: 300ms;
 }
 
 /* Everything the sky paints: the dawn gradient and its sun. Sky.tsx shifts it per phase of the programme. */

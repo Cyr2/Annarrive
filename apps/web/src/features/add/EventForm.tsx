@@ -1,8 +1,6 @@
-import { useState } from "react";
-import { Button, SegmentedControl } from "../../ui/controls.tsx";
+import { SegmentedControl } from "../../ui/controls.tsx";
 import { Group, RowInput, RowSelect, Section } from "../../ui/List.tsx";
-import { usePlan } from "../plan/store.ts";
-import { busyEvent, type Form, isValidSpan, REPEATS, revisionEvent } from "./add.ts";
+import { type Form, REPEATS } from "./add.ts";
 
 const LENGTHS = [
   { value: "60", label: "1 h" },
@@ -10,25 +8,10 @@ const LENGTHS = [
   { value: "120", label: "2 h" },
 ];
 
-type Props = { kind: "revision" | "busy"; date: string; today: string; close: () => void };
+type Props = { kind: "revision" | "busy"; form: Form; today: string; onChange: (patch: Partial<Form>) => void };
 
 /** Révision (length in buttons, day, time, repeat) or Indispo (optional title, day, start and end). */
-export function EventForm({ kind, date, today, close }: Props) {
-  const apply = usePlan((s) => s.apply);
-  const [form, setForm] = useState<Form>({
-    title: "",
-    date,
-    start: "14:00",
-    end: "18:00",
-    minutes: 120,
-    repeat: "never",
-  });
-  const set = (patch: Partial<Form>) => setForm({ ...form, ...patch });
-  const valid = Boolean(form.date) && (kind === "revision" ? Boolean(form.start) : isValidSpan(form.start, form.end));
-  const add = async () => {
-    const event = kind === "revision" ? revisionEvent(form) : busyEvent(form);
-    if (await apply((api) => api.addEvent(event))) close();
-  };
+export function EventForm({ kind, form, today, onChange: set }: Props) {
   return (
     <>
       {kind === "revision" && (
@@ -64,12 +47,9 @@ export function EventForm({ kind, date, today, close }: Props) {
       </Group>
       <p className="t-cap m-0 px-4">
         {kind === "busy"
-          ? "Reggie ne place rien sur ce créneau."
+          ? "Reggie ne place aucune course sur ce créneau."
           : "Si une course tombe sur ce créneau, Reggie la déplace et te le dit."}
       </p>
-      <Button variant="filled" size="large" disabled={!valid} onClick={() => void add()}>
-        Ajouter
-      </Button>
     </>
   );
 }

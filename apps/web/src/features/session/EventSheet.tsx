@@ -1,9 +1,12 @@
 import { useState } from "react";
 import type { CalendarEvent } from "../../api/schemas.ts";
+import { cx } from "../../lib/cx.ts";
 import { dayTitle, minutesOf, span } from "../../lib/date.ts";
+import { IconTile } from "../../ui/bits.tsx";
 import { Button } from "../../ui/controls.tsx";
 import { Group, RowInput, Section } from "../../ui/List.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
+import { Surface } from "../../ui/Surface.tsx";
 import { TextButton } from "../../ui/TextButton.tsx";
 import { findItem, todayOf } from "../plan/selectors.ts";
 import { usePlan } from "../plan/store.ts";
@@ -33,19 +36,17 @@ function ClassCard({ event, ...sheet }: Props) {
   };
   return (
     <Sheet {...sheet} title={event.title} cancelLabel="Fermer">
-      <Group>
-        <div className="row">
-          <span className="t-body">Jour</span>
-          <span className="t-body text-ink-2">{dayTitle(event.date)}</span>
-        </div>
-        <div className="row">
-          <span className="t-body">Horaire</span>
-          <span className="t-body text-ink-2">{span(event.start, event.end)}</span>
-        </div>
-      </Group>
+      <Surface variant="inset" className="flex items-center gap-3 px-4 py-3">
+        <IconTile tone="class" />
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="t-strong">{dayTitle(event.date)}</span>
+          <span className={cx("t-cap", event.cancelled && "line-through")}>{span(event.start, event.end)}</span>
+        </span>
+        {event.cancelled && <span className="t-cap flex-none rounded-full bg-fill px-2 py-0.5">N'a pas lieu</span>}
+      </Surface>
       <p className="t-cap m-0 px-4">
-        Vient de ton emploi du temps, qui se relit tout seul. Un cours ne se déplace pas, mais tu peux dire qu'il n'a
-        pas lieu : le créneau se libère.
+        Vient de ton emploi du temps, qui se relit tout seul. Un cours ne se déplace pas. S'il n'a pas lieu, dis-le : le
+        créneau se libère et Reggie peut adapter ta semaine.
       </p>
       <Button variant="tinted" size="large" onClick={() => void toggle()}>
         {event.cancelled ? "Le cours a lieu finalement" : "Ce cours n'a pas lieu"}
