@@ -3,13 +3,13 @@ import { Icon } from "../../ui/Icon.tsx";
 import { PaceValue } from "../../ui/PaceValue.tsx";
 import { TONES, type Tone } from "../../ui/tones.ts";
 
-/** The type's wash across the top of a card, fading into the white: the session reads before a word is read. */
+/** The type's color as a halo in the top corner, gone by mid card: the session reads at a glance and the numbers sit on calm. */
 export function ToneWash({ tone }: { tone: Tone }) {
   return (
     <span
       aria-hidden="true"
       className={cx(
-        "pointer-events-none absolute inset-x-0 top-0 h-40 [mask-image:linear-gradient(to_bottom,black,transparent)]",
+        "pointer-events-none absolute inset-0 [mask-image:radial-gradient(120%_70%_at_100%_0%,black,transparent_60%)]",
         TONES[tone].wash,
       )}
     />

@@ -59,6 +59,18 @@ describe("server", () => {
     expect(response.headers.get("cache-control")).toContain("immutable");
     expect((await app.request("/semaine")).headers.get("cache-control")).toBeNull();
   });
+
+  it("draws the login page in the app's font, from the file the built app preloads", async () => {
+    const webDist = await mkdtemp(join(tmpdir(), "annarrive-web-"));
+    const href = "/assets/nunito-latin-wght-normal-Ab_1.woff2";
+    await writeFile(join(webDist, "index.html"), `<link rel="preload" href="${href}" as="font">`);
+    const { services } = setup();
+    const page = await (
+      await createApp({ services, sessionSecret: SECRET, webDist }).request("/api/auth/login")
+    ).text();
+    expect(page).toContain(`src:url(${href})`);
+    expect(await (await setup().app.request("/api/auth/login")).text()).not.toContain("@font-face");
+  });
 });
 
 describe("hardening", () => {
