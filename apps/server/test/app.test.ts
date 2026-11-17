@@ -156,7 +156,7 @@ describe("login", () => {
     const t = setup();
     expect(await t.call("GET", "/api/today")).toEqual({
       status: 401,
-      json: { error: "Connexion requise : ouvre un nouveau lien de connexion." },
+      json: { error: "Connexion requise : connecte-toi sur l'app." },
     });
   });
 

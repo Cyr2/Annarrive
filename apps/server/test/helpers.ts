@@ -176,6 +176,7 @@ export function setup(
   const services = createServices({
     db,
     clock,
+    publicUrl: "https://annarrive.test",
     coach: options.coach ?? fakeCoach,
     fetchIcs,
     icsUrl: options.icsUrl === null ? undefined : (options.icsUrl ?? "https://edt.test/env.ics"),

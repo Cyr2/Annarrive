@@ -2,7 +2,12 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { Health } from "@annarrive/protocol";
+import {
+  authenticationResponseSchema,
+  type Health,
+  passwordLoginSchema,
+  registrationResponseSchema,
+} from "@annarrive/protocol";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { type Context, Hono, type Next } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -10,7 +15,7 @@ import { compress } from "hono/compress";
 import { getSignedCookie, setSignedCookie } from "hono/cookie";
 import { secureHeaders } from "hono/secure-headers";
 import { ZodError, z } from "zod";
-import { AppError, UnauthorizedError } from "./errors.ts";
+import { AppError, ReadOnlyError, UnauthorizedError } from "./errors.ts";
 import { chatRoutes } from "./routes/chat.ts";
 import { fitnessRoutes } from "./routes/fitness.ts";
 import { planRoutes } from "./routes/plan.ts";
@@ -189,23 +194,13 @@ export function createApp({ services, sessionSecret, webDist }: AppOptions): Hon
         font,
         "Bienvenue sur Annarrivé",
         "<p>Ce lien ouvre Annarrivé sur ce téléphone.</p>",
-        `<form method="post" action="/api/auth/login"><input type="hidden" name="token" value="${parsed.data}"><button type="submit">Se connecter</button></form><small>Pas de mot de passe : tu restes connectée ensuite.</small>`,
+        `<form method="post" action="/api/auth/login"><input type="hidden" name="token" value="${parsed.data}"><button type="submit">Se connecter</button></form><small>Tu restes connectée ensuite.</small>`,
       ),
     );
   });
 
-  app.post("/api/auth/login", async (c) => {
-    let sessionId: string;
-    try {
-      // Browsers flag a form posted from another site; this one must come from the page above.
-      const site = c.req.header("sec-fetch-site");
-      if (site && site !== "same-origin") throw new AppError(403, "Ouvre ton lien de connexion directement.");
-      sessionId = services.auth.login(loginTokenSchema.parse((await c.req.parseBody()).token));
-    } catch (error) {
-      if (error instanceof AppError) return c.html(loginError(font, error.message), error.status);
-      throw error;
-    }
-    await setSignedCookie(c, SESSION_COOKIE, sessionId, sessionSecret, {
+  const startSession = (c: Context, sessionId: string) =>
+    setSignedCookie(c, SESSION_COOKIE, sessionId, sessionSecret, {
       prefix: "host",
       httpOnly: true,
       secure: true,
@@ -213,22 +208,67 @@ export function createApp({ services, sessionSecret, webDist }: AppOptions): Hon
       path: "/",
       maxAge: SESSION_SECONDS,
     });
-    return c.redirect("/");
+  const currentSession = async (c: Context) => {
+    const sessionId = await getSignedCookie(c, sessionSecret, SESSION_COOKIE, "host");
+    return sessionId ? services.auth.session(sessionId) : undefined;
+  };
+  const jsonBodyLimit = bodyLimit({
+    maxSize: MAX_BODY_BYTES,
+    onError: (c) => c.json({ error: "Requête trop grosse : raccourcis ton message." }, 413),
+  });
+
+  app.post("/api/auth/login", async (c) => {
+    let opened: ReturnType<Services["auth"]["login"]>;
+    try {
+      // Browsers flag a form posted from another site; this one must come from the page above.
+      const site = c.req.header("sec-fetch-site");
+      if (site && site !== "same-origin") throw new AppError(403, "Ouvre ton lien de connexion directement.");
+      opened = services.auth.login(loginTokenSchema.parse((await c.req.parseBody()).token));
+    } catch (error) {
+      if (error instanceof AppError) return c.html(loginError(font, error.message), error.status);
+      throw error;
+    }
+    await startSession(c, opened.sessionId);
+    // A link made for an account offers Face ID next (the app's /face-id screen).
+    return c.redirect(opened.userId ? "/face-id" : "/");
+  });
+
+  // Signing in: no session yet, so these come before the session check, each with its own guards.
+  app.post("/api/auth/password", sameOrigin, jsonBodyLimit, async (c) => {
+    const { username, password } = passwordLoginSchema.parse(await c.req.json());
+    await startSession(c, await services.auth.passwordLogin(username, password));
+    return c.body(null, 204);
+  });
+  app.post("/api/auth/passkey/options", sameOrigin, rateLimit(30, 60_000), async (c) =>
+    c.json(await services.auth.passkeyLoginOptions()),
+  );
+  app.post("/api/auth/passkey", sameOrigin, jsonBodyLimit, async (c) => {
+    const response = authenticationResponseSchema.parse(await c.req.json());
+    await startSession(c, await services.auth.passkeyLogin(response));
+    return c.body(null, 204);
   });
 
   app.use("/api/*", async (c, next) => {
-    const sessionId = await getSignedCookie(c, sessionSecret, SESSION_COOKIE, "host");
-    if (!sessionId || !services.auth.isValidSession(sessionId)) throw new UnauthorizedError();
+    if (!(await currentSession(c))) throw new UnauthorizedError();
     await next();
   });
   app.use("/api/*", sameOrigin);
-  app.use(
-    "/api/*",
-    bodyLimit({
-      maxSize: MAX_BODY_BYTES,
-      onError: (c) => c.json({ error: "Requête trop grosse : raccourcis ton message." }, 413),
-    }),
+  app.use("/api/*", jsonBodyLimit);
+
+  /** The signed-in account; a session opened by a link without a name has none, so it cannot add Face ID. */
+  const accountOf = async (c: Context) => {
+    const userId = (await currentSession(c))?.userId;
+    if (!userId) throw new ReadOnlyError("Connecte-toi avec ton identifiant et ton mot de passe pour activer Face ID.");
+    return userId;
+  };
+  app.post("/api/passkeys/options", rateLimit(30, 60_000), async (c) =>
+    c.json(await services.auth.registrationOptions(await accountOf(c))),
   );
+  app.post("/api/passkeys", async (c) => {
+    const response = registrationResponseSchema.parse(await c.req.json());
+    await services.auth.registerPasskey(await accountOf(c), response);
+    return c.body(null, 204);
+  });
   // Each message runs Reggie (paid model calls); each refresh downloads the ICS.
   app.post("/api/chat", rateLimit(30, 10 * 60_000));
   app.on(["POST", "PUT"], ["/api/timetable/refresh", "/api/timetable/url"], rateLimit(10, 60_000));

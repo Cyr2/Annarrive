@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Redirect, Route, Switch, useLocation } from "wouter";
 import { useSignedOut } from "./api/session.ts";
 import { SignedOut } from "./features/auth/SignedOut.tsx";
@@ -21,6 +21,8 @@ const ProgramScreen = lazy(loadProgram);
 const ReggieScreen = lazy(loadReggie);
 // Onboarding is its own chunk, fetched only when the server says it is not done.
 const OnboardingGate = lazy(() => import("./features/onboarding/OnboardingGate.tsx"));
+// Seen once per device, after its first login.
+const FaceIdOffer = lazy(() => import("./features/auth/FaceIdOffer.tsx"));
 
 const TABS: Tab[] = [
   { href: "/", label: "Aujourd'hui", icon: "today" },
@@ -45,6 +47,7 @@ export function App() {
   const signedOut = useSignedOut((s) => s.signedOut);
   const phase = usePlan((s) => skyPhase(s.program, s.today?.date));
   const [onboarding, setOnboarding] = useState(false);
+  const goHome = useCallback(() => navigate("/"), [navigate]);
 
   useEffect(() => {
     // Aujourd'hui first: nothing else competes with its requests or delays its paint, then the rest waits for idle.
@@ -64,6 +67,16 @@ export function App() {
       <>
         <Sky />
         <SignedOut />
+      </>
+    );
+
+  if (location === "/face-id")
+    return (
+      <>
+        <Sky />
+        <Suspense fallback={null}>
+          <FaceIdOffer onDone={goHome} />
+        </Suspense>
       </>
     );
 

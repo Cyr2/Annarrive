@@ -559,7 +559,7 @@ describe("http client, errors", () => {
       .today()
       .catch((e: unknown) => e);
     expect(onSignedOut).toHaveBeenCalled();
-    expect(errorMessage(error)).toBe("Ouvre le lien de connexion que tu as reçu.");
+    expect(errorMessage(error)).toBe("Connecte-toi pour continuer.");
   });
 
   it("shows the server's French message, or says what to do", async () => {

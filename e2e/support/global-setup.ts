@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Browser, chromium, type FullConfig, webkit } from "@playwright/test";
-import { loginLink, type Server, seed, startServer } from "./server.ts";
+import { loginLink, newPassword, type Server, seed, startServer } from "./server.ts";
 
 /** Opens the one-time link like Anna, taps « Se connecter », and returns the session cookie for the tests. */
 async function logIn(browser: Browser, server: Server, use: FullConfig["projects"][number]["use"]): Promise<string> {
@@ -50,6 +50,8 @@ export default async function globalSetup(config: FullConfig) {
   try {
     process.env.E2E_PLAN_COOKIE = await logIn(browser, plan, use);
     process.env.E2E_FRESH_COOKIE = await logIn(browser, fresh, use);
+    // Anna's account on the plan server, for the login screen's tests.
+    process.env.E2E_PASSWORD = await newPassword(plan, "anna");
   } catch (error) {
     await teardown();
     throw error;
