@@ -111,6 +111,8 @@ export function App() {
   const signedOut = useSignedOut((s) => s.signedOut);
   const phase = usePlan((s) => skyPhase(s.program, s.today?.date));
   const goHome = useCallback(() => navigate("/"), [navigate]);
+  // WebKit hands glisse's tab bar two clicks for one tap: the second must not stack a second entry for Back.
+  const toTab = (href: string) => href !== window.location.pathname + window.location.search && navigate(href);
   // Once asked for, the gate stays mounted after the flow: the tour follows it over Aujourd'hui.
   const gate = useRef(false);
   if (useOnboardingNeed((s) => s.need)) gate.current = true;
@@ -180,7 +182,7 @@ export function App() {
           </Suspense>
         </ChunkBoundary>
       </div>
-      <TabBar tabs={TABS} active={active} onNavigate={navigate} />
+      <TabBar tabs={TABS} active={active} onNavigate={toTab} />
       <SheetHost />
       <ToastHost />
       {gate.current && (

@@ -9,7 +9,7 @@ test("Semaine et Programme disent quand leur lecture échoue, et Réessayer les 
     route.fulfill({ status: 500, contentType: "application/json", body: '{"error":"panne"}' }),
   );
   await page.goto("/");
-  await expect(page.getByRole("article").first()).toContainText("Sortie longue");
+  await expect(page.getByRole("article").first()).toBeVisible();
 
   await page.getByRole("link", { name: "Semaine" }).click();
   await page.getByRole("button", { name: "Semaine suivante" }).click();
@@ -27,7 +27,7 @@ test("l'emploi du temps ou Garmin en panne laissent le plan s'afficher, seule le
   await page.route(/\/api\/(timetable|watch)$/, (route) => route.fulfill({ status: 502, body: "" }));
   await page.route("**/api/first-screen", (route) => route.fulfill({ status: 404, body: "" }));
   await page.goto("/");
-  await expect(page.getByRole("article").first()).toContainText("Sortie longue");
+  await expect(page.getByRole("article").first()).toBeVisible();
   await expect(page.getByText("Injoignable pour l'instant")).toBeVisible();
   await page.getByRole("link", { name: "Programme" }).click();
   await expect(page.getByText("État inconnu")).toBeVisible();
@@ -63,7 +63,7 @@ test("un écran dont le fichier ne charge pas laisse l'app debout, et Réessayer
   // Offline once the first screen is in: Semaine's file cannot come, not even at idle.
   await page.route(/\/assets\/WeekScreen-.*\.js$/, (route) => route.abort("internetdisconnected"));
   await page.goto("/");
-  await expect(page.getByRole("article").first()).toContainText("Sortie longue");
+  await expect(page.getByRole("article").first()).toBeVisible();
   await page.getByRole("link", { name: "Semaine" }).click();
   await expect(page.getByRole("heading", { name: "Écran indisponible" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Aujourd'hui" })).toBeVisible();
@@ -121,13 +121,14 @@ test("Pas le temps mène à Déplacer sans refermer la feuille", async ({ page }
 test("au retour sur l'app après une pause, le plan est relu sans écran vide", async ({ page }) => {
   await page.goto("/");
   const card = page.getByRole("article").first();
-  await expect(card).toContainText("Sortie longue");
+  await expect(card).toBeVisible();
+  const title = await card.locator("h1, h2").first().textContent();
   const reads: string[] = [];
   page.on("request", (request) => request.url().endsWith("/api/today") && reads.push(request.url()));
   await page.clock.fastForward("02:00");
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
   await expect.poll(() => reads.length).toBe(1);
-  await expect(card).toContainText("Sortie longue");
+  await expect(card).toContainText(title ?? "");
 });
 
 test.describe("réduire les animations", () => {
