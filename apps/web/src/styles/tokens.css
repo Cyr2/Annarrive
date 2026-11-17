@@ -167,4 +167,18 @@
   --lg-ring: var(--color-action);
   --lg-ease: var(--ease-drawer);
   --lg-blur: 16px;
+  /* Glass that floats over scrolling content: the tab bar, toasts, Reggie's composer. */
+  --glass-float: var(--lg-glass);
+}
+
+/* On a touch screen, or with no backdrop blur at all, the frost alone must hide what scrolls behind. */
+@media (pointer: coarse) {
+  :root {
+    --glass-float: rgb(247 249 251 / 0.96);
+  }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root {
+    --glass-float: rgb(247 249 251 / 0.96);
+  }
 }

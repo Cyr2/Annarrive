@@ -91,6 +91,13 @@
 
   /* ---- Control glass outside glisse (toasts): the same recipe as glisse's, in CSS ---- */
 
+  /* Floating glass (tokens.css): glisse's own glass inside these reads the float fill too. */
+  .ui-glass,
+  .ui-float,
+  .ui-tab-bar {
+    --lg-glass: var(--glass-float);
+  }
+
   .ui-glass {
     background: var(--lg-glass);
     -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(170%);
@@ -110,6 +117,7 @@
     --surface-inset: var(--surface-solid);
     --surface-sheet: var(--surface-solid);
     --lg-glass: var(--surface-solid);
+    --glass-float: var(--surface-solid);
     --lg-glass-active: #ffffff;
     --lg-blur: 0px;
   }

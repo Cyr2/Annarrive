@@ -33,7 +33,7 @@ export function Composer({ onHeight }: { onHeight: (height: number) => void }) {
   return (
     <div
       ref={box}
-      className="fixed inset-x-0 z-20 mx-auto flex max-w-xl flex-col gap-2 px-gutter"
+      className="ui-float fixed inset-x-0 z-20 mx-auto flex max-w-xl flex-col gap-2 px-gutter"
       style={{ bottom: "calc(var(--space-above-tabbar) + env(safe-area-inset-bottom))" }}
     >
       <div className="fade-x -mx-4 -my-2 flex gap-2 overflow-x-auto overscroll-x-contain px-4 py-2 [scrollbar-width:none]">

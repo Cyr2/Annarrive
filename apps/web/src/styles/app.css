@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* glisse's sheet up front: the first screen draws glisse's markup before its script loads (ui/controls.tsx). */
+@import "glisse/styles.css";
 @import "./tokens.css";
 @import "./motion.css";
 @import "./surfaces.css";

@@ -52,7 +52,7 @@ Paces, times and distances are never colored: the type is said by a `SessionChip
 
 ### Surfaces, shadows, radii, spacing, motion
 
-- Surfaces: `--surface-card` (84 % white), `--surface-inset` (78 %), `--surface-sheet` (solid: at 97 % the page ghosted through), `--surface-solid` (reduced transparency). Blur only on fine pointers: on a phone the sky drifts behind and a blur would be redrawn every frame.
+- Surfaces: `--surface-card` (84 % white), `--surface-inset` (78 %), `--surface-sheet` (solid: at 97 % the page ghosted through), `--surface-solid` (reduced transparency). Blur only on fine pointers: on a phone the sky drifts behind and a blur would be redrawn every frame. Glass floating over scrolling content (tab bar, toasts, `.ui-glass`, Reggie's composer with `.ui-float`) takes `--glass-float`: 96 % frost on touch screens and without backdrop blur, so nothing behind it can be read.
 - Shadows: `shadow-card`, `shadow-inset`, `shadow-sheet`, `shadow-float` (floating controls, toasts), `shadow-lift` (dragged item), `shadow-ring` (selection), `shadow-ring-quiet` (empty radio).
 - Radii by hierarchy: `tile` 10, `row` 16, `inset` 20, `card` 24, `bubble` 22, `sheet` 32, `pill`.
 - Sizes: `--size-target` 44 (every touch target), `--size-control` 50 (main buttons, fields), `--size-action` 60 (round actions), `px-gutter` 16. `--space-under-tabbar` and `--space-above-tabbar` keep content and floating things clear of the tab bar.
@@ -107,4 +107,5 @@ Other utilities: `.row` (grouped list row with hairlines between rows), `.hairli
 
 - Targets 44 px, contrast 4.5:1 (ratios noted in `tokens.css`), visible focus (2 px action outline), `prefers-reduced-motion` (fades only, still sky), `prefers-reduced-transparency` (solid surfaces, no blur), `prefers-contrast: more` (outlined surfaces).
 - glisse is patched (`patches/glisse@0.6.0.patch`): no backdrop bending on phones and touch screens (Chromium draws it on the CPU), rim PNGs encoded in a worker (CSP `worker-src blob:`), the tab bar's held lens computed on the first touch. Without these the first screen spent 400 ms of main thread on Lighthouse's phone.
+- glisse's script is not in the first file: buttons, chips and the tab bar render glisse's own markup (its stylesheet is in `app.css`) and become glisse once the first gesture ends; fields, switches, sliders and segmented controls load with it (`lazy`). The first file stays near 117 KB gzip.
 - No document view transition between tabs: it crashed WebKit when the new screen was taller. The new screen fades in (`.screen-in`).
