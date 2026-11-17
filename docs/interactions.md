@@ -151,6 +151,23 @@ Pour une question comme « j'ai mal au tibia, c'est grave ? » ou « je mange qu
 
 Tutoiement, phrases courtes, pas de point d'exclamation en série, pas d'emoji. Il dit ce qu'il a fait et pourquoi en une phrase. Il oriente vers un professionnel dès qu'une douleur dure ou dépasse 4 sur 10.
 
+## Connexion
+
+Écran « Connecte-toi », affiché dès que le serveur répond sans session (le ciel, le logo, puis les actions). Le nom du déverrouillage suit l'appareil : Face ID sur iPhone, Touch ID sur Mac et iPad, « ton empreinte » ailleurs.
+
+| Élément | Effet |
+|---|---|
+| « Se connecter avec Face ID » (bouton principal, absent si le navigateur n'a pas WebAuthn) | Ouvre Face ID sur les clés d'accès du site, sans rien taper. Réussi : l'app se recharge, connectée. Fenêtre fermée : rien ne s'affiche. Clé refusée ou inconnue : message en haut, le mot de passe reste possible |
+| Champ Identifiant | Là où le navigateur le permet, propose aussi la clé d'accès dans ses suggestions ; la choisir connecte comme le bouton |
+| « Se connecter » (identifiant et mot de passe, actif quand les deux sont remplis) | Réussi : écran « Tu es connectée » si l'appareil a Face ID, sinon l'app directement. Raté : « Identifiant ou mot de passe incorrect. » ; après 5 ratés depuis une même adresse, mots de passe bloqués 15 min pour cette adresse (Face ID et le lien restent possibles) |
+
+Écran « Tu es connectée » (`/face-id`), après un mot de passe ou un lien de connexion fait pour un compte :
+
+| Élément | Effet |
+|---|---|
+| « Utiliser Face ID » | Enregistre la clé d'accès de l'appareil, puis Aujourd'hui. Fenêtre fermée, ou clé déjà présente : Aujourd'hui sans message. Échec : message, les deux boutons restent |
+| « Plus tard » | Aujourd'hui, sans clé. L'offre revient à la prochaine connexion par mot de passe |
+
 ## Animations
 
 Toutes respectent « Réduire les animations » d'iOS : dans ce cas, simples fondus de 150 ms.

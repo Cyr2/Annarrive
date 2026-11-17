@@ -35,13 +35,25 @@ export class UndoConflictError extends AppError {
 
 export class UnauthorizedError extends AppError {
   constructor() {
-    super(401, "Connexion requise : ouvre un nouveau lien de connexion.");
+    super(401, "Connexion requise : connecte-toi sur l'app.");
   }
 }
 
 export class InvalidLoginLinkError extends AppError {
   constructor() {
     super(401, "Ce lien de connexion n'est plus valable : demande un nouveau lien.");
+  }
+}
+
+export class WrongPasswordError extends AppError {
+  constructor() {
+    super(401, "Identifiant ou mot de passe incorrect.");
+  }
+}
+
+export class PasskeyRefusedError extends AppError {
+  constructor(message = "Clé d'accès refusée : réessaie, ou connecte-toi avec ton mot de passe.") {
+    super(401, message);
   }
 }
 

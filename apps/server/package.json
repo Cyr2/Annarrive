@@ -11,13 +11,15 @@
     "typecheck": "tsc -p .",
     "eval:reggie": "node --env-file-if-exists=../../.env --import tsx eval/reggie/run.ts",
     "lighthouse": "tsx src/cli/lighthouse.ts",
-    "login-link": "node --env-file-if-exists=../../.env --import tsx src/cli/login-link.ts"
+    "login-link": "node --env-file-if-exists=../../.env --import tsx src/cli/login-link.ts",
+    "users": "node --env-file-if-exists=../../.env --import tsx src/cli/users.ts"
   },
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.3.325",
-    "@hono/node-server": "^2.1.8",
     "@annarrive/coach": "workspace:*",
     "@annarrive/protocol": "workspace:*",
+    "@anthropic-ai/claude-agent-sdk": "^0.3.325",
+    "@hono/node-server": "^2.1.8",
+    "@simplewebauthn/server": "~14.0.3",
     "hono": "^4.13.18",
     "node-ical": "^0.27.6",
     "tsx": "^4.23.15",

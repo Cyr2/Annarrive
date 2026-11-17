@@ -19,6 +19,7 @@ if (publicKey && privateKey) setVapidDetails(config.PUBLIC_URL, publicKey, priva
 const services = createServices({
   db,
   clock: systemClock,
+  publicUrl: config.PUBLIC_URL,
   coach: coachAdapter,
   fetchIcs: icsFetcher(),
   icsUrl: config.ICS_URL,

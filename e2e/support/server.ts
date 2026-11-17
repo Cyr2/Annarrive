@@ -82,6 +82,16 @@ export async function loginLink(server: Server): Promise<string> {
   return stdout.trim();
 }
 
+/** A new password for `name` from the server's CLI (`users.ts password`), which creates the account. */
+export async function newPassword(server: Server, name: string): Promise<string> {
+  const port = Number(new URL(server.url).port);
+  const { stdout } = await promisify(execFile)(process.execPath, node(`${SERVER}cli/users.ts`, "password", name), {
+    cwd: path(".."),
+    env: env(port, server.dataDir),
+  });
+  return stdout.trim().split(" : ")[1] ?? "";
+}
+
 /** Fills a new DATA_DIR before the server opens it (see `seed.ts`). */
 export async function seed(dataDir: string, mode: "garmin" | "plan"): Promise<void> {
   await promisify(execFile)(process.execPath, node(path("./seed.ts"), dataDir, mode), {

@@ -30,6 +30,8 @@ export type Services = {
 export function createServices(deps: {
   db: DatabaseSync;
   clock: Clock;
+  /** Env `PUBLIC_URL`: its host is the passkeys' site (rpID), its origin the one they answer to. */
+  publicUrl: string;
   coach: CoachPort;
   fetchIcs: (url: string) => Promise<string>;
   /** Env `ICS_URL`, used until Anna pastes her own link. */
@@ -55,7 +57,7 @@ export function createServices(deps: {
     });
   });
   return {
-    auth: new AuthService(stores, deps.clock),
+    auth: new AuthService(stores, deps.clock, deps.publicUrl),
     changes,
     chat: new ChatService(stores, plan, deps.reggie ?? createReggie(query), deps.clock),
     plan,

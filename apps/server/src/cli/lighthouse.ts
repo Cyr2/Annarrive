@@ -29,6 +29,7 @@ const db = openDatabase(mkdtempSync(join(tmpdir(), "annarrive-lighthouse-")));
 const services = createServices({
   db,
   clock: systemClock,
+  publicUrl: `http://localhost:${env.PORT}`,
   coach: coachAdapter,
   fetchIcs: async () => "",
 });
