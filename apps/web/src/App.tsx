@@ -56,7 +56,7 @@ function whenIdle(task: () => void) {
   else setTimeout(task, 500);
 }
 
-const PRELOAD_DELAY_MS = 2000;
+const PRELOAD_DELAY_MS = 800;
 
 /** Everything a first tap would otherwise wait for: the other tabs, the sheets (with motion), the banner, glisse. */
 function preloadAll() {
