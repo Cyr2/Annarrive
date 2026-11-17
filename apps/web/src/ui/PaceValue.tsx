@@ -21,7 +21,8 @@ export function PaceValue({ value, unit, size = "strong", rolling = false, class
   const [number, inlineUnit] = splitUnit(value);
   const shownUnit = unit ?? inlineUnit;
   return (
-    <span className={cx(SIZES[size], "whitespace-nowrap text-ink tabular-nums", className)}>
+    // Wraps only between its words ("5:25 à 6:29 /km"), never inside a figure: at 200 % zoom it stays whole.
+    <span className={cx(SIZES[size], "text-ink tabular-nums", className)}>
       {rolling ? <RollingText value={number} /> : number}
       {shownUnit && <span className="t-sub font-medium tracking-normal">{` ${shownUnit}`}</span>}
     </span>

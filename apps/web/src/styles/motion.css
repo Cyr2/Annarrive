@@ -9,6 +9,18 @@
   transform: scale(0.96);
 }
 
+/* A change on its way to the server: the buttons that sent it breathe until it answers (they are disabled). */
+@keyframes busy {
+  50% {
+    opacity: 0.55;
+  }
+}
+.sheet-footer:disabled .ui-button,
+.ui-button[aria-busy="true"],
+[role="dialog"] header button[aria-busy="true"] {
+  animation: busy var(--duration-typing) var(--ease-in-out) infinite;
+}
+
 /* A choice that becomes selected (segments, options, switches). */
 .select-anim {
   transition:
@@ -186,6 +198,12 @@
   .typing-dot {
     animation: none;
     opacity: 0.6;
+  }
+  .sheet-footer:disabled .ui-button,
+  .ui-button[aria-busy="true"],
+  [role="dialog"] header button[aria-busy="true"] {
+    animation: none;
+    opacity: 0.55;
   }
   .tab-pill,
   .select-anim {

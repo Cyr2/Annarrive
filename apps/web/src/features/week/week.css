@@ -34,6 +34,12 @@
   filter: grayscale(1);
 }
 
+/* The week still on screen while the next one is read: quieter, and it cannot be dragged. */
+.week-stale {
+  opacity: 0.6;
+  transition: opacity var(--duration-fade) linear;
+}
+
 /* A free day under the held session: dashed, then filled with the action blue as she hovers it. */
 .week-slot {
   transition:

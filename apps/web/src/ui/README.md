@@ -72,7 +72,9 @@ Other utilities: `.row` (grouped list row with hairlines between rows), `.hairli
 - **`Sky`** `phase?: "base" | "build" | "peak" | "race"`. Mounted once in `App.tsx` (and inside the onboarding overlay). The phase warms the top glow a touch toward race week, never brighter. Never add a background to a screen.
 - **`Screen`** a tab's page: safe-area top, room for the tab bar at the bottom, 16 px gutters, 24 px between blocks. No props for color.
 - **`LogoSlot`** `size?`. The logo (bib on the peach sky, `public/logo.svg`), rounded like the app icon. Sources live in `design/logo/`.
-- **`EmptyState`** `icon, title, children?, action?`. Nothing to show or a failed load: icon, one sentence, always a way forward (a button).
+- **`EmptyState`** `icon, title, children?, action?`. Nothing to show or a failed load: icon, one sentence, always a way forward (a button). **`LoadFailed`** `title, what, onRetry` is its failed-read form, with Réessayer.
+- **`Skeleton`** `label?, className?`. The place of content on its way, at its final height (a screen, three slot cards), breathing slowly. Only the first of a list has a `label`.
+- **`ChunkBoundary`** `fallback(retry), onError?` and **`lazyChunk(load)`**: around every `Suspense`. A file that did not load breaks its own block, never the app; Réessayer asks the network again. `Chunk.preload()` fetches it at idle, after which it renders at once.
 
 ### Content
 
@@ -96,13 +98,13 @@ Other utilities: `.row` (grouped list row with hairlines between rows), `.hairli
 - **`Input`** `id, value, onChange, placeholder, action?`. A free text field in glass, `action` (the send button) drawn inside it at the trailing end (Reggie's composer, "Dis-le à Reggie"). Form rows use `RowInput`.
 - **`TabBar`** `tabs, active, onNavigate`. iOS 26 floating bar; the current tab in the action blue, Reggie's in his green. Real links.
 - **`TextButton`** `tone?: "action" | "danger" | "ink"`, `icon?`. Text only, no glass: sheet header actions, "Actualiser", "Placer", destructive rows inside a `Group` (`className="min-h-13 w-full"`).
-- **`RoundAction`** `label, icon, reggie?`. The 60 px actions under the day's session; only Reggie's is filled.
+- **`RoundAction`** `label, icon, reggie?, onPrepare?`. The 60 px actions under the day's session; only Reggie's is filled. `onPrepare` runs as the finger lands (the sheet's slots start loading).
 - **`ChoiceGroup`** a fieldset with a hidden legend, so VoiceOver reads the question before the choices.
 
 ### Overlays
 
-- **`Sheet`** `open, onOpenChange, title, subtitle?, onBack?, action?, cancelLabel?, footer?`. Rises on a spring over an ink scrim; pulled down by its top (120 px or a flick) it closes; Escape and a tap outside close it; focus moves in, the app behind is `inert`, focus returns on close; it sits above the keyboard. **One main action per sheet**: in `footer` (pinned, always visible, `Button variant="filled" size="large"`), or `action` ("OK" in the header) for a long form, never both. `onBack` replaces Annuler by a chevron for multi-step sheets. Sheets open through `features/sheets` (`useSheet().show(...)`).
-- **Toast**: call `notify(message, action?)` from `toast.ts`. Sonner loads with the first one; `Toast.tsx` styles it as a centered glass pill above the tab bar (`.ui-toast`), its action in the action blue. 6 s.
+- **`Sheet`** `open, onOpenChange, title, subtitle?, onBack?, action?, cancelLabel?, footer?`. Rises on a spring over an ink scrim; pulled down by its top (120 px or a flick) it closes; Escape and a tap outside close it; focus moves in, the app behind is `inert`, focus returns on close; it sits above the keyboard. **One main action per sheet**: in `footer` (pinned, always visible, `Button variant="filled" size="large"`), or `action` ("OK" in the header) for a long form, never both. `onBack` replaces Annuler by a chevron for multi-step sheets. `busy` holds the footer (a disabled fieldset whose buttons breathe) and the header action while a change is on its way; `appear={false}` for a sheet that takes another's place without rising again. Under reduced motion it fades in 150 ms. Sheets open through `features/sheets` (`useSheet().show(...)`, `replace(...)` for the next step of a flow); Back (Android, browser) closes them.
+- **Toast**: call `notify(message, action?, duration?)` from `toast.ts`. Sonner loads at idle or with the first one; `Toast.tsx` styles it as a centered glass pill above the tab bar (`.ui-toast`), its action in the action blue. 6 s. If Sonner cannot load (offline before it was cached), `ToastHost` draws the same pill itself.
 
 ## Accessibility and performance contract
 

@@ -99,12 +99,32 @@ export function touchesWatch(mutations: { table: string; before: unknown; after:
   );
 }
 
-/** "pending" until the content on the watch matches the session, then the last upload's outcome. */
+/** Meta key: since when the watch syncs fail, absent once one succeeds (services/garmin.ts). */
+export const WATCH_FAILING_SINCE = "watch.failingSince";
+/** How long a session may wait for a failing sync before the app says "Pas envoyée" instead of "Envoi…". */
+export const WATCH_GIVE_UP_MS = 10 * 60_000;
+
+/** The server's link to the watch: none (no bridge), working, or failing for longer than WATCH_GIVE_UP_MS. */
+export type WatchLink = "off" | "ok" | "stalled";
+
+export function watchLink(configured: boolean, failingSince: string | undefined, now: Date): WatchLink {
+  if (!configured) return "off";
+  const stalled = failingSince && now.getTime() - new Date(failingSince).getTime() >= WATCH_GIVE_UP_MS;
+  return stalled ? "stalled" : "ok";
+}
+
+/**
+ * "pending" until the content on the watch matches the session, then the last upload's outcome. Never pending
+ * for good: without a bridge it is "off", and after a long failing spell it is "failed" (with Réessayer).
+ */
 export function watchStatus(
   session: PlannedSession,
   sync: { status: "sent" | "failed" | "off"; hash: string } | undefined,
   today: string,
+  link: WatchLink = "ok",
 ): WatchStatus | null {
   if (!onWatch(session, today)) return null;
-  return sync?.hash === workoutHash(session) ? sync.status : "pending";
+  if (sync?.hash === workoutHash(session)) return sync.status;
+  if (link === "off") return "off";
+  return link === "stalled" ? "failed" : "pending";
 }

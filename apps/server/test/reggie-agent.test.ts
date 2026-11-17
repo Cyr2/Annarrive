@@ -1,5 +1,5 @@
 import type { HookInput } from "@anthropic-ai/claude-agent-sdk";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   createReggie,
   eventsOf,
@@ -128,7 +128,8 @@ describe("Reggie's SDK options", () => {
     expect(sdkEnv({ CLAUDE_CODE_OAUTH_TOKEN: "tok" })).toEqual({ CLAUDE_CODE_OAUTH_TOKEN: "tok" });
     const secrets = { SESSION_SECRET: "s", BRIDGE_SECRET: "b", GARMIN_PASSWORD: "p", VAPID_PRIVATE_KEY: "v" };
     expect(sdkEnv({ ANTHROPIC_API_KEY: "k", ...secrets })).toEqual({ ANTHROPIC_API_KEY: "k" });
-    expect(() => sdkEnv({ ANTHROPIC_API_KEY: "" })).toThrow("Reggie n'est pas configuré");
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    expect(() => sdkEnv({ ANTHROPIC_API_KEY: "" })).toThrow("Reggie ne répond pas pour l'instant");
   });
 });
 

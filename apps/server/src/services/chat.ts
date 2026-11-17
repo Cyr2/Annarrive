@@ -29,6 +29,14 @@ const screens: Record<ChatContext["screen"], string> = {
 };
 
 /** The one global conversation with Reggie, stored in `chat_message`. */
+/** What Anna reads when Reggie fails; `retry: false` when Reggie is off on this server (503). */
+function errorEvent(error: unknown): ChatStreamEvent {
+  if (!(error instanceof AppError)) return { type: "error", error: "Reggie ne répond pas : réessaie dans un instant." };
+  return error.status === 503
+    ? { type: "error", error: error.message, retry: false }
+    : { type: "error", error: error.message };
+}
+
 export class ChatService {
   readonly #stores: Stores;
   readonly #plan: PlanService;
@@ -66,8 +74,7 @@ export class ChatService {
       }
     } catch (error) {
       console.error(`Reggie a échoué : ${error instanceof Error ? error.name : "inconnu"}`);
-      const message = error instanceof AppError ? error.message : "Reggie ne répond pas : réessaie dans un instant.";
-      yield { type: "error", error: message };
+      yield errorEvent(error);
       return;
     }
     const answer = text.trim();

@@ -1,9 +1,6 @@
 import { useEffect } from "react";
 import { Toaster } from "sonner";
-import { useToastHost } from "./toast.ts";
-
-// Above the tab bar, and above Reggie's field when it is on screen (Composer.tsx sets --composer-height).
-const BOTTOM = "calc(env(safe-area-inset-bottom) + var(--space-above-tabbar) + var(--composer-height, 0px))";
+import { TOAST_BOTTOM as BOTTOM, useToastHost } from "./toast.ts";
 
 /** A glass pill above the floating tab bar, within the thumb's reach for « Annuler » (Liquid Glass recipe in CSS: Sonner draws its own element), its action in the action blue. */
 export default function Toast() {

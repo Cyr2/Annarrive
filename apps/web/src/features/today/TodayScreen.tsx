@@ -1,13 +1,16 @@
-import { Button } from "../../ui/controls.tsx";
-import { EmptyState } from "../../ui/EmptyState.tsx";
+import { LoadFailed } from "../../ui/EmptyState.tsx";
 import { Icon } from "../../ui/Icon.tsx";
 import { RoundAction } from "../../ui/RoundAction.tsx";
 import { Screen } from "../../ui/Screen.tsx";
-import { Surface } from "../../ui/Surface.tsx";
+import { Skeleton } from "../../ui/Skeleton.tsx";
+import { useOnboardingNeed } from "../onboarding/done.ts";
 import { usePlan } from "../plan/store.ts";
 import { useChat } from "../reggie/store.ts";
+import { preloadSheet } from "../sheets/SheetHost.tsx";
 import { useSheet } from "../sheets/store.ts";
 import { useGo } from "../useGo.ts";
+import { changeOptions, moveOptions } from "../useLoad.ts";
+import { RefreshRow } from "../week/RefreshRow.tsx";
 import { AfterRun } from "./AfterRun.tsx";
 import { DayAgenda } from "./DayAgenda.tsx";
 import { DidYouRun } from "./DidYouRun.tsx";
@@ -25,30 +28,22 @@ export function TodayScreen() {
   const show = useSheet((s) => s.show);
   const go = useGo();
   const week = weeks[0];
+  // A first launch: the onboarding comes before the plan, never after a glimpse of an empty rest day.
+  const onboarding = useOnboardingNeed((s) => s.need !== false);
 
   if (status === "error") {
     return (
       <Screen>
         <h1 className="sr-only-label">Aujourd'hui</h1>
-        <EmptyState
-          icon="info"
-          title="Plan indisponible"
-          action={
-            <Button variant="filled" icon="change" onClick={() => void usePlan.getState().load()}>
-              Réessayer
-            </Button>
-          }
-        >
-          Impossible de charger ton plan. Vérifie ta connexion, puis réessaie.
-        </EmptyState>
+        <LoadFailed title="Plan indisponible" what="ton plan" onRetry={() => void usePlan.getState().load()} />
       </Screen>
     );
   }
-  if (!today || !week) {
+  if (!today || !week || onboarding) {
     // The card's place, held while the plan loads, so nothing jumps when it arrives.
     return (
       <Screen>
-        <Surface aria-busy="true" aria-label="Chargement de ta journée" className="h-96 motion-safe:animate-pulse" />
+        <Skeleton label="Chargement de ta journée" />
       </Screen>
     );
   }
@@ -88,13 +83,30 @@ export function TodayScreen() {
           <div data-tour="actions" className="flex flex-col gap-4">
             <ReggieNote text={session.why} onClick={askReggie} />
             {/* The four round actions were chosen by the owner: Reggie first, filled in his green. */}
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(3.5rem,1fr))] gap-2">
               <RoundAction label="Reggie" icon="reggie" reggie onClick={askReggie} />
-              <RoundAction label="Déplacer" icon="move" onClick={() => show({ kind: "move", id: session.id })} />
-              <RoundAction label="Changer" icon="change" onClick={() => show({ kind: "change", id: session.id })} />
+              <RoundAction
+                label="Déplacer"
+                icon="move"
+                onPrepare={() => {
+                  preloadSheet("move");
+                  moveOptions.start(session.id);
+                }}
+                onClick={() => show({ kind: "move", id: session.id })}
+              />
+              <RoundAction
+                label="Changer"
+                icon="change"
+                onPrepare={() => {
+                  preloadSheet("change");
+                  changeOptions.start(session.id);
+                }}
+                onClick={() => show({ kind: "change", id: session.id })}
+              />
               <RoundAction
                 label="Pas dispo"
                 icon="close"
+                onPrepare={() => preloadSheet("unavailable")}
                 onClick={() => show({ kind: "unavailable", id: session.id })}
               />
             </div>
@@ -108,6 +120,7 @@ export function TodayScreen() {
 
       {!activity && <WeekStrip week={week} today={date} legend={Boolean(session)} />}
       {!activity && <DayAgenda items={week.items} date={date} />}
+      <RefreshRow checkedAt={week.timetableCheckedAt} change={week.timetableChange} />
     </Screen>
   );
 }

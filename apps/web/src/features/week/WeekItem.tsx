@@ -7,6 +7,7 @@ import { TONES } from "../../ui/tones.ts";
 import { LegsTag } from "../add/StrengthList.tsx";
 import { useSheet } from "../sheets/store.ts";
 import { sheetFor, toneOf } from "../today/today.ts";
+import { moveOptions } from "../useLoad.ts";
 
 const cancelledOf = (item: Item) => "cancelled" in item && Boolean(item.cancelled);
 
@@ -29,25 +30,26 @@ export function ItemRow({ item, lifted = false }: { item: Item; lifted?: boolean
   return (
     <div
       className={cx(
-        "flex items-center gap-3 rounded-row pr-3 text-left",
+        // At 200 % zoom the title drops under its hour instead of breaking mid-word.
+        "flex flex-wrap items-center gap-x-3 rounded-row pr-3 text-left",
         quiet ? "min-h-11 py-1.5" : "min-h-14 py-2",
         run ? tone.wash : lifted ? "bg-on-color" : "bg-transparent",
         lifted && "week-lift",
       )}
     >
-      <span className={cx("t-sub w-12 flex-none pl-3 tabular-nums", run && "font-semibold text-ink")}>
+      <span className={cx("t-sub w-14 min-w-max flex-none pl-3 tabular-nums", run && "font-semibold text-ink")}>
         {item.start}
       </span>
       <span
         aria-hidden="true"
         className={cx("size-2.5 flex-none rounded-full", quiet ? "bg-hairline-strong" : tone.mid)}
       />
-      <span className="flex min-w-0 flex-1 flex-col">
+      <span className="flex min-w-[9ch] flex-1 flex-col max-[260px]:pl-3">
         <span
           className={cx(
             "break-words",
             run ? "t-strong" : quiet ? "t-sub text-ink-2" : "t-body",
-            cancelled && "line-through opacity-60",
+            cancelled && "text-ink-2 line-through",
           )}
         >
           {item.title}
@@ -74,6 +76,8 @@ export function DraggableItem({ item, disabled, past }: { item: Item; disabled: 
       // dnd-kit marks a locked row aria-disabled, but a tap still opens it: VoiceOver must not read it as dimmed.
       aria-disabled={false}
       onClick={() => show(sheetFor(item))}
+      // The 0.3 s press covers the slots' round trip: the allowed days are known when the session lifts.
+      onPointerDown={() => !disabled && item.kind === "run" && moveOptions.start(item.id)}
       className={cx(
         "week-press block w-full touch-manipulation rounded-row border-0 bg-transparent p-0",
         past && "week-past",

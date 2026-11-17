@@ -27,7 +27,7 @@ import type {
 } from "@annarrive/protocol";
 import { type CoachPort, type CoachResult, type CoachState, type DailyDecisionResult, slotFor } from "../coach-port.ts";
 import { InvalidInputError, NotFoundError, ReadOnlyError } from "../errors.ts";
-import { watchStatus, workoutNames } from "../garmin/workout.ts";
+import { WATCH_FAILING_SINCE, watchLink, watchStatus, workoutNames } from "../garmin/workout.ts";
 import type { Activity, Stores } from "../storage/stores.ts";
 import {
   addDays,
@@ -159,6 +159,8 @@ export class PlanService {
   readonly #coach: CoachPort;
   readonly #clock: Clock;
   readonly #notifications: NotificationService;
+  /** False without a Garmin bridge: the sessions say the watch is not linked rather than "sending". */
+  readonly #watchConfigured: boolean;
 
   constructor(
     stores: Stores,
@@ -166,12 +168,14 @@ export class PlanService {
     coach: CoachPort,
     clock: Clock,
     notifications: NotificationService,
+    watchConfigured = false,
   ) {
     this.#stores = stores;
     this.#changes = changes;
     this.#coach = coach;
     this.#clock = clock;
     this.#notifications = notifications;
+    this.#watchConfigured = watchConfigured;
   }
 
   profile(): Profile {
@@ -618,9 +622,11 @@ export class PlanService {
   #days(from: string, count: number): Week["days"] {
     const to = addDays(from, count);
     const today = dateOf(this.#now());
+    const failingSince = this.#stores.meta.get(WATCH_FAILING_SINCE)?.value;
+    const link = watchLink(this.#watchConfigured, failingSince, this.#clock());
     const sessions = this.#stores.plannedSession
       .overlapping(`${from}T00:00`, `${to}T00:00`)
-      .map((s) => ({ ...s, watch: watchStatus(s, this.#stores.watchSync.get(s.id), today) }));
+      .map((s) => ({ ...s, watch: watchStatus(s, this.#stores.watchSync.get(s.id), today, link) }));
     const events = this.#stores.calendarEvent
       .overlapping(`${from}T00:00`, `${to}T00:00`)
       .flatMap((e) => occurrences(e, from, to))

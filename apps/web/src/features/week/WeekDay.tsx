@@ -23,7 +23,7 @@ export function WeekDay({ day, readOnly, dragging, target }: Props) {
       aria-labelledby={`title-${day.date}`}
       className={cx("flex scroll-mt-6 flex-col gap-2", !held && "week-dim", held && target.blocked && "week-blocked")}
     >
-      <div className="flex min-h-7 items-baseline gap-2 px-1">
+      <div className="flex min-h-7 flex-wrap items-baseline gap-x-2 px-1">
         <h2 id={`title-${day.date}`} className={cx("t-title whitespace-nowrap", day.past && "text-ink-2")}>
           {day.title}
         </h2>

@@ -26,7 +26,7 @@ const BUILTIN_DENIED = ["Bash", "Read", "Write", "Edit", "Glob", "Grep", "Notebo
 
 export class ReggieUnavailableError extends AppError {
   constructor() {
-    super(503, "Reggie n'est pas configuré sur ce serveur : ajoute une clé dans les variables d'environnement.");
+    super(503, "Reggie ne répond pas pour l'instant. Déplacer, Changer et Pas dispo marchent toujours.");
   }
 }
 
@@ -86,8 +86,11 @@ export function sdkEnv(env: NodeJS.ProcessEnv): Record<string, string> {
   const set = Object.fromEntries(
     Object.entries(env).filter((e): e is [string, string] => Boolean(e[1]) && !SERVER_SECRETS.includes(e[0])),
   );
-  if (!set.CLAUDE_CODE_OAUTH_TOKEN && !set.ANTHROPIC_API_KEY && set.REGGIE_LOCAL_LOGIN !== "1")
+  if (!set.CLAUDE_CODE_OAUTH_TOKEN && !set.ANTHROPIC_API_KEY && set.REGGIE_LOCAL_LOGIN !== "1") {
+    // The detail is for whoever runs the server; Anna reads the error's own words.
+    console.error("Reggie : aucune clé (CLAUDE_CODE_OAUTH_TOKEN ou ANTHROPIC_API_KEY) dans l'environnement");
     throw new ReggieUnavailableError();
+  }
   return set;
 }
 

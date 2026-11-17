@@ -4,6 +4,7 @@ import { Group } from "../../ui/List.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
 import { usePlan } from "../plan/store.ts";
 import type { SheetProps } from "../sheets/SheetHost.tsx";
+import { watchState } from "./program.ts";
 
 /** Montre Garmin: model, last sync, Reconnecter. */
 export default function WatchSheet(sheet: SheetProps<"watch">) {
@@ -12,7 +13,7 @@ export default function WatchSheet(sheet: SheetProps<"watch">) {
   if (!watch) return null;
   const rows = [
     { label: "Modèle", value: watch.model },
-    { label: "État", value: watch.connected ? "Connectée" : "Déconnectée" },
+    { label: "État", value: watchState(watch.connected) },
   ];
   if (watch.lastSync) rows.push({ label: "Dernière synchro", value: ago(watch.lastSync, new Date()) });
   return (

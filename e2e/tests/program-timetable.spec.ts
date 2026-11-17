@@ -20,7 +20,8 @@ test("Programme : changer le lien de l'emploi du temps le relit, puis Actualiser
   await expect(sheet).toBeHidden();
 
   await page.getByRole("button", { name: "Actualiser" }).click();
-  await expect(page.getByText(/^À jour/)).toBeVisible();
+  // As in Semaine: the button turns while it reads, then the result stays written.
+  await expect(page.getByText(/^Relu à l.instant/)).toBeVisible();
 
   await page.getByRole("link", { name: "Semaine" }).click();
   await expect(page.locator("#day-2026-11-17")).toContainText("Anatomie");

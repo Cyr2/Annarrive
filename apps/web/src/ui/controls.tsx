@@ -42,6 +42,20 @@ function upgrade() {
 }
 if (typeof window !== "undefined") for (const type of GESTURE_END) addEventListener(type, upgrade, true);
 
+let held = false;
+if (typeof window !== "undefined") {
+  addEventListener("pointerdown", () => (held = true), true);
+  for (const type of GESTURE_END) addEventListener(type, () => (held = false), true);
+}
+
+/** At idle after the first screen: glisse lands before the first gesture, not during the first sheet's rise. */
+export function preloadControls() {
+  void loadGlisse().then(
+    () => !held && !glisse && upgrade(),
+    () => undefined,
+  );
+}
+
 function subscribe(notify: () => void) {
   waiting.add(notify);
   return () => {

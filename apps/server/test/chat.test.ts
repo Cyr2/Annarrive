@@ -95,7 +95,11 @@ describe("POST /api/chat", () => {
     };
     const t = await ready(unconfigured);
     const events = parseSse(await (await t.request("POST", "/api/chat", { text: "Salut" })).text());
-    expect(events.at(-1)).toMatchObject({ type: "error", error: expect.stringContaining("pas configuré") });
+    expect(events.at(-1)).toEqual({
+      type: "error",
+      error: "Reggie ne répond pas pour l'instant. Déplacer, Changer et Pas dispo marchent toujours.",
+      retry: false,
+    });
   });
 
   it("rejects an empty message or a missing body", async () => {

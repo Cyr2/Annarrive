@@ -7,7 +7,7 @@ import { usePlan } from "../plan/store.ts";
 import { type SettingKey, useSheet } from "../sheets/store.ts";
 import { useGo } from "../useGo.ts";
 import { DayWindow } from "./DayWindow.tsx";
-import { SETTING_LABELS, settingValue } from "./program.ts";
+import { SETTING_LABELS, settingValue, watchState } from "./program.ts";
 
 /** Groups of the Programme tab that read the plan's settings: runs, hours, the watch. */
 
@@ -73,7 +73,7 @@ export function Hours({ settings }: { settings: Settings }) {
 
 export function Watch({ watch }: { watch: Program["watch"] }) {
   const show = useSheet((s) => s.show);
-  const state = watch.connected ? "Connectée" : "Déconnectée";
+  const state = watchState(watch.connected);
   return (
     <Section title="Montre">
       <Group>

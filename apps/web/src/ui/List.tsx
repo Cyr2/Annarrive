@@ -100,6 +100,8 @@ type InputProps = {
   inputMode?: "decimal" | "numeric";
   /** A login field ("username webauthn", "current-password"): no capital, no correction. */
   autoComplete?: string;
+  /** The server's own limit, so a long title stops at the keyboard instead of failing on save. */
+  maxLength?: number;
 };
 
 /** How a date or a time reads in the app ("lundi 16 novembre", "7:30"), whatever the native field shows. */
@@ -121,6 +123,7 @@ export function RowInput({
   min,
   inputMode,
   autoComplete,
+  maxLength,
 }: InputProps) {
   const id = useId();
   const text = shown(type, value);
@@ -140,6 +143,7 @@ export function RowInput({
         // The app writes "7:30"; a time field needs "07:30".
         value={type === "time" ? value.padStart(5, "0") : value}
         min={min}
+        maxLength={maxLength}
         inputMode={inputMode}
         placeholder={placeholder}
         autoComplete={autoComplete}

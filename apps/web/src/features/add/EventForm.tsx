@@ -1,6 +1,6 @@
 import { SegmentedControl } from "../../ui/controls.tsx";
 import { Group, RowInput, RowSelect, Section } from "../../ui/List.tsx";
-import { type Form, REPEATS } from "./add.ts";
+import { type Form, REPEATS, TITLE_MAX } from "./add.ts";
 
 const LENGTHS = [
   { value: "60", label: "1 h" },
@@ -28,6 +28,7 @@ export function EventForm({ kind, form, today, onChange: set }: Props) {
         {kind === "busy" && (
           <RowInput
             label="Titre"
+            maxLength={TITLE_MAX}
             placeholder="Ex. : Soirée chez Léa"
             value={form.title}
             onChange={(title) => set({ title })}

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { Api } from "../api/client.ts";
 import { ApiError } from "../api/errors.ts";
 import { createMockApi } from "../api/mock/index.ts";
-import { createPlanStore } from "./plan/store.ts";
+import { createPlanStore, isStale, STALE_MS } from "./plan/store.ts";
 import { createChatStore } from "./reggie/store.ts";
 import { SHEET_CLOSE_MS, useSheet } from "./sheets/store.ts";
 
@@ -29,7 +29,8 @@ describe("plan store", () => {
     const { plan, notify } = setup();
     await plan.getState().load();
     const result = await plan.getState().apply((api) => api.move(RUN, { date: "2026-11-19", start: "18:00" }));
-    expect(plan.getState().today?.session).toBeUndefined();
+    // The banner comes with the server's answer; the screen follows a moment later.
+    await vi.waitFor(() => expect(plan.getState().today?.session).toBeUndefined());
     expect(plan.getState().lastChangeId).toBe(result?.changeId);
     const [message, action] = notify.mock.lastCall ?? [];
     expect(message).toBe("Séance déplacée à jeudi 18:00");
@@ -71,11 +72,86 @@ describe("plan store", () => {
     expect(plan.getState().weeks[1]?.monday).toBe("2026-11-23");
   });
 
-  it("reports a load error", async () => {
+  it("reports a load error, and shows the wait again on Réessayer", async () => {
     localStorage.clear();
     const plan = createPlanStore(() => Promise.reject(new Error("offline")), vi.fn());
     await plan.getState().load();
     expect(plan.getState().status).toBe("error");
+    const retry = plan.getState().load();
+    expect(plan.getState().status).toBe("loading");
+    await retry;
+    expect(plan.getState().status).toBe("error");
+  });
+
+  // Semaine and Programme stayed blank forever when their read failed (audit robustesse 1).
+  it("tells Semaine and Programme when their read is pending or failed, and keeps a week already shown", async () => {
+    const api = createMockApi({ monday: MONDAY });
+    let down = true;
+    const plan = createPlanStore(async () => {
+      if (down) throw new Error("offline");
+      return api;
+    }, vi.fn());
+    const pending = plan.getState().loadWeek(1);
+    expect(plan.getState().weekStatus[1]).toBe("loading");
+    await pending;
+    expect(plan.getState().weekStatus[1]).toBe("error");
+    await plan.getState().loadProgram();
+    expect(plan.getState().programStatus).toBe("error");
+    down = false;
+    await plan.getState().loadWeek(1);
+    await plan.getState().loadProgram();
+    expect(plan.getState().weekStatus[1]).toBe("ready");
+    expect(plan.getState().programStatus).toBe("ready");
+    down = true;
+    await plan.getState().loadWeek(1);
+    expect(plan.getState().weekStatus[1]).toBe("ready");
+    expect(plan.getState().weeks[1]?.monday).toBe("2026-11-23");
+  });
+
+  // A double tap sent the move twice; the second "Rien n'a changé" took Annuler away (audit robustesse 4).
+  it("sends a change once however many taps, and keeps Annuler on the change that happened", async () => {
+    const { plan, api, notify } = setup();
+    await plan.getState().load();
+    const move = vi.spyOn(api, "move");
+    const tap = () => plan.getState().apply((client) => client.move(RUN, { date: "2026-11-19", start: "18:00" }));
+    const first = tap();
+    expect(plan.getState().busy).toBe(true);
+    expect(await tap()).toBeUndefined();
+    const result = await first;
+    expect(move).toHaveBeenCalledOnce();
+    expect(plan.getState().busy).toBe(false);
+    await plan.getState().apply(async () => ({ changeId: "", message: "Rien n'a changé", rows: [] }));
+    expect(plan.getState().lastChangeId).toBe(result?.changeId);
+    expect(notify.mock.calls.filter(([, action]) => action?.label === "Annuler")).toHaveLength(1);
+  });
+
+  it("shows only the latest read when reads overlap", async () => {
+    const { plan, api } = setup();
+    await plan.getState().load();
+    let release: () => void = () => undefined;
+    const slow = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const today = api.today.bind(api);
+    vi.spyOn(api, "today").mockImplementationOnce(async () => {
+      const old = await today();
+      await slow;
+      return { ...old, date: "2000-01-01" };
+    });
+    const older = plan.getState().refresh();
+    await plan.getState().refresh();
+    release();
+    await older;
+    expect(plan.getState().today?.date).toBe(MONDAY);
+  });
+
+  it("is stale on another day or after five minutes", () => {
+    const now = new Date(2026, 10, 16, 23, 50);
+    const today = { date: "2026-11-16" } as Parameters<typeof isStale>[0]["today"];
+    expect(isStale({ today, loadedAt: now.getTime() }, now)).toBe(false);
+    expect(isStale({ today, loadedAt: now.getTime() - STALE_MS - 1 }, now)).toBe(true);
+    expect(isStale({ today, loadedAt: now.getTime() }, new Date(2026, 10, 17, 0, 1))).toBe(true);
+    expect(isStale({ loadedAt: now.getTime() }, now)).toBe(true);
   });
 
   it("paints today's last copy at launch, even offline, and never yesterday's", async () => {
@@ -160,6 +236,22 @@ describe("chat store", () => {
       "Je regarde.",
       "Reggie ne répond pas : réessaie dans un instant.",
     ]);
+  });
+
+  it("offers no Réessayer when Reggie is off on the server", async () => {
+    const off: Pick<Api, "chat"> = {
+      chat: () => ({
+        [Symbol.asyncIterator]: () => ({
+          next: () => Promise.reject(new ApiError(503, "Reggie ne répond pas pour l'instant.")),
+        }),
+      }),
+    };
+    const chat = createChatStore(async () => off as Api, vi.fn());
+    await chat.getState().send("Salut");
+    expect(chat.getState().messages.at(-1)).toMatchObject({
+      text: "Reggie ne répond pas pour l'instant.",
+      retry: undefined,
+    });
   });
 
   it("loads the stored conversation once, under the welcome line", async () => {

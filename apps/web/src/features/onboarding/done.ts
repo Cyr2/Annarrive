@@ -1,3 +1,5 @@
+import { create } from "zustand";
+
 /** Set once onboarding is over, so the app never even loads its chunk again. Kept apart: the first screen reads it. */
 export const DONE_KEY = "annarrive.onboarding";
 
@@ -24,4 +26,16 @@ export async function needsOnboarding(): Promise<boolean> {
     // Unreachable server or private mode: ask again on the next launch rather than block the app.
     return false;
   }
+}
+
+/**
+ * Whether this launch shows onboarding: undefined until known, so Aujourd'hui does not paint its rest day
+ * under the flow first. False at once on a phone that saw it end; false again once the flow is over.
+ */
+export const useOnboardingNeed = create<{ need?: boolean }>(() => ({ need: isOnboarded() ? false : undefined }));
+
+/** Asked at launch, alongside Aujourd'hui's own reads. */
+export function checkOnboarding() {
+  if (useOnboardingNeed.getState().need !== undefined) return;
+  void needsOnboarding().then((need) => useOnboardingNeed.setState({ need }));
 }

@@ -1,5 +1,4 @@
 import type { MoveOptions, Slot } from "../../api/schemas.ts";
-import { cx } from "../../lib/cx.ts";
 import { dayName } from "../../lib/date.ts";
 import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
 import { Chip } from "../../ui/controls.tsx";
@@ -49,7 +48,8 @@ export function SlotPicker({ open, onOpen, monday, options, today, value, onChan
             selected={value?.date === day.date}
             icon={day.blocked ? "busy" : undefined}
             aria-label={`${dayName(day.date)}${day.blocked ? `, ${day.blocked}` : ""}`}
-            className={cx(day.blocked && value?.date !== day.date && "opacity-55")}
+            // Quieter, never faded: the text keeps its 4.5:1 and the lock carries the meaning.
+            style={day.blocked && value?.date !== day.date ? { color: "var(--color-ink-2)" } : undefined}
             onClick={() => onChange({ date: day.date, start })}
           >
             {dayName(day.date).slice(0, 3)}

@@ -12,5 +12,7 @@ export const SPRING_SHEET = { type: "spring", bounce: 0, duration: 0.4 } as cons
 export const EXIT_SHEET = { duration: 0.28, ease: [0.32, 0.72, 0, 1] } as const;
 /** Fades (scrims, cross-fades). */
 export const FADE = { duration: 0.2, ease: [0.23, 1, 0.32, 1] } as const;
+/** Under reduced motion, what slid only fades (--duration-fade). */
+export const FADE_REDUCED = { duration: 0.15, ease: "linear" } as const;
 /** Glass bubbles of the guided tour: a small bounce as they land on their target. */
 export const SPRING_BUBBLE = { type: "spring", bounce: 0.2, duration: 0.4 } as const;

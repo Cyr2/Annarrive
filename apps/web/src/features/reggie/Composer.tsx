@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Chip, IconButton, Input } from "../../ui/controls.tsx";
+import { useVisibleArea } from "../../ui/useVisibleArea.ts";
 import { frenchSpaces } from "./Message.tsx";
 import { useChat } from "./store.ts";
 
@@ -15,6 +16,9 @@ export function Composer({ onHeight, shortcuts }: { onHeight: (height: number) =
   const busy = useChat((s) => s.status !== "idle");
   const [text, setText] = useState("");
   const box = useRef<HTMLDivElement>(null);
+  // iOS: the keyboard shrinks the visual viewport only; the field rides on top of it instead of under it.
+  const area = useVisibleArea();
+  const above = area ? `${window.innerHeight - area.top - area.height + 8}px` : undefined;
   const report = useRef(onHeight);
   report.current = onHeight;
 
@@ -43,7 +47,7 @@ export function Composer({ onHeight, shortcuts }: { onHeight: (height: number) =
     <div
       ref={box}
       className="ui-float fixed inset-x-0 z-20 mx-auto flex max-w-xl flex-col gap-2 px-gutter"
-      style={{ bottom: "calc(var(--space-above-tabbar) + env(safe-area-inset-bottom))" }}
+      style={{ bottom: above ?? "calc(var(--space-above-tabbar) + env(safe-area-inset-bottom))" }}
     >
       {/* Hidden while Reggie answers or waits for her reply: his own buttons are the answers then. */}
       {shortcuts && (

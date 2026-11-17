@@ -10,9 +10,9 @@ import {
 } from "@dnd-kit/core";
 import { useState } from "react";
 import { flushSync } from "react-dom";
-import { api } from "../../api/index.ts";
 import type { Item, MoveOptions, Week } from "../../api/schemas.ts";
 import { usePlan } from "../plan/store.ts";
+import { moveOptions } from "../useLoad.ts";
 import { type DropTarget, dropTargets, moveItem } from "./week.ts";
 
 // Long press 0.3 s before the session lifts, so a tap still opens it and a swipe still scrolls.
@@ -48,17 +48,14 @@ export function useWeekDrag(week: Week | undefined, offset: number, today: strin
     setActive(item);
     setOptions(undefined);
     navigator.vibrate?.(10);
-    if (item?.kind === "run") {
-      void api()
-        .then((client) => client.moveOptions(item.id))
-        .then(setOptions, () => undefined);
-    }
+    if (item?.kind === "run") moveOptions.start(item.id).promise.then(setOptions, () => undefined);
   };
 
   const onDragEnd = ({ over }: DragEndEvent) => {
     const item = active;
     const target = targets.find((t) => t.date === over?.id);
     setActive(undefined);
+    if (item) moveOptions.forget(item.id);
     if (!item || !week || !target) return;
     const slot = { date: target.date, start: target.start };
     // Moved on screen at once, so the drop animation lands on the new slot; the server confirms after.

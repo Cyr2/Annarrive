@@ -63,7 +63,10 @@ export function RunCard({ run, today }: { run: Run; today: string }) {
           <div className="expand relative" data-open={open}>
             <ol className="m-0 flex list-none flex-col px-5 pt-3" aria-hidden={!open}>
               {run.steps.map((step) => (
-                <li key={step.label} className="hairline-top flex min-h-11 items-center justify-between gap-3 py-2">
+                <li
+                  key={step.label}
+                  className="hairline-top flex min-h-11 flex-wrap items-center justify-between gap-x-3 py-2"
+                >
                   <span className={cx("t-body", step.tone === "hard" && "font-semibold")}>{step.label}</span>
                   <PaceValue value={step.pace} className={step.tone === "muted" ? "text-ink-2!" : undefined} />
                 </li>

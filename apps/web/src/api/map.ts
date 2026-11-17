@@ -249,13 +249,20 @@ export function planWeek(plan: Plan | undefined, monday: string): { index: numbe
   return index >= 0 && index <= total ? { index: Math.max(1, index), total } : undefined;
 }
 
-export function toWeek(week: ServerWeek, monday: string, timetable: TimetableStatus, today: string, plan?: Plan): Week {
-  const change = timetable.lastChange;
+/** `timetable`: undefined when the server could not say (the line then says it is unreachable). */
+export function toWeek(
+  week: ServerWeek,
+  monday: string,
+  timetable: TimetableStatus | undefined,
+  today: string,
+  plan?: Plan,
+): Week {
+  const change = timetable?.lastChange;
   return {
     monday,
     ...planWeek(plan, monday),
     readOnly: week.readOnly,
-    timetableCheckedAt: timetable.lastSyncAt ?? "",
+    timetableCheckedAt: timetable ? (timetable.lastSyncAt ?? "") : undefined,
     // What the last read changed stays written the day it happened, even when it ran in the background.
     ...(change && toIso(new Date(change.at)) === today ? { timetableChange: change.summary } : {}),
     items: toItems(week.days),
@@ -428,10 +435,12 @@ function toStrength(days: DayView[]): Strength[] {
 export type ProgramParts = {
   program: ProgramView;
   profile: Profile;
-  lastSyncAt: string | null;
+  /** Undefined when the server could not say (see toWeek). */
+  lastSyncAt: string | null | undefined;
   days: DayView[];
   today: string;
-  watch: WatchInfo;
+  /** Undefined when the server could not say: the watch's state is then unknown. */
+  watch: WatchInfo | undefined;
 };
 
 export function toProgram({ program, profile, lastSyncAt, days, today, watch }: ProgramParts): Program {
@@ -457,12 +466,12 @@ export function toProgram({ program, profile, lastSyncAt, days, today, watch }: 
     maintenance: !goal,
     settings: toSettings(profile),
     strength: toStrength(days),
-    timetableCheckedAt: lastSyncAt ?? "",
+    timetableCheckedAt: lastSyncAt === undefined ? undefined : (lastSyncAt ?? ""),
     timetableUrl: profile.icsUrl,
     watch: {
-      model: "Garmin vivoactive 4",
-      connected: watch.configured && !days.some((d) => d.sessions.some((s) => s.watch === "failed")),
-      lastSync: watch.lastSyncAt ?? undefined,
+      model: "vivoactive 4",
+      connected: watch?.configured && !days.some((d) => d.sessions.some((s) => s.watch === "failed")),
+      lastSync: watch?.lastSyncAt ?? undefined,
     },
   };
 }
@@ -621,7 +630,8 @@ export function toChatEvents(event: ChatStreamEvent, draft: { id: string; text: 
     case "done":
       return toMessages({ ...event.message, id: draft.id }).map((message) => ({ type: "message", message }));
     case "error":
-      throw new ApiError(502, event.error);
+      // 503: Reggie is off, the chat offers no Réessayer (features/reggie/store.ts).
+      throw new ApiError(event.retry === false ? 503 : 502, event.error);
   }
 }
 

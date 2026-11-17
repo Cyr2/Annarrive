@@ -90,7 +90,8 @@ export const weekSchema = z.object({
   index: z.number().int().optional(),
   total: z.number().int().optional(),
   readOnly: z.boolean(),
-  timetableCheckedAt: z.string(),
+  /** Empty until the timetable is read once; absent when the server could not say. */
+  timetableCheckedAt: z.string().optional(),
   /** What the timetable's last read changed, today only: « 1 cours annulé jeudi · Footing passé à vendredi 18:00 ». */
   timetableChange: z.string().optional(),
   items: z.array(itemSchema),
@@ -174,11 +175,12 @@ export const programSchema = z.object({
   maintenance: z.boolean(),
   settings: settingsSchema,
   strength: z.array(strengthSchema),
-  /** Empty until the timetable is read once. */
-  timetableCheckedAt: z.string(),
+  /** Empty until the timetable is read once; absent when the server could not say. */
+  timetableCheckedAt: z.string().optional(),
   /** The ICS link Anna pasted; absent when the server uses its own. */
   timetableUrl: z.string().optional(),
-  watch: z.object({ model: z.string(), connected: z.boolean(), lastSync: z.string().optional() }),
+  /** `connected` is absent when the server could not reach the watch's state. */
+  watch: z.object({ model: z.string(), connected: z.boolean().optional(), lastSync: z.string().optional() }),
 });
 
 export const sessionPreviewSchema = z.object({
