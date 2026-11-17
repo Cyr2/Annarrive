@@ -25,16 +25,20 @@ const env = z
   })
   .parse(process.env);
 
+const today = dateOf(toParisLocal(systemClock()));
+// The server's day stops at 06:00 UTC, before the earliest run: Aujourd'hui is always a run day, the fullest screen,
+// whatever the hour of the CI run (later in the day the run was gone and the audit measured a lighter screen).
+const morning = new Date(`${today}T06:00:00Z`);
+
 const db = openDatabase(mkdtempSync(join(tmpdir(), "annarrive-lighthouse-")));
 const services = createServices({
   db,
-  clock: systemClock,
+  clock: () => morning,
   publicUrl: `http://localhost:${env.PORT}`,
   coach: coachAdapter,
   fetchIcs: async () => "",
 });
 
-const today = dateOf(toParisLocal(systemClock()));
 services.plan.updateProgram({
   goal: { distanceM: 10000, date: addDays(today, 70), targetMin: 55 },
   declaredTime: { distanceM: 10000, minutes: 58 },
