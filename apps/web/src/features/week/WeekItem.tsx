@@ -71,6 +71,8 @@ export function DraggableItem({ item, disabled, past }: { item: Item; disabled: 
       {...attributes}
       {...listeners}
       aria-roledescription={disabled ? undefined : "séance déplaçable"}
+      // dnd-kit marks a locked row aria-disabled, but a tap still opens it: VoiceOver must not read it as dimmed.
+      aria-disabled={false}
       onClick={() => show(sheetFor(item))}
       className={cx(
         "week-press block w-full touch-manipulation rounded-row border-0 bg-transparent p-0",
