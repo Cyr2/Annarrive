@@ -15,7 +15,7 @@ export default defineConfig({
       registerType: "prompt",
       // Inline: one request less, and nothing blocks the first paint.
       injectRegister: "inline",
-      includeAssets: ["icon.svg", "apple-touch-icon.png"],
+      includeAssets: ["icon.svg", "logo.svg", "apple-touch-icon.png"],
       manifest: {
         name: "Annarrivé",
         short_name: "Annarrivé",
