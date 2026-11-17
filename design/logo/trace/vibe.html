@@ -1,0 +1,83 @@
+<!doctype html><html lang="fr"><meta charset="utf-8"><style>
+:root{--ink:#23303D;--ink2:#5B6775;--blue:#3D6A9E;--peach:#F29C7B;--reggie:#0B6B52}
+*{box-sizing:border-box;margin:0}
+body{font-family:-apple-system,"SF Pro Display","Segoe UI",sans-serif;color:var(--ink);background:#F7F9FB;padding:48px;width:1600px}
+h1{font-size:34px;font-weight:800;margin-bottom:6px}.sub{color:var(--ink2);font-size:17px;margin-bottom:36px}
+h2{font-size:15px;font-weight:700;color:var(--ink2);margin:0 0 14px}
+.row{display:flex;gap:40px;align-items:flex-start}
+.sky{background:linear-gradient(180deg,#E6F1F8 0%,#F3ECF6 55%,#FDE7DA 100%)}
+.icon{border-radius:22.4%;position:relative;overflow:hidden;flex:none;box-shadow:0 1px 2px rgba(35,48,61,.08),0 6px 18px rgba(35,48,61,.10)}
+.icon svg{position:absolute;inset:0;width:100%;height:100%}
+.icon::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 1px 0 rgba(255,255,255,.9),inset 0 0 0 1px rgba(255,255,255,.5);background:radial-gradient(120% 60% at 30% 0%,rgba(255,255,255,.55),transparent 60%)}
+.deep{background:linear-gradient(160deg,#5B86B8 0%,#3D6A9E 55%,#2F5682 100%)}
+.cap{font-size:13px;color:var(--ink2);margin-top:10px;text-align:center}
+.phone{width:390px;height:780px;border-radius:52px;padding:14px;background:#DDE3EA;flex:none}
+.screen{width:100%;height:100%;border-radius:40px;overflow:hidden;position:relative}
+.wall{background:radial-gradient(80% 50% at 50% 100%,#FDE7DA,transparent),linear-gradient(180deg,#B9D3EA 0%,#E6F1F8 40%,#F3ECF6 70%,#FDE7DA 100%)}
+.grid{display:grid;grid-template-columns:repeat(4,64px);gap:26px 22px;padding:70px 28px 0;justify-content:space-between}
+.app{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:11px;color:#23303D}
+.ph{width:64px;height:64px;border-radius:22.4%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(35,48,61,.12)}
+.ph i{display:block;background:#fff;border-radius:50%}
+.dock{position:absolute;left:14px;right:14px;bottom:14px;height:92px;border-radius:32px;background:rgba(255,255,255,.35);backdrop-filter:blur(20px);display:flex;justify-content:space-around;align-items:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.7)}
+.login{display:flex;flex-direction:column;align-items:center;padding:120px 28px 0;text-align:center}
+.word{font-size:34px;font-weight:800;letter-spacing:-.5px;margin-top:22px}
+.hello{font-size:17px;color:var(--ink2);margin-top:8px}
+.btn{position:absolute;bottom:60px;left:28px;right:28px;height:52px;border-radius:26px;background:var(--blue);color:#fff;font-size:17px;font-weight:600;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
+.glass{background:rgba(255,255,255,.55);backdrop-filter:blur(24px);border-radius:28px;box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 8px 24px rgba(35,48,61,.08);padding:18px 20px;display:flex;align-items:center;gap:12px;width:100%}
+.lock{display:flex;align-items:center;gap:14px;font-size:40px;font-weight:800;letter-spacing:-.6px}
+.panel{border-radius:28px;padding:36px 40px}
+</style>
+<svg width="0" height="0" style="position:absolute"><symbol id="t" viewBox="0 0 256 256"><g fill="none" stroke="var(--a,#3D6A9E)" stroke-width="26" stroke-linecap="round"><circle cx="93" cy="122" r="50"/><path d="M143 72v62c0 26 12 40 26 40"/></g><circle cx="207" cy="174" r="19" fill="var(--d,#F29C7B)"/></symbol></svg>
+<body>
+<h1>Annarrivé · Tracé</h1><p class="sub">Un a écrit d'un seul trait, comme un tracé de course, qui s'arrête sur le point d'arrivée.</p>
+<div class="row">
+ <div>
+  <h2>Deux tons d'icône</h2>
+  <div class="row" style="gap:28px">
+   <div><div class="icon sky" style="width:220px;height:220px"><svg viewBox="0 0 256 256"><use href="#t" transform="translate(34 30) scale(.78)"/></svg></div><p class="cap">1 · Aube (recommandé)</p></div>
+   <div><div class="icon deep" style="width:220px;height:220px;--a:#fff"><svg viewBox="0 0 256 256"><use href="#t" transform="translate(34 30) scale(.78)"/></svg></div><p class="cap">2 · Crépuscule</p></div>
+  </div>
+  <h2 style="margin-top:40px">Tailles réelles</h2>
+  <div class="row" style="gap:22px;align-items:flex-end">
+   <div class="icon sky" style="width:120px;height:120px"><svg viewBox="0 0 256 256"><use href="#t" transform="translate(34 30) scale(.78)"/></svg></div>
+   <div class="icon sky" style="width:60px;height:60px"><svg viewBox="0 0 256 256"><use href="#t" transform="translate(34 30) scale(.78)"/></svg></div>
+   <div class="icon sky" style="width:40px;height:40px"><svg viewBox="0 0 256 256"><use href="#t" transform="translate(34 30) scale(.78)"/></svg></div>
+   <div class="icon deep" style="width:60px;height:60px;--a:#fff"><svg viewBox="0 0 256 256"><use href="#t" transform="translate(34 30) scale(.78)"/></svg></div>
+   <div style="width:32px;height:32px"><svg viewBox="0 0 256 256" width="32" height="32"><use href="#t"/></svg></div>
+   <div style="width:16px;height:16px"><svg viewBox="0 0 256 256" width="16" height="16"><use href="#t"/></svg></div>
+  </div>
+  <p class="cap" style="text-align:left">120 · 60 (écran d'accueil) · 40 · 60 crépuscule · favicon 32 · 16</p>
+  <h2 style="margin-top:40px">Avec le nom</h2>
+  <div class="panel sky" style="width:520px"><div class="lock"><svg viewBox="0 0 256 256" width="64" height="64"><use href="#t"/></svg>Annarrivé</div></div>
+  <div class="panel deep" style="width:520px;margin-top:16px;color:#fff;--a:#fff"><div class="lock"><svg viewBox="0 0 256 256" width="64" height="64"><use href="#t"/></svg>Annarrivé</div></div>
+ </div>
+ <div><h2>Écran d'accueil</h2>
+  <div class="phone"><div class="screen wall">
+   <div class="grid">
+    <div class="app"><div class="ph" style="background:#fff"><i style="width:30px;height:30px;background:#E8483C"></i></div>Calendrier</div>
+    <div class="app"><div class="ph" style="background:#FC5200"><i style="width:26px;height:26px"></i></div>Course</div>
+    <div class="app"><div class="ph" style="background:#111"><i style="width:28px;height:10px;border-radius:5px"></i></div>Run</div>
+    <div class="app"><div class="ph" style="background:#000"><i style="width:34px;height:34px;background:none;border:5px solid #A6FF00"></i></div>Forme</div>
+    <div class="app"><div class="icon sky" style="width:64px;height:64px"><svg viewBox="0 0 256 256"><use href="#t" transform="translate(34 30) scale(.78)"/></svg></div>Annarrivé</div>
+    <div class="app"><div class="ph" style="background:#34C759"><i style="width:28px;height:28px"></i></div>Messages</div>
+    <div class="app"><div class="ph" style="background:#1E88E5"><i style="width:24px;height:24px"></i></div>Garmin</div>
+    <div class="app"><div class="ph" style="background:#FFCC00"><i style="width:26px;height:26px"></i></div>Notes</div>
+    <div class="app"><div class="ph" style="background:#fff"><i style="width:30px;height:30px;background:#FF2D55"></i></div>Musique</div>
+    <div class="app"><div class="ph" style="background:#5E5CE6"><i style="width:24px;height:24px"></i></div>Cours</div>
+    <div class="app"><div class="ph" style="background:#8E8E93"><i style="width:28px;height:28px"></i></div>Réglages</div>
+    <div class="app"><div class="ph" style="background:#fff"><i style="width:28px;height:28px;background:#0A84FF"></i></div>Météo</div>
+   </div>
+   <div class="dock"><div class="ph" style="background:#34C759"></div><div class="ph" style="background:#0A84FF"></div><div class="ph" style="background:#fff"></div><div class="ph" style="background:#FF9F0A"></div></div>
+  </div></div><p class="cap">Applis voisines : pavés génériques, pas de vrais logos</p></div>
+ <div><h2>Connexion</h2>
+  <div class="phone"><div class="screen sky">
+   <div class="login">
+    <div class="icon sky" style="width:96px;height:96px"><svg viewBox="0 0 256 256"><use href="#t" transform="translate(34 30) scale(.78)"/></svg></div>
+    <div class="word">Annarrivé</div>
+    <p class="hello">Ta semaine de course, rangée autour de tes cours.</p>
+    <div class="glass" style="margin-top:48px"><svg viewBox="0 0 256 256" width="28" height="28" style="--a:#0B6B52;--d:#0B6B52;flex:none"><use href="#t"/></svg><span style="font-size:15px;text-align:left">Bonjour Anna, ta sortie facile t'attend à 18:00.</span></div>
+   </div>
+   <div class="btn">Se connecter</div>
+  </div></div></div>
+</div>
+</body></html>
