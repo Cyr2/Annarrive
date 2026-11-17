@@ -1,138 +1,95 @@
-import { useEffect, useId, useState } from "react";
-import { onboardingApi } from "../../api/onboarding.ts";
-import { Button, Switch } from "../../ui/controls.tsx";
-import { Icon, type IconName } from "../../ui/Icon.tsx";
-import { Group } from "../../ui/List.tsx";
+import { useEffect, useId } from "react";
+import { Icon } from "../../ui/Icon.tsx";
+import { Group, Section } from "../../ui/List.tsx";
+import { SwitchRow } from "../program/SwitchRow.tsx";
 import { PainStep as PainLevel, ZoneStep } from "../unavailable/steps.tsx";
+import { Notifications } from "./Notifications.tsx";
 import { BigChoice, Card, update, useDraft } from "./parts.tsx";
 import { useOnboarding } from "./store.ts";
 
-export function PainStep() {
+/** Pain first (it shapes the first week), then what the app may read on her watch. */
+export function HealthStep() {
   const draft = useDraft();
   return (
     <>
-      <div className="flex flex-col gap-2">
-        <BigChoice label="Non, tout va bien" on={!draft.pain} onClick={() => update({ pain: false })} />
-        <BigChoice label="Oui, quelque chose me gêne" on={draft.pain} onClick={() => update({ pain: true })} />
-      </div>
+      <Section title="Une douleur en ce moment ?">
+        <div className="flex flex-col gap-2">
+          <BigChoice label="Non, tout va bien" on={!draft.pain} onClick={() => update({ pain: false })} />
+          <BigChoice
+            label="Oui, quelque chose me gêne"
+            detail="Ton plan démarre en douceur."
+            on={draft.pain}
+            onClick={() => update({ pain: true })}
+          />
+        </div>
+      </Section>
       {draft.pain && <ZoneStep zone={draft.zone} onChange={(zone) => update({ zone })} />}
       {draft.pain && draft.zone && (
         <PainLevel pain={draft.level} zone={draft.zone} onChange={(level) => update({ level })} />
       )}
+      <Section title="Ce que Talaria lit" footnote="Tes données restent sur le serveur de l'app. Rien n'est partagé.">
+        <Group>
+          <SwitchRow
+            title="Sommeil et fréquence cardiaque"
+            detail="Lus sur ta Garmin, pour alléger une séance après une mauvaise nuit."
+            checked={draft.useSleepHr}
+            onChange={(useSleepHr) => update({ useSleepHr })}
+          />
+          <SwitchRow
+            title="Cycle menstruel"
+            detail="Désactivé par défaut. Activé, tu peux signaler un symptôme à Reggie, qui en tient compte comme d'une fatigue. Tes séances ne suivent jamais la phase du cycle."
+            checked={draft.cycleTracking}
+            onChange={(cycleTracking) => update({ cycleTracking })}
+          />
+        </Group>
+      </Section>
     </>
   );
 }
 
-function Consent({
-  title,
-  detail,
-  checked,
-  onChange,
-}: {
-  title: string;
-  detail: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  const id = useId();
-  return (
-    <div className="row py-3">
-      <span className="flex min-w-0 flex-col gap-0.5">
-        <span id={id} className="t-body">
-          {title}
-        </span>
-        <span className="t-cap">{detail}</span>
-      </span>
-      <Switch checked={checked} onChange={onChange} labelledBy={id} />
-    </div>
-  );
-}
-
-export function ConsentsStep() {
-  const draft = useDraft();
-  return (
-    <Group>
-      <Consent
-        title="Sommeil et fréquence cardiaque"
-        detail="Lus sur ta Garmin, pour alléger une séance après une mauvaise nuit."
-        checked={draft.useSleepHr}
-        onChange={(useSleepHr) => update({ useSleepHr })}
-      />
-      <Consent
-        title="Cycle menstruel"
-        detail="Désactivé par défaut. Activé, tu peux noter tes symptômes. L'app n'adapte jamais tes séances à la phase du cycle."
-        checked={draft.cycleTracking}
-        onChange={(cycleTracking) => update({ cycleTracking })}
-      />
-    </Group>
-  );
-}
-
-function Note({ icon, children }: { icon: IconName; children: string }) {
-  return (
-    <Card className="flex-row items-start">
-      <Icon name={icon} className="mt-px flex-none text-action" />
-      <p className="t-body m-0">{children}</p>
-    </Card>
-  );
-}
-
-export function TimetableStep() {
+function Timetable() {
   const linked = useOnboarding((s) => s.linked);
+  const draft = useDraft();
+  const id = useId();
   useEffect(() => void useOnboarding.getState().checkTimetable(), []);
-  if (linked === undefined) return <p className="t-sub m-0">Vérification de ton emploi du temps.</p>;
-  return linked ? (
-    <Note icon="checkCircle">
-      Ton emploi du temps est relié. Tes cours apparaissent dans Semaine, et tes courses se placent autour.
-    </Note>
-  ) : (
-    <Note icon="class">
-      Pas encore relié. Envoie le lien de ton emploi du temps à Darius, il s'en occupe. Tu peux continuer sans.
-    </Note>
+  if (linked === undefined) return <p className="t-sub m-0 px-4">Vérification de ton emploi du temps.</p>;
+  if (linked)
+    return (
+      <Card className="flex-row items-start">
+        <Icon name="checkCircle" className="mt-px flex-none text-easy-deep" />
+        <p className="t-body m-0">Ton emploi du temps est relié. Tes courses se placent autour de tes cours.</p>
+      </Card>
+    );
+  return (
+    <Section footnote="Pas encore relié. Colle le lien ICS de ton emploi du temps, ou fais-le plus tard dans Programme.">
+      <Group>
+        <label htmlFor={id} className="row focus-within:rounded-row focus-within:outline-2 focus-within:outline-action">
+          <span className="sr-only-label">Lien de l'emploi du temps</span>
+          <input
+            id={id}
+            type="url"
+            inputMode="url"
+            autoComplete="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            placeholder="Ex. : https://ent.univ.fr/agenda.ics"
+            value={draft.icsUrl}
+            onChange={(e) => update({ icsUrl: e.target.value })}
+            className="t-body min-h-11 w-full min-w-0 border-0 bg-transparent text-ink outline-none placeholder:text-ink-3"
+          />
+        </label>
+      </Group>
+    </Section>
   );
 }
 
-type PushState = "idle" | "asking" | "on" | "denied" | "unsupported" | "failed";
-
-/** The real permission prompt, only once she taps (iOS refuses it otherwise, and it would come out of nowhere). */
-async function enablePush(): Promise<PushState> {
-  if (!("Notification" in window) || !("serviceWorker" in navigator)) return "unsupported";
-  if ((await Notification.requestPermission()) !== "granted") return "denied";
-  const client = await onboardingApi();
-  const key = await client.pushKey();
-  if (key) {
-    const registration = await navigator.serviceWorker.ready;
-    const subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
-    await client.subscribe(subscription.toJSON());
-  }
-  return "on";
-}
-
-const PUSH_TEXT: Partial<Record<PushState, string>> = {
-  on: "Notifications activées.",
-  denied: "Refusées. Tu pourras les activer dans les réglages de l'iPhone.",
-  unsupported: "Ouvre Talaria depuis ton écran d'accueil pour les activer.",
-  failed: "Ça n'a pas marché. Tu pourras réessayer dans Programme.",
-};
-
-export function NotificationsStep() {
-  const [state, setState] = useState<PushState>("idle");
-  const ask = async () => {
-    setState("asking");
-    setState(await enablePush().catch((): PushState => "failed"));
-  };
+export function ConnectStep() {
   return (
     <>
-      <Note icon="week">Le dimanche soir : ta semaine est prête.</Note>
-      <Note icon="move">Quand un cours change : la course déplacée, et où.</Note>
-      {state === "on" ? null : (
-        <Button variant="tinted" tone="action" disabled={state === "asking"} onClick={() => void ask()}>
-          Activer les notifications
-        </Button>
-      )}
-      <p aria-live="polite" className="t-sub m-0 px-1">
-        {PUSH_TEXT[state] ?? ""}
-      </p>
+      <Section title="Emploi du temps">
+        <Timetable />
+      </Section>
+      <Notifications />
     </>
   );
 }

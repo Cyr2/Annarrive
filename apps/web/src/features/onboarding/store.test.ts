@@ -44,6 +44,17 @@ describe("onboarding store", () => {
     expect(store.getState().phase).toBe("hidden");
   });
 
+  it("asks for a time on the wheels or « La finir » before going on", () => {
+    const { store } = setup();
+    const s = () => store.getState();
+    store.setState({ step: "target" });
+    s().next();
+    expect(s().step).toBe("target");
+    s().update({ finish: true });
+    s().next();
+    expect(s().step).toBe("week");
+  });
+
   it("asks for the race before going on, and skips the target in maintenance mode", () => {
     const { store } = setup();
     const s = () => store.getState();
@@ -56,7 +67,7 @@ describe("onboarding store", () => {
     expect(s().step).toBe("race");
     s().update({ race: "none" });
     s().next();
-    expect(s().step).toBe("runs");
+    expect(s().step).toBe("week");
     s().back();
     expect(s().step).toBe("race");
     expect(s().direction).toBe(-1);
@@ -65,13 +76,15 @@ describe("onboarding store", () => {
   it("keeps enough days to run and a sane window", () => {
     const { store } = setup();
     const s = () => store.getState();
-    store.setState({ step: "limits" });
+    store.setState({ step: "week" });
     s().update({ noRunDays: [1, 2, 3, 4, 5], runsPerWeek: 3 });
     s().next();
-    expect(s().step).toBe("limits");
+    expect(s().step).toBe("week");
     s().update({ noRunDays: [1], earliest: "21:00", latestEnd: "7:00" });
     s().next();
-    expect(s().step).toBe("limits");
+    expect(s().step).toBe("hours");
+    s().next();
+    expect(s().step).toBe("hours");
     s().update({ earliest: "7:00", latestEnd: "21:30" });
     s().next();
     expect(s().step).toBe("strength");
@@ -80,13 +93,13 @@ describe("onboarding store", () => {
   it("only shows a class for her own target, and forgets it when she edits the race", async () => {
     const { store } = setup();
     const s = () => store.getState();
-    s().update({ race: 10000, date: "2027-04-11", hours: "0", minutes: "45" });
+    s().update({ race: 10000, date: "2027-04-11", targetSec: 45 * 60 });
     await s().checkTarget();
     expect(s().verdict).toBe("ambitieux");
-    s().update({ minutes: "75" });
+    s().update({ finish: true });
     await s().checkTarget();
     expect(s().verdict).toBeUndefined();
-    s().update({ hours: "1", minutes: "05" });
+    s().update({ finish: false, targetSec: 65 * 60 + 30 });
     await s().checkTarget();
     expect(s().verdict).toBe("atteignable");
     s().update({ race: 5000 });
@@ -100,8 +113,7 @@ describe("onboarding store", () => {
       race: "other",
       otherKm: "21,1",
       date: "2027-04-11",
-      hours: "2",
-      minutes: "",
+      targetSec: 2 * 3600,
       runsPerWeek: 4,
       bedtime: "23:30",
       earliest: "7:00",

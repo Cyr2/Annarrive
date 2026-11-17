@@ -111,25 +111,35 @@ const loginTokenSchema = z.string().regex(/^[\w-]{1,200}$/, "Lien de connexion i
  */
 const LOGIN_CSS = [
   "*{box-sizing:border-box}",
-  "html{background:#f7f9fb;color:#23303d;font:17px/1.35 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;-webkit-font-smoothing:antialiased}",
-  "body{margin:0;min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:max(24px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom));background:linear-gradient(180deg,#fde7da 0%,#f3ecf6 34%,#e6f1f8 68%,#f7f9fb 100%) fixed}",
-  "main{width:100%;max-width:400px;display:flex;flex-direction:column;align-items:center;gap:16px;padding:32px 24px;text-align:center;border-radius:24px;background:rgb(255 255 255/.84);box-shadow:inset 0 0 0 .5px rgb(255 255 255/.9),inset 0 1px 0 rgb(255 255 255/.95),0 10px 28px -6px rgb(35 48 61/.12)}",
-  ".logo{width:72px;height:72px;border-radius:20px;display:grid;place-items:center;background:#fbfcfd;box-shadow:0 4px 14px -6px rgb(35 48 61/.2);color:#8a949e;font-weight:700;font-size:20px}",
+  "html{background:#f7f9fb;color:#23303d;font:17px/1.35 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%}",
+  // The app's sky: the dawn gradient and its soft sun, still (no script, no animation on a page seen for a second).
+  "body{margin:0;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:24px;padding:max(24px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom));background:radial-gradient(70% 38% at 50% 14%,rgb(255 214 170/.75),rgb(255 214 170/0)),linear-gradient(180deg,#fde7da 0%,#f3ecf6 34%,#e6f1f8 68%,#f7f9fb 100%) fixed}",
+  "header{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;max-width:400px}",
+  ".logo{width:80px;height:80px;border-radius:22px;display:grid;place-items:center;margin-bottom:8px;background:rgb(255 255 255/.84);box-shadow:inset 0 0 0 .5px rgb(255 255 255/.9),inset 0 1px 0 rgb(255 255 255/.95),0 10px 28px -6px rgb(35 48 61/.12);color:#8a949e;font-weight:700;font-size:20px}",
   "h1{margin:0;font-size:28px;line-height:34px;font-weight:700;letter-spacing:-.022em}",
   "p{margin:0;color:#5a6673}",
+  "main{width:100%;max-width:400px;display:flex;flex-direction:column;gap:12px;text-align:center}",
   "form{width:100%}",
-  "button{width:100%;min-height:50px;border:0;border-radius:25px;background:#3d6a9e;color:#fff;font:600 17px -apple-system,BlinkMacSystemFont,system-ui,sans-serif;box-shadow:0 10px 30px -8px rgb(35 48 61/.22);cursor:pointer}",
-  "button:focus-visible{outline:2px solid #3d6a9e;outline-offset:3px}",
-  ".notice{color:#875a0a;background:#fcf0d9;border-radius:16px;padding:10px 14px;font-size:15px}",
+  "button,.quiet{display:flex;align-items:center;justify-content:center;width:100%;min-height:50px;border:0;border-radius:25px;font:600 17px -apple-system,BlinkMacSystemFont,system-ui,sans-serif;text-decoration:none;cursor:pointer;-webkit-tap-highlight-color:transparent}",
+  "button{background:#3d6a9e;color:#fff;box-shadow:0 10px 30px -8px rgb(35 48 61/.22)}",
+  "button:active,.quiet:active{transform:scale(.97)}",
+  ".quiet{background:rgb(255 255 255/.7);color:#3d6a9e;box-shadow:inset 0 0 0 .5px rgb(255 255 255/.9),0 4px 14px -6px rgb(35 48 61/.12)}",
+  "button:focus-visible,.quiet:focus-visible{outline:2px solid #3d6a9e;outline-offset:3px}",
+  ".notice{color:#875a0a;background:#fcf0d9;border-radius:16px;padding:12px 16px;font-size:15px;text-align:left}",
+  "small{display:block;color:#5a6673;font-size:13px;line-height:18px}",
+  "@media (prefers-reduced-motion:reduce){button:active,.quiet:active{transform:none}}",
 ].join("");
 
-const loginPage = (content: string) =>
-  `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="referrer" content="no-referrer"><meta name="theme-color" content="#FDE7DA"><meta name="color-scheme" content="light"><title>Connexion à Talaria</title><style>${LOGIN_CSS}</style></head><body><main><span class="logo" role="img" aria-label="Talaria">T</span>${content}</main></body></html>`;
+/** Server pages of the login: the app's sky, the logo's slot, a title and one sentence, then what to do. */
+const loginPage = (title: string, lead: string, actions: string) =>
+  `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="referrer" content="no-referrer"><meta name="theme-color" content="#FDE7DA"><meta name="color-scheme" content="light"><title>Connexion à Talaria</title><style>${LOGIN_CSS}</style></head><body><header><span class="logo" role="img" aria-label="Talaria">T</span><h1>${title}</h1>${lead}</header><main>${actions}</main></body></html>`;
 
 /** A login that failed: what happened, and the way out. */
 const loginError = (message: string) =>
   loginPage(
-    `<h1>Connexion impossible</h1><p class="notice" role="alert">${message}</p><p>Ce lien a peut-être déjà servi ou expiré. Demande un nouveau lien de connexion.</p>`,
+    "Connexion impossible",
+    `<p class="notice" role="alert">${message}</p>`,
+    `<p>Un lien sert une seule fois et expire au bout de 15 minutes. Demande un nouveau lien, puis ouvre-le directement.</p><a class="quiet" href="/">Ouvrir Talaria</a>`,
   );
 
 export type AppOptions = { services: Services; sessionSecret: string; webDist?: string | undefined };
@@ -153,11 +163,14 @@ export function createApp({ services, sessionSecret, webDist }: AppOptions): Hon
 
   // Message apps fetch links to draw a preview: opening the link only shows a button, the POST logs in.
   app.get("/api/auth/login", (c) => {
-    const token = loginTokenSchema.parse(c.req.query("token"));
+    const parsed = loginTokenSchema.safeParse(c.req.query("token"));
     c.header("Cache-Control", "no-store");
+    if (!parsed.success) return c.html(loginError("Ce lien de connexion est incomplet : copie-le en entier."), 400);
     return c.html(
       loginPage(
-        `<h1>Bienvenue sur Talaria</h1><p>Ce lien ouvre Talaria sur ce téléphone. Tu restes connectée ensuite.</p><form method="post" action="/api/auth/login"><input type="hidden" name="token" value="${token}"><button type="submit">Se connecter</button></form>`,
+        "Bienvenue sur Talaria",
+        "<p>Ce lien ouvre Talaria sur ce téléphone.</p>",
+        `<form method="post" action="/api/auth/login"><input type="hidden" name="token" value="${parsed.data}"><button type="submit">Se connecter</button></form><small>Pas de mot de passe : tu restes connectée ensuite.</small>`,
       ),
     );
   });

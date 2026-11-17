@@ -7,44 +7,33 @@ import {
   type Unavailable,
 } from "@talaria/protocol";
 import { addDays, minutesOf, timeOf, weekday } from "../../lib/date.ts";
+import { checkIcsUrl } from "../program/program.ts";
 
-/** The onboarding of docs/specs/produit.md as data and pure functions: one question per step. */
+/** The onboarding of docs/specs/produit.md as data and pure functions: a few questions per step, grouped. */
 
 export const STEPS = [
   "welcome",
   "race",
   "target",
-  "runs",
-  "bedtime",
-  "limits",
+  "week",
+  "hours",
   "strength",
-  "pain",
-  "consents",
-  "timetable",
-  "notifications",
+  "health",
+  "connect",
   "summary",
 ] as const;
 export type Step = (typeof STEPS)[number];
 
 export const COPY: Record<Step, { title: string; lead: string }> = {
-  welcome: { title: "Talaria", lead: "Ton plan de course, placé autour de tes cours et envoyé sur ta montre." },
+  welcome: { title: "Talaria", lead: "Ton plan de course, rangé autour de tes cours et envoyé sur ta montre." },
   race: { title: "Ta course", lead: "La distance et la date. Sans course, on entretient ta forme." },
-  target: { title: "Ton chrono visé", lead: "Facultatif. Sans chrono, l'objectif est de finir." },
-  runs: { title: "Combien de courses par semaine ?", lead: "Tu pourras changer ça à tout moment." },
-  bedtime: {
-    title: "Tu te couches vers quelle heure ?",
-    lead: "Pour ne jamais placer une course trop près du coucher.",
-  },
-  limits: { title: "Tes limites", lead: "Des valeurs proposées, à ajuster si besoin." },
-  strength: { title: "Ta muscu", lead: "Facultatif. Ajoute tes séances habituelles, ou fais-le plus tard." },
-  pain: { title: "Une douleur en ce moment ?", lead: "Ton plan démarre en douceur si quelque chose te gêne." },
-  consents: { title: "Tes données", lead: "Ce que Talaria lit sur ta Garmin. Tu peux changer d'avis dans Programme." },
-  timetable: { title: "Ton emploi du temps", lead: "Darius l'a peut-être déjà mis." },
-  notifications: {
-    title: "Les notifications",
-    lead: "Ta semaine prête le dimanche soir, et une course déplacée quand un cours change. Rien d'autre.",
-  },
-  summary: { title: "C'est prêt", lead: "Vérifie, puis lance ton plan." },
+  target: { title: "Ton chrono", lead: "Choisis le temps que tu vises, ou simplement de la finir." },
+  week: { title: "Ta semaine", lead: "Combien de fois tu cours, et les jours que tu gardes libres." },
+  hours: { title: "Tes horaires", lead: "Tes courses se placent dans cette plage, jamais trop près du coucher." },
+  strength: { title: "Ta muscu", lead: "Facultatif. Ajoute tes séances habituelles, tes courses se placent autour." },
+  health: { title: "Ta santé", lead: "Pour démarrer à la bonne intensité. Tout se change ensuite dans Programme." },
+  connect: { title: "Tes cours et tes alertes", lead: "Ton emploi du temps, puis les notifications." },
+  summary: { title: "Ton plan est prêt", lead: "Touche une ligne pour la changer, puis lance-toi." },
 };
 
 export const DISTANCES = [
@@ -61,8 +50,10 @@ export type Draft = {
   race?: Race;
   otherKm: string;
   date: string;
-  hours: string;
-  minutes: string;
+  /** Her target in seconds, picked on the wheels; 0 until she turns them. */
+  targetSec: number;
+  /** "La finir": no target time. */
+  finish: boolean;
   runsPerWeek: Profile["runsPerWeek"];
   bedtime: string;
   earliest: string;
@@ -75,14 +66,16 @@ export type Draft = {
   level: number;
   useSleepHr: boolean;
   cycleTracking: boolean;
+  /** A timetable link she pastes when none is linked yet. */
+  icsUrl: string;
 };
 
 /** Defaults of algo.md section 4.2 (the server's `defaultProfile`). */
 export const EMPTY: Draft = {
   otherKm: "",
   date: "",
-  hours: "",
-  minutes: "",
+  targetSec: 0,
+  finish: false,
   runsPerWeek: 3,
   bedtime: "23:00",
   earliest: "7:00",
@@ -93,6 +86,7 @@ export const EMPTY: Draft = {
   level: 2,
   useSleepHr: true,
   cycleTracking: false,
+  icsUrl: "",
 };
 
 /** "Autre": the plan follows the closest of the four distances the coach knows. */
@@ -104,19 +98,15 @@ export function distanceOf(draft: Draft): DistanceM | undefined {
   return DISTANCES.map((d) => d.value).reduce<DistanceM>(closest, 5000);
 }
 
-/** Target in minutes; undefined when empty, NaN when it does not read as a time. */
+/** Target in minutes; undefined for "La finir" or wheels left at zero. */
 export function targetOf(draft: Draft): number | undefined {
-  if (!draft.hours && !draft.minutes) return undefined;
-  const h = Number(draft.hours || 0);
-  const m = Number(draft.minutes || 0);
-  const ok = Number.isInteger(h) && Number.isInteger(m) && h >= 0 && h < 10 && m >= 0 && m < 60 && h * 60 + m > 0;
-  return ok ? h * 60 + m : Number.NaN;
+  return draft.finish || draft.targetSec <= 0 ? undefined : draft.targetSec / 60;
 }
 
 export function feasibilityInput(draft: Draft): FeasibilityInput | undefined {
   const distanceM = distanceOf(draft);
   const targetMin = targetOf(draft);
-  if (!distanceM || !draft.date || targetMin === undefined || Number.isNaN(targetMin)) return undefined;
+  if (!distanceM || !draft.date || targetMin === undefined) return undefined;
   return { distanceM, date: draft.date, targetMin };
 }
 
@@ -128,20 +118,25 @@ function raceIssue(draft: Draft, today: string): string | undefined {
   return undefined;
 }
 
-function limitsIssue(draft: Draft): string | undefined {
-  if (minutesOf(draft.latestEnd) <= minutesOf(draft.earliest)) return "« Pas après » doit venir après « pas avant ».";
-  if (7 - draft.noRunDays.length < draft.runsPerWeek) return `Garde au moins ${draft.runsPerWeek} jours pour courir.`;
+/** Why "Continuer" is off on this step, or undefined when it can go on. */
+export function issue(step: Step, draft: Draft, today: string): string | undefined {
+  if (step === "race") return raceIssue(draft, today);
+  if (step === "week" && 7 - draft.noRunDays.length < draft.runsPerWeek)
+    return `Garde au moins ${draft.runsPerWeek} jours pour courir.`;
+  if (step === "hours" && minutesOf(draft.latestEnd) <= minutesOf(draft.earliest))
+    return "« Pas après » doit venir après « pas avant ».";
+  if (step === "target" && !draft.finish && draft.targetSec <= 0)
+    return "Fais tourner les roues, ou choisis de la finir.";
+  if (step === "strength" && draft.strength.some((s) => !s.name.trim())) return "Donne un nom à chaque séance.";
+  if (step === "health" && draft.pain && !draft.zone) return "Dis où tu as mal.";
+  if (step === "connect" && draft.icsUrl.trim() && !checkIcsUrl(draft.icsUrl).url)
+    return checkIcsUrl(draft.icsUrl).error;
   return undefined;
 }
 
-/** Why "Continuer" is off on this step, or undefined when it can go on. Only the race is mandatory. */
-export function issue(step: Step, draft: Draft, today: string): string | undefined {
-  if (step === "race") return raceIssue(draft, today);
-  if (step === "limits") return limitsIssue(draft);
-  if (step === "target" && Number.isNaN(targetOf(draft))) return "Ce chrono ne se lit pas : heures et minutes.";
-  if (step === "strength" && draft.strength.some((s) => !s.name.trim())) return "Donne un nom à chaque séance.";
-  if (step === "pain" && draft.pain && !draft.zone) return "Dis où tu as mal.";
-  return undefined;
+/** The steps she answers (welcome and summary aside), for the progress bar. */
+export function questionSteps(draft: Draft): Step[] {
+  return STEPS.filter((s) => s !== "welcome" && s !== "summary" && !(s === "target" && draft.race === "none"));
 }
 
 /** The target step only makes sense with a race. */
@@ -176,9 +171,7 @@ export function toPayload(draft: Draft, today: string): Payload {
   const distanceM = distanceOf(draft);
   const targetMin = targetOf(draft);
   const goal =
-    draft.race === "none" || !distanceM
-      ? null
-      : { distanceM, date: draft.date, ...(targetMin && !Number.isNaN(targetMin) ? { targetMin } : {}) };
+    draft.race === "none" || !distanceM ? null : { distanceM, date: draft.date, ...(targetMin ? { targetMin } : {}) };
   const events = draft.strength.map((s): CreateEventInput => {
     const date = firstDay(today, s.day);
     const start = minutesOf(s.start);
@@ -192,6 +185,7 @@ export function toPayload(draft: Draft, today: string): Payload {
       recurrence: "weekly",
     };
   });
+  const ics = draft.icsUrl.trim() ? checkIcsUrl(draft.icsUrl).url : undefined;
   const site = painSiteSchema.safeParse(draft.zone?.toLowerCase());
   return {
     program: { goal },
@@ -206,6 +200,7 @@ export function toPayload(draft: Draft, today: string): Payload {
       useSleepHr: draft.useSleepHr,
       travelMin: 0,
       cycleTracking: draft.cycleTracking,
+      ...(ics ? { icsUrl: ics } : {}),
     },
   };
 }

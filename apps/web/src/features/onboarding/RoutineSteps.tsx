@@ -1,44 +1,54 @@
 import { useId } from "react";
 import { weekdayName } from "../../lib/date.ts";
+import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
 import { Button, Switch } from "../../ui/controls.tsx";
 import { Group, RowInput, RowSelect, Section } from "../../ui/List.tsx";
 import { TextButton } from "../../ui/TextButton.tsx";
+import { DayWindow } from "../program/DayWindow.tsx";
 import type { StrengthDraft } from "./onboarding.ts";
-import { DayChips, update, useDraft } from "./parts.tsx";
+import { BigChoice, DayChips, update, useDraft } from "./parts.tsx";
 
-export function BedtimeStep() {
-  const { bedtime } = useDraft();
+export function WeekStep() {
+  const { runsPerWeek, noRunDays } = useDraft();
   return (
-    <Group>
-      <RowInput label="Coucher" type="time" value={bedtime} onChange={(v) => update({ bedtime: v })} />
-    </Group>
+    <>
+      <Section title="Courses par semaine">
+        <ChoiceGroup label="Courses par semaine" className="grid grid-cols-3 gap-2">
+          {([3, 4, 5] as const).map((n) => (
+            <BigChoice
+              key={n}
+              className="min-h-20"
+              mark={false}
+              label={<span className="t-figure block text-center">{n}</span>}
+              on={runsPerWeek === n}
+              onClick={() => update({ runsPerWeek: n })}
+            />
+          ))}
+        </ChoiceGroup>
+      </Section>
+      <Section title="Jours sans course" footnote="Facultatif. Laisse vide si tous les jours te vont.">
+        <DayChips label="Jours sans course" value={noRunDays} onChange={(days) => update({ noRunDays: days })} />
+      </Section>
+    </>
   );
 }
 
-export function LimitsStep() {
+export function HoursStep() {
   const draft = useDraft();
   return (
-    <>
-      <Section footnote="Aucune course ne commence avant, ni ne finit après.">
-        <Group>
-          <RowInput
-            label="Pas avant"
-            type="time"
-            value={draft.earliest}
-            onChange={(earliest) => update({ earliest })}
-          />
-          <RowInput
-            label="Pas après"
-            type="time"
-            value={draft.latestEnd}
-            onChange={(latestEnd) => update({ latestEnd })}
-          />
-        </Group>
-      </Section>
-      <Section title="Jours sans course">
-        <DayChips label="Jours sans course" value={draft.noRunDays} onChange={(noRunDays) => update({ noRunDays })} />
-      </Section>
-    </>
+    <Section footnote="Tes courses finissent au moins 1 h avant ton coucher.">
+      <Group>
+        <DayWindow notBefore={draft.earliest} notAfter={draft.latestEnd} bedtime={draft.bedtime} />
+        <RowInput label="Pas avant" type="time" value={draft.earliest} onChange={(earliest) => update({ earliest })} />
+        <RowInput
+          label="Pas après"
+          type="time"
+          value={draft.latestEnd}
+          onChange={(latestEnd) => update({ latestEnd })}
+        />
+        <RowInput label="Coucher" type="time" value={draft.bedtime} onChange={(bedtime) => update({ bedtime })} />
+      </Group>
+    </Section>
   );
 }
 

@@ -8,14 +8,16 @@ test("Programme : changer le lien de l'emploi du temps le relit, puis Actualiser
   await expect(page.locator("#day-2026-11-19")).toContainText("Biochimie");
 
   await page.getByRole("link", { name: "Programme" }).click();
-  const link = page.getByRole("textbox", { name: "Lien ICS" });
+  const row = page.getByRole("button", { name: /^Lien ICS/ });
+  const sheet = page.getByRole("dialog", { name: "Emploi du temps" });
+  const link = sheet.getByRole("textbox", { name: "Lien ICS" });
+  const save = sheet.getByRole("button", { name: "Enregistrer" });
+  await row.click();
   await expect(link).toHaveValue(icsUrl("timetable.ics"));
   await link.fill(icsUrl("timetable-v2.ics"));
-  const save = page.getByRole("button", { name: "Enregistrer" });
   await save.click();
-  // Saved once the link is the stored one; the new feed drops Thursday's class.
-  await expect(save).toBeDisabled();
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  // The sheet closes once the link is stored; the new feed drops Thursday's class.
+  await expect(sheet).toBeHidden();
 
   await page.getByRole("button", { name: "Actualiser" }).click();
   await expect(page.getByText(/^À jour/)).toBeVisible();
@@ -26,7 +28,8 @@ test("Programme : changer le lien de l'emploi du temps le relit, puis Actualiser
 
   // Puts the first link back for the other tests.
   await page.getByRole("link", { name: "Programme" }).click();
+  await row.click();
   await link.fill(icsUrl("timetable.ics"));
   await save.click();
-  await expect(save).toBeDisabled();
+  await expect(sheet).toBeHidden();
 });

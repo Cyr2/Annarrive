@@ -43,3 +43,34 @@ export function checkIcsUrl(text: string): { url?: string; error?: string } {
 
 /** Her own target, tagged without ever discouraging (the app does not propose a time). */
 export const TARGET_TAG = { reachable: "Atteignable", ambitious: "Ambitieux" } as const;
+
+/** A duration in seconds as a race clock: "1:48:00", or "24:30" under an hour. */
+export function clock(seconds: number): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const h = Math.floor(seconds / 3600);
+  const rest = `${pad(Math.floor(seconds / 60) % 60)}:${pad(seconds % 60)}`;
+  return h ? `${h}:${rest}` : rest.replace(/^0/, "");
+}
+
+/** "1:48:00" or "1:48" (hours and minutes, as the server writes it) to seconds; 0 when empty. */
+export function secondsOf(targetTime: string | undefined): number {
+  const parts = targetTime?.split(":").map(Number) ?? [];
+  if (parts.some(Number.isNaN)) return 0;
+  const [h = 0, m = 0, s = 0] = parts.length === 2 ? [...parts, 0] : parts;
+  return h * 3600 + m * 60 + s;
+}
+
+/** Days to the race, as the card's big figure. */
+export function countdown(date: string, today: string): { value: string; unit?: string } {
+  const days = daysBetween(today, date);
+  if (days <= 0) return { value: "Jour J" };
+  return { value: String(days), unit: days > 1 ? "jours" : "jour" };
+}
+
+/** What each phase is for, in her words. A phase the app does not know keeps only its name. */
+export const PHASE_TEXT: Record<string, string> = {
+  Base: "Courir souvent et facile, pour construire ton endurance.",
+  Développement: "Le rythme monte, avec des séances plus soutenues.",
+  Spécifique: "Des séances à l'allure de ta course.",
+  Affûtage: "Moins de volume, pour arriver fraîche le jour J.",
+};
