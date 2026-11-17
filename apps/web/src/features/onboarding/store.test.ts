@@ -44,7 +44,7 @@ describe("onboarding store", () => {
     expect(store.getState().phase).toBe("hidden");
   });
 
-  it("asks for a time on the wheels or « La finir » before going on", () => {
+  it("asks for a time or « La finir » before going on", () => {
     const { store } = setup();
     const s = () => store.getState();
     store.setState({ step: "target" });

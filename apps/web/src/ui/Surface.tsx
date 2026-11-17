@@ -10,8 +10,8 @@ type Props = HTMLAttributes<HTMLElement> & {
 };
 
 /**
- * The content layer: light, nearly opaque frost with a lit rim and a soft ink shadow, so text stays crisp and
- * color can carry meaning. Solid under "Réduire la transparence" (styles/surfaces.css).
+ * The content layer in Liquid Glass: translucent white over the sky, blurred and saturated, a lit rim and a soft
+ * warm shadow. A widget is the same glass as an inset. Solid under "Réduire la transparence" (styles/surfaces.css).
  */
 export function Surface({ variant = "card", as: Tag = "div", className, ...rest }: Props) {
   return <Tag data-variant={variant} className={cx("surface", className)} {...rest} />;

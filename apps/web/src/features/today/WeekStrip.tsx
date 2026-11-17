@@ -42,14 +42,14 @@ export function WeekStrip({ week, today, legend = true }: { week: Week; today: s
               onClick={() => go(`/semaine?jour=${day.date}`)}
               className={cx(
                 "press flex min-h-11 flex-col items-center gap-1.5 border-0 bg-transparent py-1 text-ink",
-                past && "opacity-55",
+                past && "text-ink-2 grayscale",
               )}
             >
               <span className={cx("t-cap", day.today && "font-semibold text-action")}>{day.letter}</span>
               <span
                 className={cx(
                   "t-strong flex size-9 items-center justify-center rounded-full tabular-nums",
-                  day.today && "bg-action text-on-color",
+                  day.today && "bg-action text-on-color shadow-glow-action",
                 )}
               >
                 {day.number}

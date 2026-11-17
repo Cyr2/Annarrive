@@ -38,14 +38,14 @@ export function Figure({ label, value, unit, size = "num", end = false, rolling 
   );
 }
 
-/** Reggie's face: his green disc and his bubble icon. Decorative, his name is always written next to it. */
+/** Reggie's face: his green disc and his bubble icon, glowing at the larger size. Decorative, his name is always written next to it. */
 export function ReggieAvatar({ size = "sm" }: { size?: "sm" | "md" }) {
   return (
     <span
       aria-hidden="true"
       className={cx(
         "flex flex-none items-center justify-center rounded-full bg-reggie text-on-color",
-        size === "sm" ? "size-7" : "size-10",
+        size === "sm" ? "size-7" : "size-10 shadow-glow-reggie",
       )}
     >
       <Icon name="reggie" size={size === "sm" ? 15 : 20} stroke={2.2} />

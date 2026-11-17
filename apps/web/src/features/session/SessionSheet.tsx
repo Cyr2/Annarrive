@@ -31,7 +31,7 @@ export default function SessionSheet({ spec, ...sheet }: SheetProps<"session">) 
           <WatchStatus run={run} />
         </div>
         <div className="relative flex flex-wrap items-center gap-2">
-          <SessionChip tone={run.intensity} />
+          <SessionChip tone={run.intensity} title={run.title} />
           <span className="t-sub">{facts.filter(Boolean).join(" · ")}</span>
         </div>
         <SessionShape steps={run.steps} tone={run.intensity} className="relative h-11" />

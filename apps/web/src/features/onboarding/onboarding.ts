@@ -50,7 +50,7 @@ export type Draft = {
   race?: Race;
   otherKm: string;
   date: string;
-  /** Her target in seconds, picked on the wheels; 0 until she turns them. */
+  /** Her target in seconds, typed in the h and min boxes; 0 until she types one. */
   targetSec: number;
   /** "La finir": no target time. */
   finish: boolean;
@@ -98,7 +98,7 @@ export function distanceOf(draft: Draft): DistanceM | undefined {
   return DISTANCES.map((d) => d.value).reduce<DistanceM>(closest, 5000);
 }
 
-/** Target in minutes; undefined for "La finir" or wheels left at zero. */
+/** Target in minutes; undefined for "La finir" or boxes left empty. */
 export function targetOf(draft: Draft): number | undefined {
   return draft.finish || draft.targetSec <= 0 ? undefined : draft.targetSec / 60;
 }
@@ -125,8 +125,7 @@ export function issue(step: Step, draft: Draft, today: string): string | undefin
     return `Garde au moins ${draft.runsPerWeek} jours pour courir.`;
   if (step === "hours" && minutesOf(draft.latestEnd) <= minutesOf(draft.earliest))
     return "« Pas après » doit venir après « pas avant ».";
-  if (step === "target" && !draft.finish && draft.targetSec <= 0)
-    return "Fais tourner les roues, ou choisis de la finir.";
+  if (step === "target" && !draft.finish && draft.targetSec <= 0) return "Écris ton chrono, ou choisis de la finir.";
   if (step === "strength" && draft.strength.some((s) => !s.name.trim())) return "Donne un nom à chaque séance.";
   if (step === "health" && draft.pain && !draft.zone) return "Dis où tu as mal.";
   if (step === "connect" && draft.icsUrl.trim() && !checkIcsUrl(draft.icsUrl).url)

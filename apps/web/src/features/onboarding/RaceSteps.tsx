@@ -4,7 +4,7 @@ import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
 import { SegmentedControl } from "../../ui/controls.tsx";
 import { Icon } from "../../ui/Icon.tsx";
 import { Group, RowInput } from "../../ui/List.tsx";
-import { TimeWheels } from "../../ui/TimeWheels.tsx";
+import { TimeBoxes } from "../../ui/TimeBoxes.tsx";
 import { TargetTag, VERDICT_KIND } from "../program/TargetTag.tsx";
 import { DISTANCES, distanceOf, type Race } from "./onboarding.ts";
 import { BigChoice, Card, update, useDraft } from "./parts.tsx";
@@ -73,7 +73,7 @@ const MODES = [
 export function TargetStep() {
   const draft = useDraft();
   const verdict = useOnboarding((s) => s.verdict);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: asks again when the wheels rest on a new time
+  // biome-ignore lint/correctness/useExhaustiveDependencies: asks again once she stops typing a new time
   useEffect(() => {
     const timer = setTimeout(() => void useOnboarding.getState().checkTarget(), 400);
     return () => clearTimeout(timer);
@@ -93,9 +93,7 @@ export function TargetStep() {
           <p className="t-body m-0">Franchir la ligne, à ton rythme. Ton plan te prépare à la finir sereine.</p>
         </Card>
       ) : (
-        <Card className="px-2 py-2">
-          <TimeWheels seconds={draft.targetSec} onChange={(targetSec) => update({ targetSec })} />
-        </Card>
+        <TimeBoxes seconds={draft.targetSec} onChange={(targetSec) => update({ targetSec })} />
       )}
       <div aria-live="polite" className="flex min-h-16 flex-col items-start gap-2 px-1">
         {shown && (

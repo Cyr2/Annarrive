@@ -4,7 +4,7 @@ import { Button, SegmentedControl } from "../../ui/controls.tsx";
 import { Group, RowInput, RowSelect, Section } from "../../ui/List.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
 import { Surface } from "../../ui/Surface.tsx";
-import { TimeWheels } from "../../ui/TimeWheels.tsx";
+import { TimeBoxes } from "../../ui/TimeBoxes.tsx";
 import { todayOf } from "../plan/selectors.ts";
 import { usePlan } from "../plan/store.ts";
 import type { SheetProps } from "../sheets/SheetHost.tsx";
@@ -22,7 +22,7 @@ const fullClock = (seconds: number) => {
   return `${Math.floor(seconds / 3600)}:${pad(Math.floor(seconds / 60) % 60)}:${pad(seconds % 60)}`;
 };
 
-/** Modifier l'objectif: her race, date and target on the wheels, or "La finir". What changes comes before Valider. */
+/** Modifier l'objectif: her race, date and target in h and min boxes, or "La finir". What changes comes before Valider. */
 export default function GoalSheet(sheet: SheetProps<"goal">) {
   const plan = usePlan();
   const goal = plan.program?.goal;
@@ -69,11 +69,7 @@ export default function GoalSheet(sheet: SheetProps<"goal">) {
           value={finish ? "finish" : "time"}
           onChange={(mode) => setFinish(mode === "finish")}
         />
-        {!finish && (
-          <Surface variant="inset" className="px-2 py-2">
-            <TimeWheels seconds={seconds} onChange={(s) => set({ targetTime: fullClock(s) })} />
-          </Surface>
-        )}
+        {!finish && <TimeBoxes seconds={seconds} onChange={(s) => set({ targetTime: fullClock(s) })} />}
       </Section>
       <Surface variant="inset" className="flex flex-col gap-1 p-4">
         <span className="t-strong">Ce qui change</span>

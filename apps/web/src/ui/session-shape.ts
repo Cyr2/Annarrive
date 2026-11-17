@@ -1,5 +1,5 @@
-/** One bar of a session's shape: its height (0 to 1) and its share of the width. */
-export type Bar = { level: number; weight: number };
+/** One bar of a session's shape: its height (0 to 1), its share of the width, and the kind of effort it draws. */
+export type Bar = { level: number; weight: number; kind: StepLike["tone"] };
 
 type StepLike = { label: string; tone: "plain" | "hard" | "muted" };
 
@@ -34,7 +34,12 @@ export function shapeOf(steps: StepLike[]): Bar[] {
       const repeats = repeatsIn(block.label) ?? 1;
       const minutes = minutesIn(block.label);
       if (repeats > 1) bars.push(...repeated(block, repeats, steps[i + 1]));
-      else bars.push({ level: LEVEL[block.tone], weight: minutes ? Math.min(Math.max(minutes / 5, 1), 8) : 2 });
+      else
+        bars.push({
+          level: LEVEL[block.tone],
+          weight: minutes ? Math.min(Math.max(minutes / 5, 1), 8) : 2,
+          kind: block.tone,
+        });
     }
   }
   return bars;
@@ -48,7 +53,7 @@ const isGap = (step: StepLike) => step.tone === "muted" && minutesIn(step.label)
 function repeated(step: StepLike, repeats: number, next: StepLike | undefined): Bar[] {
   const gap = next && isGap(next);
   return Array.from({ length: repeats }, (_, k): Bar[] => [
-    ...(k > 0 && gap ? [{ level: LEVEL.muted, weight: 0.4 }] : []),
-    { level: LEVEL[step.tone], weight: 0.55 },
+    ...(k > 0 && gap ? [{ level: LEVEL.muted, weight: 0.4, kind: "muted" as const }] : []),
+    { level: LEVEL[step.tone], weight: 0.55, kind: step.tone },
   ]).flat();
 }

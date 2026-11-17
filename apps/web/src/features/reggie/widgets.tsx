@@ -107,7 +107,7 @@ export function Preview({
   return (
     <Surface variant="widget" className={card}>
       <div className="flex flex-col gap-1.5">
-        <SessionChip tone={session.intensity} />
+        <SessionChip tone={session.intensity} title={session.title} />
         <span className="t-title">{session.title}</span>
         <span className="t-sub">{session.detail}</span>
       </div>

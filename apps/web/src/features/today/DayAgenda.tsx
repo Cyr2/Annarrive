@@ -43,10 +43,6 @@ export function DayAgenda({ items, date }: { items: Item[]; date: string }) {
                   <span className="t-cap">{run ? endOf(item) : item.end}</span>
                 </span>
                 <span
-                  aria-hidden="true"
-                  className={cx("my-3 w-1 flex-none rounded-full", run ? TONES[tone].mid : "bg-hairline")}
-                />
-                <span
                   className={cx(
                     "flex min-h-16 min-w-0 flex-1 items-center gap-3 py-3 pr-4",
                     index < list.length - 1 && "border-b-[0.5px] border-hairline",

@@ -22,7 +22,7 @@ export function ClassGroup({ items, past }: { items: CalendarEvent[]; past: bool
         )}
       >
         <span className="t-sub w-12 flex-none pl-3 tabular-nums">{items[0]?.start}</span>
-        <span aria-hidden="true" className="w-1 flex-none self-stretch rounded-full bg-hairline" />
+        <span aria-hidden="true" className="size-2.5 flex-none rounded-full bg-hairline-strong" />
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="t-sub text-ink-2">{items.length} cours</span>
           <span className="t-cap">{classesSpan(items)}</span>

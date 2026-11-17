@@ -10,41 +10,27 @@
 }
 
 /*
- * The sun and a cool haze, drawn once and only moved: transform and opacity run on the compositor,
- * so the drift costs no repaint. Large and very soft, so it reads as light, not as a shape.
+ * The sun in the top left corner and a coral haze under it. Still: the glass blurs this layer, and a sky that
+ * never moves is blurred once, not every frame. Large and very soft, so it reads as light, not as a shape.
  */
 .sky-sun,
 .sky-haze {
   position: absolute;
   border-radius: 50%;
-  will-change: transform, opacity;
 }
 .sky-sun {
-  top: -28vmax;
-  left: -18vmax;
-  width: 90vmax;
-  height: 90vmax;
+  top: -34vmax;
+  left: -30vmax;
+  width: 95vmax;
+  height: 80vmax;
   background: var(--sky-sun);
-  animation: sky-drift var(--duration-sky) var(--ease-in-out) infinite alternate;
 }
 .sky-haze {
-  right: -30vmax;
-  bottom: -20vmax;
+  top: 10vmax;
+  left: -20vmax;
   width: 80vmax;
-  height: 80vmax;
+  height: 60vmax;
   background: var(--sky-haze);
-  animation: sky-drift var(--duration-sky) var(--ease-in-out) infinite alternate-reverse;
-}
-
-@keyframes sky-drift {
-  from {
-    transform: translate3d(0, 0, 0) scale(1);
-    opacity: 0.85;
-  }
-  to {
-    transform: translate3d(6vmax, 3vmax, 0) scale(1.06);
-    opacity: 1;
-  }
 }
 
 /* ---- Surfaces (ui/Surface.tsx): the content layer ---- */
@@ -62,31 +48,25 @@
     border-radius: var(--radius-inset);
     box-shadow: var(--shadow-inset);
   }
-  /* Reggie's widgets: the same inset card, with his green on the leading edge. */
-  .surface[data-variant="widget"] {
-    box-shadow:
-      inset 3px 0 0 var(--color-reggie),
-      var(--shadow-inset);
-  }
   .surface[data-variant="sheet"] {
     background: var(--surface-sheet);
     border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
     box-shadow: var(--shadow-sheet);
   }
-  /* On the pale sheet a group is plain white, never light frost on light frost. */
-  .surface[data-variant="sheet"] .surface:is([data-variant="inset"], [data-variant="widget"]) {
-    background: #ffffff;
+  /* Content frost: the sky behind blurs and saturates through the card (no refraction: that is for controls). */
+  .surface {
+    -webkit-backdrop-filter: var(--surface-blur);
+    backdrop-filter: var(--surface-blur);
   }
-
-  /*
- * A frost blur only where a fine pointer says the machine has the power to spare. On a phone the sky drifts
- * behind every card and the blur would be redrawn each frame for a difference nobody sees at 84 % white.
- */
-  @media (pointer: fine) {
-    .surface:not([data-variant="sheet"]) {
-      -webkit-backdrop-filter: var(--surface-blur);
-      backdrop-filter: var(--surface-blur);
-    }
+  .surface[data-variant="sheet"] {
+    -webkit-backdrop-filter: var(--surface-sheet-blur);
+    backdrop-filter: var(--surface-sheet-blur);
+  }
+  /* On a sheet a group is brighter glass with no blur of its own: one blur, never glass blurring glass. */
+  .surface[data-variant="sheet"] .surface:is([data-variant="inset"], [data-variant="widget"]) {
+    background: var(--surface-on-sheet);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 
   /* ---- Control glass outside glisse (toasts): the same recipe as glisse's, in CSS ---- */
@@ -100,12 +80,9 @@
 
   .ui-glass {
     background: var(--lg-glass);
-    -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(170%);
-    backdrop-filter: blur(var(--lg-blur)) saturate(170%);
-    box-shadow:
-      inset 0 0 0 0.5px rgb(255 255 255 / 0.8),
-      inset 0 1px 0 rgb(255 255 255 / 0.9),
-      var(--shadow-float);
+    -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(180%);
+    backdrop-filter: blur(var(--lg-blur)) saturate(180%);
+    box-shadow: var(--surface-rim), var(--shadow-float);
   }
 }
 
@@ -116,6 +93,7 @@
     --surface-card: var(--surface-solid);
     --surface-inset: var(--surface-solid);
     --surface-sheet: var(--surface-solid);
+    --surface-on-sheet: var(--color-on-color);
     --lg-glass: var(--surface-solid);
     --glass-float: var(--surface-solid);
     --lg-glass-active: #ffffff;
@@ -134,12 +112,5 @@
   .ui-glass {
     outline: 1px solid rgb(35 48 61 / 0.35);
     outline-offset: -1px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .sky-sun,
-  .sky-haze {
-    animation: none;
   }
 }

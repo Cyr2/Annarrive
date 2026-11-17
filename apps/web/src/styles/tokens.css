@@ -8,15 +8,15 @@
   /* Only these colors exist as classes: no default palette, no black can sneak in. */
   --color-*: initial;
 
-  /* ---- Sky (Sky.tsx), from dawn at the top to morning at the bottom ---- */
-  --color-sky-1: #fde7da;
-  --color-sky-2: #f3ecf6;
-  --color-sky-3: #e6f1f8;
-  --color-sky-4: #f7f9fb;
+  /* ---- Sky (Sky.tsx): a soft apricot wash at the top, a warm near-white below ---- */
+  --color-sky-1: #fdede3;
+  --color-sky-2: #fdf1ea;
+  --color-sky-3: #fbf6f2;
+  --color-sky-4: #f9f6f3;
 
   /* ---- Text: one ink, one secondary, one faint (never for text that must be read) ---- */
   --color-ink: #23303d; /* 13.4:1, 11.3:1 on sky-1 */
-  --color-ink-2: #5a6673; /* 5.9:1, 4.9:1 on sky-1, 5.1:1 on sky-3 */
+  --color-ink-2: #434e5a; /* 8.5:1, 7:1 on the deepest point of the sky */
   --color-ink-3: #8a949e; /* 3.1:1: placeholders, disabled labels, chevrons */
   --color-hairline: rgb(35 48 61 / 0.1);
   --color-hairline-strong: rgb(35 48 61 / 0.16);
@@ -25,8 +25,9 @@
   --color-scrim: rgb(35 48 61 / 0.24);
 
   /* ---- Meaning: action (do something), Reggie (he speaks or acts), warn (look), danger (destroys) ---- */
-  --color-action: #3d6a9e; /* white on it 5.6:1 */
-  --color-action-wash: rgb(61 106 158 / 0.12); /* selection fill; action text on it 4.7:1 */
+  --color-action: #0967d6; /* iOS-like blue; white on it 5.3:1 */
+  /* Opaque, so a selected row stays as light as its neighbours: a tint, never a darker fill. */
+  --color-action-wash: #eef4fc; /* the action blue at 7 % on white; action text on it 4.8:1 */
   --color-reggie: #0b6b52; /* white on it 6.5:1 */
   --color-reggie-wash: rgb(11 107 82 / 0.1); /* Reggie text on it 5.5:1 */
   --color-warn-wash: #fcf0d9;
@@ -35,43 +36,50 @@
   --color-danger: #a8423a; /* destructive labels only: 6.0:1 */
 
   /* ---- Sessions: wash (backgrounds), mid (bars, dots), deep (text and icons, 4.5:1 on white and on wash) ---- */
-  --color-intense-wash: #fdebe3;
-  --color-intense: #f29c7b;
-  --color-intense-deep: #b4441e; /* 4.8:1 on wash */
-  --color-easy-wash: #e5f4ed;
-  --color-easy: #7cc8a8;
+  --color-intense-wash: #fbd3c1; /* ink on it 9.7:1, secondary 5.4:1 */
+  --color-intense: #ee8a63;
+  --color-intense-deep: #9c3814; /* 5.1:1 on wash */
+  --color-easy-wash: #cdebdc; /* ink 10.6:1, secondary 5.9:1 */
+  --color-easy: #5dbb92;
   /* Yellower than Reggie's green so the two never read as one. */
-  --color-easy-deep: #3e7448; /* 5.5:1, 4.9:1 on wash */
-  --color-long-wash: #eaf1fc;
-  --color-long: #8db3ea;
-  /* Bluer than the action blue, so a long run never looks like a button. */
-  --color-long-deep: #3f55a6; /* 6.9:1, 6.0:1 on wash */
-  --color-revision-wash: #e6f5f7;
-  --color-revision: #8fcfd6;
-  --color-revision-deep: #1f6b75; /* 6.1:1, 5.5:1 on wash */
+  --color-easy-deep: #2c6337; /* 5.6:1 on wash */
+  --color-long-wash: #d3e2fa; /* ink 10.3:1, secondary 5.7:1 */
+  --color-long: #6f9ee6;
+  /* More indigo than the action blue, so a long run never looks like a button. */
+  --color-long-deep: #2f449a; /* 6.6:1 on wash */
+  --color-revision-wash: #c9eaee; /* ink 10.6:1, secondary 5.9:1 */
+  --color-revision: #5fbec9;
+  --color-revision-deep: #155a63; /* 6.2:1 on wash */
   --color-strength-wash: #eef0f3;
   --color-strength: #a9b2bc;
   --color-strength-deep: #4a5866; /* 7.3:1, 6.4:1 on wash */
   --color-class-wash: #f1f2f4;
   --color-class: #c4cad1;
-  --color-class-deep: #5a6673; /* the secondary ink: classes are the backdrop of her week */
+  --color-class-deep: #434e5a; /* the secondary ink: classes are the backdrop of her week */
 
-  /* ---- Surfaces (Surface.tsx): nearly opaque frost so text stays crisp over the sky ---- */
-  --surface-card: rgb(255 255 255 / 0.84);
-  --surface-inset: rgb(255 255 255 / 0.78);
-  /* Solid: at even 97 % the page's words ghost through a sheet. */
-  --surface-sheet: #f5f7fa;
-  --surface-solid: #fbfcfd;
-  --surface-blur: blur(14px) saturate(150%);
-  --surface-rim: inset 0 0 0 0.5px rgb(255 255 255 / 0.9), inset 0 1px 0 rgb(255 255 255 / 0.95);
+  /* ---- Surfaces (Surface.tsx): content frost, the sky tinting through, enough white to keep text at 4.5:1 ---- */
+  --surface-card: rgb(255 255 255 / 0.68);
+  --surface-inset: rgb(255 255 255 / 0.64);
+  /* A sheet is thick frost: dense enough that the page behind never reads as words, even without a blur. */
+  --surface-sheet: rgb(248 244 245 / 0.95);
+  --surface-sheet-blur: blur(40px) saturate(180%);
+  /* A group on a sheet: brighter glass, without a blur of its own (never glass blurring glass). */
+  --surface-on-sheet: rgb(255 255 255 / 0.72);
+  --surface-solid: #fbfafc;
+  --surface-blur: blur(24px) saturate(180%);
+  --surface-rim: inset 0 0 0 0.5px rgb(255 255 255 / 0.75), inset 0 1px 0 rgb(255 255 255 / 0.95);
 
-  /* ---- Shadows: tinted with ink, never black ---- */
-  --shadow-card: var(--surface-rim), 0 1px 2px rgb(35 48 61 / 0.04), 0 10px 28px -6px rgb(35 48 61 / 0.12);
-  --shadow-inset: var(--surface-rim), 0 1px 2px rgb(35 48 61 / 0.04), 0 4px 14px -6px rgb(35 48 61 / 0.08);
-  --shadow-sheet: 0 -12px 40px rgb(35 48 61 / 0.14);
+  /* ---- Shadows: tinted warm or with ink, never black ---- */
+  /* The short contact shadow keeps the glass edge visible on the pale sky, where a white rim alone vanishes. */
+  --shadow-card: var(--surface-rim), 0 1px 3px rgb(90 40 10 / 0.07), 0 10px 32px rgb(90 40 10 / 0.11);
+  --shadow-inset: var(--surface-rim), 0 1px 3px rgb(90 40 10 / 0.06), 0 4px 16px rgb(90 40 10 / 0.08);
+  /* The glow under a filled button, in its own color (action blue, Reggie green). */
+  --shadow-glow-action: inset 0 1px 0 rgb(255 255 255 / 0.35), 0 8px 22px rgb(9 103 214 / 0.35);
+  --shadow-glow-reggie: inset 0 1px 0 rgb(255 255 255 / 0.3), 0 8px 22px rgb(11 107 82 / 0.38);
+  --shadow-sheet: inset 0 1px 0 rgb(255 255 255 / 0.9), 0 -12px 40px rgb(90 40 10 / 0.14);
   --shadow-float: 0 10px 30px -8px rgb(35 48 61 / 0.22);
   --shadow-lift: 0 16px 36px -6px rgb(35 48 61 / 0.24);
-  --shadow-ring: inset 0 0 0 2px var(--color-action);
+  --shadow-ring: inset 0 0 0 1.5px var(--color-action);
   --shadow-ring-quiet: inset 0 0 0 1.5px rgb(35 48 61 / 0.22);
 
   /* ---- Radii, by hierarchy ---- */
@@ -108,8 +116,6 @@
   --duration-fade: 150ms;
   --delay-widget: 60ms;
   --duration-typing: 1.2s;
-  /* The sky's light drifts: slow enough to be felt, never watched. */
-  --duration-sky: 24s;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
@@ -142,42 +148,47 @@
   --duration-hold: 300ms;
 }
 
-/* Everything the sky paints: the dawn gradient and its sun. Sky.tsx shifts it per phase of the programme. */
+/*
+ * Everything the sky paints: a soft apricot wash at the top that fades quickly to a warm near-white, where the
+ * text sits. Calm on purpose: no hot spot, nothing behind a word competes with it. The deepest point (about #fde9de)
+ * keeps the secondary ink at 7:1 and the action blue at 4.5:1. Sky.tsx warms the glow a touch per phase.
+ */
 :root {
   --sky: linear-gradient(
     180deg,
     var(--color-sky-1) 0%,
-    var(--color-sky-2) 34%,
-    var(--color-sky-3) 68%,
+    var(--color-sky-2) 18%,
+    var(--color-sky-3) 40%,
     var(--color-sky-4) 100%
   );
-  --sky-sun: radial-gradient(closest-side, rgb(255 214 170 / 0.75), rgb(255 214 170 / 0));
-  --sky-haze: radial-gradient(closest-side, rgb(214 226 250 / 0.7), rgb(214 226 250 / 0));
+  --sky-sun: radial-gradient(closest-side, rgb(255 218 196 / 0.26), rgb(255 218 196 / 0));
+  --sky-haze: radial-gradient(closest-side, rgb(255 228 205 / 0.35), rgb(255 228 205 / 0));
 }
 
-/* Later phases: the light climbs and warms toward race week. */
+/* Later phases: the glow warms a little toward race week, never brighter. */
 [data-phase="build"] {
-  --sky-sun: radial-gradient(closest-side, rgb(255 226 190 / 0.7), rgb(255 226 190 / 0));
+  --sky-sun: radial-gradient(closest-side, rgb(255 216 192 / 0.27), rgb(255 216 192 / 0));
 }
 [data-phase="peak"] {
-  --sky-sun: radial-gradient(closest-side, rgb(255 206 140 / 0.8), rgb(255 206 140 / 0));
+  --sky-sun: radial-gradient(closest-side, rgb(255 214 188 / 0.28), rgb(255 214 188 / 0));
 }
 [data-phase="race"] {
-  --sky-sun: radial-gradient(closest-side, rgb(255 190 120 / 0.9), rgb(255 190 120 / 0));
+  --sky-sun: radial-gradient(closest-side, rgb(255 212 184 / 0.29), rgb(255 212 184 / 0));
 }
 
 /*
  * glisse (Liquid Glass) takes the palette. Its defaults sit in :where(), so :root wins without !important.
- * The control glass is lighter than the content surfaces: it floats, and lets the sky through.
+ * Controls are clear glass like the cards: the sky shows through, the rim catches the light.
  */
 :root {
   --lg-foreground: var(--color-ink);
   --lg-muted: var(--color-ink-2);
-  --lg-glass: rgb(255 255 255 / 0.7);
-  --lg-glass-active: rgb(255 255 255 / 0.82);
-  --lg-edge: rgb(35 48 61 / 0.08);
-  --lg-drop: rgb(35 48 61 / 0.08);
-  --lg-selection: var(--color-action-wash);
+  --lg-glass: rgb(255 255 255 / 0.5);
+  --lg-glass-active: rgb(255 255 255 / 0.72);
+  --lg-edge: rgb(90 40 10 / 0.08);
+  --lg-drop: rgb(90 40 10 / 0.1);
+  /* Translucent: glisse lays it over the selected tab's label. */
+  --lg-selection: rgb(9 103 214 / 0.1);
   --lg-segment-track: rgb(35 48 61 / 0.07);
   --lg-segment-thumb: #ffffff;
   --lg-segment-label: var(--color-ink);
@@ -193,17 +204,13 @@
   --lg-fill: var(--color-action);
   --lg-ring: var(--color-action);
   --lg-ease: var(--ease-drawer);
-  --lg-blur: 16px;
-  /* Glass that floats over scrolling content: the tab bar, toasts, Reggie's composer. */
-  --glass-float: var(--lg-glass);
+  --lg-blur: 24px;
+  /* Glass that floats over scrolling content (tab bar, toasts, Reggie's composer): denser, so words passing
+     under it never fight the ones on it. */
+  --glass-float: rgb(255 255 255 / 0.78);
 }
 
-/* On a touch screen, or with no backdrop blur at all, the frost alone must hide what scrolls behind. */
-@media (pointer: coarse) {
-  :root {
-    --glass-float: rgb(247 249 251 / 0.96);
-  }
-}
+/* With no backdrop blur at all, the frost alone must hide what scrolls behind. */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   :root {
     --glass-float: rgb(247 249 251 / 0.96);

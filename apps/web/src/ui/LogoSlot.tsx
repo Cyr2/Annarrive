@@ -13,7 +13,7 @@ export function LogoSlot({ size = 72, className }: { size?: number; className?: 
       style={{ width: size, height: size, borderRadius: size * 0.28 }}
     >
       <span aria-hidden="true" className="t-title text-ink-3">
-        T
+        A
       </span>
     </span>
   );

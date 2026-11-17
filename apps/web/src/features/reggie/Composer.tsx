@@ -56,7 +56,6 @@ export function Composer({ onHeight, shortcuts }: { onHeight: (height: number) =
         </div>
       )}
       <form
-        className="flex items-center gap-2"
         onSubmit={(e) => {
           e.preventDefault();
           submit(text);
@@ -65,15 +64,21 @@ export function Composer({ onHeight, shortcuts }: { onHeight: (height: number) =
         <label htmlFor="msg" className="sr-only-label">
           Message pour Reggie
         </label>
-        <Input id="msg" value={text} onChange={setText} placeholder="Écris à Reggie" className="flex-1" />
-        <IconButton
-          type="submit"
-          icon="send"
-          label="Envoyer"
-          variant="filled"
-          tone="reggie"
-          size="large"
-          disabled={busy || !text.trim()}
+        <Input
+          id="msg"
+          value={text}
+          onChange={setText}
+          placeholder="Écris à Reggie"
+          action={
+            <IconButton
+              type="submit"
+              icon="send"
+              label="Envoyer"
+              variant="filled"
+              tone="reggie"
+              disabled={busy || !text.trim()}
+            />
+          }
         />
       </form>
     </div>
