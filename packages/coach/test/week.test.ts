@@ -66,7 +66,7 @@ describe("planWeek (cycle 0.1 buildWeek)", () => {
     expect(others.every((s) => checkHard(s, slotOf(s), weekOf(r, sessions)).length === 0)).toBe(true);
   });
 
-  it("lets a kept run with no twin of its type replace one as hard, else an easy one, never the long run (EV14)", () => {
+  it("lets a kept run with no twin of its type replace one as hard, else an easy one, never the long run (EV19, EV-19 to EV-21)", () => {
     const types = (r: WeekRequest) =>
       planWeek(r)
         .sessions.map((s) => s.type)

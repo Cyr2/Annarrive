@@ -342,7 +342,11 @@ export class PlanService {
   updateProgram(input: Program): ChangeResponse {
     const before = this.coachState();
     const today = dateOf(this.#now());
-    const sameGoal = JSON.stringify(input.goal) === JSON.stringify(before.program.goal);
+    // A new target time alone keeps the plan's start and phases: only a new race or date restarts it.
+    const old = before.program.goal;
+    const sameGoal =
+      input.goal === old ||
+      (input.goal !== null && old !== null && input.goal.distanceM === old.distanceM && input.goal.date === old.date);
     // Modifier l'objectif sends the goal alone: the declared time stays for the level estimate (F10).
     const program = { ...before.program, ...input, startedOn: sameGoal ? (before.program.startedOn ?? today) : today };
     const write: PlanWrite = { table: "program", id: CURRENT, after: { id: CURRENT, value: program } };

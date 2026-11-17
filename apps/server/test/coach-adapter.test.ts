@@ -537,6 +537,27 @@ describe("coach adapter: the programme's plan", () => {
     expect((await program(t)).plan?.verdict).toBeUndefined();
   });
 
+  it("keeps the phases for a new target time alone, and restarts them for a new date (EV-22)", async () => {
+    const t = await ready();
+    t.setNow(SUNDAY_6PM);
+    history(t, "2026-11-16");
+    t.stores.fitnessEstimate.put({ id: "2026-11-01", date: "2026-11-01", vdot: 40, source: "test" });
+    const goal = { distanceM: 10000, date: "2027-03-14", targetMin: 52 };
+    await t.call("PUT", "/api/program", { goal });
+    const before = (await program(t)).plan;
+
+    t.setNow(new Date("2026-11-25T08:00:00Z"));
+    await t.call("PUT", "/api/program", { goal: { ...goal, targetMin: 48 } });
+    const target = (await program(t)).plan;
+    expect({ firstMonday: target?.firstMonday, phases: target?.phases }).toEqual({
+      firstMonday: before?.firstMonday,
+      phases: before?.phases,
+    });
+
+    await t.call("PUT", "/api/program", { goal: { ...goal, date: "2027-04-11" } });
+    expect((await program(t)).plan?.firstMonday).toBe("2026-11-30");
+  });
+
   it("has no plan until her level is known", async () => {
     const t = await ready();
     await t.call("PUT", "/api/program", { goal: { distanceM: 10000, date: "2027-03-14" } });
