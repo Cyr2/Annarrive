@@ -79,6 +79,10 @@ export const todaySchema = z.object({
   proposals: z.array(proposalSchema).optional(),
   /** Sick or hurt, as declared in Pas dispo: only then does « Ça va mieux » make sense. */
   unwell: z.boolean().optional(),
+  /** What Aujourd'hui says while she is unwell. */
+  unwellText: z.string().optional(),
+  /** A session that is over with no run matched: « Tu l'as faite ? ». */
+  toConfirm: runSchema.optional(),
 });
 
 export const weekSchema = z.object({
@@ -87,6 +91,8 @@ export const weekSchema = z.object({
   total: z.number().int().optional(),
   readOnly: z.boolean(),
   timetableCheckedAt: z.string(),
+  /** What the timetable's last read changed, today only: « 1 cours annulé jeudi · Footing passé à vendredi 18:00 ». */
+  timetableChange: z.string().optional(),
   items: z.array(itemSchema),
 });
 
@@ -146,6 +152,8 @@ export const settingsSchema = z.object({
   recoveryData: z.boolean(),
   cycle: z.boolean(),
   notifications: z.boolean(),
+  /** 0 = Monday to 6 = Sunday; Sunday unless she chose. */
+  longRunDay: z.number().int().min(0).max(6).optional(),
 });
 
 export const programSchema = z.object({
@@ -154,6 +162,8 @@ export const programSchema = z.object({
     distanceKm: z.number(),
     date: isoDate,
     targetTime: z.string().optional(),
+    /** When the race starts, "9:00". */
+    startTime: clock.optional(),
     /** How her own target looks, never discouraging. The app never proposes a time. */
     targetTag: z.enum(["reachable", "ambitious"]).optional(),
   }),

@@ -234,7 +234,12 @@ export function createMockApi({
         return rows;
       }),
     skip: (id) =>
-      commit("Séance passée, le plan continue", () => {
+      commit("Séance passée", () => {
+        remove(id);
+        return undefined;
+      }),
+    confirmDone: (id) =>
+      commit("Séance faite", () => {
         remove(id);
         return undefined;
       }),

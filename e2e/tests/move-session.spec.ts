@@ -6,7 +6,7 @@ test("déplacer la séance du jour vers un créneau proposé, puis Annuler la re
   await page.goto("/");
   const card = page.getByRole("article").first();
   await expect(card).toContainText("Ce soir · 17:00");
-  await expect(card).toContainText("Sortie longue");
+  await expect(card).toContainText("Côtes courtes");
 
   await page.getByRole("button", { name: "Déplacer", exact: true }).click();
   const sheet = page.getByRole("dialog", { name: "Déplacer" });
@@ -23,5 +23,26 @@ test("déplacer la séance du jour vers un créneau proposé, puis Annuler la re
 
   await moved.getByRole("button", { name: "Annuler" }).click();
   await expect(card).toContainText("Ce soir · 17:00");
-  await expect(card).toContainText("Sortie longue");
+  await expect(card).toContainText("Côtes courtes");
+});
+
+test("passer la séance du jour : elle part sans être rattrapée, puis Annuler la remet", async ({ page }) => {
+  await page.goto("/");
+  const card = page.getByRole("article").first();
+  await expect(card).toContainText("Côtes courtes");
+
+  await page.getByRole("button", { name: "Déplacer", exact: true }).click();
+  const sheet = page.getByRole("dialog", { name: "Déplacer" });
+  // Each proposed slot says why, never an empty « le moins gênant ».
+  const slots = sheet.getByRole("group", { name: "Créneaux proposés" });
+  await expect(slots.getByRole("button").first()).toBeVisible();
+  await expect(slots).not.toContainText("le moins gênant");
+  await sheet.getByRole("button", { name: "Passer cette séance" }).click();
+
+  const skipped = banner(page, "Séance passée");
+  await expect(skipped).toBeVisible();
+  await expect(card).not.toContainText("Côtes courtes");
+
+  await skipped.getByRole("button", { name: "Annuler" }).click();
+  await expect(card).toContainText("Côtes courtes");
 });

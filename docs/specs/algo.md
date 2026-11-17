@@ -43,7 +43,7 @@ Reggie n'appelle que les fonctions de `events` et `readOnly` (lecture du plan, d
 | M4  | `placement` (solveur de contraintes)            | séances de la semaine, agenda, réglages       | créneaux, pénalités, raisons                        | `freeSlots`, `checkHard`, `softPenalty`, `placeWeek`, `replan`, `proposeMoveSlots`                                                                 |
 | M5  | `readiness` (lignes de base, décision du matin) | signaux quotidiens, ressenti, agenda          | décision du jour, signaux                           | `baseline`, `dailySignals`, `isConfirmed`, `dailyDecision`                                                                                         |
 | M6  | `guards` (charge et progression)                | séances prévues et réalisées                  | séances plafonnées, validation                      | `spikeCap`, `weeklyCaps`, `distributionCheck`, `validateWeek`                                                                                      |
-| M7  | `events` (actions des boutons)                  | état, action, `now`                           | nouvel état, changements, avertissements            | `moveSession`, `changeOptions`, `applyChange`, `reportUnavailable`, `feelBetter`, `updateSettings`, `onTimetableChange`, `detectMissed`, `logFeel` |
+| M7  | `events` (actions des boutons)                  | état, action, `now`                           | nouvel état, changements, avertissements            | `moveSession`, `changeOptions`, `applyChange`, `reportUnavailable`, `feelBetter`, `updateSettings`, `onTimetableChange`, `detectMissed`, `confirmDone`, `skipSession`, `logFeel` |
 | M8  | `recalibration`                                 | activités, séances clés, propositions passées | `Proposal` ou rien                                  | `evaluateRace`, `evaluateKeySessions`, `evaluateTrends`, `acceptProposal`                                                                          |
 | M9  | `maintenance` (mode entretien)                  | historique 8 sem., réglages                   | gabarit de semaine                                  | `maintenanceWeek`, `postRaceWeek`, `exitMaintenance`                                                                                               |
 
@@ -52,7 +52,7 @@ Reggie n'appelle que les fonctions de `events` et `readOnly` (lecture du plan, d
 ```ts
 type RunType = "E" | "RECUP" | "L" | "T" | "CRUISE" | "I" | "R" | "SPE" | "COTES_C" | "COTES_L" | "FARTLEK" | "TEST" | "RACE";
 type Step = {
-  kind: "warmup" | "work" | "recover" | "cooldown" | "strides";
+  kind: "warmup" | "work" | "recover" | "cooldown" | "strides" | "hills"; // hills : sprints en côte (COTES_C), au ressenti
   durMin?: number;
   distM?: number;
   reps?: number;
@@ -91,7 +91,7 @@ type Settings = {
   useSleepHr: boolean;
   travelMin: number;
 };
-type Goal = { distanceM: 5000 | 10000 | 21097.5 | 42195; date: string; targetMin?: number } | null;
+type Goal = { distanceM: 5000 | 10000 | 21097.5 | 42195; date: string; targetMin?: number; startTime?: string } | null;
 type DailySignal = {
   date: string;
   rhr?: number;
@@ -240,7 +240,8 @@ replanFromActual(plan: Plan, actualWeeks: number[], now: string): Plan
 | P21 | Les allures d'entraînement viennent du VDOT actuel, jamais de la cible. Les blocs à allure de course utilisent l'allure cible seulement si la cible est au plus ambitieuse                                                                                                                                                                                |                                         | Daniels                                    | CONS   |
 | P22 | Replanification hebdo (dimanche) à partir du **réalisé** : si réalisé < 80 % du prévu deux semaines de suite → pas de hausse, et phase décalée d'1 sem. si la marge le permet, sinon Dév compressé                                                                                                                                                        | 80 %                                    | règle de conception                        | OP     |
 | P23 | Après la course : 1 semaine à 45 % du volume habituel, footings seuls (20 min au moins), puis M9                                                                                                                                                                                                                                                                         | 45 % défaut à calibrer                  |                                            | OP     |
-| P24 | Semaine de la course (celle qui contient la date de l'objectif) : la course est une séance `RACE` le jour de la course (distance de l'objectif, allure cible sinon prédite F5), au premier créneau libre de l'agenda ce jour-là, même un jour sans course ; elle est gelée et remplace la sortie longue de la semaine. Course à moins d'une semaine complète (aucune semaine de plan pour elle) : gabarit d'affûtage (P13) au volume de la semaine de course de P18 (50 %, marathon 45 % de `V_pic`). Les Q qui n'ont plus de place sous H12 (une Q au plus un jour libre sur deux) deviennent des E de même durée. La course ne compte ni dans G1 ni dans P11. Une course `RACE` encore prévue à une autre date que l'objectif est supprimée | | Bosquet 2007 ; recherche 02 §6 | MA |
+| P25 | Le jour où le programme commence (`planStart` = aujourd'hui), rien n'est placé ce jour-là : la première séance vient au plus tôt le lendemain. Une semaine commencée avec au moins un jour libre après ce jour compte comme la semaine 1 affichée (« Semaine 2 sur N » la suivante) | | audit besoin réel du 17/11/2026 (séance 30 min après l'onboarding) | OP |
+| P24 | Semaine de la course (celle qui contient la date de l'objectif) : la course est une séance `RACE` le jour de la course (distance de l'objectif, allure cible sinon prédite F5), à son heure de départ (`startTime`, 09:00 sans réponse : la plupart des courses sur route partent le matin), quels que soient l'agenda et les jours sans course ; elle est gelée et remplace la sortie longue de la semaine. Course à moins d'une semaine complète (aucune semaine de plan pour elle) : gabarit d'affûtage (P13) au volume de la semaine de course de P18 (50 %, marathon 45 % de `V_pic`). Les Q qui n'ont plus de place sous H12 (une Q au plus un jour libre sur deux) deviennent des E de même durée. La course ne compte ni dans G1 ni dans P11. Une course `RACE` encore prévue à une autre date que l'objectif est supprimée | | Bosquet 2007 ; recherche 02 §6 | MA |
 
 ### Tests
 
@@ -262,11 +263,12 @@ replanFromActual(plan: Plan, actualWeeks: number[], now: string): Plan
 | P-14 | Semaine Base, 4 courses                                                                   | `['E+strides', 'E', 'E+COTES_C', 'L']`, 0 Q                        |
 | P-15 | Distribution prévue Z3 = 12 %                                                             | la Q de type I perd des fractions jusqu'à Z3 ≤ 10 %                |
 | P-16 | `replanFromActual` : réalisé 70 % puis 75 % du prévu                                      | semaine suivante = volume de la dernière semaine, pas de hausse    |
-| P-17 | Semaine du lundi 2026-11-23, `now` mardi 12:00, 10 km le dimanche 29, 4 courses | `RACE` dimanche 07:00, aucune L, 4 séances après `now`, aucune séance dure (hors course) après le mercredi 25 (J-4) |
+| P-17 | Semaine du lundi 2026-11-23, `now` mardi 12:00, 10 km le dimanche 29, 4 courses | `RACE` dimanche 09:00 (heure par défaut), aucune L, 4 séances après `now`, aucune séance dure (hors course) après le mercredi 25 (J-4) |
 | P-18 | Même semaine, `now` lundi 06:00, 10 km le mercredi 25 | `RACE` mercredi ; les autres séances sont des E, aucune le mercredi (Q sans place → E) |
 | P-19 | `now` dimanche 22 18:00, 10 km le mardi 1er décembre | semaine du 23 : pas de `RACE`, aucune séance dure samedi 28 ni dimanche 29 ; semaine du 30 : `RACE` mardi, aucune autre séance dure |
 | P-20 | Plan semi commencé le 2026-11-22, semaine d'affûtage finale du lundi 2027-03-15 | `RACE` dimanche 21, aucune L, séances dures au plus tard le mercredi 17 |
-| P-21 | 10 km dimanche 29, cours de 07:00 à 12:00 ce jour-là, dimanche en `noRunDays` | `RACE` dimanche 12:30 |
+| P-21 | 10 km dimanche 29 à 10:30, cours de 07:00 à 12:00 ce jour-là, dimanche en `noRunDays` | `RACE` dimanche 10:30 |
+| P-22 | Programme commencé mardi 08:00 (`planStart` = aujourd'hui), cours en semaine jusqu'à 16:30, courses dès 17:00, 4 courses | aucune séance mardi ; 4 séances du mercredi au dimanche ; L dimanche |
 
 ---
 
@@ -296,7 +298,7 @@ Q = échauffement 15 min E + corps + retour au calme 10 min E (défaut à calibr
 | I       | fractions 3 à 5 min à I, récup = durée de l'effort | 8         | oui                    | ≤ min(0,08 × `V_km`, 10 km), fraction ≤ 5 min                  | 5×3 → 5×4 → 5×5 min                        | Bacon 2013       | MA     |
 | R       | 200 à 400 m à R, récup 2 à 3 × l'effort            | 8         | oui si ≥ 3 km          | ≤ min(0,05 × `V_km`, 8 km)                                     | +1 répétition                              | Daniels          | CONS   |
 | SPE     | blocs à l'allure de course (M ou semi)             | 6         | oui                    | M ≤ min(0,20 × `V_km`, 29 km) ; semi 2×3 → 3×4 km → 12 à 16 km | % de la distance à l'allure                | Daniels ; Canova | CONS   |
-| COTES_C | 6 à 10 × 8 à 12 s, récup complète, dans un E       | 3         | non                    | ≤ 2 min d'effort                                               | +2 répétitions                             | Hudson 2008      | CONS   |
+| COTES_C | 6 à 10 × 8 à 12 s, récup complète, dans un E : échauffement E, `hills` 10 s au ressenti (RPE 8, sans allure, F16), retour en marchant 1 min 30, retour au calme 10 min E | 3         | non                    | ≤ 2 min d'effort                                               | +2 répétitions                             | Hudson 2008      | CONS   |
 | COTES_L | 6 à 10 × 60 à 120 s en côte                        | 8         | oui                    | comme I                                                        | +1 répétition                              | Daniels          | CONS   |
 | FARTLEK | variations libres dans un E                        | 5         | oui si > 6 min rapides | 6 à 20 min rapides cumulées                                    | +2 min                                     | Lydiard          | CONS   |
 | strides | 4 à 8 × 15 à 20 s en fin de E                      | n/a       | non                    | ≤ 3 min d'effort                                               | aucune                                     | Daniels          | CONS   |
@@ -323,6 +325,7 @@ Q = échauffement 15 min E + corps + retour au calme 10 min E (défaut à calibr
 | C-6 | `equivalents` d'un T continu 20 min (140 UA)                                                    | CRUISE 2 × 9 min, récup 2 min (20 min, 130 UA)      |
 | C-7 | `feelToRpe('hard', 3)` ; `('easy', 2)` ; `('hard', 9)`                                          | 5 ; 1 (borné) ; 10 (borné)                          |
 | C-8 | `sessionLoad` : 15 min E (3) + 4 × 5 min T (7) + 3 × 1 min récup (2) + 10 min E (3)             | 45 + 140 + 6 + 30 = 221 UA                          |
+| C-9 | `buildSession('COTES_C', { durMin: 48 }, base, progression 0)`                                   | étapes `warmup`, 6 × 10 s `hills` sans allure, 5 × 1 min 30 `recover`, `cooldown` 10 min ; ≤ 48 min ; non dure |
 
 ---
 
@@ -367,11 +370,12 @@ proposeMoveSlots(sessionId: string, week: WeekState, now: string): { best: SlotW
 | S5  | Dure la veille d'un examen et finie < 4 h avant `bedtime`                | 50                   | analogie Leota 2025, Craven 2022 | OP     |
 | S6  | Course dans les 3 h avant un examen                                      | 40                   |                                  | OP     |
 | S7  | Écart à `preferredHour`                                                  | 5 par heure, max 20  | préférence                       | OP     |
-| S8  | L hors `preferredLongDay`                                                | 20                   | Runna                            | CONS   |
+| S8  | L hors de son jour (`preferredLongDay`, dimanche s'il n'est pas choisi) ; l'autre jour du week-end quand ce jour est un samedi ou un dimanche | 20 ; 10 l'autre jour du week-end | Runna ; plans experts Garmin (recherche 05) | CONS   |
 | S9  | Jour ou heure (> 2 h) différents de la même séance la semaine précédente | 5                    | Bruggisser 2023                  | MA     |
-| S10 | > 2 jours consécutifs sans course (si ≥ 3 courses)                       | 10                   |                                  | OP     |
+| S10 | > 2 jours consécutifs sans course (si ≥ 3 courses), bords de semaine compris : le dimanche d'avant et le lundi d'après comptent comme des jours de course | 10                   |                                  | OP     |
 | S11 | Muscu non jambes < 3 h avant une dure                                    | 5                    |                                  | OP     |
 | S12 | Deux dures à moins de 48 h (H4 respectée)                                | 10                   |                                  | CONS   |
+| S13 | Course la veille ou le lendemain d'une autre course (des jours de repos entre les courses quand la semaine le permet) | 5                    | dur/facile, recherche 02 §4.1 ; Runna répartit les séances | OP     |
 
 Toutes les pénalités : défaut à calibrer.
 
@@ -384,7 +388,7 @@ Toutes les pénalités : défaut à calibrer.
 | A3    | Ordre d'essai en replanification : autre créneau le même jour, puis échange avec une autre course de la semaine, puis autre jour                                                                                                                                                                                                                                                                |
 | A4    | Infaisable : relâcher dans l'ordre (a) H4 devient souple à 100 points ; (b) raccourcir un E jusqu'à -30 % ; (c) supprimer un E ; (d) dégrader une Q en E. Jamais supprimer la L ni la dernière Q sans `warning` explicite                                                                                                                                                                       |
 | A5    | Périmètre : semaine en cours et suivante. Séances faites, `manual`, gelées (H9) : fixes                                                                                                                                                                                                                                                                                                         |
-| A6    | `proposeMoveSlots` : 3 meilleurs créneaux valides de la semaine en cours avec une raison courte (pénalité dominante évitée) ; liste des créneaux interdits avec la raison de la première violation ; effets de bord annoncés avant validation                                                                                                                                                   |
+| A6    | `proposeMoveSlots` : 3 meilleurs créneaux valides de la semaine en cours ; le meilleur créneau du lendemain de la séance en fait toujours partie s'il est permis (il remplace le 3e). Chaque créneau a une raison courte, jamais vide : même jour (« même jour, 1 h 30 plus tard ») ; sinon ce que le créneau coûte de plus qu'à sa place actuelle (pénalité dominante, « tard avant ton coucher ») ; sinon, pour une séance dure, la muscu jambes à moins de 3 jours (« ta muscu jambes est jeudi soir, l'écart est bon ») ; sinon les cours du jour (« avant tes cours », « après tes cours ») ; sinon « journée sans cours ». Liste des créneaux interdits avec la raison de la première violation ; effets de bord annoncés avant validation |
 
 ### Tests
 
@@ -403,6 +407,11 @@ Contexte commun : `earliest` 07:00, `latestEnd` 22:30, `bedtime` 23:00, `travelM
 | PL-9  | Séance `manual` L samedi, la veille d'une Q dimanche                                              | la L reste ; `warning` H4 ; la Q dimanche est déplacée si possible, sinon dégradée en E                                                                                     |
 | PL-10 | Replan : solution A bouge 1 séance (pénalité 60), solution B en bouge 2 (pénalité 20)             | A (gain 40 < 50)                                                                                                                                                            |
 | PL-11 | `proposeMoveSlots` Q, aucun créneau valide dans la semaine                                        | `best: []`, et l'action propose « Remplacer par un footing ce soir » ou « Passer cette séance »                                                                             |
+| PL-13 | `placeWeek` L 66 min + 2 E, cours en semaine jusqu'à 16:30, courses dès 17:00, week-end libre | L dimanche ; aucun jour de course consécutif ; jamais plus de 2 jours sans course, bords de semaine compris |
+| PL-14 | Même semaine, `preferredLongDay` samedi ; puis sans préférence, dimanche pris toute la journée | L samedi ; L samedi |
+| PL-15 | Même semaine avec une Q en plus, 4 courses | 4 séances placées, aucun jour consécutif |
+| PL-16 | `proposeMoveSlots` d'une Q mardi 08:00, jambes mardi 18:00 | le mercredi est proposé (19:00 au plus tôt) avec « près de ta muscu jambes » ; aucune raison vide |
+| PL-17 | Raison d'un créneau sans coût : Q jeudi 19:00, jambes mardi 18:00 ; E jeudi 17:00 après un cours de 14:00 à 16:00 ; E à 07:00 ; E un jour sans cours | « ta muscu jambes est mardi soir, l'écart est bon » ; « après tes cours » ; « avant tes cours » ; « journée sans cours » |
 | PL-12 | `RACE` dimanche 29 ; `checkHard` Q vendredi 27 18:00, puis E au même créneau, puis Q mercredi 25 ; Anna déplace la Q de mercredi à vendredi | violation H12 ; `[]` ; `[]` ; déplacement accepté en E de même durée, `manual`, avertissement H12 |
 
 ---
@@ -528,7 +537,9 @@ reportUnavailable(st: State, r: Unavailable, now: string): Result
   //             & { until?: string }   // absent = aujourd'hui seulement ; ignoré pour 'sick'
 feelBetter(st: State, now: string): Result                                                  // « Ça va mieux »
 updateSettings(st: State, patch: Partial<Settings>, now: string): Result
-onTimetableChange(st: State, newEvents: CalEvent[], now: string): Result
+onTimetableChange(st: State, newEvents: CalEvent[], now: string, own?: boolean): Result   // own : EV22
+confirmDone(st: State, id: string, now: string): Result                                    // EV21
+skipSession(st: State, id: string): Result                                                 // EV21
 detectMissed(st: State, activities: Activity[], lastSync: string, now: string): Result
 logFeel(st: State, sessionId: string, feel: 'easy'|'ok'|'hard'): Result
 ```
@@ -548,7 +559,7 @@ Tout `Result` porte `manual: true` sur ce qu'Anna a choisi, passe par `validateW
 | EV7  | Pas le temps : `proposeMoveSlots` dans la semaine en cours ; si vide → statut `skipped`, jamais rattrapée                                                                                                                                                                                                                                                                                      |            | Runna                                     | CONS   |
 | EV8  | Fatiguée : séance du jour → repos. Si la prochaine séance dure tombe demain → `shorter` (-25 %). Avec `until` : repos chaque jour jusqu'à la date, puis G7 selon la durée                                                                                                                                                                                                                      |            | interactions.md                           | CONS   |
 | EV9 | Malade, fièvre ou poitrine = oui : statut `malade` jusqu'à `feelBetter`. L'app conseille de ne pas courir tant qu'il y a de la fièvre et propose repos, mais ne bloque rien : si Anna veut courir, la séance devient un footing en endurance fondamentale (E) de `min(0,5 × durée prévue, 30)` min, RPE ≤ 3. Aucune Q. Après `feelBetter` : E seuls jusqu'à 3 jours sans symptôme, puis retour normal, Q dégradée d'un cran la première fois | 3 j | Schwellnus 2022 ; Elliott 2020 ; décision produit (ne pas forcer) | CONS |
-| EV10 | Malade, non (au-dessus du cou) : statut `rhume` jusqu'à `feelBetter`. Les séances restent proposées en E (durée prévue, RPE ≤ 4). Aucune Q | | Weidner 1998 | ECR |
+| EV10 | Malade, non (au-dessus du cou) : statut `rhume` jusqu'à `feelBetter`. Les séances restent proposées en E de la moitié de la durée prévue, arrondie aux 5 min inférieures, 15 min au moins, RPE ≤ 3. Aucune Q | 50 % ; 15 min | Weidner 1998 ; recherche 03 §9 (« neck check » : footing RPE ≤ 3, durée ≤ 50 %) | ECR |
 | EV11 | Douleur 0 à 3 en marchant : séance → footing E (`min(durée prévue, 40)` min, pilotage RPE) ou vélo facile, au choix. Aucune Q tant que le statut dure | 0 à 3 | Silbernagel 2007 | ECR |
 | EV12 | Douleur ≥ 4 : l'app conseille de ne pas courir (repos ou vélo) mais ne bloque rien. Si Anna veut courir : footing E de 20 min max, RPE ≤ 3, avec « arrête-toi si la douleur monte ». Si une douleur ≥ 4 dure plus de 3 jours : message « voir un kiné ou un médecin » (une fois par épisode). Retour : G7 selon la durée | 4 ; 3 j | Silbernagel 2007 ; consensus orientation | CONS |
 | EV13 | `feelBetter` ne lève qu'un statut `pause`, `rhume` ou `douleur`, et lance le retour (EV9 ou G7). Il n'est jamais déduit d'un message ambigu par Reggie : il faut le bouton ou une réponse oui explicite                                                                                                                                                                                        |            | recherche 03 §10.3                        | CONS   |
@@ -558,6 +569,8 @@ Tout `Result` porte `manual: true` sur ce qu'Anna a choisi, passe par `validateW
 | EV17 | Synchro absente ou plus ancienne que la fin du jour : pas de `missed`, statut inconnu ; l'app demande « Tu as couru ? »                                                                                                                                                                                                                                                                        |            |                                           | OP     |
 | EV18 | Message de Reggie signalant douleur thoracique, palpitations ou malaise : branche EV9 + drapeau `orientation: 'urgente'` (message consulter rapidement)                                                                                                                                                                                                                                        |            | Elliott 2020                              | CONS   |
 | EV19 | Semaine reconstruite autour de séances gardées (faites, gelées, `manual`) : chaque séance gardée remplace une séance construite, d'abord sa jumelle du même type, sinon une séance aussi dure (`isHard`), sinon une autre, jamais la sortie longue (L). Si Anna a déplacé plus de séances que la semaine n'en compte, elle garde les siennes plus la L. Changer seulement le chrono visé garde le début du plan et ses phases ; une nouvelle distance ou une nouvelle date redémarre le plan | | décision produit | OP |
+| EV21 | Séance finie sans course reçue (EV17) : l'app demande « Tu l'as faite ? ». `confirmDone` : « Oui » → `done` (seulement une séance commencée). `skipSession` : « Non, je l'ai sautée » ou « Passer cette séance » → `skipped`, jamais rattrapée, aucune autre séance ne bouge (EV16) | | Runna (sauter ≠ déplacer, recherche 05 §1.3) ; TrainAsONE (« les séances manquées sont des données, pas des dettes ») | CONS |
+| EV22 | Événement qu'Anna place elle-même (muscu, révision, indispo, cours remis) : la course en conflit est déplacée comme en EV15, même si elle commence dans moins de 12 h (c'est son action, H9 ne s'applique pas). Le bandeau dit laquelle, où et pourquoi (règle cassée à l'ancienne place) | | interactions.md, feuille Ajouter | OP |
 | EV20 | Conflit dur de EV14 : la date de la nouvelle course, ou celle de l'ancienne, tombe d'aujourd'hui à J+7. La semaine en cours est alors reconstruite (P24, H12) : seules ses séances automatiques encore à venir changent ; les séances faites, passées, gelées et celles qu'Anna a déplacées restent (EV19). Un seul changement, annulable, envoyé à la montre | 7 j | décision produit | OP |
 
 ### Tests
@@ -573,7 +586,7 @@ Tout `Result` porte `manual: true` sur ce qu'Anna a choisi, passe par `validateW
 | EV-7  | Fatiguée aujourd'hui, Q prévue demain                                             | aujourd'hui repos ; Q de demain × 0,75                                             |
 | EV-8  | Fatiguée aujourd'hui, prochaine Q dans 3 jours                                    | aujourd'hui repos ; Q inchangée                                                    |
 | EV-9 | Malade oui ; Anna veut courir à J2 ; E prévu 45 min | footing E 22 min RPE ≤ 3, conseil de repos affiché ; aucune Q |
-| EV-10 | Malade non ; Q 50 min prévue | footing E 50 min RPE ≤ 4 ; Q non proposée |
+| EV-10 | Malade non ; Q 50 min prévue ; puis L de 66 min ; puis E de 25 min | footing E 25 min RPE ≤ 3, Q non proposée ; E 30 min ; E 15 min |
 | EV-11 | Douleur genou 2 ; E 45 min prévu | footing E 40 min ou vélo 45 min |
 | EV-12 | Douleur cheville 5, `until` dans 5 jours ; nouveau signalement ≥ 4 au jour 4 | repos conseillé, footing E 20 min possible ; message kiné ou médecin envoyé une fois |
 | EV-13 | Douleur 4 un seul jour | repos conseillé, footing E 20 min possible ; pas de message d'orientation |
@@ -587,6 +600,9 @@ Tout `Result` porte `manual: true` sur ce qu'Anna a choisi, passe par `validateW
 | EV-21 | 4 séances T `manual` dans une semaine de 4 courses | les 4 T plus la L |
 | EV-22 | Seul le chrono visé change (même distance, même date) | `startedOn` et phases inchangés ; nouvelle date ou distance : `startedOn` = aujourd'hui |
 | EV-23 | Objectif 10 km dimanche 29 fixé mardi ; T `manual` vendredi ; `RACE` encore prévue samedi (ancienne date) | T gardé tel quel ; `RACE` de samedi supprimée ; `RACE` dimanche |
+| EV-25 | Q lundi 18:00 ; `confirmDone` à 20:00 ; puis `confirmDone` à 08:00 | `done`, change EV21 ; refus (pas encore eu lieu) |
+| EV-26 | `skipSession` d'une Q, un E prévu mercredi | Q `skipped`, E inchangé, aucune séance ajoutée ; un second `skipSession` est refusé |
+| EV-27 | L ce soir 17:00 à 18:30, `now` 08:00 ; Anna ajoute une muscu jambes à 19:00 | sans EV22 : proposition seulement ; avec : L déplacée, change EV22 avec « Moins d'1 h entre ta course et ta séance jambes » |
 | EV-24 | Mercredi 18 : objectif en mars, L déplacée par Anna au samedi 21 ; nouvel objectif 10 km dimanche 22 ; puis Annuler ; puis retour à l'objectif de mars | `RACE` dimanche, L de samedi gardée, aucune séance dure automatique du jeudi 19 au samedi 21, montre à jour, un seul changement ; Annuler rend tout ; retour en mars : plus de `RACE`, L gardée |
 
 ---
@@ -703,7 +719,7 @@ exitMaintenance(history4w: number[], goal: Goal, now: string): { v0: number; pla
 | Événements ICS (début, fin, titre) → `class`                                                                             | H1                       | dernier ICS valide gardé ; s'il a plus de 7 jours : avertir, continuer |
 | Examens : titre contenant « examen », « partiel », « DS », « contrôle », « exam » (insensible à la casse et aux accents) | S5, S6, SG5              | aucun examen connu                                                     |
 | Cours marqué « n'a pas lieu » par Anna                                                                                   | H1 (créneau libéré)      |                                                                        |
-| Muscu (nom, `legs`, jour, heure, durée), révision, indispo : placés par Anna                                             | H1, H5, H6, S2 à S4, S11 | muscu sans `legs` explicite : `legs = true` (prudence)                 |
+| Muscu (nom, `legs`, jour, heure, durée), révision, indispo : placés par Anna                                             | H1, H5, H6, S2 à S4, S11 | muscu sans `legs` explicite : pas jambes (décision du 17/11/2026 : seul l'interrupteur fait une séance jambes, un oubli du client ne doit pas bloquer ses séances dures) |
 | Réglages : courses/sem, pas avant, pas après, jours sans course, coucher, trajet                                         | H2, H7, S1, P13          | défauts : 3 courses, 07:00, 21:30, aucun, 23:00, 0 min                 |
 | Objectif : distance, date, chrono facultatif                                                                             | M2                       | M9                                                                     |
 | Douleur ou blessure en cours (onboarding)                                                                                | P9, EV11 à EV12          | non                                                                    |
@@ -725,7 +741,7 @@ exitMaintenance(history4w: number[], goal: Goal, now: string): { v0: number; pla
 | 03 §1.3 : sRPE inclut la muscu                                                         | muscu exclue de toute charge, la case jambes sert seulement au placement (G5)                                           |
 | 03 étape 7 et 02 R15 : une séance clé ratée remplace une séance de priorité plus basse | une séance ratée n'est jamais rattrapée ni échangée (EV16)                                                              |
 | 02 R21 : objectif irréaliste → proposer `P0 × (1 - g_max)` seulement dans ce cas       | décision : aucun chrono proposé, la cible vient d'Anna (P20)                                   |
-| 04 §1.5 : classer la muscu par mots-clés du nom                                        | seule la case jambes compte (décision) ; sans case cochée ni décochée : jambes                                          |
+| 04 §1.5 : classer la muscu par mots-clés du nom                                        | seule la case jambes compte (décision) ; sans case cochée ni décochée : pas jambes                                      |
 
 ---
 

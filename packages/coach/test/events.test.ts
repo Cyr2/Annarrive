@@ -4,6 +4,7 @@ import {
   adaptForHealth,
   applyChange,
   changeOptions,
+  confirmDone,
   detectMissed,
   feelBetter,
   logFeel,
@@ -11,11 +12,12 @@ import {
   moveSession,
   onTimetableChange,
   reportUnavailable,
+  skipSession,
   slotAt,
   updateSettings,
   weekDates,
 } from "../src/index.ts";
-import { block, blockDays, easy, hard, LEGS, MONDAY, P40, sixBy800, state } from "./fixtures.ts";
+import { block, blockDays, easy, hard, LEGS, long, MONDAY, P40, sixBy800, state } from "./fixtures.ts";
 
 const work = (s: Session | undefined): Step | undefined => s?.steps.find((st) => st.kind === "work");
 const byId = (sessions: Session[], id: string): Session | undefined => sessions.find((s) => s.id === id);
@@ -156,12 +158,19 @@ describe("health: advise, never block (EV9 to EV13)", () => {
     expect(adaptForHealth(sixBy800("q", ""), h, "2026-12-08", P40).type).toBe("I");
   });
 
-  it("keeps a Q of 50 min as 50 min of E at RPE ≤ 4 with a cold (EV-10)", () => {
+  it("halves a Q of 50 min into 25 min of E at RPE ≤ 3 with a cold (EV-10)", () => {
     const q = hard("q", "2026-11-23T18:00", 50);
     const r = reportUnavailable(state([q]), { reason: "sick", feverOrChest: false }, MON_8);
     expect(r.state.health.kind).toBe("cold");
-    expect(r.options?.jog).toMatchObject({ type: "E", durMin: 50, rpeTarget: 4 });
+    expect(r.options?.jog).toMatchObject({ type: "E", durMin: 25, rpeTarget: 3 });
     expect(feelBetter(r.state, "2026-11-25T08:00").state.health).toEqual({ kind: "ok" });
+  });
+
+  it("never keeps a long run of 1 h 06 with a cold: 30 min of E (EV-10)", () => {
+    const l = long("l", "2026-11-23T18:00", 66);
+    const r = reportUnavailable(state([l]), { reason: "sick", feverOrChest: false }, MON_8);
+    expect(r.options?.jog).toMatchObject({ type: "E", durMin: 30 });
+    expect(adaptForHealth(easy("e", "", 25), { kind: "cold", since: "2026-11-23" }, "2026-11-23", P40).durMin).toBe(15);
   });
 
   it("offers 40 min of E or 45 min of bike for a knee at 2 (EV-11)", () => {
@@ -287,5 +296,44 @@ describe("logFeel (C3, RC5)", () => {
     const r = logFeel(st, "e27", "hard");
     expect(r.warnings[0]?.ruleId).toBe("RC5");
     expect(logFeel(state(runs), "e23", "ok").warnings).toEqual([]);
+  });
+});
+
+describe("done or skipped without a synced run (EV21)", () => {
+  const q = hard("q", "2026-11-23T18:00");
+  const other = easy("e", "2026-11-25T18:00");
+
+  it("marks a session done once it has started, never before (EV-25)", () => {
+    const r = confirmDone(state([q, other]), "q", "2026-11-23T20:00");
+    expect(r.state.sessions.find((s) => s.id === "q")?.status).toBe("done");
+    expect(r.changes.map((c) => c.ruleId)).toEqual(["EV21"]);
+    expect(confirmDone(state([q]), "q", MON_8).ok).toBe(false);
+  });
+
+  it("skips a session and never makes it up: nothing else moves or appears (EV-26)", () => {
+    const r = skipSession(state([q, other]), "q");
+    expect(r.state.sessions).toEqual([{ ...q, status: "skipped" }, other]);
+    expect(skipSession(r.state, "q").ok).toBe(false);
+  });
+});
+
+describe("an event she adds (EV22)", () => {
+  it("moves a run within 12 h that now breaks a rule, and says why (EV-27)", () => {
+    // Long run tonight 17:00 to 18:30, then she adds legs at 19:00 the same evening: H6.
+    const l = long("l", "2026-11-23T17:00");
+    const legs = { ...block("legs2", "2026-11-23T19:00", "2026-11-23T20:00", "strength"), legs: true };
+    const st = state([l], []);
+    const before = onTimetableChange({ ...st, cal: [legs] }, [], MON_8);
+    expect(before.proposals?.map((p) => p.sessionId)).toEqual(["l"]);
+    const r = onTimetableChange({ ...st, cal: [legs] }, [], MON_8, true);
+    expect(r.proposals).toEqual([]);
+    expect(r.changes).toEqual([
+      expect.objectContaining({
+        ruleId: "EV22",
+        sessionId: "l",
+        detail: "Moins d'1 h entre ta course et ta séance jambes",
+      }),
+    ]);
+    expect(r.state.sessions[0]?.start).not.toBe(l.start);
   });
 });

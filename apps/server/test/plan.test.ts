@@ -59,6 +59,7 @@ describe("today and week", () => {
       activity: null,
       events: [],
       health: { kind: "ok" },
+      toConfirm: null,
     });
   });
 
@@ -78,7 +79,8 @@ describe("today and week", () => {
       "2026-11-28",
       "2026-11-29",
     ]);
-    expect(next.days[1]?.events[0]).toMatchObject({ title: "Jambes", start: "2026-11-24T18:00", legs: true });
+    // Sent without the legs switch: not a legs day, so it holds back no hard run (H5).
+    expect(next.days[1]?.events[0]).toMatchObject({ title: "Jambes", start: "2026-11-24T18:00", legs: false });
     expect(next.days[3]?.sessions[0]?.id).toBe("thu");
 
     expect(weekSchema.parse((await t.call("GET", "/api/weeks/2026-W46")).json).readOnly).toBe(true);
@@ -114,7 +116,7 @@ describe("calendar events", () => {
       end: "2026-11-18T22:00",
       recurrence: "none",
     });
-    expect(created.change?.summary).toBe("Indispo ajoutée · 1 course déplacée");
+    expect(created.change?.summary).toBe("Indispo ajoutée · Footing passé à mercredi 22:30");
     expect(t.stores.plannedSession.get("run")?.start).toBe("2026-11-18T22:30");
 
     await undo(t, created.change?.id);

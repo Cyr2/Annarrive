@@ -85,11 +85,18 @@ describe("timetable sync", () => {
 
     expect(refresh).toMatchObject({ added: 1, changed: 1, removed: 1 });
     expect(refresh.summary).toBe(
-      "1 cours annulé jeudi · 1 cours ajouté vendredi · 1 cours modifié mardi · 1 course déplacée",
+      "1 cours annulé jeudi · 1 cours ajouté vendredi · 1 cours modifié mardi · Footing passé à vendredi 10:30",
     );
     expect(t.stores.calendarEvent.get("ics:ADE-thu")).toBeUndefined();
     expect(t.stores.calendarEvent.get("ics:ADE-tue")?.start).toBe("2026-11-17T16:00");
     expect(t.stores.plannedSession.get("fri")?.start).toBe("2026-11-20T10:30");
+    // A read in the background says it too: the app shows the last change, not only « À jour ».
+    expect(t.services.timetable.status().lastChange).toEqual({
+      at: "2026-11-16T07:00:00.000Z",
+      summary: refresh.summary,
+    });
+    await t.services.timetable.refresh();
+    expect(t.services.timetable.status().lastChange?.summary).toBe(refresh.summary);
 
     // The run move goes through the change log, so Annuler puts it back.
     t.services.changes.undo(refresh.change?.id ?? "");

@@ -50,6 +50,8 @@ export type Draft = {
   race?: Race;
   otherKm: string;
   date: string;
+  /** When the race starts: the race-day run is placed at this hour. */
+  startTime: string;
   /** Her target in seconds, typed in the h and min boxes; 0 until she types one. */
   targetSec: number;
   /** "La finir": no target time. */
@@ -60,6 +62,8 @@ export type Draft = {
   latestEnd: string;
   /** 1 = Monday to 7 = Sunday, as in the profile. */
   noRunDays: number[];
+  /** Her long-run day, 1 = Monday to 7 = Sunday. */
+  longRunDay: number;
   strength: StrengthDraft[];
   pain: boolean;
   zone?: string;
@@ -74,6 +78,8 @@ export type Draft = {
 export const EMPTY: Draft = {
   otherKm: "",
   date: "",
+  // Most road races start in the morning (algo.md P24).
+  startTime: "9:00",
   targetSec: 0,
   finish: false,
   runsPerWeek: 3,
@@ -81,6 +87,8 @@ export const EMPTY: Draft = {
   earliest: "7:00",
   latestEnd: "21:30",
   noRunDays: [],
+  // The weekend is when a student is free for her longest run (algo.md S8).
+  longRunDay: 7,
   strength: [],
   pain: false,
   level: 2,
@@ -170,7 +178,14 @@ export function toPayload(draft: Draft, today: string): Payload {
   const distanceM = distanceOf(draft);
   const targetMin = targetOf(draft);
   const goal =
-    draft.race === "none" || !distanceM ? null : { distanceM, date: draft.date, ...(targetMin ? { targetMin } : {}) };
+    draft.race === "none" || !distanceM
+      ? null
+      : {
+          distanceM,
+          date: draft.date,
+          startTime: padTime(draft.startTime),
+          ...(targetMin ? { targetMin } : {}),
+        };
   const events = draft.strength.map((s): CreateEventInput => {
     const date = firstDay(today, s.day);
     const start = minutesOf(s.start);
@@ -195,6 +210,8 @@ export function toPayload(draft: Draft, today: string): Payload {
       earliest: padTime(draft.earliest),
       latestEnd: padTime(draft.latestEnd),
       noRunDays: [...draft.noRunDays].sort((a, b) => a - b),
+      // A long-run day she also keeps free of runs is left to the coach's default (the other weekend day).
+      ...(draft.noRunDays.includes(draft.longRunDay) ? {} : { preferredLongDay: draft.longRunDay }),
       bedtime: padTime(draft.bedtime),
       useSleepHr: draft.useSleepHr,
       travelMin: 0,

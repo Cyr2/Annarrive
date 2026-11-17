@@ -10,6 +10,7 @@ import {
   proposeMoveSlots,
   replan,
   slotAt,
+  slotReason,
   softPenalty,
   weekDates,
 } from "../src/index.ts";
@@ -97,10 +98,11 @@ describe("softPenalty (S1 to S12)", () => {
     expect(p.items).toEqual(
       expect.arrayContaining([
         { id: "S7", pts: 20 },
-        { id: "S8", pts: 20 },
+        { id: "S8", pts: 10 },
         { id: "S9", pts: 5 },
       ]),
     );
+    expect(softPenalty(l, at(l, "2026-11-23T08:00"), w).items).toContainEqual({ id: "S8", pts: 20 });
   });
 
   it("penalises long gaps, non-legs strength before a Q and two Q within 48 h", () => {
@@ -236,7 +238,8 @@ describe("proposeMoveSlots (A6)", () => {
     const s = hard("q", "2026-11-26T18:00");
     const r = proposeMoveSlots("q", week([s]), "2026-11-23T08:00");
     expect(r.best).toHaveLength(3);
-    expect(r.best.every((b) => ["same_day", "no_penalty", "lowest_penalty"].includes(b.reason))).toBe(true);
+    expect(r.best.every((b) => b.reason.length > 0)).toBe(true);
+    expect(r.best.some((b) => ["le moins gênant", "rien ne gêne"].includes(b.reason))).toBe(false);
     expect(r.forbidden).toContainEqual(
       expect.objectContaining({
         slot: expect.objectContaining({ start: "2026-11-25T17:00" }),
@@ -244,6 +247,27 @@ describe("proposeMoveSlots (A6)", () => {
       }),
     );
     expect(r.fallback).toBeUndefined();
+  });
+
+  it("always offers the day after when it is allowed, with a real reason for each slot (PL-16)", () => {
+    // Tuesday's Q; Wednesday is allowed only from 19:00 (24 h after legs) and costs S2 and S1, so it ranks last.
+    const s = hard("q", "2026-11-24T08:00");
+    const r = proposeMoveSlots("q", week([s]), "2026-11-23T08:00");
+    const wednesday = r.best.find((b) => b.slot.start.startsWith("2026-11-25"));
+    expect(wednesday?.reason).toBe("près de ta muscu jambes");
+    const sameDay = r.best.find((b) => b.slot.start.startsWith("2026-11-24"));
+    if (sameDay) expect(sameDay.reason).toMatch(/^même jour, .+ plus (tard|tôt)$/);
+  });
+
+  it("names the legs session or her classes when the slot costs nothing (PL-17)", () => {
+    const q2 = hard("q", "2026-11-27T19:00");
+    const thursday = slotAt(q2, "2026-11-26T19:00");
+    expect(slotReason(q2, thursday, week([q2]))).toBe("ta muscu jambes est mardi soir, l'écart est bon");
+    const e2 = easy("e", "2026-11-27T08:00");
+    const course = block("c", "2026-11-26T14:00", "2026-11-26T16:00", "class");
+    expect(slotReason(e2, slotAt(e2, "2026-11-26T17:00"), week([e2], [course]))).toBe("après tes cours");
+    expect(slotReason(e2, slotAt(e2, "2026-11-26T07:00"), week([e2], [course]))).toBe("avant tes cours");
+    expect(slotReason(e2, slotAt(e2, "2026-11-26T07:00"), week([e2], []))).toBe("journée sans cours");
   });
 
   it("offers a jog tonight or skipping when nothing fits (PL-11)", () => {
@@ -258,5 +282,44 @@ describe("proposeMoveSlots (A6)", () => {
 
   it("rejects an unknown session", () => {
     expect(() => proposeMoveSlots("nope", week([]), "2026-11-23T08:00")).toThrow("Unknown session");
+  });
+});
+
+describe("week spread (S8, S10, S13)", () => {
+  // Classes on weekdays until 16:30, the weekend free: the week of a student.
+  const classes = weekDates(MONDAY)
+    .slice(0, 5)
+    .map((d) => block(`c-${d}`, `${d}T08:00`, `${d}T16:30`, "class"));
+  const evenings = { ...SETTINGS, earliest: "17:00", latestEnd: "21:30", runsPerWeek: 3 as const };
+  const base = [long("l", "", 66), easy("e1", "", 45), easy("e2", "", 45)];
+  const dayIndex = (s: Session): number => weekDates(MONDAY).indexOf(s.start.slice(0, 10));
+  const days = (sessions: Session[]): number[] => sessions.map(dayIndex).sort((a, b) => a - b);
+  const longDay = (sessions: Session[]): number => {
+    const l = sessions.find((s) => s.type === "L");
+    return l ? dayIndex(l) : -1;
+  };
+  const noBackToBack = (d: number[]): boolean => d.every((x, i) => i === 0 || x - (d[i - 1] ?? 0) > 1);
+
+  it("puts the long run on Sunday by default and spreads the runs over the week (PL-13)", () => {
+    const r = placeWeek(base, classes, evenings, MONDAY).week.sessions;
+    expect(longDay(r)).toBe(6);
+    const d = days(r);
+    expect(noBackToBack(d)).toBe(true);
+    // Never more than two days in a row without a run, week edges included.
+    expect([-1, ...d, 7].every((x, i, all) => i === 0 || x - (all[i - 1] ?? 0) <= 3)).toBe(true);
+  });
+
+  it("follows her long-run day, else the other weekend day when Sunday is taken (PL-14)", () => {
+    const sat = placeWeek(base, classes, { ...evenings, preferredLongDay: 5 }, MONDAY).week.sessions;
+    expect(longDay(sat)).toBe(5);
+    const sundayBusy = [...classes, block("sun", "2026-11-29T06:00", "2026-11-29T23:30")];
+    expect(longDay(placeWeek(base, sundayBusy, evenings, MONDAY).week.sessions)).toBe(5);
+  });
+
+  it("places four runs without two days in a row when the week has room (PL-15)", () => {
+    const four = [...base, hard("q", "", 50)];
+    const r = placeWeek(four, classes, { ...evenings, runsPerWeek: 4 }, MONDAY).week.sessions;
+    expect(r.filter((s) => s.start !== "")).toHaveLength(4);
+    expect(noBackToBack(days(r))).toBe(true);
   });
 });

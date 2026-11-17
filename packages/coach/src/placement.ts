@@ -1,5 +1,17 @@
 import { isHard, toEasy } from "./catalog.ts";
-import { addMin, clockMin, DAY_MIN, dateOf, daysBetween, hoursBetween, toMin, weekDates, weekday } from "./dates.ts";
+import {
+  addDays,
+  addMin,
+  clockMin,
+  DAY_MIN,
+  DAY_NAMES,
+  dateOf,
+  daysBetween,
+  hoursBetween,
+  toMin,
+  weekDates,
+  weekday,
+} from "./dates.ts";
 import type {
   CalEvent,
   Change,
@@ -26,7 +38,8 @@ const runsBut = (w: WeekState, id: string): Session[] => w.sessions.filter((s) =
 const dayStart = (iso: string): number => toMin(dateOf(iso));
 /** A bedtime before noon is after midnight. */
 const bedMin = (s: Settings): number => clockMin(s.bedtime) + (clockMin(s.bedtime) < 720 ? DAY_MIN : 0);
-const isLegs = (e: CalEvent): boolean => e.kind === "strength" && e.legs !== false;
+/** Only a session she marked as legs counts: a missing flag is not a legs day (owner decision, 17/11/2026). */
+const isLegs = (e: CalEvent): boolean => e.kind === "strength" && e.legs === true;
 export const isFrozen = (s: Session, now: string): boolean => s.frozen || hoursBetween(now, s.start) < FREEZE_H;
 const v = (ruleId: string, message: string): Violation => ({ ruleId, message });
 
@@ -70,7 +83,7 @@ function h6(slot: Slot, cal: CalEvent[]): Violation | null {
       toMin(e.start) >= toMin(slot.start) &&
       toMin(e.start) - end < 60,
   );
-  return sameDay ? v("H6", "Pas assez de temps avant ta séance jambes") : null;
+  return sameDay ? v("H6", "Moins d'1 h entre ta course et ta séance jambes") : null;
 }
 
 const h7 = (slot: Slot, s: Settings): Violation | null =>
@@ -143,6 +156,16 @@ function examPenalties(hard: boolean, lateEvening: boolean, slot: Slot, cal: Cal
   return items;
 }
 
+const SATURDAY = 5;
+const SUNDAY = 6;
+const isWeekend = (day: number): boolean => day === SATURDAY || day === SUNDAY;
+
+/** S8: off her long-run day (Sunday unless she chose one), half when it is the other weekend day. */
+function longDayPenalty(day: number, preferred = SUNDAY): number {
+  if (day === preferred) return 0;
+  return isWeekend(day) && isWeekend(preferred) ? 10 : 20;
+}
+
 function habitPenalties(session: Session, slot: Slot, week: WeekState): Item[] {
   const s = week.settings;
   const items: Item[] = [];
@@ -150,8 +173,9 @@ function habitPenalties(session: Session, slot: Slot, week: WeekState): Item[] {
     const offH = Math.abs(toMin(slot.start) - dayStart(slot.start) - clockMin(s.preferredHour)) / 60;
     if (offH > 0) items.push({ id: "S7", pts: Math.min(20, 5 * offH) });
   }
-  if (session.type === "L" && s.preferredLongDay !== undefined && weekday(slot.start) !== s.preferredLongDay) {
-    items.push({ id: "S8", pts: 20 });
+  if (session.type === "L") {
+    const pts = longDayPenalty(weekday(slot.start), s.preferredLongDay);
+    if (pts > 0) items.push({ id: "S8", pts });
   }
   const last = week.prev?.find((p) => p.type === session.type && p.start !== "");
   const clockDiff = (a: string, b: string): number => Math.abs(toMin(a) - dayStart(a) - (toMin(b) - dayStart(b)));
@@ -163,9 +187,14 @@ function habitPenalties(session: Session, slot: Slot, week: WeekState): Item[] {
 
 function spreadPenalties(hard: boolean, slot: Slot, week: WeekState, runs: Session[]): Item[] {
   const items: Item[] = [];
-  const days = [...new Set([...runs.map((r) => dateOf(r.start)), dateOf(slot.start)])].sort();
+  const day = dateOf(slot.start);
+  // The Sunday before and the Monday after count as run days, so an empty end of week is a gap too.
+  const days = [
+    ...new Set([addDays(week.monday, -1), ...runs.map((r) => dateOf(r.start)), day, addDays(week.monday, 7)]),
+  ].sort();
   const longGap = days.some((d, i) => i > 0 && daysBetween(days[i - 1] ?? d, d) > 3);
   if (week.settings.runsPerWeek >= 3 && longGap) items.push({ id: "S10", pts: 10 });
+  if (runs.some((r) => Math.abs(daysBetween(r.start, day)) === 1)) items.push({ id: "S13", pts: 5 });
   const start = toMin(slot.start);
   const otherStrength = week.cal.filter((e) => e.kind === "strength" && e.legs === false);
   if (hard && otherStrength.some((e) => start - toMin(e.end) >= 0 && start - toMin(e.end) < 180)) {
@@ -363,14 +392,15 @@ function repair(s: Session, rest: WeekState, now: string, ruleId: string): Chang
  * Minimal repair after a real event (§0.1). Manual and done sessions stay and only warn (H10);
  * sessions starting within 12 h are proposed, never moved (H9).
  */
-export function replan(week: WeekState, trigger: string, now: string): Replan {
+export function replan(week: WeekState, trigger: string, now: string, own = false): Replan {
   const out: Replan = { week, proposals: [], changes: [], warnings: [] };
   const ordered = week.sessions.filter(isRun).sort((a, b) => a.start.localeCompare(b.start));
-  for (const { id } of ordered) out.week = replanOne(id, out, trigger, now);
+  for (const { id } of ordered) out.week = replanOne(id, out, trigger, now, own);
   return out;
 }
 
-function replanOne(id: string, out: Replan, trigger: string, now: string): WeekState {
+/** `own`: Anna's own action caused the conflict (an event she added), so H9 does not hold the session back. */
+function replanOne(id: string, out: Replan, trigger: string, now: string, own: boolean): WeekState {
   const w = out.week;
   const s = w.sessions.find((x) => x.id === id);
   if (!s || !isRun(s) || (s.status === "planned" && s.start < now)) return w;
@@ -380,11 +410,13 @@ function replanOne(id: string, out: Replan, trigger: string, now: string): WeekS
     out.warnings.push(...violations.map((x) => ({ ...x, sessionId: id })));
     return w;
   }
-  if (isFrozen(s, now)) {
+  if (!own && isFrozen(s, now)) {
     out.proposals.push({ sessionId: id, slots: proposeMoveSlots(id, w, now).best });
     return w;
   }
-  const change = repair(s, { ...w, sessions: w.sessions.filter((x) => x.id !== id) }, now, trigger);
+  const repaired = repair(s, { ...w, sessions: w.sessions.filter((x) => x.id !== id) }, now, trigger);
+  // The rule it broke where it was: the banner says why it moved.
+  const change = { ...repaired, detail: violations[0]?.message ?? "" };
   out.changes.push(change);
   return change.after ? withSession(w, change.after) : w;
 }
@@ -401,15 +433,17 @@ export function proposeMoveSlots(sessionId: string, week: WeekState, now: string
   const s = week.sessions.find((x) => x.id === sessionId);
   if (!s) throw new Error(`Unknown session ${sessionId}`);
   const forbidden: MoveSlots["forbidden"] = [];
-  const perDay = weekDates(week.monday).flatMap((day) => bestOfDay(s, day, week, now, forbidden));
-  const best = perDay
-    .sort((a, b) => a.penalty - b.penalty || a.slot.start.localeCompare(b.slot.start))
-    .slice(0, 3)
-    .map((c): SlotWithReason => {
-      const reason =
-        dateOf(c.slot.start) === dateOf(s.start) ? "same_day" : c.penalty === 0 ? "no_penalty" : "lowest_penalty";
-      return { ...c, reason };
-    });
+  const byCost = (a: Candidate, b: Candidate): number => a.pts - b.pts || a.slot.start.localeCompare(b.slot.start);
+  const perDay = weekDates(week.monday)
+    .flatMap((day) => bestOfDay(s, day, week, now, forbidden))
+    .sort(byCost);
+  const top = perDay.slice(0, 3);
+  // A6: the day after is the move she asks for most, so its best slot is always offered when allowed.
+  const nextDay = perDay.find((c) => dateOf(c.slot.start) === addDays(dateOf(s.start), 1));
+  if (nextDay && !top.includes(nextDay)) top[2] = nextDay;
+  const best = top
+    .sort(byCost)
+    .map((c): SlotWithReason => ({ slot: c.slot, penalty: c.pts, reason: slotReason(s, c.slot, week) }));
   return best.length > 0 ? { best, forbidden } : { best, forbidden, fallback: ["jog_tonight", "skip"] };
 }
 
@@ -420,8 +454,8 @@ function bestOfDay(
   week: WeekState,
   now: string,
   forbidden: MoveSlots["forbidden"],
-): SlotWithReason[] {
-  let best: SlotWithReason | null = null;
+): Candidate[] {
+  let best: Candidate | null = null;
   for (const slot of grid(day, week.settings, s.durMin)) {
     if (slot.start <= now || slot.start === s.start) continue;
     const first = checkHard(s, slot, week)[0];
@@ -429,8 +463,66 @@ function bestOfDay(
       forbidden.push({ slot, reason: first.message });
       continue;
     }
-    const penalty = softPenalty(s, slot, week).total;
-    if (!best || penalty < best.penalty) best = { slot, penalty, reason: "lowest_penalty" };
+    const pts = softPenalty(s, slot, week).total;
+    if (!best || pts < best.pts) best = { slot, pts };
   }
   return best ? [best] : [];
+}
+
+// ---------- Reasons (A6) ----------
+
+/** What a slot costs her, said plainly: the dominant soft penalty. */
+const SOFT_REASONS: Record<string, string> = {
+  S1: "tard avant ton coucher",
+  S2: "près de ta muscu jambes",
+  S3: "juste après ta muscu jambes",
+  S4: "juste avant ta muscu jambes",
+  S5: "la veille d'un examen",
+  S6: "peu avant un examen",
+  S7: "loin de ton heure habituelle",
+  S8: "pas ton jour de sortie longue",
+  S9: "pas son jour habituel",
+  S10: "laisse plus de 2 jours sans courir",
+  S11: "peu après ta muscu",
+  S12: "proche d'une autre séance dure",
+  S13: "la veille ou le lendemain d'une autre course",
+};
+
+const dayPart = (iso: string): string => {
+  const min = toMin(iso) - dayStart(iso);
+  return min < 12 * 60 ? "matin" : min < 18 * 60 ? "après-midi" : "soir";
+};
+
+/** "1 h 30", "45 min". */
+function gapText(min: number): string {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (h === 0) return `${m} min`;
+  return m === 0 ? `${h} h` : `${h} h ${String(m).padStart(2, "0")}`;
+}
+
+/** A6: a short reason for a proposed slot, never empty: same day, its cost, the legs session, then her classes. */
+export function slotReason(s: Session, slot: Slot, week: WeekState): string {
+  const shift = toMin(slot.start) - toMin(s.start);
+  if (dateOf(slot.start) === dateOf(s.start))
+    return `même jour, ${gapText(Math.abs(shift))} plus ${shift > 0 ? "tard" : "tôt"}`;
+  // Only what this slot costs more than where the session is now is the slot's doing.
+  const now = new Set(softPenalty(s, slotOf(s), week).items.map((i) => i.id));
+  const worst = softPenalty(s, slot, week)
+    .items.filter((i) => !now.has(i.id))
+    .sort((a, b) => b.pts - a.pts)[0];
+  const cost = worst && SOFT_REASONS[worst.id];
+  if (cost) return cost;
+  const start = toMin(slot.start);
+  const legs = week.cal
+    .filter((e) => isLegs(e) && Math.abs(toMin(e.start) - start) < 3 * DAY_MIN)
+    .sort((a, b) => Math.abs(toMin(a.start) - start) - Math.abs(toMin(b.start) - start))[0];
+  if (legs && isHard(s))
+    return `ta muscu jambes est ${DAY_NAMES[weekday(legs.start)]} ${dayPart(legs.start)}, l'écart est bon`;
+  const sameDay = week.cal
+    .filter((e) => e.kind === "class" || e.kind === "exam")
+    .filter((e) => dateOf(e.start) === dateOf(slot.start));
+  if (sameDay.some((e) => toMin(e.start) >= toMin(slot.end))) return "avant tes cours";
+  if (sameDay.length > 0) return "après tes cours";
+  return "journée sans cours";
 }

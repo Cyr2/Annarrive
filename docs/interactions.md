@@ -22,7 +22,9 @@ Référence pour les maquettes et le code. Chaque action dit ce qu'elle ouvre, c
 |---|---|---|
 | Puce « Semi · J-62 » | Ouvre l'onglet Programme | Rien ne change |
 | Carte de la séance | Ouvre le détail de la séance (étapes, allures, pourquoi cette séance) | Rien ne change |
-| Voir les étapes | Déplie les étapes dans la carte | Rien ne change. Deuxième tap = replie |
+| Voir les étapes | Déplie les étapes dans la carte. Absent quand la séance n'a qu'une étape | Rien ne change. Deuxième tap = replie |
+| Carte « Tu l'as faite ? » | Apparaît quand une séance de la semaine est finie sans course reçue de la montre. « Oui, je l'ai faite » ou « Non, je l'ai sautée » | Oui : séance faite. Non : séance passée, jamais rattrapée. Bandeau Annuler dans les deux cas |
+| Ligne « Tu es enrhumée » (ou fièvre, douleur) et « Ça va mieux » | Reste en haut tant qu'un état Malade ou Douleur dure | « Ça va mieux » lance le retour, comme dans Pas dispo. Bandeau Annuler |
 | **Reggie** | Ouvre la conversation, avec le contexte « À propos de : Fractionné, ce soir 18:00 » | Reggie sait de quelle séance on parle |
 | **Déplacer** | Ouvre la feuille « Déplacer » | Voir plus bas |
 | **Changer** | Ouvre la feuille « Changer » | Voir plus bas |
@@ -35,7 +37,7 @@ Référence pour les maquettes et le code. Chaque action dit ce qu'elle ouvre, c
 
 Garde le **contenu** de la séance, change **le moment**.
 
-1. La feuille montre 3 créneaux proposés par l'algo, triés du meilleur au moins bon, chacun avec une raison courte :
+1. La feuille montre 3 créneaux proposés par l'algo, triés du meilleur au moins bon, chacun avec une raison courte. Le meilleur créneau du lendemain en fait toujours partie s'il est permis :
    - « Ce soir 19:30 · même jour, une heure plus tard » ;
    - « Mercredi 18:00 · ta muscu jambes est jeudi soir » ;
    - « Jeudi 7:30 · avant tes cours ».
@@ -43,6 +45,8 @@ Garde le **contenu** de la séance, change **le moment**.
 3. Anna tape un créneau, puis « Déplacer ».
 4. La carte glisse vers son nouveau jour. Si une autre séance de la semaine doit bouger pour respecter les règles, la feuille le dit avant validation : « Ton footing de jeudi passe à vendredi ».
 5. Bandeau « Fractionné déplacé à mercredi 18:00 · Annuler ». La montre est mise à jour.
+
+Sous le bouton, « Passer cette séance » la retire sans la rattraper (bandeau « Séance passée · Annuler »).
 
 Si aucun créneau ne marche cette semaine, la feuille le dit et propose « Remplacer par un footing ce soir » ou « Passer cette séance ».
 
@@ -87,7 +91,7 @@ Garde **le moment**, change **le contenu**. Ne propose jamais une séance plus d
 | Élément | Geste | Ce qui se passe |
 |---|---|---|
 | Flèches gauche et droite | Tap | Semaine précédente ou suivante. Les semaines passées sont en lecture seule |
-| Actualiser | Tap | Relit l'emploi du temps tout de suite. Si un cours change, une ligne apparaît : « 1 cours annulé jeudi · 1 course déplacée » |
+| Actualiser | Tap | Relit l'emploi du temps tout de suite. Si un cours change, une ligne apparaît : « 1 cours annulé jeudi · Footing passé à vendredi 18:00 ». Une relecture automatique qui change quelque chose laisse la même ligne jusqu'au soir |
 | Course, muscu, révision | Appui long (0,3 s) puis glisser | La séance se soulève (petite vibration). Les créneaux possibles s'entourent en pointillés, les jours interdits s'atténuent avec leur raison. Lâcher = déplacement, bandeau Annuler |
 | Course, muscu, révision | Tap | Course : détail. Muscu ou révision : feuille de modification |
 | Cours (emploi du temps) | Tap | Fiche du cours, lecture seule, avec « Ce cours n'a pas lieu ». Les cours ne se glissent pas (cadenas) |
@@ -102,7 +106,7 @@ Garde **le moment**, change **le contenu**. Ne propose jamais une séance plus d
 - **Révision** : durée en boutons (1 h, 1 h 30, 2 h), jour, heure, répétition.
 - **Indispo** : un titre facultatif (« Soirée chez Léa »), jour, heure de début et de fin. L'app ne place rien dessus.
 
-Après ajout, si une course entre en conflit, Reggie la déplace et le dit dans le bandeau.
+Après ajout, si une course entre en conflit, Reggie la déplace, même si elle est ce soir, et le bandeau dit laquelle et pourquoi : « Muscu ajoutée · Sortie longue passée à dimanche 19:00 : moins de 24 h après ta séance jambes ». Une muscu n'est « jambes » que si l'interrupteur est activé.
 
 ### Feuille « Séance de muscu »
 
@@ -114,8 +118,9 @@ Après ajout, si une course entre en conflit, Reggie la déplace et le dit dans 
 
 | Élément | Au tap | Ce qui se passe |
 |---|---|---|
-| Modifier l'objectif | Reprend les écrans de création du programme, pré-remplis | Avant validation, un résumé montre ce qui change (« 2 semaines de plus, chrono visé atteignable »). Les semaines à venir sont recalculées, la semaine en cours garde ce qu'Anna a déjà déplacé. Une course dans les 7 jours, nouvelle ou retirée, refait aussi ce qui reste de la semaine en cours (algo.md EV20) ; le résumé le dit : « Ta semaine devient une semaine de course : rien de dur dans les 3 jours avant. » |
+| Modifier l'objectif | Reprend les écrans de création du programme, pré-remplis, avec l'heure de départ de la course | Avant validation, un résumé montre ce qui change (« 2 semaines de plus, chrono visé atteignable »). Les semaines à venir sont recalculées, la semaine en cours garde ce qu'Anna a déjà déplacé. Une course dans les 7 jours, nouvelle ou retirée, refait aussi ce qui reste de la semaine en cours (algo.md EV20) ; le résumé le dit : « Ta semaine devient une semaine de course : rien de dur dans les 3 jours avant. » |
 | Courses par semaine, jours sans course, pas avant, pas après, heure de coucher | Choix en feuille (roue ou boutons) | La semaine en cours et les suivantes sont réorganisées. Bandeau « Reggie a réorganisé ta semaine · Voir » |
+| Sortie longue le | Liste des jours (dimanche par défaut) | Les séances automatiques à venir sont refaites, la sortie longue passe à ce jour quand il est libre. Bandeau Annuler |
 | Séance de muscu | Feuille « Séance de muscu » | Comme plus haut |
 | Emploi du temps, Actualiser | Relit l'emploi du temps | Comme dans Semaine |
 | Montre Garmin | Fiche : modèle, dernière synchro, « Reconnecter » | Reconnecter relance la connexion Garmin |

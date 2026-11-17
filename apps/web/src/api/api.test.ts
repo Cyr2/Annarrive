@@ -3,7 +3,16 @@ import { describe, expect, it, vi } from "vitest";
 import { ApiError, errorMessage } from "./errors.ts";
 import { createHttpApi, isHealthy, sse } from "./http.ts";
 import { mockRequest, pickApi } from "./index.ts";
-import { planWeek, toGoal, toMoveOptions, toPreviewRows, toProfilePatch, toUnavailable } from "./map.ts";
+import {
+  planWeek,
+  stepDuration,
+  toGoal,
+  toMoveOptions,
+  toPreviewRows,
+  toProfilePatch,
+  toRun,
+  toUnavailable,
+} from "./map.ts";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -381,6 +390,64 @@ describe("http client, reading", () => {
     expect(planWeek(undefined, "2026-11-09")).toBeUndefined();
   });
 
+  it("shows short steps in seconds, hills as hills in the easy color, and the long run's shape", () => {
+    expect([stepDuration(1 / 3), stepDuration(1.5), stepDuration(45), stepDuration(66)]).toEqual([
+      "20 s",
+      "1 min 30",
+      "45 min",
+      "1 h 06",
+    ]);
+    const session = (type: SessionView["type"], steps: SessionView["steps"]): SessionView => ({
+      id: "s",
+      type,
+      start: "2026-11-18T17:00",
+      durMin: 48,
+      steps,
+      rpeTarget: 3,
+      priority: 4,
+      status: "planned",
+      manual: false,
+      frozen: false,
+      pilot: "rpe",
+      watch: null,
+    });
+    const e = { paceSKm: [325, 389] as [number, number], rpe: 3 };
+    const hills = toRun(
+      session("COTES_C", [
+        { kind: "warmup", durMin: 29, zone: "E", target: e },
+        { kind: "hills", durMin: 1 / 6, reps: 6, target: { rpe: 8 } },
+        { kind: "recover", durMin: 1.5, reps: 5, target: { rpe: 1 } },
+        { kind: "cooldown", durMin: 10, zone: "E", target: e },
+      ]),
+    );
+    expect(hills.intensity).toBe("easy");
+    expect(hills.mainSet).toBe("6 × 10 s en côte");
+    expect(hills.steps.map((s) => s.label)).toEqual([
+      "Échauffement 29 min",
+      "6 × 10 s en côte",
+      "Récupération 5 × 1 min 30",
+      "Retour au calme 10 min",
+    ]);
+    const strides = toRun(
+      session("E", [
+        { kind: "work", durMin: 45, zone: "E", target: e },
+        { kind: "strides", durMin: 1 / 3, reps: 6, zone: "R", target: { paceSKm: [265, 265], rpe: 3 } },
+      ]),
+    );
+    expect(strides.steps.map((s) => [s.label, s.tone])).toEqual([
+      ["45 min", "plain"],
+      ["Accélérations 6 × 20 s", "hard"],
+    ]);
+    const race = { paceSKm: [313, 313] as [number, number], rpe: 6 };
+    const long = toRun(
+      session("L", [
+        { kind: "work", durMin: 49, zone: "E", target: e },
+        { kind: "work", durMin: 16, zone: "race", target: race },
+      ]),
+    );
+    expect(long.steps.map((s) => s.tone)).toEqual(["plain", "hard"]);
+  });
+
   it("maps move slots, keeping a day open when one of its times is allowed", () => {
     const at = (start: string) => ({ start, end: start });
     const options = toMoveOptions({
@@ -417,7 +484,8 @@ describe("http client, changes", () => {
       "POST /api/feel-better": CHANGE,
       "POST /api/proposals/p1/accept": { change: { id: "c2", summary: "Allures mises à jour" }, warnings: [] },
       "POST /api/proposals/p1/decline": CHANGE,
-      "POST /api/unavailable": CHANGE,
+      "POST /api/sessions/s1/skip": CHANGE,
+      "POST /api/sessions/s1/done": CHANGE,
     });
     expect(await api.move("a/b", { date: "2026-11-18", start: "18:00" })).toEqual({
       changeId: "c1",
@@ -450,8 +518,9 @@ describe("http client, changes", () => {
     await api.feelBetter();
     expect(await api.acceptProposal("p1")).toMatchObject({ changeId: "c2", message: "Allures mises à jour" });
     await api.declineProposal("p1");
-    await api.skip("s1");
-    expect(sent("POST /api/unavailable")).toEqual({ reason: "no_time" });
+    // « Passer cette séance » skips it for good, whatever slots are left (EV21).
+    expect((await api.skip("s1")).changeId).toBe("c1");
+    expect((await api.confirmDone("s1")).changeId).toBe("c1");
   });
 
   it("creates or updates a strength template, on its next day", async () => {

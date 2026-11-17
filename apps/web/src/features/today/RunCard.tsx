@@ -57,25 +57,37 @@ export function RunCard({ run, today }: { run: Run; today: string }) {
           </dl>
         </div>
       </div>
-      <div className="expand relative" data-open={open}>
-        <ol className="m-0 flex list-none flex-col px-5 pt-3" aria-hidden={!open}>
-          {run.steps.map((step) => (
-            <li key={step.label} className="hairline-top flex min-h-11 items-center justify-between gap-3 py-2">
-              <span className={cx("t-body", step.tone === "hard" && "font-semibold")}>{step.label}</span>
-              <PaceValue value={step.pace} className={step.tone === "muted" ? "text-ink-2!" : undefined} />
-            </li>
-          ))}
-        </ol>
-      </div>
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={() => setOpen(!open)}
-        className="press t-label hairline-top relative mx-5 mt-4 flex min-h-12 items-center justify-center gap-1.5 border-x-0 border-b-0 bg-transparent text-ink"
-      >
-        {open ? "Masquer les étapes" : `Voir les ${run.steps.length} étapes`}
-        <Icon name="chevronDown" size={16} stroke={2.5} className={cx("tab-pill", open && "rotate-180")} />
-      </button>
+      {/* One step says what the card already says: no list to unfold. */}
+      {run.steps.length > 1 && (
+        <>
+          <div className="expand relative" data-open={open}>
+            <ol className="m-0 flex list-none flex-col px-5 pt-3" aria-hidden={!open}>
+              {run.steps.map((step) => (
+                <li key={step.label} className="hairline-top flex min-h-11 items-center justify-between gap-3 py-2">
+                  <span className={cx("t-body", step.tone === "hard" && "font-semibold")}>{step.label}</span>
+                  <PaceValue value={step.pace} className={step.tone === "muted" ? "text-ink-2!" : undefined} />
+                </li>
+              ))}
+            </ol>
+          </div>
+          <StepsToggle count={run.steps.length} open={open} onToggle={() => setOpen(!open)} />
+        </>
+      )}
+      {run.steps.length <= 1 && <div className="h-5" />}
     </Surface>
+  );
+}
+
+function StepsToggle({ count, open, onToggle }: { count: number; open: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-expanded={open}
+      onClick={onToggle}
+      className="press t-label hairline-top relative mx-5 mt-4 flex min-h-12 items-center justify-center gap-1.5 border-x-0 border-b-0 bg-transparent text-ink"
+    >
+      {open ? "Masquer les étapes" : `Voir les ${count} étapes`}
+      <Icon name="chevronDown" size={16} stroke={2.5} className={cx("tab-pill", open && "rotate-180")} />
+    </button>
   );
 }

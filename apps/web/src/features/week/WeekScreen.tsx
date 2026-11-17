@@ -90,7 +90,7 @@ export default function WeekScreen() {
           Appuie longuement sur une séance pour la glisser vers un autre jour.
         </p>
       )}
-      {week && <RefreshRow checkedAt={week.timetableCheckedAt} />}
+      {week && <RefreshRow checkedAt={week.timetableCheckedAt} change={week.timetableChange} />}
     </Screen>
   );
 }

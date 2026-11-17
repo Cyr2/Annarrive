@@ -203,7 +203,7 @@ export function createHttpApi(
         get("/timetable", timetableStatusSchema),
         get("/program", serverProgramSchema),
       ]);
-      return toWeek(w, monday, status.lastSyncAt, program.plan);
+      return toWeek(w, monday, status, today(), program.plan);
     },
     async program() {
       const [program, profile, status, days, watch] = await Promise.all([
@@ -261,7 +261,8 @@ export function createHttpApi(
         today(),
       ),
     unavailable: (input) => change("POST", "/unavailable", toUnavailable(input)),
-    skip: () => change("POST", "/unavailable", { reason: "no_time" }),
+    skip: (sessionId) => change("POST", `/sessions/${id(sessionId)}/skip`),
+    confirmDone: (sessionId) => change("POST", `/sessions/${id(sessionId)}/done`),
     feelBetter: () => change("POST", "/feel-better"),
     acceptProposal: (proposalId) => change("POST", `/proposals/${id(proposalId)}/accept`),
     declineProposal: (proposalId) => change("POST", `/proposals/${id(proposalId)}/decline`),

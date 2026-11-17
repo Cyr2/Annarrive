@@ -55,15 +55,17 @@ Fait par Anna, une seule fois, écrans courts (une question par écran), puis un
 
 Ce qu'elle renseigne :
 
-1. Sa course : distance et date.
+1. Sa course : distance, date et heure de départ (9:00 proposé).
 2. Son chrono visé, facultatif. C'est elle qui le choisit : l'app ne propose pas de chrono, elle indique seulement s'il est atteignable ou ambitieux, sans jamais décourager. Sans chrono, l'objectif est de finir.
-3. Combien de courses par semaine.
+3. Combien de courses par semaine, et le jour de sa sortie longue (dimanche proposé).
 4. Son heure de coucher habituelle.
 5. Ses limites : pas avant, pas après, jours sans course (valeurs proposées par défaut).
 6. Ses séances de muscu habituelles : nom, case « jambes », jour, heure (facultatif, faisable plus tard).
 7. Une douleur ou blessure en cours.
 8. Ses accords : sommeil et fréquence cardiaque, cycle menstruel (oui ou non).
 9. Les notifications.
+
+Le programme commence le lendemain : rien n'est placé le jour de l'onboarding.
 
 Sa forme de départ est déduite de l'historique Garmin. Une séance test entre la semaine 2 et la semaine 4 sert seulement si l'historique ne suffit pas.
 

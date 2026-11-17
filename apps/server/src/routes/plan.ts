@@ -57,6 +57,8 @@ export function planRoutes({ plan, changes, timetable, garmin, fitness }: Servic
         const { start } = await body(c, moveSessionInputSchema);
         return c.json(plan.moveSession(c.req.param("id"), start));
       })
+      .post("/sessions/:id/done", (c) => c.json(plan.confirmDone(c.req.param("id"))))
+      .post("/sessions/:id/skip", (c) => c.json(plan.skipSession(c.req.param("id"))))
       .get("/sessions/:id/options", (c) => c.json(plan.changeOptions(c.req.param("id"))))
       .post("/sessions/:id/change", async (c) => {
         const { option } = await body(c, changeSessionInputSchema);

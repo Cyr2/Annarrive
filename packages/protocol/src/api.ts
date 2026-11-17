@@ -26,7 +26,7 @@ export const runTypeSchema = z.enum([
 
 const range = z.tuple([z.number(), z.number()]);
 export const stepSchema = z.object({
-  kind: z.enum(["warmup", "work", "recover", "cooldown", "strides"]),
+  kind: z.enum(["warmup", "work", "recover", "cooldown", "strides", "hills"]),
   durMin: z.number().positive().optional(),
   distM: z.number().positive().optional(),
   reps: z.number().int().positive().optional(),
@@ -97,6 +97,8 @@ export const goalSchema = z.object({
   distanceM: z.union([z.literal(5000), z.literal(10000), z.literal(21097.5), z.literal(42195)]),
   date: localDateSchema,
   targetMin: z.number().positive().optional(),
+  /** When the race starts; the coach takes 09:00 without it (algo.md P24). */
+  startTime: timeOfDaySchema.optional(),
 });
 
 /** POST /api/feasibility: a goal with the target time she typed. */
@@ -124,7 +126,7 @@ export type Program = z.infer<typeof programSchema>;
 export const programViewSchema = programSchema.extend({
   plan: z
     .object({
-      /** Monday of plan week 1 (P3); the week the programme starts in is filled with week 1 too. */
+      /** Monday of « Semaine 1 »: the week the programme starts in, which runs plan week 1 (P3) too. */
       firstMonday: localDateSchema,
       /** P4 to P7, in order; a phase may last 0 weeks. */
       phases: z.array(
@@ -260,6 +262,8 @@ export const todaySchema = z.object({
   activity: activityViewSchema.nullable(),
   /** What she declared (Pas dispo): the app offers « Ça va mieux » only while she is sick or hurt. */
   health: healthStatusSchema,
+  /** A session that is over with no run matched: the app asks « Tu l'as faite ? » (algo.md EV17, EV21). */
+  toConfirm: sessionViewSchema.nullable().optional(),
 });
 export type Today = z.infer<typeof todaySchema>;
 
@@ -270,7 +274,11 @@ export type Week = z.infer<typeof weekSchema>;
 export const watchInfoSchema = z.object({ configured: z.boolean(), lastSyncAt: z.string().nullable() });
 export type WatchInfo = z.infer<typeof watchInfoSchema>;
 
-export const timetableStatusSchema = z.object({ lastSyncAt: z.string().nullable() });
+export const timetableStatusSchema = z.object({
+  lastSyncAt: z.string().nullable(),
+  /** The last read that changed something (« 1 cours annulé jeudi · Footing passé à vendredi 18:00 »), ISO instant. */
+  lastChange: z.object({ at: z.string(), summary: z.string() }).optional(),
+});
 export type TimetableStatus = z.infer<typeof timetableStatusSchema>;
 
 export const timetableRefreshSchema = z.object({

@@ -58,6 +58,12 @@ export default function GoalSheet(sheet: SheetProps<"goal">) {
           onChange={(race) => set({ race, distanceKm: RACES.find((r) => r.race === race)?.km ?? draft.distanceKm })}
         />
         <RowInput label="Date" type="date" min={todayOf(plan)} value={draft.date} onChange={(date) => set({ date })} />
+        <RowInput
+          label="Heure de départ"
+          type="time"
+          value={draft.startTime ?? "9:00"}
+          onChange={(startTime) => set({ startTime })}
+        />
       </Group>
       <Section
         title="Ton chrono"

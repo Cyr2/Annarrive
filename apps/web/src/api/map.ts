@@ -20,11 +20,22 @@ import type {
   WatchStatus as ServerWatch,
   Week as ServerWeek,
   SessionView,
+  TimetableStatus,
   Unavailable,
   UnavailablePreview,
   WatchInfo,
 } from "@annarrive/protocol";
-import { daysBetween, decimal, duration, minutesOf, mondayOf, relativeDay, timeOf, weekday } from "../lib/date.ts";
+import {
+  daysBetween,
+  decimal,
+  duration,
+  minutesOf,
+  mondayOf,
+  relativeDay,
+  timeOf,
+  toIso,
+  weekday,
+} from "../lib/date.ts";
 import type { GoalInput, NewEvent, UnavailableInput } from "./client.ts";
 import { ApiError } from "./errors.ts";
 import type {
@@ -96,6 +107,7 @@ const STEP_LABELS: Record<ServerStep["kind"], string> = {
   recover: "Récupération",
   cooldown: "Retour au calme",
   strides: "Accélérations",
+  hills: "Côtes",
 };
 const EVENT_KINDS: Record<ServerEvent["kind"], EventKind> = {
   class: "class",
@@ -119,9 +131,10 @@ export const clockOf = (at: string) => timeOf(minutesOf(at.length > 5 ? at.slice
 const fullClock = (clock: string) => clock.padStart(5, "0");
 export const localAt = (date: string, clock: string) => `${date}T${fullClock(clock)}`;
 
+/** Short hills sit inside an easy run (algo.md COTES_C, RPE 3): they wear the easy color. */
 function intensityOf(type: RunType): Intensity {
   if (type === "L") return "long";
-  return type === "E" || type === "RECUP" ? "easy" : "hard";
+  return type === "E" || type === "RECUP" || type === "COTES_C" ? "easy" : "hard";
 }
 
 function paceText([a, b]: [number, number]): string {
@@ -135,6 +148,14 @@ function paceText([a, b]: [number, number]): string {
 
 type ServerStep = PlannedSession["steps"][number];
 
+/** "20 s", "1 min 30", "45 min", "1 h 06": a step under a minute never reads "0 min". */
+export function stepDuration(minutes: number): string {
+  const seconds = Math.round(minutes * 60);
+  if (seconds < 60) return `${seconds} s`;
+  const whole = Math.floor(seconds / 60);
+  return seconds % 60 === 0 || whole >= 60 ? duration(Math.round(seconds / 60)) : `${whole} min ${seconds % 60}`;
+}
+
 function amount(step: ServerStep): string {
   const metres = step.distM ?? 0;
   const size = metres
@@ -142,23 +163,32 @@ function amount(step: ServerStep): string {
       ? `${decimal(metres / 1000)} km`
       : `${metres} m`
     : step.durMin
-      ? duration(Math.round(step.durMin))
+      ? stepDuration(step.durMin)
       : "";
-  return step.reps && step.reps > 1 ? `${step.reps} × ${size}` : size;
+  const reps = step.reps && step.reps > 1 ? `${step.reps} × ${size}` : size;
+  return step.kind === "hills" ? `${reps} en côte` : reps;
+}
+
+/** The steady easy part of a run is drawn plain, so a long run with a faster block shows its shape. */
+function toneOf(step: ServerStep): Step["tone"] {
+  if (step.kind === "recover") return "muted";
+  if (step.kind === "strides" || step.kind === "hills") return "hard";
+  return step.kind === "work" && step.zone !== "E" ? "hard" : "plain";
 }
 
 function toStep(step: ServerStep): Step {
   const size = amount(step);
   const { paceSKm, rpe } = step.target;
+  const own = step.kind === "work" || step.kind === "hills";
   return {
-    label: step.kind === "work" && size ? size : [STEP_LABELS[step.kind], size].filter(Boolean).join(" "),
+    label: own && size ? size : [STEP_LABELS[step.kind], size].filter(Boolean).join(" "),
     pace: paceSKm ? paceText(paceSKm) : rpe ? `Ressenti ${rpe}/10` : "",
-    tone: step.kind === "work" || step.kind === "strides" ? "hard" : step.kind === "recover" ? "muted" : "plain",
+    tone: toneOf(step),
   };
 }
 
 export function toRun(session: SessionView | PlannedSession): Run {
-  const work = session.steps.find((s) => s.kind === "work");
+  const work = session.steps.find((s) => s.kind === "work") ?? session.steps.find((s) => s.kind === "hills");
   const paced = work?.target.paceSKm ?? session.steps.find((s) => s.target.paceSKm)?.target.paceSKm;
   const watch = "watch" in session && session.watch ? WATCH[session.watch] : undefined;
   return {
@@ -219,12 +249,15 @@ export function planWeek(plan: Plan | undefined, monday: string): { index: numbe
   return index >= 0 && index <= total ? { index: Math.max(1, index), total } : undefined;
 }
 
-export function toWeek(week: ServerWeek, monday: string, lastSyncAt: string | null, plan?: Plan): Week {
+export function toWeek(week: ServerWeek, monday: string, timetable: TimetableStatus, today: string, plan?: Plan): Week {
+  const change = timetable.lastChange;
   return {
     monday,
     ...planWeek(plan, monday),
     readOnly: week.readOnly,
-    timetableCheckedAt: lastSyncAt ?? "",
+    timetableCheckedAt: timetable.lastSyncAt ?? "",
+    // What the last read changed stays written the day it happened, even when it ran in the background.
+    ...(change && toIso(new Date(change.at)) === today ? { timetableChange: change.summary } : {}),
     items: toItems(week.days),
   };
 }
@@ -306,8 +339,17 @@ export function toToday(
     next: next && toRun(next),
     proposals: proposals.map(toProposal),
     unwell: ["sick", "cold", "pain"].includes(today.health.kind),
+    unwellText: UNWELL[today.health.kind],
+    toConfirm: today.toConfirm ? toRun(today.toConfirm) : undefined,
   };
 }
+
+/** Aujourd'hui says she is unwell as long as she is, with « Ça va mieux » next to it. */
+const UNWELL: Partial<Record<ServerToday["health"]["kind"], string>> = {
+  sick: "Tu as de la fièvre : repos conseillé, footing court si tu cours.",
+  cold: "Tu es enrhumée : footings courts et tranquilles.",
+  pain: "Tu as mal : footings tranquilles, pas de fractionné.",
+};
 
 export function toSettings(profile: Profile): Settings {
   return {
@@ -318,6 +360,7 @@ export function toSettings(profile: Profile): Settings {
     bedtime: clockOf(profile.bedtime),
     recoveryData: profile.useSleepHr,
     cycle: profile.cycleTracking,
+    longRunDay: (profile.preferredLongDay ?? 7) - 1,
     // The switch reads the browser's subscription, not the profile.
     notifications: false,
   };
@@ -337,6 +380,7 @@ export function toProfilePatch(patch: Partial<Settings>): ProfilePatch {
   if (patch.bedtime) out.bedtime = fullClock(patch.bedtime);
   if (patch.recoveryData !== undefined) out.useSleepHr = patch.recoveryData;
   if (patch.cycle !== undefined) out.cycleTracking = patch.cycle;
+  if (patch.longRunDay !== undefined) out.preferredLongDay = patch.longRunDay + 1;
   return out;
 }
 
@@ -353,7 +397,12 @@ export function toGoal(goal: GoalInput): NonNullable<ServerProgram["goal"]> {
   const seconds = parts.reduce((total, part) => total * 60 + part, 0);
   // "1:48" is read as hours and minutes, "1:48:00" as hours, minutes and seconds.
   const targetMin = parts.length === 2 ? seconds : seconds / 60;
-  return { distanceM, date: goal.date, targetMin: targetMin > 0 ? targetMin : undefined };
+  return {
+    distanceM,
+    date: goal.date,
+    targetMin: targetMin > 0 ? targetMin : undefined,
+    startTime: goal.startTime ? fullClock(goal.startTime) : undefined,
+  };
 }
 
 /** Strength sessions are recurring events: each one seen this week or the next is a template. */
@@ -396,6 +445,7 @@ export function toProgram({ program, profile, lastSyncAt, days, today, watch }: 
           distanceKm: goal.distanceM / 1000,
           date: goal.date,
           targetTime: goal.targetMin ? targetTime(goal.targetMin) : undefined,
+          startTime: goal.startTime && clockOf(goal.startTime),
           targetTag: plan?.verdict && TARGET_TAGS[plan.verdict],
         }
       : // Maintenance: "Choisir un objectif" starts from a half marathon in 12 weeks.

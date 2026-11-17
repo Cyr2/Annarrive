@@ -51,8 +51,8 @@ export type ProgramPlan = {
   feasibility: FeasibilityClass;
 };
 
-/** A `Change` or `Warning` of algo.md, reduced to what the screen shows. */
-export type CoachNote = { ruleId: string; message: string };
+/** A `Change` or `Warning` of algo.md, reduced to what the screen shows; a change names its session. */
+export type CoachNote = { ruleId: string; message: string; sessionId?: string };
 /** `refusal` is set when the coach rejects the action (`ok: false` in algo.md): nothing is written. */
 export type CoachResult = { state: CoachState; changes: CoachNote[]; warnings: CoachNote[]; refusal?: string };
 /** The M5 `dailyDecision` action, with the state where today's session is already lightened. */
@@ -76,8 +76,15 @@ export interface CoachPort {
   ): { best: { slot: Slot; reason: string }[]; forbidden: { slot: Slot; reason: string }[]; sideEffects: CoachNote[] };
   /** M7 `updateSettings` (EV14): replaces the current and next week, manual sessions kept. */
   updateSettings(st: CoachState, patch: ProfilePatch, now: string): CoachResult;
-  /** M7 `onTimetableChange` (EV15): `newEvents` replaces `st.events`, conflicting sessions move. */
-  onTimetableChange(st: CoachState, newEvents: CalendarEvent[], now: string): CoachResult;
+  /**
+   * M7 `onTimetableChange` (EV15): `newEvents` replaces `st.events`, conflicting sessions move. `own`: an event
+   * Anna placed caused it, so a run within 12 h moves too (EV22).
+   */
+  onTimetableChange(st: CoachState, newEvents: CalendarEvent[], now: string, own?: boolean): CoachResult;
+  /** M7 `confirmDone` (EV21): « Oui, je l'ai faite » for a session no synced run matched. */
+  confirmDone(st: CoachState, id: string, now: string): CoachResult;
+  /** M7 `skipSession` (EV21): « Passer cette séance », never made up. */
+  skipSession(st: CoachState, id: string, now: string): CoachResult;
   /**
    * M5 `readiness` (`baseline`, `dailySignals`, `dailyDecision`) for today's session. `signals` holds
    * the stored days of the last 4 weeks, oldest first, today last when Garmin had it. Never makes a

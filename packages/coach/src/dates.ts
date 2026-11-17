@@ -5,6 +5,7 @@
 const ISO = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/;
 const MS_PER_MIN = 60_000;
 export const DAY_MIN = 1440;
+export const DAY_NAMES = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
 
 export function toMin(iso: string): number {
   const m = ISO.exec(iso);

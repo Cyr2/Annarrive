@@ -1,5 +1,5 @@
 import { downgrade, equivalents, isHard, scaleSession, sessionLoad, toEasy } from "./catalog.ts";
-import { addDays, dateOf, daysBetween, weekday } from "./dates.ts";
+import { addDays, DAY_NAMES, dateOf, daysBetween, weekday } from "./dates.ts";
 import { paces } from "./fitness.ts";
 import { resumeWeek, type ValidateCtx, validateWeek } from "./guards.ts";
 import { checkHard, proposeMoveSlots, replan } from "./placement.ts";
@@ -28,8 +28,6 @@ export type Unavailable = (
 ) & { until?: string };
 
 export type ChangeOption = "shorter" | "easier" | "equivalent" | "jog30";
-
-const DAY_NAMES = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
 
 function find(st: State, id: string): Session {
   const s = st.sessions.find((x) => x.id === id);
@@ -128,6 +126,9 @@ export function applyChange(st: State, id: string, option: ChangeOption, now: st
   );
 }
 
+/** EV10: half the planned time, rounded down to 5 min, at least 15 min (research 03 §9, "neck check"). */
+const coldMin = (durMin: number): number => Math.max(15, Math.floor((0.5 * durMin) / 5) * 5);
+
 /**
  * EV9 to EV12: what a session becomes if Anna runs despite a health status. Health rules advise, never block.
  * Pain applies only up to its `until` date (today when absent).
@@ -137,7 +138,7 @@ export function adaptForHealth(s: Session, health: Health, date: string, p: Pace
     case "sick":
       return toEasy(s, Math.floor(Math.min(0.5 * s.durMin, 30)));
     case "cold":
-      return toEasy(s, s.durMin, undefined, 4);
+      return toEasy(s, coldMin(s.durMin));
     case "pain":
       if (date > (health.until ?? health.since)) return s;
       return toEasy(s, Math.min(s.durMin, health.level >= 4 ? 20 : 40), "rpe");
@@ -277,8 +278,11 @@ function describe(events: CalEvent[], verb: string): string | null {
   return `${events.length} cours ${word(events.length, verb)}${day}`;
 }
 
-/** EV15: ICS diff, then minimal repair of the sessions it touches. */
-export function onTimetableChange(st: State, newEvents: CalEvent[], now: string): Result {
+/**
+ * EV15: ICS diff, then minimal repair of the sessions it touches. `own`: an event Anna placed herself caused it,
+ * so a conflicting run moves even within 12 h, and the banner says which (EV22).
+ */
+export function onTimetableChange(st: State, newEvents: CalEvent[], now: string, own = false): Result {
   const old = st.cal.filter(isIcs);
   const byId = new Map(old.map((e) => [e.id, e]));
   const newIds = new Set(newEvents.map((e) => e.id));
@@ -289,7 +293,7 @@ export function onTimetableChange(st: State, newEvents: CalEvent[], now: string)
     return o !== undefined && (o.start !== e.start || o.end !== e.end);
   });
   const next = { ...st, cal: [...st.cal.filter((e) => !isIcs(e)), ...newEvents] };
-  const r = replan(next, "EV15", now);
+  const r = replan(next, own ? "EV22" : "EV15", now, own);
   const runsMoved = r.changes.filter((c) => c.after && c.before && c.after.start !== c.before.start).length;
   const parts = [
     describe(added, "ajouté"),
@@ -355,4 +359,31 @@ export function logFeel(st: State, sessionId: string, feel: Feel): Result {
     ? [{ ruleId: "RC5", message: "Trois séances faciles ressenties dures : on vérifie tes allures ?" }]
     : [];
   return finish(st, { ...st, feels }, [], warnings);
+}
+
+const refuse = (st: State, id: string, message: string): Result => ({
+  ok: false,
+  state: st,
+  previous: st,
+  changes: [],
+  warnings: [{ ruleId: "EV21", message, sessionId: id }],
+});
+
+/**
+ * EV21: « Oui, je l'ai faite » for a session no synced run matched: done, as Garmin would have marked it. Only a
+ * session that has started can be done.
+ */
+export function confirmDone(st: State, id: string, now: string): Result {
+  const s = find(st, id);
+  if (s.status !== "planned" || s.start > now) return refuse(st, id, "Cette séance n'a pas encore eu lieu");
+  const after: Session = { ...s, status: "done" };
+  return finish(st, put(st, after), [change("EV21", s, after)], []);
+}
+
+/** EV21: « Passer cette séance » or « Non, je l'ai sautée »: skipped, never made up, nothing else moves (EV16). */
+export function skipSession(st: State, id: string): Result {
+  const s = find(st, id);
+  if (s.status !== "planned") return refuse(st, id, "Cette séance n'est plus prévue");
+  const after: Session = { ...s, status: "skipped" };
+  return finish(st, put(st, after), [change("EV21", s, after)], []);
 }
