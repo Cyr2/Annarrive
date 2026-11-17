@@ -39,7 +39,9 @@ export default async function globalSetup(config: FullConfig) {
   await Promise.all([seed(planDir, "plan"), seed(freshDir, "garmin")]);
   // The servers' clocks start at E2E_NOW now; the pages start where the servers are (see test.ts).
   process.env.E2E_STARTED = String(Date.now());
-  const [plan, fresh] = await Promise.all([startServer(4310, planDir), startServer(4311, freshDir)]);
+  // E2E_PORT moves both servers, so two checkouts can run their tests side by side.
+  const port = Number(process.env.E2E_PORT ?? 4310);
+  const [plan, fresh] = await Promise.all([startServer(port, planDir), startServer(port + 1, freshDir)]);
   const teardown = async () => {
     await Promise.all([plan.stop(), fresh.stop()]);
     rmSync(root, { recursive: true, force: true });

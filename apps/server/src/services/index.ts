@@ -44,7 +44,7 @@ export function createServices(deps: {
   const stores = createStores(deps.db);
   const changes = new ChangeService(deps.db, stores, deps.clock);
   const notifications = new NotificationService(stores, deps.push);
-  const plan = new PlanService(stores, changes, deps.coach, deps.clock, notifications);
+  const plan = new PlanService(stores, changes, deps.coach, deps.clock, notifications, Boolean(deps.bridge));
   const fitness = new FitnessService(stores, plan, changes, deps.coach, deps.clock);
   const garmin = deps.bridge ? new GarminService(stores, plan, fitness, notifications, deps.bridge, deps.clock) : null;
   // A change reaches the watch within the minute (interactions.md), not at the next 5-minute job.

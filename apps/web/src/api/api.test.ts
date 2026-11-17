@@ -97,6 +97,14 @@ function server(routes: Record<string, unknown> = {}) {
 }
 
 const OK = { kind: "ok" } as const;
+const REFRESHED = {
+  lastSyncAt: "2026-11-16T08:00:00.000Z",
+  added: 0,
+  changed: 0,
+  removed: 0,
+  summary: "",
+  change: null,
+};
 
 const reads = {
   "GET /api/today": { date: "2026-11-16", session: SESSION, events: [CLASS], activity: null, health: OK },
@@ -327,6 +335,34 @@ describe("http client, reading", () => {
     ]);
   });
 
+  // A timetable or Garmin route down took the whole plan with it (audit robustesse 2).
+  it("shows the plan when the timetable or the watch cannot be read, with only their line unknown", async () => {
+    const plan: Record<string, unknown> = { ...reads };
+    delete plan["GET /api/timetable"];
+    delete plan["GET /api/watch"];
+    const { api } = server(plan);
+    expect((await api.today()).date).toBe("2026-11-16");
+    const week = await api.week(0);
+    expect(week.items).toHaveLength(4);
+    expect(week.timetableCheckedAt).toBeUndefined();
+    const program = await api.program();
+    expect(program.timetableCheckedAt).toBeUndefined();
+    expect(program.watch.connected).toBeUndefined();
+    expect(program.settings.runsPerWeek).toBe(3);
+  });
+
+  it("re-reads the timetable's state after Actualiser only, not after every change", async () => {
+    const { api, fetcher } = server({ ...reads, "POST /api/timetable/refresh": REFRESHED });
+    const calls = () => fetcher.mock.calls.filter(([url]) => String(url) === "/api/timetable").length;
+    await api.week(0);
+    await api.week(1);
+    await api.program();
+    expect(calls()).toBe(1);
+    await api.refreshTimetable();
+    await api.week(0);
+    expect(calls()).toBe(2);
+  });
+
   it("maps the program: goal, settings, strength templates and the ICS link", async () => {
     const program = await server(reads).api.program();
     expect(program.goal).toMatchObject({ race: "Semi-marathon", date: "2027-01-17", targetTime: "1:55:00" });
@@ -346,7 +382,7 @@ describe("http client, reading", () => {
     ]);
     expect(program.timetableUrl).toBe("https://edt.univ.fr/anna.ics");
     expect(program.watch).toEqual({
-      model: "Garmin vivoactive 4",
+      model: "vivoactive 4",
       connected: false,
       lastSync: "2026-11-16T07:55:00.000Z",
     });
@@ -723,6 +759,15 @@ describe("Reggie over the server", () => {
       }
     };
     await expect(run()).rejects.toThrow("Reggie dort");
+    const off = createHttpApi(
+      vi.fn(async () => new Response(chunked(event({ type: "error", error: "Reggie dort", retry: false })))),
+    );
+    const error = await (async () => {
+      for await (const _ of off.chat({ text: "Salut" })) {
+        // drained
+      }
+    })().catch((e: unknown) => e);
+    expect(error).toMatchObject({ status: 503, message: "Reggie dort" });
   });
 
   it("maps the history and every widget kind", async () => {

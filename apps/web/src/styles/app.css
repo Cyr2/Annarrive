@@ -193,6 +193,16 @@
     background: color-mix(in srgb, var(--tone) 36%, var(--color-on-color));
   }
 
+  /* 200 % zoom (or a 320 px phone at 160 %): the tab bar keeps its icons, the labels stay for VoiceOver. */
+  @media (max-width: 260px) {
+    .ui-tab-bar .lg-tab-label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+  }
   .sr-only-label {
     position: absolute;
     width: 1px;

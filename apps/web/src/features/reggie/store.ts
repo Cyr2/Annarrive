@@ -62,7 +62,8 @@ export function createChatStore(getApi: () => Promise<Api>, onChange: (changeId:
       id: `e${++seq}`,
       role: "reggie",
       text: error instanceof ApiError && error.status !== 0 ? error.message : CANNOT_ANSWER,
-      retry: { text: mine.text, from: mine.id },
+      // 503: Reggie is off on this server; sending the same words again would fail the same way.
+      retry: error instanceof ApiError && error.status === 503 ? undefined : { text: mine.text, from: mine.id },
     });
 
     return {

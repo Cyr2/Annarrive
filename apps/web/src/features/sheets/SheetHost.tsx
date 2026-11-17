@@ -1,4 +1,7 @@
-import { type ComponentType, lazy, Suspense } from "react";
+import { type ComponentType, Suspense } from "react";
+import { ChunkBoundary, lazyChunk, retryChunks } from "../../ui/ChunkBoundary.tsx";
+import { notify } from "../../ui/toast.ts";
+import { usePlan } from "../plan/store.ts";
 import { type SheetSpec, useSheet } from "./store.ts";
 
 /** What every sheet receives: its spec, whether it is open, and how to close it (the store unmounts it after the slide). */
@@ -6,38 +9,86 @@ export type SheetProps<K extends SheetSpec["kind"]> = {
   spec: Extract<SheetSpec, { kind: K }>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** A change is on its way: the sheet's buttons wait. */
+  busy: boolean;
+  /** False when it took the place of another sheet: it is already up. */
+  appear: boolean;
 };
 
-// Each sheet is its own small file, fetched the first time it opens.
-const SHEETS: { [K in SheetSpec["kind"]]: ComponentType<SheetProps<K>> } = {
-  move: lazy(() => import("../move/MoveSheet.tsx")),
-  change: lazy(() => import("../change/ChangeSheet.tsx")),
-  unavailable: lazy(() => import("../unavailable/UnavailableSheet.tsx")),
-  session: lazy(() => import("../session/SessionSheet.tsx")),
-  event: lazy(() => import("../session/EventSheet.tsx")),
-  add: lazy(() => import("../add/AddSheet.tsx")),
-  strength: lazy(() => import("../strength/StrengthSheet.tsx")),
-  setting: lazy(() => import("../program/SettingSheet.tsx")),
-  goal: lazy(() => import("../program/GoalSheet.tsx")),
-  watch: lazy(() => import("../program/WatchSheet.tsx")),
-  cycle: lazy(() => import("../program/CycleSheet.tsx")),
-  stop: lazy(() => import("../program/StopSheet.tsx")),
+type Kind = SheetSpec["kind"];
+type Loader<K extends Kind> = () => Promise<{ default: ComponentType<SheetProps<K>> }>;
+
+// Each sheet is its own small file, fetched at idle (App.tsx) or the first time it opens.
+const LOADERS: { [K in Kind]: Loader<K> } = {
+  move: () => import("../move/MoveSheet.tsx"),
+  change: () => import("../change/ChangeSheet.tsx"),
+  unavailable: () => import("../unavailable/UnavailableSheet.tsx"),
+  session: () => import("../session/SessionSheet.tsx"),
+  event: () => import("../session/EventSheet.tsx"),
+  add: () => import("../add/AddSheet.tsx"),
+  strength: () => import("../strength/StrengthSheet.tsx"),
+  setting: () => import("../program/SettingSheet.tsx"),
+  goal: () => import("../program/GoalSheet.tsx"),
+  watch: () => import("../program/WatchSheet.tsx"),
+  cycle: () => import("../program/CycleSheet.tsx"),
+  stop: () => import("../program/StopSheet.tsx"),
 };
 
-function render<K extends SheetSpec["kind"]>(
-  spec: Extract<SheetSpec, { kind: K }>,
-  props: Omit<SheetProps<K>, "spec">,
-) {
+function chunks<K extends Kind>(kind: K) {
+  return lazyChunk(LOADERS[kind]);
+}
+
+const SHEETS: { [K in Kind]: ComponentType<SheetProps<K>> & { preload: () => void } } = {
+  move: chunks("move"),
+  change: chunks("change"),
+  unavailable: chunks("unavailable"),
+  session: chunks("session"),
+  event: chunks("event"),
+  add: chunks("add"),
+  strength: chunks("strength"),
+  setting: chunks("setting"),
+  goal: chunks("goal"),
+  watch: chunks("watch"),
+  cycle: chunks("cycle"),
+  stop: chunks("stop"),
+};
+
+/** Fetches a sheet's file ahead of its first opening, so it rises at once. */
+export function preloadSheet(kind: Kind) {
+  SHEETS[kind].preload();
+}
+
+function render<K extends Kind>(spec: Extract<SheetSpec, { kind: K }>, props: Omit<SheetProps<K>, "spec">) {
   const Component: ComponentType<SheetProps<K>> = SHEETS[spec.kind];
   return <Component spec={spec} {...props} />;
 }
 
+/** The sheet could not load (offline before it was ever cached): say so, and offer to open it again. */
+function failed(spec: SheetSpec) {
+  useSheet.getState().close();
+  void notify("Pas de connexion : cette fiche ne s'est pas ouverte.", {
+    label: "Réessayer",
+    onClick: () => {
+      retryChunks();
+      useSheet.getState().show(spec);
+    },
+  });
+}
+
 export function SheetHost() {
-  const { current, open, close } = useSheet();
+  const { current, open, chained, close } = useSheet();
+  const busy = usePlan((s) => s.busy);
   if (!current) return null;
   return (
-    <Suspense fallback={null}>
-      {render(current, { open, onOpenChange: (next) => (next ? undefined : close()) })}
-    </Suspense>
+    <ChunkBoundary key={current.kind} fallback={() => null} onError={() => failed(current)}>
+      <Suspense fallback={null}>
+        {render(current, {
+          open,
+          busy,
+          appear: !chained,
+          onOpenChange: (next) => (next ? undefined : close()),
+        })}
+      </Suspense>
+    </ChunkBoundary>
   );
 }

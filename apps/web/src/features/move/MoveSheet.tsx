@@ -9,16 +9,16 @@ import { TextButton } from "../../ui/TextButton.tsx";
 import { findRun, todayOf } from "../plan/selectors.ts";
 import { usePlan } from "../plan/store.ts";
 import type { SheetProps } from "../sheets/SheetHost.tsx";
-import { useLoad } from "../useLoad.ts";
+import { moveOptions, usePreloaded } from "../useLoad.ts";
 import { consequenceOf, shortMoment } from "./move.ts";
-import { Consequence, SessionBanner, SlotCard } from "./parts.tsx";
+import { Consequence, SessionBanner, SlotCard, SlotsWaiting } from "./parts.tsx";
 import { SlotPicker } from "./SlotPicker.tsx";
 
 /** Déplacer (design/Deplacer): keeps the content, changes the moment. Three proposals, or a free pick. */
 export default function MoveSheet({ spec, ...sheet }: SheetProps<"move">) {
   const plan = usePlan();
   const run = findRun(plan, spec.id);
-  const options = useLoad((api) => api.moveOptions(spec.id), spec.id);
+  const options = usePreloaded(moveOptions, spec.id);
   const [picked, setPicked] = useState<Slot>();
   const [free, setFree] = useState(false);
   if (!run) return null;
@@ -40,26 +40,30 @@ export default function MoveSheet({ spec, ...sheet }: SheetProps<"move">) {
       </Button>
     </>
   ) : (
-    options && (
-      <>
-        {slot && <Consequence text={consequenceOf(slot, options)} />}
-        <Button
-          variant="filled"
-          size="large"
-          disabled={!slot}
-          onClick={() => slot && void act((api) => api.move(run.id, slot))}
-        >
-          {slot ? `Déplacer à ${shortMoment(slot, today)}` : "Choisis un moment"}
-        </Button>
-        {/* Skipping is its own decision, never made up later (algo.md EV21). */}
-        <TextButton onClick={() => void act((api) => api.skip(run.id))}>Passer cette séance</TextButton>
-      </>
-    )
+    // Drawn while the slots load too, so the sheet rises once at its final height.
+    <>
+      {slot && options && <Consequence text={consequenceOf(slot, options)} />}
+      {options === undefined && (
+        <div aria-hidden="true" className="invisible">
+          <Consequence text="…" />
+        </div>
+      )}
+      <Button
+        variant="filled"
+        size="large"
+        disabled={!slot}
+        onClick={() => slot && void act((api) => api.move(run.id, slot))}
+      >
+        {slot ? `Déplacer à ${shortMoment(slot, today)}` : "Choisis un moment"}
+      </Button>
+      {/* Skipping is its own decision, never made up later (algo.md EV21). */}
+      <TextButton onClick={() => void act((api) => api.skip(run.id))}>Passer cette séance</TextButton>
+    </>
   );
   return (
     <Sheet {...sheet} title="Déplacer" footer={footer}>
       <SessionBanner run={run} today={today} />
-      {options === undefined && <p className="t-cap m-0 px-4">Reggie cherche les bons créneaux…</p>}
+      {options === undefined && <SlotsWaiting />}
       {options === null && (
         <p className="t-cap m-0 px-4">Impossible de charger les créneaux. Réessaie dans un instant.</p>
       )}

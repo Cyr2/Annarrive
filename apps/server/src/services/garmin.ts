@@ -6,7 +6,7 @@ import {
   GarminRateLimitError,
   GarminWriteOffError,
 } from "../garmin/bridge-client.ts";
-import { onWatch, toWorkoutRequest, workoutHash } from "../garmin/workout.ts";
+import { onWatch, toWorkoutRequest, WATCH_FAILING_SINCE, workoutHash } from "../garmin/workout.ts";
 import type { Activity, Stores } from "../storage/stores.ts";
 import { addDays, type Clock, dateOf, toParisLocal } from "../time.ts";
 import type { FitnessService } from "./fitness.ts";
@@ -122,8 +122,9 @@ export class GarminService {
       do {
         this.#syncAgain = false;
         const today = dateOf(this.#now());
-        if (!(await this.#removeStale(today))) return;
+        if (!(await this.#removeStale(today))) return this.#failing();
         if (await this.#upload(today)) this.#synced();
+        else this.#failing();
       } while (this.#syncAgain);
     } finally {
       this.#syncingWatch = false;
@@ -158,6 +159,13 @@ export class GarminService {
 
   #synced(): void {
     this.#stores.meta.put({ id: LAST_SYNC, value: this.#clock().toISOString() });
+    this.#stores.meta.delete(WATCH_FAILING_SINCE);
+  }
+
+  /** The first failed pass of a spell is kept: the app gives up on "Envoi…" some time after it. */
+  #failing(): void {
+    if (this.#stores.meta.get(WATCH_FAILING_SINCE)) return;
+    this.#stores.meta.put({ id: WATCH_FAILING_SINCE, value: this.#clock().toISOString() });
   }
 
   /** True when every session reached the watch. */

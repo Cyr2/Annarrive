@@ -13,7 +13,11 @@ export const SETTING_LABELS: Record<SettingKey, string> = {
 
 export function settingValue(key: SettingKey, settings: Settings): string {
   if (key === "runsPerWeek") return String(settings.runsPerWeek);
-  if (key === "noRunDays") return settings.noRunDays.length ? settings.noRunDays.map(weekdayName).join(", ") : "Aucun";
+  if (key === "noRunDays") {
+    // Three days or more fit the row only shortened ("Lun, Mer, Sam"), even at 320 px.
+    const names = settings.noRunDays.map((d) => weekdayName(d).slice(0, settings.noRunDays.length > 2 ? 3 : undefined));
+    return names.length ? names.join(", ") : "Aucun";
+  }
   return settings[key];
 }
 
@@ -74,3 +78,9 @@ export const PHASE_TEXT: Record<string, string> = {
   Spécifique: "Des séances à l'allure de ta course.",
   Affûtage: "Moins de volume, pour arriver fraîche le jour J.",
 };
+
+/** The watch's link, in Programme and its sheet; unknown when the server could not reach it. */
+export function watchState(connected: boolean | undefined): string {
+  if (connected === undefined) return "État inconnu";
+  return connected ? "Connectée" : "Déconnectée";
+}

@@ -5,9 +5,16 @@ onFresh();
 test("onboarding d'une base vide jusqu'à la première semaine, puis visite guidée passée et plus jamais montrée", async ({
   page,
 }) => {
+  // The empty rest day must never show before the onboarding (audit fluidité F7).
+  await page.addInitScript(() => {
+    new MutationObserver(() => {
+      if (document.querySelector("h1")?.textContent === "Repos") document.documentElement.dataset.sawRest = "";
+    }).observe(document, { childList: true, subtree: true });
+  });
   await page.goto("/");
   const next = page.getByRole("button", { name: "Continuer", exact: true });
   await page.getByRole("button", { name: "Commencer" }).click();
+  expect(await page.evaluate(() => "sawRest" in document.documentElement.dataset)).toBe(false);
 
   await expect(page.getByRole("heading", { name: "Ta course" })).toBeVisible();
   await page.getByRole("button", { name: "Semi", exact: true }).click();

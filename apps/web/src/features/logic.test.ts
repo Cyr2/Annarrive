@@ -184,6 +184,8 @@ describe("program", () => {
   it("shows settings, the race line and the current phase", () => {
     expect(settingValue("noRunDays", program.settings)).toBe("Samedi");
     expect(settingValue("noRunDays", { ...program.settings, noRunDays: [] })).toBe("Aucun");
+    expect(settingValue("noRunDays", { ...program.settings, noRunDays: [0, 2] })).toBe("Lundi, Mercredi");
+    expect(settingValue("noRunDays", { ...program.settings, noRunDays: [0, 2, 5, 6] })).toBe("Lun, Mer, Sam, Dim");
     expect(settingValue("runsPerWeek", program.settings)).toBe("4");
     expect(settingValue("bedtime", program.settings)).toBe("23:00");
     expect(raceLine(program, MONDAY)).toBe("Dimanche 17 janvier · J-62");

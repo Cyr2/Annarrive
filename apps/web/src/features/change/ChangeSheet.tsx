@@ -7,12 +7,13 @@ import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
 import { Button } from "../../ui/controls.tsx";
 import type { IconName } from "../../ui/Icon.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
+import { Skeleton } from "../../ui/Skeleton.tsx";
 import { findRun, todayOf } from "../plan/selectors.ts";
 import { usePlan } from "../plan/store.ts";
 import { AskReggie } from "../reggie/AskReggie.tsx";
 import type { SheetProps } from "../sheets/SheetHost.tsx";
 import { sessionContext } from "../today/today.ts";
-import { useLoad } from "../useLoad.ts";
+import { changeOptions, usePreloaded } from "../useLoad.ts";
 
 const ICONS: Record<ChangeOptionId, IconName> = { shorter: "clock", easier: "run", equivalent: "change", jog: "arc" };
 
@@ -20,7 +21,7 @@ const ICONS: Record<ChangeOptionId, IconName> = { shorter: "clock", easier: "run
 export default function ChangeSheet({ spec, ...sheet }: SheetProps<"change">) {
   const plan = usePlan();
   const run = findRun(plan, spec.id);
-  const options = useLoad((api) => api.changeOptions(spec.id), spec.id);
+  const options = usePreloaded(changeOptions, spec.id);
   const [picked, setPicked] = useState<ChangeOptionId | undefined>();
   if (!run) return null;
   const today = todayOf(plan);
@@ -41,6 +42,15 @@ export default function ChangeSheet({ spec, ...sheet }: SheetProps<"change">) {
       <p className="t-cap m-0 px-4">
         Même moment, {relativeMoment(run.date, run.start, today).toLowerCase()}. Jamais plus dur que prévu.
       </p>
+      {options === undefined && (
+        // The four options' place, so the sheet rises once at its final height.
+        <div className="grid grid-cols-2 gap-2">
+          <Skeleton label="Chargement des options" className="h-30" />
+          <Skeleton className="h-30" />
+          <Skeleton className="h-30" />
+          <Skeleton className="h-30" />
+        </div>
+      )}
       {options === null && (
         <p className="t-cap m-0 px-4">Impossible de charger les options. Réessaie dans un instant.</p>
       )}

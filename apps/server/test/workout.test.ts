@@ -1,6 +1,6 @@
 import { workoutRequestSchema } from "@annarrive/protocol";
 import { describe, expect, it } from "vitest";
-import { toWorkoutRequest, watchStatus, workoutHash } from "../src/garmin/workout.ts";
+import { toWorkoutRequest, WATCH_GIVE_UP_MS, watchLink, watchStatus, workoutHash } from "../src/garmin/workout.ts";
 import { session } from "./helpers.ts";
 
 describe("toWorkoutRequest", () => {
@@ -75,6 +75,19 @@ describe("watchStatus", () => {
     expect(watchStatus(run, { status: "sent", hash: workoutHash(run) }, today)).toBe("sent");
     expect(watchStatus(run, { status: "failed", hash: workoutHash(run) }, today)).toBe("failed");
     expect(watchStatus({ ...run, durMin: 50 }, { status: "sent", hash: workoutHash(run) }, today)).toBe("pending");
+  });
+
+  // Without a bridge, or with Garmin down, "Envoi à ta montre…" pulsed for ever (audit robustesse 6).
+  it("never stays pending for good: off without a bridge, failed after a long failing spell", () => {
+    const now = new Date("2026-11-16T09:00:00Z");
+    const since = (minutes: number) => new Date(now.getTime() - minutes * 60_000).toISOString();
+    expect(watchLink(false, undefined, now)).toBe("off");
+    expect(watchLink(true, undefined, now)).toBe("ok");
+    expect(watchLink(true, since(9), now)).toBe("ok");
+    expect(watchLink(true, since(WATCH_GIVE_UP_MS / 60_000), now)).toBe("stalled");
+    expect(watchStatus(run, undefined, today, "off")).toBe("off");
+    expect(watchStatus(run, undefined, today, "stalled")).toBe("failed");
+    expect(watchStatus(run, { status: "sent", hash: workoutHash(run) }, today, "stalled")).toBe("sent");
   });
 
   it("ignores the hour, since the watch calendar only holds the day", () => {

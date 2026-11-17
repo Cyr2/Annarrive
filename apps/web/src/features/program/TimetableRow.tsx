@@ -1,12 +1,11 @@
 import { useId, useState } from "react";
 import type { Program } from "../../api/schemas.ts";
-import { ago } from "../../lib/date.ts";
 import { Dot } from "../../ui/bits.tsx";
 import { Button } from "../../ui/controls.tsx";
 import { Group, RowButton } from "../../ui/List.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
-import { TextButton } from "../../ui/TextButton.tsx";
 import { usePlan } from "../plan/store.ts";
+import { checkedLine, useTimetableRefresh } from "../week/RefreshRow.tsx";
 import { checkIcsUrl } from "./program.ts";
 
 /** "ent.univ.fr": enough to recognize the link without reading it whole. */
@@ -29,6 +28,7 @@ function LinkSheet({
   onOpenChange: (o: boolean) => void;
 }) {
   const run = usePlan((s) => s.run);
+  const busy = usePlan((s) => s.busy);
   const id = useId();
   const [url, setUrl] = useState(saved);
   const [error, setError] = useState<string>();
@@ -42,6 +42,7 @@ function LinkSheet({
     <Sheet
       open={open}
       onOpenChange={onOpenChange}
+      busy={busy}
       title="Emploi du temps"
       footer={
         <Button
@@ -86,23 +87,22 @@ function LinkSheet({
 
 /** Emploi du temps: when it was last read with Actualiser, and the link she pasted. */
 export function TimetableRows({ program }: { program: Program }) {
-  const run = usePlan((s) => s.run);
   const [open, setOpen] = useState(false);
+  const { reading, result, button } = useTimetableRefresh();
   const saved = program.timetableUrl ?? "";
   const checkedAt = program.timetableCheckedAt;
+  const line = reading ? "Lecture en cours…" : (result ?? checkedLine(checkedAt, "Pas encore lu"));
   return (
     <>
       <div className="row min-h-16">
-        <span className="flex flex-col">
+        <span className="flex min-w-0 flex-col">
           <span className="t-body">Dernière lecture</span>
-          <span className="t-cap flex items-center gap-1.5">
-            <Dot size="md" className={checkedAt ? "bg-easy" : "bg-warn"} />
-            {checkedAt ? `À jour ${ago(checkedAt, new Date())}` : "Pas encore lu"}
+          <span role="status" className="t-cap flex items-center gap-1.5">
+            <Dot size="md" className={checkedAt || result ? "bg-easy" : "bg-warn"} />
+            {line}
           </span>
         </span>
-        <TextButton className="font-semibold" onClick={() => void run((api) => api.refreshTimetable())}>
-          Actualiser
-        </TextButton>
+        {button}
       </div>
       <RowButton label="Lien ICS" value={saved ? host(saved) : "Ajouter"} onClick={() => setOpen(true)} />
       <LinkSheet key={saved} saved={saved} open={open} onOpenChange={setOpen} />

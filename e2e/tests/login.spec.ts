@@ -24,6 +24,9 @@ async function logInWithPassword(page: Page, password: string) {
   await page.getByRole("button", { name: "Se connecter", exact: true }).click();
 }
 
+// The app keeps reading at idle after the test's last check: those requests may outlive the page.
+test.afterEach(({ page }) => page.unrouteAll({ behavior: "ignoreErrors" }));
+
 const signedIn = (page: Page) => expect(page.getByRole("link", { name: "Aujourd'hui" })).toBeVisible();
 
 test("se connecter avec son identifiant et son mot de passe", async ({ page }) => {

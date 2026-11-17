@@ -21,7 +21,7 @@ import {
 import { z } from "zod";
 import { addDays, addMinutes, isoWeek, minutesOf, mondayOf, toIso } from "../lib/date.ts";
 import type { Api } from "./client.ts";
-import { ApiError } from "./errors.ts";
+import { ApiError, OFFLINE } from "./errors.ts";
 import {
   localAt,
   toChange,
@@ -44,11 +44,13 @@ import type { RefreshResult } from "./schemas.ts";
 
 export const isHealthy = (body: unknown) => healthSchema.safeParse(body).success;
 
-const OFFLINE = "Pas de connexion au serveur : vérifie ton réseau, puis réessaie.";
 const UNEXPECTED = "Le serveur a répondu de travers : recharge l'app, puis réessaie.";
 export const SIGNED_OUT = "Connecte-toi pour continuer.";
 
 type Fetch = typeof fetch;
+
+/** How long the timetable's and the watch's state are kept between two reads of the plan. */
+const KEEP_MS = 5 * 60_000;
 
 const isJson = (response: Response) => response.headers.get("content-type")?.includes("application/json") ?? false;
 
@@ -154,6 +156,28 @@ export function createHttpApi(
     }
     return parse(await json, schema);
   };
+  // When the timetable was last read and the watch's link change on their own actions, not with the plan: read
+  // once and kept a few minutes, so a change re-reads only the plan. Down, they leave their own line unknown.
+  const kept = <T>(path: string, schema: z.ZodType<T>) => {
+    let hit: { at: number; value: Promise<T | undefined> } | undefined;
+    return {
+      read() {
+        if (!hit || now().getTime() - hit.at > KEEP_MS) {
+          const value = get(path, schema).catch(() => {
+            if (hit?.value === value) hit = undefined;
+            return undefined;
+          });
+          hit = { at: now().getTime(), value };
+        }
+        return hit.value;
+      },
+      drop: () => {
+        hit = undefined;
+      },
+    };
+  };
+  const timetable = kept("/timetable", timetableStatusSchema);
+  const watch = kept("/watch", watchInfoSchema);
   const change = async (method: string, path: string, body?: unknown) =>
     toChange(await call(method, path, changeResponseSchema, body));
   const run = async (method: string, path: string, body?: unknown) => {
@@ -200,20 +224,20 @@ export function createHttpApi(
       const monday = addDays(thisMonday(), offset * 7);
       const [w, status, program] = await Promise.all([
         week(monday),
-        get("/timetable", timetableStatusSchema),
+        timetable.read(),
         get("/program", serverProgramSchema),
       ]);
       return toWeek(w, monday, status, today(), program.plan);
     },
     async program() {
-      const [program, profile, status, days, watch] = await Promise.all([
+      const [program, profile, status, days, link] = await Promise.all([
         get("/program", serverProgramSchema),
         get("/profile", profileSchema),
-        get("/timetable", timetableStatusSchema),
+        timetable.read(),
         twoWeeks(),
-        get("/watch", watchInfoSchema),
+        watch.read(),
       ]);
-      return toProgram({ program, profile, lastSyncAt: status.lastSyncAt, days, today: today(), watch });
+      return toProgram({ program, profile, lastSyncAt: status?.lastSyncAt, days, today: today(), watch: link });
     },
 
     addEvent: (input) => change("POST", "/events", toEventInput(input)),
@@ -270,13 +294,27 @@ export function createHttpApi(
       await call("POST", `/changes/${id(changeId)}/undo`, changeSchema);
     },
 
-    refreshTimetable: async () => refreshed(await call("POST", "/timetable/refresh", timetableRefreshSchema)),
-    setTimetableUrl: async (url) => refreshed(await call("PUT", "/timetable/url", timetableRefreshSchema, { url })),
+    async refreshTimetable() {
+      const result = refreshed(await call("POST", "/timetable/refresh", timetableRefreshSchema));
+      timetable.drop();
+      return result;
+    },
+    async setTimetableUrl(url) {
+      const result = refreshed(await call("PUT", "/timetable/url", timetableRefreshSchema, { url }));
+      timetable.drop();
+      return result;
+    },
     updateSettings: (patch) => change("PATCH", "/profile", toProfilePatch(patch)),
     updateGoal: (goal) => change("PUT", "/program", { goal: toGoal(goal) }),
     stopProgram: () => change("PUT", "/program", { goal: null }),
-    reconnectWatch: () => run("POST", "/watch/sync"),
-    resendToWatch: () => run("POST", "/watch/sync"),
+    async reconnectWatch() {
+      await run("POST", "/watch/sync");
+      watch.drop();
+    },
+    async resendToWatch() {
+      await run("POST", "/watch/sync");
+      watch.drop();
+    },
     logFeel: (activityId, feel) => run("POST", `/activities/${id(activityId)}/feel`, { feel: toServerFeel(feel) }),
 
     async *chat(input) {

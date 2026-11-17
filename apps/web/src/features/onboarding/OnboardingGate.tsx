@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { usePlan } from "../plan/store.ts";
+import { useOnboardingNeed } from "./done.ts";
 import { OnboardingFlow } from "./OnboardingFlow.tsx";
 import { useOnboarding } from "./store.ts";
 import { Tour } from "./Tour.tsx";
@@ -19,6 +20,7 @@ export default function OnboardingGate() {
       <OnboardingFlow
         onDone={() => {
           navigate("/");
+          useOnboardingNeed.setState({ need: false });
           void usePlan.getState().load();
         }}
       />

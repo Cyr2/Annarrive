@@ -5,7 +5,7 @@ import { Switch } from "../../ui/controls.tsx";
 import { Group, RowInput, RowSelect, Section } from "../../ui/List.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
 import { TextButton } from "../../ui/TextButton.tsx";
-import { REPEATS } from "../add/add.ts";
+import { REPEATS, TITLE_MAX } from "../add/add.ts";
 import { todayOf } from "../plan/selectors.ts";
 import { usePlan } from "../plan/store.ts";
 import type { SheetProps } from "../sheets/SheetHost.tsx";
@@ -60,7 +60,13 @@ function StrengthForm({ saved, sheet }: FormProps) {
       }}
     >
       <Group>
-        <RowInput label="Nom" value={draft.name} placeholder="Ex. : Jambes" onChange={(name) => set({ name })} />
+        <RowInput
+          label="Nom"
+          maxLength={TITLE_MAX}
+          value={draft.name}
+          placeholder="Ex. : Jambes"
+          onChange={(name) => set({ name })}
+        />
       </Group>
       <Section footnote="Reggie ne met pas de séance dure ni de sortie longue dans les 24 h qui suivent.">
         <Group>

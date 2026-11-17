@@ -3,13 +3,14 @@ import { cx } from "../../lib/cx.ts";
 import { duration, relativeMoment } from "../../lib/date.ts";
 import { Icon } from "../../ui/Icon.tsx";
 import { SessionChip, SessionShape } from "../../ui/SessionShape.tsx";
+import { Skeleton } from "../../ui/Skeleton.tsx";
 import { Surface } from "../../ui/Surface.tsx";
 
 /** The session that moves: its type, when it was planned, and its shape. Its content does not change. */
 export function SessionBanner({ run, today }: { run: Run; today: string }) {
   return (
-    <Surface variant="inset" className="flex items-center gap-3 px-4 py-3">
-      <span className="flex min-w-0 flex-1 flex-col gap-1.5">
+    <Surface variant="inset" className="flex flex-wrap items-center gap-3 px-4 py-3">
+      <span className="flex min-w-[12ch] flex-1 flex-col gap-1.5">
         <SessionChip tone={run.intensity}>
           {run.title} · {duration(run.durationMin)}
         </SessionChip>
@@ -17,6 +18,19 @@ export function SessionBanner({ run, today }: { run: Run; today: string }) {
       </span>
       <SessionShape steps={run.steps} tone={run.intensity} className="w-20 flex-none" />
     </Surface>
+  );
+}
+
+/** Three slot cards' place while Reggie looks for them, so the sheet rises once, at its final height. */
+export function SlotsWaiting() {
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="t-cap m-0 px-4">Reggie cherche les bons créneaux…</p>
+      <Skeleton label="Recherche des créneaux" className="h-16" />
+      <Skeleton className="h-16" />
+      <Skeleton className="h-16" />
+      <Skeleton className="mt-3 h-13" />
+    </div>
   );
 }
 

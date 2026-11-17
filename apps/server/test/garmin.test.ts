@@ -9,7 +9,7 @@ import {
 } from "../src/garmin/bridge-client.ts";
 import { workoutHash } from "../src/garmin/workout.ts";
 import { toActivity } from "../src/services/garmin.ts";
-import { fakeBridge, fakeCoach, session, setup } from "./helpers.ts";
+import { fakeBridge, fakeCoach, MONDAY_8AM, session, setup } from "./helpers.ts";
 
 function garminRun(id: number, startTimeLocal: string, over: Partial<GarminActivity> = {}): GarminActivity {
   return {
@@ -436,6 +436,34 @@ describe("watch sync", () => {
 
     expect(t.stores.watchSync.get("gone")).toBeDefined();
     expect(t.bridge.createWorkout).not.toHaveBeenCalled();
+  });
+
+  it("says the session is not sent once the bridge has failed for ten minutes, and sent once it is back", async () => {
+    const t = garminSetup();
+    t.stores.plannedSession.put(session("tue", "2026-11-17T18:00"));
+    t.stores.watchSync.put({ id: "gone", status: "sent", hash: "h", workoutId: 1 });
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    t.bridge.deleteWorkout.mockRejectedValue(new BridgeUnreachableError("Bridge Garmin injoignable"));
+    await t.login();
+    const tuesday = async () =>
+      weekSchema.parse((await t.call("GET", "/api/weeks/2026-W47")).json).days[1]?.sessions[0]?.watch;
+
+    await t.garmin.syncWatch();
+    expect(await tuesday()).toBe("pending");
+    t.setNow(new Date(MONDAY_8AM.getTime() + 10 * 60_000));
+    expect(await tuesday()).toBe("failed");
+
+    t.bridge.deleteWorkout.mockResolvedValue(undefined);
+    await t.garmin.syncWatch();
+    expect(await tuesday()).toBe("sent");
+  });
+
+  it("never says a session is on its way to a watch this server cannot reach", async () => {
+    const t = setup();
+    t.stores.plannedSession.put(session("tue", "2026-11-17T18:00"));
+    await t.login();
+    const week = weekSchema.parse((await t.call("GET", "/api/weeks/2026-W47")).json);
+    expect(week.days[1]?.sessions[0]?.watch).toBe("off");
   });
 
   it("never runs two syncs at once", async () => {

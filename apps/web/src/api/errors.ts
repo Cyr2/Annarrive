@@ -9,6 +9,8 @@ export class ApiError extends Error {
   }
 }
 
+export const OFFLINE = "Pas de connexion au serveur : vérifie ton réseau, puis réessaie.";
+
 export const FAILED = "Ça n'a pas marché. Réessaie dans un instant.";
 
 /** The message to show for any error: the server's own words when it gave some. */

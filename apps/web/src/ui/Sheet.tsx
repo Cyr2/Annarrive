@@ -1,7 +1,7 @@
-import { AnimatePresence, MotionConfig, motion, useDragControls } from "motion/react";
+import { AnimatePresence, MotionConfig, motion, useDragControls, useReducedMotion } from "motion/react";
 import { type ReactNode, useEffect, useId, useRef } from "react";
 import { createPortal } from "react-dom";
-import { EXIT_SHEET, FADE, SPRING_SHEET } from "../lib/motion.ts";
+import { EXIT_SHEET, FADE, FADE_REDUCED, SPRING_SHEET } from "../lib/motion.ts";
 import { Icon } from "./Icon.tsx";
 import { TextButton } from "./TextButton.tsx";
 import { useVisibleArea } from "./useVisibleArea.ts";
@@ -20,6 +20,10 @@ type Props = {
   cancelLabel?: string;
   /** The one main action, pinned under the body so it never scrolls out of reach. */
   footer?: ReactNode;
+  /** A change is on its way: the main action waits (and says so), a second tap sends nothing. */
+  busy?: boolean;
+  /** False when the sheet takes the place of another one already up: it does not rise again. */
+  appear?: boolean;
   children: ReactNode;
 };
 
@@ -41,6 +45,21 @@ export function Sheet({ open, ...props }: Props) {
 const DISMISS_DISTANCE = 120;
 const DISMISS_SPEED = 600;
 
+const FOCUSABLE =
+  'button:not(:disabled), [href], input:not(:disabled), select, textarea, [tabindex]:not([tabindex="-1"])';
+
+/** Tab from the last control comes back to the first one (and Shift+Tab the other way): focus never leaves. */
+function keepFocusIn(panel: HTMLElement, event: KeyboardEvent) {
+  const items = [...panel.querySelectorAll<HTMLElement>(FOCUSABLE)];
+  const first = items[0];
+  const last = items.at(-1);
+  const at = document.activeElement;
+  const wrapTo = event.shiftKey ? (at === first || at === panel ? last : undefined) : at === last ? first : undefined;
+  if (!wrapTo) return;
+  event.preventDefault();
+  wrapTo.focus();
+}
+
 function Panel({
   onOpenChange,
   title,
@@ -49,6 +68,8 @@ function Panel({
   action,
   cancelLabel = "Annuler",
   footer,
+  busy = false,
+  appear = true,
   children,
 }: Omit<Props, "open">) {
   const titleId = useId();
@@ -57,13 +78,18 @@ function Panel({
   const close = useRef(() => onOpenChange(false));
   close.current = () => onOpenChange(false);
   const area = useVisibleArea();
+  // Under reduced motion the sheet fades in and out (150 ms) instead of sliding.
+  const still = useReducedMotion() ?? false;
 
   useEffect(() => {
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const root = document.getElementById("root");
     root?.setAttribute("inert", "");
     (panel.current?.querySelector<HTMLElement>("[data-autofocus]") ?? panel.current)?.focus({ preventScroll: true });
-    const onKey = (event: KeyboardEvent) => event.key === "Escape" && close.current();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") close.current();
+      if (event.key === "Tab" && panel.current) keepFocusIn(panel.current, event);
+    };
     document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("keydown", onKey);
@@ -80,9 +106,9 @@ function Panel({
       <motion.div
         aria-hidden="true"
         className="absolute inset-0 bg-scrim"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1, transition: FADE }}
-        exit={{ opacity: 0, transition: EXIT_SHEET }}
+        initial={appear && { opacity: 0 }}
+        animate={{ opacity: 1, transition: still ? FADE_REDUCED : FADE }}
+        exit={{ opacity: 0, transition: still ? FADE_REDUCED : EXIT_SHEET }}
         onClick={() => close.current()}
       />
       <motion.div
@@ -93,9 +119,10 @@ function Panel({
         tabIndex={-1}
         data-variant="sheet"
         className="surface absolute inset-x-0 bottom-0 mx-auto flex max-h-[calc(100%-env(safe-area-inset-top)-16px)] w-full max-w-xl flex-col outline-none"
-        initial={{ y: "105%" }}
-        animate={{ y: 0, transition: SPRING_SHEET }}
-        exit={{ y: "105%", transition: EXIT_SHEET }}
+        aria-busy={busy}
+        initial={appear && (still ? { opacity: 0 } : { y: "105%" })}
+        animate={still ? { opacity: 1, transition: FADE_REDUCED } : { y: 0, transition: SPRING_SHEET }}
+        exit={still ? { opacity: 0, transition: FADE_REDUCED } : { y: "105%", transition: EXIT_SHEET }}
         drag="y"
         dragListener={false}
         dragControls={drag}
@@ -127,7 +154,8 @@ function Panel({
               <TextButton
                 className="justify-self-end font-semibold"
                 onClick={action.onClick}
-                disabled={action.disabled}
+                disabled={action.disabled || busy}
+                aria-busy={busy}
               >
                 {action.label}
               </TextButton>
@@ -143,12 +171,14 @@ function Panel({
           {children}
         </div>
         {footer && (
-          <footer
-            className="flex flex-none flex-col gap-2 border-t-[0.5px] border-hairline px-4 pt-3"
+          // A disabled fieldset holds every button of the footer while the change is on its way.
+          <fieldset
+            disabled={busy}
+            className="sheet-footer m-0 flex min-w-0 flex-none flex-col gap-2 border-t-[0.5px] border-hairline px-4 pt-3"
             style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}
           >
             {footer}
-          </footer>
+          </fieldset>
         )}
       </motion.div>
     </div>

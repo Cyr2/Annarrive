@@ -2,6 +2,9 @@ import type { NewEvent } from "../../api/client.ts";
 import type { Repeat, Strength } from "../../api/schemas.ts";
 import { addDays, addMinutes, minutesOf, weekdayName } from "../../lib/date.ts";
 
+/** An event's title, as long as the server takes it (protocol, eventFields). */
+export const TITLE_MAX = 80;
+
 export const REPEATS: { value: Repeat; label: string }[] = [
   { value: "never", label: "Jamais" },
   { value: "weekly", label: "Chaque semaine" },

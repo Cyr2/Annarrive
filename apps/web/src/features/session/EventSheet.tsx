@@ -8,6 +8,7 @@ import { Group, RowInput, Section } from "../../ui/List.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
 import { Surface } from "../../ui/Surface.tsx";
 import { TextButton } from "../../ui/TextButton.tsx";
+import { TITLE_MAX } from "../add/add.ts";
 import { findItem, todayOf } from "../plan/selectors.ts";
 import { usePlan } from "../plan/store.ts";
 import type { SheetProps } from "../sheets/SheetHost.tsx";
@@ -70,7 +71,12 @@ function EditEvent({ event, today, ...sheet }: Props & { today: string }) {
     >
       <Group>
         {event.kind === "busy" && (
-          <RowInput label="Titre" value={draft.title} onChange={(title) => setDraft({ ...draft, title })} />
+          <RowInput
+            label="Titre"
+            maxLength={TITLE_MAX}
+            value={draft.title}
+            onChange={(title) => setDraft({ ...draft, title })}
+          />
         )}
         <RowInput
           label="Jour"

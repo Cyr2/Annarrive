@@ -5,9 +5,10 @@ import { TextButton } from "../../ui/TextButton.tsx";
 import { findRun, todayOf } from "../plan/selectors.ts";
 import { usePlan } from "../plan/store.ts";
 import { AskReggie } from "../reggie/AskReggie.tsx";
-import type { SheetProps } from "../sheets/SheetHost.tsx";
+import { preloadSheet, type SheetProps } from "../sheets/SheetHost.tsx";
 import { useSheet } from "../sheets/store.ts";
 import { sessionContext } from "../today/today.ts";
+import { moveOptions } from "../useLoad.ts";
 import { Summary } from "./Summary.tsx";
 import { FeverStep, PainStep, ReasonStep, ZoneStep } from "./steps.tsx";
 import { canContinue, type Draft, EMPTY, nextStep, progressOf, type Step, toInput } from "./unavailable.ts";
@@ -15,7 +16,7 @@ import { canContinue, type Draft, EMPTY, nextStep, progressOf, type Step, toInpu
 /** Pas dispo (design/PasDispo): one question at a time, a summary of what changes, then Valider. */
 export default function UnavailableSheet({ spec, ...sheet }: SheetProps<"unavailable">) {
   const plan = usePlan();
-  const show = useSheet((s) => s.show);
+  const replace = useSheet((s) => s.replace);
   // The steps she went through, so the chevron can take her back one.
   const [trail, setTrail] = useState<Step[]>(["reason"]);
   const [draft, setDraft] = useState<Draft>(EMPTY);
@@ -24,11 +25,18 @@ export default function UnavailableSheet({ spec, ...sheet }: SheetProps<"unavail
   const step = trail.at(-1) ?? "reason";
   const today = todayOf(plan);
   const input = toInput(draft, run.id);
-  const update = (patch: Partial<Draft>) => setDraft({ ...draft, ...patch });
+  const update = (patch: Partial<Draft>) => {
+    // "Pas le temps" leads to Déplacer: its file and its slots leave now, so it is ready on Continuer.
+    if (patch.reason === "time") {
+      preloadSheet("move");
+      moveOptions.start(run.id);
+    }
+    setDraft({ ...draft, ...patch });
+  };
 
   const next = () => {
     const target = nextStep(step, draft);
-    if (target === "move") show({ kind: "move", id: run.id });
+    if (target === "move") replace({ kind: "move", id: run.id });
     else if (target !== "reggie") setTrail([...trail, target]);
   };
   const validate = async () => {

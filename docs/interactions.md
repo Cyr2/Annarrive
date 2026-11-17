@@ -5,7 +5,7 @@ Référence pour les maquettes et le code. Chaque action dit ce qu'elle ouvre, c
 ## Règles communes à toutes les actions
 
 1. **Tout changement se défait.** Après chaque modification, un bandeau apparaît en bas pendant 6 s : « Séance déplacée à mercredi 18:00 · Annuler ». Annuler remet exactement l'état d'avant, montre comprise.
-2. **La montre suit.** Toute séance modifiée est renvoyée sur la montre dans la minute. La carte affiche « Sur ta montre » une fois la synchro faite, « Envoi à ta montre… » pendant, « Pas envoyée, réessayer » en cas d'échec (tap = nouvel essai).
+2. **La montre suit.** Toute séance modifiée est renvoyée sur la montre dans la minute. La carte affiche « Sur ta montre » une fois la synchro faite, « Envoi à ta montre… » pendant, « Pas envoyée, réessayer » en cas d'échec (tap = nouvel essai), y compris quand l'envoi échoue depuis plus de 10 min. Sans lien avec Garmin sur le serveur, elle affiche « Montre pas reliée ». Jamais « Envoi… » pour toujours.
 3. **Reggie respecte les règles de l'algo.** Il ne propose jamais un créneau ou une séance qui casse une règle :
    - 24 h après une séance jambes avant une séance dure ou une sortie longue ;
    - jamais deux séances dures d'affilée ;

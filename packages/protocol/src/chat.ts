@@ -70,6 +70,7 @@ export const chatStreamEventSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("text"), delta: z.string() }),
   z.object({ type: z.literal("widget"), widget: chatWidgetSchema }),
   z.object({ type: z.literal("done"), message: chatMessageSchema }),
-  z.object({ type: z.literal("error"), error: z.string() }),
+  /** `retry: false` when sending again cannot help (Reggie is off on this server). */
+  z.object({ type: z.literal("error"), error: z.string(), retry: z.boolean().optional() }),
 ]);
 export type ChatStreamEvent = z.infer<typeof chatStreamEventSchema>;
