@@ -27,7 +27,7 @@ export function TodayScreen() {
   if (status === "error") {
     return (
       <Screen>
-        <h1 className="t-large">Aujourd'hui</h1>
+        <h1 className="sr-only-label">Aujourd'hui</h1>
         <EmptyState
           icon="info"
           title="Plan indisponible"
