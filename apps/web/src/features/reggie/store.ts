@@ -7,7 +7,11 @@ import type { ChatEvent, ChatMessage } from "../../api/schemas.ts";
 import { usePlan } from "../plan/store.ts";
 
 /** A message as shown: widgets remember the answer picked, which fills that button and fades the others. */
-export type Entry = ChatMessage & { answer?: string };
+export type Entry = ChatMessage & {
+  answer?: string;
+  /** On a failed reply: the message to send again, and the bubble it came from (replaced by the retry). */
+  retry?: { text: string; from: string };
+};
 
 export type ChatState = {
   messages: Entry[];
@@ -25,6 +29,8 @@ export type ChatState = {
   answer: (messageId: string, answer: string) => Promise<void>;
   /** Marks a change card as undone. */
   undone: (messageId: string) => void;
+  /** Sends again the message a failed reply answered, in place of both. */
+  retry: (messageId: string) => Promise<void>;
 };
 
 const WELCOME: Entry = {
@@ -52,10 +58,11 @@ export function createChatStore(getApi: () => Promise<Api>, onChange: (changeId:
       const widget = event.message.widget;
       if (widget?.type === "change") await onChange(widget.change.changeId);
     };
-    const failed = (error: unknown): Entry => ({
+    const failed = (error: unknown, mine: Entry): Entry => ({
       id: `e${++seq}`,
       role: "reggie",
       text: error instanceof ApiError && error.status !== 0 ? error.message : CANNOT_ANSWER,
+      retry: { text: mine.text, from: mine.id },
     });
 
     return {
@@ -83,7 +90,7 @@ export function createChatStore(getApi: () => Promise<Api>, onChange: (changeId:
           const client = await getApi();
           for await (const event of client.chat({ text: trimmed, context: get().about })) await receive(event);
         } catch (error) {
-          set((s) => ({ messages: [...s.messages, failed(error)] }));
+          set((s) => ({ messages: [...s.messages, failed(error, mine)] }));
         } finally {
           set({ status: "idle" });
         }
@@ -94,6 +101,12 @@ export function createChatStore(getApi: () => Promise<Api>, onChange: (changeId:
       },
       undone(messageId) {
         set((s) => ({ messages: s.messages.map((m) => (m.id === messageId ? { ...m, answer: "undone" } : m)) }));
+      },
+      async retry(messageId) {
+        const retry = get().messages.find((m) => m.id === messageId)?.retry;
+        if (!retry || get().status !== "idle") return;
+        set((s) => ({ messages: s.messages.filter((m) => m.id !== messageId && m.id !== retry.from) }));
+        await get().send(retry.text);
       },
     };
   });

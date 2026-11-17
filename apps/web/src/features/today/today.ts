@@ -50,8 +50,25 @@ export function sessionContext(run: Run, today: string): string {
 export const WATCH_LABEL: Record<WatchStatus, string> = {
   synced: "Sur ta montre",
   sending: "Envoi à ta montre…",
-  failed: "Pas envoyée, réessayer",
+  failed: "Pas sur ta montre",
 };
+
+const REST_LINES = [
+  "Tes jambes récupèrent aujourd'hui. C'est là qu'elles progressent.",
+  "Le repos fait partie du plan. Profite de ta journée.",
+  "Rien à courir. Ton corps assimile le travail des derniers jours.",
+];
+
+/** The rest day's sentence: one per date, so it stays the same all day and changes the next rest day. */
+export function restLine(date: string): string {
+  return REST_LINES[Number(date.slice(8)) % REST_LINES.length] ?? "";
+}
+
+/** The run's tone and the other kinds of a day of the week strip: the run is the subject, the rest is context. */
+export function splitDots(dots: Tone[]): { run?: Tone; others: Tone[] } {
+  const run = dots.find((tone) => tone === "hard" || tone === "long" || tone === "easy");
+  return { run, others: dots.filter((tone) => tone !== run) };
+}
 
 /** Changes when what the card shows changes, so the card can turn over to its new content. */
 export function contentKey(run: Run): string {

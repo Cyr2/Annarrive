@@ -12,18 +12,23 @@ export function applyUnavailable(items: Item[], input: UnavailableInput, today: 
   const last = input.reason === "sick" && input.fever ? addDays(today, 6) : (input.until ?? today);
   const affected = (i: Item): i is Run => isRun(i) && i.date >= today && i.date <= last;
   const rows: ChangeRow[] = [];
-  const row = (run: Run, label: string, tone: ChangeRow["tone"]) =>
-    rows.push({ day: relativeDay(run.date, today), label, tone });
+  const row = (run: Run, label: string, tone: ChangeRow["tone"], was: Run) =>
+    rows.push({
+      day: relativeDay(run.date, today),
+      label,
+      tone,
+      before: `${was.title} · ${duration(was.durationMin)}`,
+    });
 
   let next = items.flatMap((item): Item[] => {
     if (!affected(item)) return [item];
     const replacement = replace(item, input);
     if (replacement === item) return [item];
     if (!replacement) {
-      row(item, `Repos, ${item.title.toLowerCase()} retiré`, "rest");
+      row(item, "Repos", "rest", item);
       return [];
     }
-    row(replacement, `${replacement.title} · ${duration(replacement.durationMin)}`, "easy");
+    row(replacement, `${replacement.title} · ${duration(replacement.durationMin)}`, "easy", item);
     return [replacement];
   });
 
@@ -36,7 +41,7 @@ export function applyUnavailable(items: Item[], input: UnavailableInput, today: 
         ...easy(item, item.durationMin, "Footing facile", "6:15 à 6:45"),
         lightened: "Allégée : tu étais fatiguée la veille",
       };
-      row(lighter, `${lighter.title} · allégé`, "easy");
+      row(lighter, `${lighter.title} · allégé`, "easy", item);
       return lighter;
     });
   }

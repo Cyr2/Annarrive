@@ -1,29 +1,27 @@
 import type { Run } from "../../api/schemas.ts";
-import { duration, relativeDay } from "../../lib/date.ts";
-import { PaceValue } from "../../ui/PaceValue.tsx";
-import { SessionChip } from "../../ui/SessionShape.tsx";
-import { Surface } from "../../ui/Surface.tsx";
+import { Icon } from "../../ui/Icon.tsx";
+import { NextRun } from "./NextRun.tsx";
+import { restLine } from "./today.ts";
 
-/** Rest day (design/Repos): one word, and what comes next. */
+/**
+ * Rest day: no card at all. The word and a calm sentence sit on the sky itself, the moon rises once, and the
+ * next session waits below as a small card. The empty space is the rest.
+ */
 export function RestCard({ next, today }: { next?: Run; today: string }) {
   return (
-    <Surface as="article" className="flex flex-col gap-4 p-5">
-      <div className="flex flex-col gap-1">
+    <>
+      <article className="flex flex-col items-start gap-3 px-1 pt-6 pb-4">
+        <span
+          aria-hidden="true"
+          data-variant="inset"
+          className="surface rest-moon flex size-14 items-center justify-center rounded-full! text-ink-2"
+        >
+          <Icon name="moon" size={26} />
+        </span>
         <h1 className="t-large">Repos</h1>
-        <span className="t-sub">Pas de course aujourd'hui</span>
-      </div>
-      {next && (
-        <div className="hairline-top flex items-end justify-between gap-3 pt-4">
-          <div className="flex min-w-0 flex-col gap-1">
-            <span className="t-cap">
-              {relativeDay(next.date, today)} · {next.start}
-            </span>
-            <SessionChip tone={next.intensity}>{next.title}</SessionChip>
-            <span className="t-sub">{duration(next.durationMin)}</span>
-          </div>
-          <PaceValue value={next.pace} unit="/km" className="text-right" />
-        </div>
-      )}
-    </Surface>
+        <p className="t-body m-0 max-w-[30ch] text-ink-2">{restLine(today)}</p>
+      </article>
+      {next && <NextRun run={next} today={today} label="Prochaine séance" />}
+    </>
   );
 }
