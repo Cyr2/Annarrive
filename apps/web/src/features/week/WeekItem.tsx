@@ -73,7 +73,7 @@ export function DraggableItem({ item, disabled, past }: { item: Item; disabled: 
       aria-roledescription={disabled ? undefined : "séance déplaçable"}
       onClick={() => show(sheetFor(item))}
       className={cx(
-        "week-press block w-full scroll-mb-(--space-under-tabbar) touch-manipulation rounded-row border-0 bg-transparent p-0",
+        "week-press block w-full touch-manipulation rounded-row border-0 bg-transparent p-0",
         past && "week-past",
         isDragging && "week-ghost",
       )}
