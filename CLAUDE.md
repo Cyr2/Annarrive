@@ -15,7 +15,7 @@ Coach de course à pied en PWA pour Anna (iPhone, Garmin vivoactive 4). L'app pl
 ## Marque et style
 
 - Nom : **Annarrivé**. Assistant : **Reggie** (nom fixe, aucune option pour le changer). Le logo se choisit avec Darius : ne jamais en inventer un, garder un emplacement prévu.
-- Direction « Ciel du matin » : un ciel d'aube chaud et calme derrière chaque écran, surfaces Apple iOS 26 Liquid Glass, police Nunito (auto-hébergée, latin seul, un seul fichier variable), titres en gras, chiffres tabulaires pour les allures, durées et heures. Clair, vif, joyeux, jamais criard. Aucun noir.
+- Direction « Ciel du matin » : un ciel d'aube chaud et calme derrière chaque écran, surfaces Apple iOS 26 Liquid Glass, police Outfit (auto-hébergée, latin seul, un seul fichier variable), titres en gras, chiffres tabulaires pour les allures, durées et heures. Clair, vif, joyeux, jamais criard. Aucun noir.
 - Palette (tokens dans `apps/web/src/styles/tokens.css`) : ciel `#FDEDE3`, `#FDF1EA`, `#FBF6F2`, `#F9F6F3` (abricot doux en haut, presque blanc chaud dessous) ; texte `#23303D` ; actions `#0967D6` (bleu vif, à la iOS) ; Reggie `#0B6B52` ; séances : intensité `#EE8A63`, facile `#5DBB92`, sortie longue `#6F9EE6`, révision `#5FBEC9`. Une allure ne s'affiche jamais en rouge ou en orange.
 - La couleur porte un sens (type de séance, aujourd'hui, action, Reggie, alerte) et fait ressortir ce qui compte. Pas de couleur décorative.
 - Échelle de texte unique : titre de page 28, titre de section 20, texte 17, secondaire 15, légende 13, onglets 11. Une seule couleur de texte secondaire.

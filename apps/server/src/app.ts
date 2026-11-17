@@ -29,9 +29,9 @@ export function fontFace(webDist: string | undefined): string {
   } catch {
     return "";
   }
-  const href = /href="(\/assets\/nunito-[\w-]+\.woff2)"/.exec(html)?.[1];
+  const href = /href="(\/assets\/outfit-[\w-]+\.woff2)"/.exec(html)?.[1];
   return href
-    ? `@font-face{font-family:Nunito;font-weight:400 700;font-display:swap;src:url(${href}) format("woff2")}`
+    ? `@font-face{font-family:Outfit;font-weight:400 700;font-display:swap;src:url(${href}) format("woff2")}`
     : "";
 }
 
@@ -126,7 +126,7 @@ const loginTokenSchema = z.string().regex(/^[\w-]{1,200}$/, "Lien de connexion i
  */
 const LOGIN_CSS = [
   "*{box-sizing:border-box}",
-  "html{background:#f7f9fb;color:#23303d;font:17px/1.35 Nunito,-apple-system,BlinkMacSystemFont,system-ui,sans-serif;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%}",
+  "html{background:#f7f9fb;color:#23303d;font:17px/1.35 Outfit,-apple-system,BlinkMacSystemFont,system-ui,sans-serif;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%}",
   // The app's calm sky: a soft apricot wash fading to warm near-white, still (no script, no animation on a page seen for a second).
   "body{margin:0;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:24px;padding:max(24px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom));background:radial-gradient(70% 30% at 15% 0%,rgb(255 218 196/.26),rgb(255 218 196/0)),linear-gradient(180deg,#fdede3 0%,#fdf1ea 18%,#fbf6f2 40%,#f9f6f3 100%) fixed}",
   "header{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;max-width:400px}",
@@ -135,7 +135,7 @@ const LOGIN_CSS = [
   "p{margin:0;color:#434e5a}",
   "main{width:100%;max-width:400px;display:flex;flex-direction:column;gap:12px;text-align:center}",
   "form{width:100%}",
-  "button,.quiet{display:flex;align-items:center;justify-content:center;width:100%;min-height:50px;border:0;border-radius:25px;font:600 17px Nunito,-apple-system,BlinkMacSystemFont,system-ui,sans-serif;text-decoration:none;cursor:pointer;-webkit-tap-highlight-color:transparent}",
+  "button,.quiet{display:flex;align-items:center;justify-content:center;width:100%;min-height:50px;border:0;border-radius:25px;font:600 17px Outfit,-apple-system,BlinkMacSystemFont,system-ui,sans-serif;text-decoration:none;cursor:pointer;-webkit-tap-highlight-color:transparent}",
   "button{background:#0967d6;color:#fff;box-shadow:inset 0 1px 0 rgb(255 255 255/.35),0 8px 22px rgb(9 103 214/.35)}",
   "button:active,.quiet:active{transform:scale(.97)}",
   ".quiet{background:rgb(255 255 255/.5);-webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);color:#0967d6;box-shadow:inset 0 0 0 .5px rgb(255 255 255/.75),inset 0 1px 0 rgb(255 255 255/.95),0 6px 20px rgb(90 40 10/.1)}",

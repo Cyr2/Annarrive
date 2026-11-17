@@ -9,11 +9,11 @@
 /* Self-hosted so the PWA precaches it and it works offline. Latin only (all the app writes), one variable
    file for every weight; index.html preloads the same file. */
 @font-face {
-  font-family: "Nunito";
+  font-family: "Outfit";
   font-style: normal;
   font-weight: 400 700;
   font-display: swap;
-  src: url("../../node_modules/@fontsource-variable/nunito/files/nunito-latin-wght-normal.woff2") format("woff2");
+  src: url("../../node_modules/@fontsource-variable/outfit/files/outfit-latin-wght-normal.woff2") format("woff2");
 }
 
 /* In the base layer, so every Tailwind utility and component class can override it. */

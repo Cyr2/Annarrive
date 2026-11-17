@@ -62,7 +62,7 @@ describe("server", () => {
 
   it("draws the login page in the app's font, from the file the built app preloads", async () => {
     const webDist = await mkdtemp(join(tmpdir(), "annarrive-web-"));
-    const href = "/assets/nunito-latin-wght-normal-Ab_1.woff2";
+    const href = "/assets/outfit-latin-wght-normal-Ab_1.woff2";
     await writeFile(join(webDist, "index.html"), `<link rel="preload" href="${href}" as="font">`);
     const { services } = setup();
     const page = await (

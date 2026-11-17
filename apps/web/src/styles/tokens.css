@@ -92,8 +92,8 @@
   --radius-sheet: 32px;
   --radius-pill: 999px;
 
-  /* ---- Type: Nunito (app.css), the system font while it loads ---- */
-  --font-sans: "Nunito", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  /* ---- Type: Outfit (app.css), the system font while it loads ---- */
+  --font-sans: "Outfit", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 
   /* ---- Spacing and sizes ---- */
   --spacing-gutter: 16px;
