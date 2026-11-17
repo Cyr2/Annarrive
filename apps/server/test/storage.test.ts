@@ -85,4 +85,13 @@ describe("config", () => {
     expect(config).toMatchObject({ PORT: 9000, DATA_DIR: "./data" });
     expect(config.ICS_URL).toBeUndefined();
   });
+
+  it("sends to Garmin unless GARMIN_WRITE is off", () => {
+    const secret = { SESSION_SECRET: "x".repeat(32) };
+    expect(loadConfig(secret).GARMIN_WRITE).toBe(true);
+    expect(loadConfig({ ...secret, GARMIN_WRITE: "" }).GARMIN_WRITE).toBe(true);
+    expect(loadConfig({ ...secret, GARMIN_WRITE: "on" }).GARMIN_WRITE).toBe(true);
+    expect(loadConfig({ ...secret, GARMIN_WRITE: "off" }).GARMIN_WRITE).toBe(false);
+    expect(() => loadConfig({ ...secret, GARMIN_WRITE: "non" })).toThrow(/GARMIN_WRITE/);
+  });
 });

@@ -8,6 +8,11 @@ const configSchema = z.object({
   ICS_URL: z.string().url().optional(),
   BRIDGE_URL: z.string().url().optional(),
   BRIDGE_SECRET: z.string().optional(),
+  /** "off" on a test instance logged into Anna's account: reads only, nothing sent to her watch. */
+  GARMIN_WRITE: z
+    .enum(["on", "off"])
+    .default("on")
+    .transform((value) => value === "on"),
   VAPID_PUBLIC_KEY: z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),
   SESSION_SECRET: z

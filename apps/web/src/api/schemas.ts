@@ -6,7 +6,7 @@ const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const clock = z.string().regex(/^\d{1,2}:\d{2}$/);
 
 export const intensitySchema = z.enum(["hard", "easy", "long"]);
-export const watchStatusSchema = z.enum(["synced", "sending", "failed"]);
+export const watchStatusSchema = z.enum(["synced", "sending", "failed", "off"]);
 
 export const stepSchema = z.object({
   label: z.string(),

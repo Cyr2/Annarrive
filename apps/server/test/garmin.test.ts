@@ -1,7 +1,12 @@
 import { type DailySignal, type GarminActivity, todaySchema, weekSchema } from "@annarrive/protocol";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CoachPort } from "../src/coach-port.ts";
-import { BridgeError, BridgeUnreachableError, GarminRateLimitError } from "../src/garmin/bridge-client.ts";
+import {
+  BridgeError,
+  BridgeUnreachableError,
+  GarminRateLimitError,
+  GarminWriteOffError,
+} from "../src/garmin/bridge-client.ts";
 import { workoutHash } from "../src/garmin/workout.ts";
 import { toActivity } from "../src/services/garmin.ts";
 import { fakeBridge, fakeCoach, session, setup } from "./helpers.ts";
@@ -356,6 +361,23 @@ describe("watch sync", () => {
 
     expect(t.stores.watchSync.get("tue")?.status).toBe("sent");
     expect(t.stores.watchSync.get("wed")?.status).toBe("sent");
+  });
+
+  it("shows a session as not sent when this instance has writing off, without calling it a failure", async () => {
+    const t = garminSetup();
+    t.stores.plannedSession.put(session("tue", "2026-11-17T18:00"));
+    t.stores.plannedSession.put(session("wed", "2026-11-18T18:00"));
+    t.bridge.createWorkout.mockRejectedValue(new GarminWriteOffError("Envoi vers Garmin coupé"));
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    await t.garmin.syncWatch();
+
+    expect(t.bridge.createWorkout).toHaveBeenCalledTimes(2);
+    expect(t.stores.watchSync.get("tue")?.status).toBe("off");
+    expect(error).not.toHaveBeenCalled();
+    await t.login();
+    const week = weekSchema.parse((await t.call("GET", "/api/weeks/2026-W47")).json);
+    expect(week.days[1]?.sessions[0]?.watch).toBe("off");
   });
 
   it("stops at a Garmin rate limit, but goes on after an error tied to one session", async () => {

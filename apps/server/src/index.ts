@@ -24,7 +24,7 @@ const services = createServices({
   icsUrl: config.ICS_URL,
   bridge:
     config.BRIDGE_URL && config.BRIDGE_SECRET
-      ? createBridgeClient({ baseUrl: config.BRIDGE_URL, secret: config.BRIDGE_SECRET })
+      ? createBridgeClient({ baseUrl: config.BRIDGE_URL, secret: config.BRIDGE_SECRET, write: config.GARMIN_WRITE })
       : undefined,
   push:
     publicKey && privateKey
