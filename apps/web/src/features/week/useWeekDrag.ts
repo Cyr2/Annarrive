@@ -23,11 +23,15 @@ const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: r
 /** On release the session springs to its new slot with a small bounce (CSS `linear()` spring from the tokens). */
 function dropAnimation(): DropAnimation | null {
   if (prefersReducedMotion()) return null;
-  const easing = getComputedStyle(document.documentElement).getPropertyValue("--ease-spring-bounce").trim();
-  return { duration: 450, easing: easing || "ease-out" };
+  const style = getComputedStyle(document.documentElement);
+  const easing = style.getPropertyValue("--ease-spring-bounce").trim();
+  return {
+    duration: Number.parseFloat(style.getPropertyValue("--duration-settle")) || 450,
+    easing: easing || "ease-out",
+  };
 }
 
-/** Drag a session in the week: lift on long press with a light vibration, drop on an allowed day. */
+/** Drag a session in the week: lift on long press (a vibration where the phone has one), drop on an allowed day. */
 export function useWeekDrag(week: Week | undefined, offset: number, today: string) {
   const [active, setActive] = useState<Item>();
   const [options, setOptions] = useState<MoveOptions>();

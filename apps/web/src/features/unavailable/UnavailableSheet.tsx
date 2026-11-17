@@ -10,7 +10,7 @@ import { useSheet } from "../sheets/store.ts";
 import { sessionContext } from "../today/today.ts";
 import { Summary } from "./Summary.tsx";
 import { FeverStep, PainStep, ReasonStep, ZoneStep } from "./steps.tsx";
-import { canContinue, type Draft, EMPTY, nextStep, type Step, toInput } from "./unavailable.ts";
+import { canContinue, type Draft, EMPTY, nextStep, progressOf, type Step, toInput } from "./unavailable.ts";
 
 /** Pas dispo (design/PasDispo): one question at a time, a summary of what changes, then Valider. */
 export default function UnavailableSheet({ spec, ...sheet }: SheetProps<"unavailable">) {
@@ -38,14 +38,20 @@ export default function UnavailableSheet({ spec, ...sheet }: SheetProps<"unavail
     if (await plan.apply((api) => api.feelBetter())) sheet.onOpenChange(false);
   };
   const toReggie = step === "reason" && draft.reason === "other";
+  // A closed question answers itself on tap, as Reggie's do.
+  const pickFever = (fever: boolean) => {
+    setDraft({ ...draft, fever });
+    setTrail([...trail, "summary"]);
+  };
 
   return (
     <Sheet
       {...sheet}
       title="Pas dispo"
+      subtitle={progressOf(step, draft)}
       onBack={trail.length > 1 ? () => setTrail(trail.slice(0, -1)) : undefined}
       footer={
-        toReggie ? undefined : (
+        toReggie || step === "fever" ? undefined : (
           <>
             {step === "summary" ? (
               <Button variant="filled" size="large" disabled={!input} onClick={() => void validate()}>
@@ -62,7 +68,7 @@ export default function UnavailableSheet({ spec, ...sheet }: SheetProps<"unavail
       }
     >
       {step === "reason" && <ReasonStep draft={draft} today={today} onChange={update} />}
-      {step === "fever" && <FeverStep fever={draft.fever} onChange={(fever) => update({ fever })} />}
+      {step === "fever" && <FeverStep fever={draft.fever} onPick={pickFever} />}
       {step === "zone" && <ZoneStep zone={draft.zone} onChange={(zone) => update({ zone })} />}
       {step === "pain" && <PainStep pain={draft.pain} zone={draft.zone} onChange={(pain) => update({ pain })} />}
       {step === "summary" && input && <Summary input={input} />}

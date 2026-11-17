@@ -41,8 +41,7 @@ export default function ChangeSheet({ spec, ...sheet }: SheetProps<"change">) {
       }
     >
       <p className="t-cap m-0 px-4">
-        Même moment, {relativeMoment(run.date, run.start, today).toLowerCase()}. Prévu : {run.title.toLowerCase()}
-        {run.mainSet ? ` ${run.mainSet}` : ""}, {duration(run.durationMin)}.
+        Même moment, {relativeMoment(run.date, run.start, today).toLowerCase()}. Jamais plus dur que prévu.
       </p>
       {options === null && (
         <p className="t-cap m-0 px-4">Impossible de charger les options. Réessaie dans un instant.</p>
@@ -60,7 +59,10 @@ export default function ChangeSheet({ spec, ...sheet }: SheetProps<"change">) {
         </ChoiceGroup>
       )}
       {chosen && (
-        <Surface key={chosen.id} variant="inset" className="flip-in flex flex-col gap-1.5 px-4 py-3">
+        <Surface key={chosen.id} variant="inset" className="flip-in flex flex-col gap-2 px-4 py-3">
+          <span className="t-cap">
+            Au lieu de <s>{[run.title, run.mainSet, duration(run.durationMin)].filter(Boolean).join(", ")}</s>
+          </span>
           <SessionChip tone={chosen.intensity}>{chosen.title}</SessionChip>
           <span className="t-body">{chosen.detail}</span>
         </Surface>

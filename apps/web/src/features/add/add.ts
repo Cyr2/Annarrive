@@ -55,6 +55,11 @@ export function busyEvent(form: Form): NewEvent {
   return { kind: "busy", title: form.title.trim() || "Indispo", date: form.date, start: form.start, end: form.end };
 }
 
+/** Whether "Ajouter" can be pressed: a day, and a time (a révision) or a span that ends after it starts. */
+export function isValidForm(kind: "revision" | "busy", form: Form): boolean {
+  return Boolean(form.date) && (kind === "revision" ? Boolean(form.start) : isValidSpan(form.start, form.end));
+}
+
 export function isValidSpan(start: string, end: string): boolean {
   return Boolean(start && end) && minutesOf(start) < minutesOf(end);
 }

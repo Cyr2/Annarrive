@@ -1,0 +1,84 @@
+/* Semaine: the drag and drop of docs/interactions.md. iOS Safari has no vibration, so every step shows. */
+
+/* Held: the row sinks a little over the 0.3 s press, so she feels it charging before it lifts. */
+.week-press {
+  transition: transform var(--duration-press) var(--ease-out);
+}
+.week-press:active:not(:disabled) {
+  transform: scale(0.97);
+  transition: transform var(--duration-hold) var(--ease-out);
+}
+
+/* Lifted: pops to 102 % with the lift shadow, from where it sat. */
+@keyframes week-lift {
+  from {
+    transform: scale(0.97);
+    box-shadow: var(--shadow-inset);
+  }
+}
+.week-lift {
+  transform: scale(1.02);
+  box-shadow: var(--shadow-lift);
+  animation: week-lift var(--duration-select) var(--ease-out) both;
+}
+
+/* Where the session was: a dashed outline keeps its place until it lands. */
+.week-ghost {
+  opacity: 0.4;
+  outline: 1.5px dashed var(--color-hairline-strong);
+  outline-offset: -1.5px;
+}
+
+/* Past days: the color is for what is left to do. */
+.week-past {
+  filter: grayscale(1);
+  opacity: 0.6;
+}
+
+/* A free day under the held session: dashed, then filled with the action blue as she hovers it. */
+.week-slot {
+  transition:
+    background-color var(--duration-select) var(--ease-out),
+    border-color var(--duration-select) var(--ease-out),
+    transform var(--duration-select) var(--ease-out);
+}
+.week-slot[data-over="true"] {
+  transform: scale(1.02);
+}
+
+/* The rest of the week steps back while a session is held. */
+.week-dim {
+  transition: opacity var(--duration-select) var(--ease-out);
+}
+[data-dragging="true"] .week-dim {
+  opacity: 0.55;
+}
+
+/* A day she cannot drop on: its content steps back, the reason stays readable. */
+.week-blocked h2,
+.week-blocked button {
+  opacity: 0.45;
+}
+
+@keyframes week-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.week-spin svg {
+  animation: week-spin 0.9s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .week-press:active:not(:disabled),
+  .week-slot[data-over="true"],
+  .week-lift {
+    transform: none;
+  }
+  .week-lift {
+    animation: fade-in var(--duration-fade) linear both;
+  }
+  .week-spin svg {
+    animation: none;
+  }
+}
