@@ -82,7 +82,7 @@ export function Watch({ watch }: { watch: Program["watch"] }) {
             <span className="flex flex-col">
               <span className="t-body">Garmin {watch.model}</span>
               <span className="t-cap flex items-center gap-1.5">
-                <Dot size="md" className={watch.connected ? "bg-easy" : "bg-warn"} />
+                <Dot size="md" className={watch.connected ? "bg-ok" : "bg-warn"} />
                 {watch.lastSync ? `${state}, synchro ${ago(watch.lastSync, new Date())}` : state}
               </span>
             </span>

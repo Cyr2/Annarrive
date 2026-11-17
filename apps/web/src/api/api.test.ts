@@ -284,6 +284,7 @@ describe("http client, reading", () => {
       mainPace: "6:10",
       verdict: "Prévu 50 min, fait en 51 min",
       askFeel: true,
+      intensity: "hard",
       feel: undefined,
     });
     const answered = await server({

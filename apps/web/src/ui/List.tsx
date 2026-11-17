@@ -6,10 +6,24 @@ import { Surface } from "./Surface.tsx";
 
 /** iOS grouped list pieces: an inset surface, rows with hairlines, a caption header and a footnote. */
 
+/** Role 1, the title of a section of a screen or of a sheet step: 20 px bold. */
+export function SectionTitle({ id, className, children }: { id?: string; className?: string; children: ReactNode }) {
+  return (
+    <h2 id={id} className={cx("t-title px-1", className)}>
+      {children}
+    </h2>
+  );
+}
+
+/** Role 2, the label over a group (a list, a set of cards) inside a screen or a sheet: caption. */
+export function GroupLabel({ children }: { children: ReactNode }) {
+  return <h2 className="t-cap m-0 px-4">{children}</h2>;
+}
+
 export function Section({ title, footnote, children }: { title?: string; footnote?: string; children: ReactNode }) {
   return (
     <section className="flex flex-col gap-2">
-      {title && <h2 className="t-cap m-0 px-4">{title}</h2>}
+      {title && <GroupLabel>{title}</GroupLabel>}
       {children}
       {footnote && <p className="t-cap m-0 px-4">{footnote}</p>}
     </section>

@@ -1,8 +1,9 @@
 import { useState } from "react";
 import type { ChangeOption, ChangeOptionId } from "../../api/schemas.ts";
-import { cx } from "../../lib/cx.ts";
 import { duration, relativeMoment } from "../../lib/date.ts";
+import { tidy } from "../../lib/text.ts";
 import { IconTile } from "../../ui/bits.tsx";
+import { ChoiceCard } from "../../ui/ChoiceCard.tsx";
 import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
 import { Button } from "../../ui/controls.tsx";
 import type { IconName } from "../../ui/Icon.tsx";
@@ -79,19 +80,10 @@ export default function ChangeSheet({ spec, ...sheet }: SheetProps<"change">) {
 
 function OptionCard({ option, on, onPick }: { option: ChangeOption; on: boolean; onPick: () => void }) {
   return (
-    <button
-      type="button"
-      aria-pressed={on}
-      onClick={onPick}
-      data-variant="inset"
-      className={cx(
-        "surface select-anim press flex min-h-30 min-w-0 flex-col items-start gap-2 border-0 p-4 text-left text-ink",
-        on && "bg-action-wash shadow-ring",
-      )}
-    >
+    <ChoiceCard on={on} onClick={onPick} layout="tile">
       <IconTile tone={option.intensity} icon={ICONS[option.id]} />
       <span className="t-strong">{option.title}</span>
-      <span className="t-cap">{option.detail}</span>
-    </button>
+      <span className="t-cap">{tidy(option.detail)}</span>
+    </ChoiceCard>
   );
 }

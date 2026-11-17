@@ -9,6 +9,7 @@ import { Button, IconButton } from "../../ui/controls.tsx";
 import { EmptyState, LoadFailed } from "../../ui/EmptyState.tsx";
 import { Screen } from "../../ui/Screen.tsx";
 import { Skeleton } from "../../ui/Skeleton.tsx";
+import { WeekStrip } from "../../ui/WeekStrip.tsx";
 import { todayOf } from "../plan/selectors.ts";
 import { usePlan } from "../plan/store.ts";
 import { useSheet } from "../sheets/store.ts";
@@ -16,8 +17,7 @@ import { RefreshRow } from "./RefreshRow.tsx";
 import { useWeekDrag } from "./useWeekDrag.ts";
 import { WeekDay } from "./WeekDay.tsx";
 import { ItemRow } from "./WeekItem.tsx";
-import { WeekStrip } from "./WeekStrip.tsx";
-import { weekDays, weekHeading } from "./week.ts";
+import { stripOf, weekDays, weekHeading } from "./week.ts";
 
 /**
  * The week to draw: the one asked for, or, while it is read, the one already on screen (`fresh` false), so
@@ -75,7 +75,7 @@ export default function WeekScreen() {
         <h1 className="sr-only-label">Semaine</h1>
         <div className="flex items-center gap-0.5">
           <IconButton icon="chevronLeft" label="Semaine précédente" onClick={() => setOffset(offset - 1)} />
-          <p aria-live="polite" className="t-strong m-0 min-w-0 flex-1 text-center text-balance">
+          <p aria-live="polite" className="t-range m-0 min-w-0 flex-1 text-center whitespace-nowrap">
             {heading?.range ?? " "}
           </p>
           <IconButton icon="chevronRight" label="Semaine suivante" onClick={() => setOffset(offset + 1)} />
@@ -83,7 +83,21 @@ export default function WeekScreen() {
             <IconButton icon="plus" label="Ajouter" variant="tinted" tone="action" className="ml-2" onClick={add} />
           )}
         </div>
-        {heading && <WeekStrip days={days} heading={heading} readOnly={Boolean(week?.readOnly)} />}
+        {heading && (
+          <WeekStrip
+            days={stripOf(days, (day) => `#day-${day.date}`)}
+            label="Jours de la semaine"
+            footer={
+              <p className="t-sub m-0 flex flex-wrap justify-between gap-x-3 px-4">
+                <span className="t-label font-semibold text-ink">
+                  {heading.load}
+                  {heading.time && <span className="font-normal text-ink-2"> · {heading.time}</span>}
+                </span>
+                <span>{week?.readOnly ? "Semaine passée" : heading.position}</span>
+              </p>
+            }
+          />
+        )}
       </header>
 
       {!week && <WeekWaiting failed={failed} offset={offset} />}

@@ -121,7 +121,7 @@
 }
 .ui-chip.lg-button[data-tone="reggie"][aria-pressed="true"] {
   background-color: var(--color-reggie-wash);
-  box-shadow: inset 0 0 0 2px var(--color-reggie);
+  box-shadow: var(--shadow-ring-reggie);
   color: var(--color-reggie);
 }
 /* Once a question is answered the other replies step back, still readable. */
@@ -131,6 +131,32 @@
 }
 .ui-chip.lg-button[aria-pressed="true"]:disabled {
   opacity: 1;
+}
+
+/* ---- Choice card (ui/ChoiceCard.tsx): the same tint, outline and check as a selected chip ---- */
+
+.choice[aria-pressed="true"] {
+  background-color: var(--color-action-wash);
+  box-shadow: var(--shadow-ring);
+}
+.choice[data-tone="reggie"][aria-pressed="true"] {
+  background-color: var(--color-reggie-wash);
+  box-shadow: var(--shadow-ring-reggie);
+}
+.choice-mark {
+  color: var(--color-on-color);
+  box-shadow: var(--shadow-ring-quiet);
+}
+.choice-mark[data-on="true"] {
+  background-color: var(--color-action);
+  box-shadow: none;
+}
+.choice[data-tone="reggie"] .choice-mark[data-on="true"] {
+  background-color: var(--color-reggie);
+}
+/* Once a question is answered the other replies step back, still readable. */
+.choice:disabled:not([aria-pressed="true"]) {
+  opacity: 0.55;
 }
 
 /* ---- Segmented control: fills its container, whatever the number of segments ---- */

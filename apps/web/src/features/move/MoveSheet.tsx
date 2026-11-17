@@ -3,6 +3,7 @@ import type { Slot } from "../../api/schemas.ts";
 import { mondayOf, relativeMoment } from "../../lib/date.ts";
 import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
 import { Button } from "../../ui/controls.tsx";
+import { GroupLabel } from "../../ui/List.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
 import { Surface } from "../../ui/Surface.tsx";
 import { TextButton } from "../../ui/TextButton.tsx";
@@ -75,7 +76,7 @@ export default function MoveSheet({ spec, ...sheet }: SheetProps<"move">) {
       {options && !stuck && (
         <>
           <ChoiceGroup label="Créneaux proposés" className="flex flex-col gap-2">
-            <h2 className="t-cap m-0 px-4">Créneaux proposés</h2>
+            <GroupLabel>Créneaux proposés</GroupLabel>
             {options.slots.map((s) => (
               <SlotCard
                 key={`${s.date}-${s.start}`}

@@ -21,6 +21,15 @@
   animation: busy var(--duration-typing) var(--ease-in-out) infinite;
 }
 
+/* A sheet is up: the page behind steps back, iOS style. Not under reduced motion (the scrim alone says it). */
+main {
+  transition: transform var(--duration-sheet) var(--ease-drawer);
+}
+html[data-sheet] main {
+  transform: scale(0.94);
+  transform-origin: var(--recede-origin, 50% 0);
+}
+
 /* A choice that becomes selected (segments, options, switches). */
 .select-anim {
   transition:
@@ -179,6 +188,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html[data-sheet] main {
+    transform: none;
+  }
   .press:active:not(:disabled) {
     transform: none;
   }

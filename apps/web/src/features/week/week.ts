@@ -1,6 +1,7 @@
 import type { CalendarEvent, Item, MoveOptions, Run, Slot, Week } from "../../api/schemas.ts";
-import { addDays, addMinutes, dayTitle, duration, minutesOf, span, weekRange } from "../../lib/date.ts";
-import { agenda } from "../today/today.ts";
+import { addDays, addMinutes, dayName, dayTitle, duration, minutesOf, span, weekRange } from "../../lib/date.ts";
+import type { StripDay, StripMark } from "../../ui/WeekStrip.tsx";
+import { agenda, toneOf } from "../today/today.ts";
 
 /** A row of a day: one item, or her classes folded into one line when they crowd the day. */
 export type Row = { kind: "item"; item: Item } | { kind: "classes"; items: CalendarEvent[] };
@@ -58,7 +59,7 @@ export function weekDays(week: Week, today: string): Day[] {
   });
 }
 
-/** "Mercredi 18 : 1 course, 1 révision", what VoiceOver reads on a day of the strip. */
+/** "Mer 18 : 1 course, 1 révision", what VoiceOver reads on a day of the strip: it starts with the visible "Mer 18". */
 export function dayLabel(day: Day): string {
   const count = (kind: Item["kind"], one: string, many: string) => {
     const n = day.items.filter((item) => item.kind === kind && !cancelled(item)).length;
@@ -70,7 +71,35 @@ export function dayLabel(day: Day): string {
     ...count("revision", "révision", "révisions"),
     ...count("class", "cours", "cours"),
   ];
-  return `${day.title} : ${parts.length ? parts.join(", ") : "rien de prévu"}`;
+  return `${shortTitle(day)} : ${parts.length ? parts.join(", ") : "rien de prévu"}`;
+}
+
+const shortName = (date: string) => dayName(date).slice(0, 3);
+const shortTitle = (day: Day) => `${shortName(day.date)} ${Number(day.date.slice(8))}`;
+
+/** Each run is a mark of its length; strength, revision and classes one mark per kind (busy slots count as classes). */
+function marksOf(day: Day): StripMark[] {
+  const live = day.items.filter((item) => !cancelled(item));
+  const runs = live.filter(isRun).map((run) => ({ id: run.id, tone: toneOf(run), minutes: run.durationMin }));
+  const kinds = new Set(
+    live.filter((item) => !isRun(item)).map((item) => (item.kind === "busy" ? "class" : item.kind)),
+  );
+  const others = (["revision", "strength", "class"] as const).filter((tone) => kinds.has(tone));
+  return [...runs, ...others.map((tone) => ({ id: tone, tone }))];
+}
+
+/** The days as the week strip draws them, for Aujourd'hui and Semaine alike; `href` is where a day leads. */
+export function stripOf(days: Day[], href: (day: Day) => string): StripDay[] {
+  return days.map((day) => ({
+    key: day.date,
+    short: shortName(day.date),
+    number: String(Number(day.date.slice(8))),
+    label: dayLabel(day),
+    today: day.today,
+    past: day.past,
+    marks: marksOf(day),
+    href: href(day),
+  }));
 }
 
 // Each part stays on one line: "4 h 30" never splits after the 4.

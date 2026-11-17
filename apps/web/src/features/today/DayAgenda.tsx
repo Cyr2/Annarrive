@@ -2,6 +2,7 @@ import type { Item } from "../../api/schemas.ts";
 import { cx } from "../../lib/cx.ts";
 import { duration, minutesOf } from "../../lib/date.ts";
 import { IconTile } from "../../ui/bits.tsx";
+import { SectionTitle } from "../../ui/List.tsx";
 import { Surface } from "../../ui/Surface.tsx";
 import { TONES } from "../../ui/tones.ts";
 import { useSheet } from "../sheets/store.ts";
@@ -25,7 +26,7 @@ export function DayAgenda({ items, date }: { items: Item[]; date: string }) {
   if (list.length === 0) return null;
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="t-title px-1">Ma journée</h2>
+      <SectionTitle>Ma journée</SectionTitle>
       <Surface as="ul" variant="inset" className="m-0 list-none px-0 py-1">
         {list.map((item, index) => {
           const cancelled = "cancelled" in item && item.cancelled;

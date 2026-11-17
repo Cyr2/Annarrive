@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Run } from "../../api/schemas.ts";
 import { cx } from "../../lib/cx.ts";
 import { decimal, duration, momentLabel } from "../../lib/date.ts";
+import { tidy } from "../../lib/text.ts";
 import { Icon } from "../../ui/Icon.tsx";
 import { PaceValue } from "../../ui/PaceValue.tsx";
 import { SessionChip, SessionShape } from "../../ui/SessionShape.tsx";
@@ -41,7 +42,7 @@ export function RunCard({ run, today }: { run: Run; today: string }) {
           <div className="flex flex-col gap-1.5">
             <SessionChip tone={run.intensity} title={run.title} />
             <h1 className="t-large text-balance">{run.title}</h1>
-            {sub && <span className="t-sub">{sub}</span>}
+            {sub && <span className="t-sub">{tidy(sub)}</span>}
           </div>
           {run.lightened && (
             <p className="t-cap m-0 flex items-start gap-2 rounded-row bg-warn-wash px-3 py-2 text-warn-deep">

@@ -1,8 +1,9 @@
 import type { Activity, Feel, Run } from "../../api/schemas.ts";
-import { addDays, decimal, relativeMoment } from "../../lib/date.ts";
+import { addDays, decimal, pastMoment } from "../../lib/date.ts";
 import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
 import { Chip } from "../../ui/controls.tsx";
 import { Icon } from "../../ui/Icon.tsx";
+import { SectionTitle } from "../../ui/List.tsx";
 import { Surface } from "../../ui/Surface.tsx";
 import { usePlan } from "../plan/store.ts";
 import { NextRun } from "./NextRun.tsx";
@@ -19,16 +20,16 @@ export const FEELS: { value: Feel; label: string }[] = [
 ];
 
 /**
- * After the run: the day's small moment of pride (the check pops once in the easy green), what she did against
+ * After the run: the day's small moment of pride (the check pops once in Reggie's green), what she did against
  * the target, her feeling if the watch did not ask, a word for Reggie, then what comes next.
  */
 export function AfterRun({ activity, next, today }: { activity: Activity; next?: Run; today: string }) {
   return (
     <>
       <Surface as="article" className="flex flex-col gap-5 overflow-hidden p-5">
-        <ToneWash tone="easy" />
+        <ToneWash tone={activity.intensity ?? "easy"} />
         <div className="relative flex items-center gap-3">
-          <span className="done-pop flex size-12 flex-none items-center justify-center rounded-full bg-easy-wash text-easy-deep shadow-inset">
+          <span className="done-pop flex size-12 flex-none items-center justify-center rounded-full bg-reggie text-on-color shadow-glow-reggie">
             <Icon name="check" size={24} stroke={3} />
           </span>
           <div className="flex min-w-0 flex-col">
@@ -42,7 +43,7 @@ export function AfterRun({ activity, next, today }: { activity: Activity; next?:
           <Figure label={activity.mainPaceLabel} value={activity.mainPace} end />
         </dl>
         <p className="t-body hairline-top relative m-0 flex items-start gap-2 pt-4">
-          <Icon name="checkCircle" size={20} stroke={2.2} className="mt-px flex-none text-easy-deep" />
+          <Icon name="checkCircle" size={20} stroke={2.2} className="mt-px flex-none text-reggie" />
           {activity.verdict}
         </p>
       </Surface>
@@ -51,7 +52,7 @@ export function AfterRun({ activity, next, today }: { activity: Activity; next?:
         <FeelPicker id={activity.id} feel={activity.feel} onPick={(feel) => logFeel(activity.id, feel)} />
       )}
       <NoteForReggie
-        context={`${activity.title}, ${relativeMoment(today, activity.receivedAt, today).replace(/^\S/, (c) => c.toLowerCase())}`}
+        context={`${activity.title}, ${pastMoment(today, activity.receivedAt, today).replace(/^\S/, (c) => c.toLowerCase())}`}
       />
       {next?.date === addDays(today, 1) ? (
         <NextRun run={next} today={today} label="Demain" />
@@ -73,7 +74,7 @@ export function FeelPicker({ id, feel, onPick }: { id: string; feel?: Feel; onPi
   return (
     <section className="flex flex-col gap-2" data-feel-for={id}>
       <div className="flex flex-col gap-0.5 px-1">
-        <h2 className="t-title">{FEEL_QUESTION}</h2>
+        <SectionTitle className="px-0">{FEEL_QUESTION}</SectionTitle>
         <span className="t-cap" aria-live="polite">
           {feel ? "Noté. Reggie en tient compte pour la suite." : "Ça m'aide à régler tes prochaines séances."}
         </span>

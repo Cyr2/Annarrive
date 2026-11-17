@@ -1,6 +1,7 @@
 import type { Run } from "../../api/schemas.ts";
-import { cx } from "../../lib/cx.ts";
 import { duration, relativeMoment } from "../../lib/date.ts";
+import { tidy } from "../../lib/text.ts";
+import { ChoiceCard } from "../../ui/ChoiceCard.tsx";
 import { Icon } from "../../ui/Icon.tsx";
 import { SessionChip, SessionShape } from "../../ui/SessionShape.tsx";
 import { Skeleton } from "../../ui/Skeleton.tsx";
@@ -36,32 +37,15 @@ export function SlotsWaiting() {
 
 type SlotProps = { label: string; why: string; on: boolean; onPick: () => void };
 
-/** A proposed moment: a card, selected with the action ring and a check. */
+/** A proposed moment: a choice card. */
 export function SlotCard({ label, why, on, onPick }: SlotProps) {
   return (
-    <button
-      type="button"
-      aria-pressed={on}
-      onClick={onPick}
-      data-variant="inset"
-      className={cx(
-        "surface select-anim press flex min-h-16 items-center gap-3 border-0 px-4 py-2 text-left text-ink",
-        on && "bg-action-wash shadow-ring",
-      )}
-    >
+    <ChoiceCard on={on} onClick={onPick} className="min-h-16 py-2">
       <span className="flex flex-1 flex-col">
         <span className="t-strong">{label}</span>
-        <span className="t-cap">{why}</span>
+        <span className="t-cap">{tidy(why)}</span>
       </span>
-      <span
-        className={cx(
-          "select-anim flex size-6 flex-none items-center justify-center rounded-full text-on-color",
-          on ? "bg-action" : "shadow-ring-quiet",
-        )}
-      >
-        {on && <Icon name="check" size={14} stroke={3} />}
-      </span>
-    </button>
+    </ChoiceCard>
   );
 }
 

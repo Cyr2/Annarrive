@@ -11,6 +11,7 @@ import {
   isoWeek,
   longDate,
   mondayOf,
+  pastMoment,
   relativeDay,
   relativeMoment,
   span,
@@ -43,6 +44,8 @@ describe("date", () => {
     expect(relativeDay("2026-11-25", today)).toBe("Mercredi 25");
     expect(relativeMoment(today, "18:00", today)).toBe("Ce soir 18:00");
     expect(relativeMoment(today, "7:30", today)).toBe("Aujourd'hui 7:30");
+    expect(pastMoment(today, "18:00", today)).toBe("Aujourd'hui 18:00");
+    expect(pastMoment(addDays(today, -1), "7:30", today)).toBe("Hier 7:30");
   });
 
   it("formats times and lengths without dashes", () => {

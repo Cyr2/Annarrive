@@ -1,6 +1,7 @@
 import type { Run } from "../../api/schemas.ts";
 import { duration, relativeMoment } from "../../lib/date.ts";
 import { Icon } from "../../ui/Icon.tsx";
+import { SectionTitle } from "../../ui/List.tsx";
 import { PaceValue } from "../../ui/PaceValue.tsx";
 import { SessionChip, SessionShape } from "../../ui/SessionShape.tsx";
 import { useSheet } from "../sheets/store.ts";
@@ -10,7 +11,7 @@ export function NextRun({ run, today, label }: { run: Run; today: string; label:
   const show = useSheet((s) => s.show);
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="t-title px-1">{label}</h2>
+      <SectionTitle>{label}</SectionTitle>
       <button
         type="button"
         onClick={() => show({ kind: "session", id: run.id })}

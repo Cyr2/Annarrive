@@ -1,8 +1,10 @@
 import { cx } from "../../lib/cx.ts";
 import { decimal, duration, relativeMoment } from "../../lib/date.ts";
-import { Button } from "../../ui/controls.tsx";
+import { tidy } from "../../lib/text.ts";
 import { Icon } from "../../ui/Icon.tsx";
+import { GroupLabel } from "../../ui/List.tsx";
 import { PaceValue } from "../../ui/PaceValue.tsx";
+import { RoundAction } from "../../ui/RoundAction.tsx";
 import { SessionChip, SessionShape } from "../../ui/SessionShape.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
 import { Surface } from "../../ui/Surface.tsx";
@@ -32,7 +34,7 @@ export default function SessionSheet({ spec, ...sheet }: SheetProps<"session">) 
         </div>
         <div className="relative flex flex-wrap items-center gap-2">
           <SessionChip tone={run.intensity} title={run.title} />
-          <span className="t-sub">{facts.filter(Boolean).join(" · ")}</span>
+          <span className="t-sub">{tidy(facts.filter(Boolean).join(" · "))}</span>
         </div>
         <SessionShape steps={run.steps} tone={run.intensity} className="relative h-11" />
         {run.lightened && (
@@ -43,7 +45,7 @@ export default function SessionSheet({ spec, ...sheet }: SheetProps<"session">) 
         )}
       </Surface>
       <section className="flex flex-col gap-2">
-        <h2 className="t-cap m-0 px-4">Étapes</h2>
+        <GroupLabel>Étapes</GroupLabel>
         <Surface as="ol" variant="inset" className="m-0 list-none p-0">
           {run.steps.map((step) => (
             <li key={step.label} className="row">
@@ -62,9 +64,9 @@ export default function SessionSheet({ spec, ...sheet }: SheetProps<"session">) 
       </Surface>
       {upcoming && (
         <div className="grid grid-cols-3 gap-2">
-          <Button onClick={() => show({ kind: "move", id: run.id })}>Déplacer</Button>
-          <Button onClick={() => show({ kind: "change", id: run.id })}>Changer</Button>
-          <Button onClick={() => show({ kind: "unavailable", id: run.id })}>Pas dispo</Button>
+          <RoundAction label="Déplacer" icon="move" onClick={() => show({ kind: "move", id: run.id })} />
+          <RoundAction label="Changer" icon="change" onClick={() => show({ kind: "change", id: run.id })} />
+          <RoundAction label="Pas dispo" icon="close" onClick={() => show({ kind: "unavailable", id: run.id })} />
         </div>
       )}
     </Sheet>

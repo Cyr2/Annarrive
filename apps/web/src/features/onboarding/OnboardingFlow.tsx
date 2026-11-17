@@ -61,7 +61,9 @@ function Title({ step }: { step: Step }) {
       >
         {COPY[step].title}
       </h1>
-      <p className={cx("m-0", welcome ? "t-body max-w-xs text-ink-2" : "t-sub")}>{COPY[step].lead}</p>
+      {COPY[step].lead && (
+        <p className={cx("m-0", welcome ? "t-body max-w-xs text-ink-2" : "t-sub")}>{COPY[step].lead}</p>
+      )}
     </div>
   );
 }

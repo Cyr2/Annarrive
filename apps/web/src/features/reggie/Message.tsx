@@ -2,6 +2,7 @@ import { Chip } from "../../ui/controls.tsx";
 import { Icon } from "../../ui/Icon.tsx";
 import { Surface } from "../../ui/Surface.tsx";
 import { usePlan } from "../plan/store.ts";
+import { ReggieAvatar } from "../today/parts.tsx";
 import { ChangeCard } from "./ChangeCard.tsx";
 import { type Entry, useChat } from "./store.ts";
 import { Choices, Preview, Scale, Slots } from "./widgets.tsx";
@@ -32,30 +33,33 @@ function UserBubble({ text }: { text: string }) {
 function ReggieBubble({ entry }: { entry: Entry }) {
   const busy = useChat((s) => s.status !== "idle");
   return (
-    <Surface variant="widget" className="msg bubble-reggie t-body flex max-w-[84%] flex-col gap-2 self-start px-4 py-3">
-      <span>{frenchSpaces(entry.text)}</span>
-      {entry.source && (
-        <a
-          href={entry.source.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="t-cap hairline-top -mx-1 flex min-h-11 items-center gap-1.5 px-1 pt-2 font-semibold text-action"
-        >
-          <Icon name="info" size={16} className="flex-none" />
-          <span className="min-w-0">Source : {entry.source.label}</span>
-        </a>
-      )}
-      {entry.retry && (
-        <Chip
-          icon="change"
-          disabled={busy}
-          className="self-start"
-          onClick={() => void useChat.getState().retry(entry.id)}
-        >
-          Réessayer
-        </Chip>
-      )}
-    </Surface>
+    <div className="flex max-w-[94%] items-end gap-2 self-start">
+      <ReggieAvatar size="md" />
+      <Surface variant="widget" className="msg bubble-reggie t-body flex min-w-0 flex-col gap-2 px-4 py-3">
+        <span>{frenchSpaces(entry.text)}</span>
+        {entry.source && (
+          <a
+            href={entry.source.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="t-cap hairline-top -mx-1 flex min-h-11 items-center gap-1.5 px-1 pt-2 font-semibold text-action"
+          >
+            <Icon name="info" size={16} className="flex-none" />
+            <span className="min-w-0">Source : {entry.source.label}</span>
+          </a>
+        )}
+        {entry.retry && (
+          <Chip
+            icon="change"
+            disabled={busy}
+            className="self-start"
+            onClick={() => void useChat.getState().retry(entry.id)}
+          >
+            Réessayer
+          </Chip>
+        )}
+      </Surface>
+    </div>
   );
 }
 

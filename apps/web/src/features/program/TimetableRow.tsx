@@ -98,7 +98,7 @@ export function TimetableRows({ program }: { program: Program }) {
         <span className="flex min-w-0 flex-col">
           <span className="t-body">Dernière lecture</span>
           <span role="status" className="t-cap flex items-center gap-1.5">
-            <Dot size="md" className={checkedAt || result ? "bg-easy" : "bg-warn"} />
+            <Dot size="md" className={checkedAt || result ? "bg-ok" : "bg-warn"} />
             {line}
           </span>
         </span>

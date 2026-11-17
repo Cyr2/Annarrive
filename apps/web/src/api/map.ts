@@ -305,6 +305,7 @@ export function toActivity(run: ActivityView, session: SessionView | null): Acti
       ? `Prévu ${duration(Math.round(planned.durMin))}, fait en ${duration(Math.round(run.durMin))}`
       : "Course en plus, je la compte dans ta semaine.",
     askFeel: run.feel === undefined,
+    intensity: planned ? intensityOf(planned.type) : undefined,
     feel: run.answeredFeel && FEELS[run.answeredFeel],
   };
 }

@@ -3,7 +3,7 @@ import { dayName } from "../../lib/date.ts";
 import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
 import { Chip } from "../../ui/controls.tsx";
 import { Icon } from "../../ui/Icon.tsx";
-import { Group, RowSelect } from "../../ui/List.tsx";
+import { Group, GroupLabel, RowSelect } from "../../ui/List.tsx";
 import { dayChoices, timeChoices } from "./move.ts";
 
 type Props = {
@@ -40,7 +40,7 @@ export function SlotPicker({ open, onOpen, monday, options, today, value, onChan
   const blocked = days.find((d) => d.date === value?.date)?.blocked;
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="t-cap m-0 px-4">Choisir un autre moment</h2>
+      <GroupLabel>Choisir un autre moment</GroupLabel>
       <ChoiceGroup label="Jour" className="flex flex-wrap gap-2">
         {days.map((day) => (
           <Chip

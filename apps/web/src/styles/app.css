@@ -18,6 +18,14 @@
 
 /* In the base layer, so every Tailwind utility and component class can override it. */
 @layer base {
+  /* No lone word or figure on the last line of a paragraph. */
+  p,
+  .t-cap,
+  .t-sub,
+  .t-body {
+    text-wrap: pretty;
+  }
+
   html {
     color-scheme: light;
     /* Under the sky, for the instant before it paints and behind a sheet's page as it steps back. */
@@ -126,6 +134,17 @@
     font-weight: 600;
     line-height: 22px;
   }
+  /* The week's date range: one line, 15 px when the phone is as narrow as 320. */
+  .t-range {
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 22px;
+  }
+  @media (max-width: 359px) {
+    .t-range {
+      font-size: 15px;
+    }
+  }
   .t-sub {
     font-size: 15px;
     font-weight: 400;
@@ -171,6 +190,7 @@
 
   /* [class]: as specific as a surface variant, so the bubble keeps its tail. */
   .bubble-reggie[class] {
+    background: var(--surface-sheen), var(--surface-reggie);
     border-radius: var(--radius-bubble) var(--radius-bubble) var(--radius-bubble) var(--radius-tail);
   }
   .bubble-user[class] {

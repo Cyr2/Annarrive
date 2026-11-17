@@ -18,9 +18,9 @@ import { ProposalCard } from "./ProposalCard.tsx";
 import { ReggieNote } from "./ReggieNote.tsx";
 import { RestCard } from "./RestCard.tsx";
 import { RunCard } from "./RunCard.tsx";
+import { ThisWeek } from "./ThisWeek.tsx";
 import { sessionContext } from "./today.ts";
 import { Unwell } from "./Unwell.tsx";
-import { WeekStrip } from "./WeekStrip.tsx";
 
 /** Aujourd'hui: run day, rest day or after the run. */
 export function TodayScreen() {
@@ -121,7 +121,7 @@ export function TodayScreen() {
         <ProposalCard key={p.id} proposal={p} />
       ))}
 
-      {!activity && <WeekStrip week={week} today={date} legend={Boolean(session)} />}
+      {!activity && <ThisWeek week={week} today={date} />}
       {!activity && <DayAgenda items={week.items} date={date} />}
       <RefreshRow checkedAt={week.timetableCheckedAt} change={week.timetableChange} />
     </Screen>

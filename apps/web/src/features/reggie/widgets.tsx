@@ -2,6 +2,8 @@ import { useState } from "react";
 import type { ProposedSlot, SessionPreview } from "../../api/schemas.ts";
 import { cx } from "../../lib/cx.ts";
 import { relativeMoment } from "../../lib/date.ts";
+import { tidy } from "../../lib/text.ts";
+import { ChoiceCard } from "../../ui/ChoiceCard.tsx";
 import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
 import { Button, Chip, Slider } from "../../ui/controls.tsx";
 import { Icon } from "../../ui/Icon.tsx";
@@ -71,26 +73,20 @@ export function Slots({ slots, today, answer, onAnswer }: Answer & { slots: Prop
         const label = relativeMoment(slot.date, slot.start, today);
         const on = answer?.toLowerCase() === label.toLowerCase();
         return (
-          <button
+          <ChoiceCard
             key={label}
-            type="button"
+            tone="reggie"
+            on={on}
             disabled={answer !== undefined}
-            aria-pressed={on}
             onClick={() => onAnswer(label)}
-            data-variant="inset"
-            className={cx(
-              "surface select-anim press flex min-h-16 items-center gap-3 border-0 px-4 py-2.5 text-left text-ink",
-              on && "bg-reggie-wash shadow-[inset_0_0_0_2px_var(--color-reggie)]",
-              answer !== undefined && !on && "opacity-55",
-            )}
+            className="min-h-16 py-2.5"
           >
             <Icon name="clock" size={20} className={cx("flex-none", on ? "text-reggie" : "text-ink-2")} />
             <span className="flex flex-1 flex-col">
               <span className="t-strong">{label}</span>
-              <span className="t-cap">{slot.why}</span>
+              <span className="t-cap">{tidy(slot.why)}</span>
             </span>
-            {on && <Icon name="check" size={18} stroke={2.6} className="text-reggie" />}
-          </button>
+          </ChoiceCard>
         );
       })}
     </ChoiceGroup>
@@ -109,7 +105,7 @@ export function Preview({
       <div className="flex flex-col gap-1.5">
         <SessionChip tone={session.intensity} title={session.title} />
         <span className="t-title">{session.title}</span>
-        <span className="t-sub">{session.detail}</span>
+        <span className="t-sub">{tidy(session.detail)}</span>
       </div>
       <div className="flex flex-col gap-2">
         {["Prendre celle-ci", alternative].map((label, i) => (

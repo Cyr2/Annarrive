@@ -16,7 +16,7 @@ import { consequenceOf, dayChoices, shortMoment, timeChoices } from "./move/move
 import { findItem, findRun, todayOf } from "./plan/selectors.ts";
 import { goalSummary } from "./program/goal.ts";
 import { checkIcsUrl, phaseBar, raceLine, settingValue } from "./program/program.ts";
-import { agenda, contentKey, itemTime, sessionContext, sheetFor, toneOf, weekStrip } from "./today/today.ts";
+import { agenda, contentKey, itemTime, sessionContext, sheetFor, toneOf } from "./today/today.ts";
 import { canContinue, EMPTY, nextStep, painAdvice, progressOf, toInput } from "./unavailable/unavailable.ts";
 import {
   classesSpan,
@@ -27,6 +27,7 @@ import {
   moveItem,
   refreshLine,
   rowsOf,
+  stripOf,
   weekDays,
   weekHeading,
 } from "./week/week.ts";
@@ -40,16 +41,18 @@ const run = today.session;
 if (!run) throw new Error("seed");
 
 describe("today", () => {
-  it("builds the week strip with one dot per kind", () => {
-    const strip = weekStrip(week, MONDAY);
+  it("builds the week strip: a bar per run, one mark per other kind, a name that starts with the visible text", () => {
+    const strip = stripOf(weekDays(week, MONDAY), (day) => `#day-${day.date}`);
     expect(strip).toHaveLength(7);
-    expect(strip[0]).toMatchObject({
-      letter: "L",
-      number: 16,
-      today: true,
-      dots: ["hard", "revision", "strength", "class"],
-    });
-    expect(strip[1]?.dots).toEqual(["class"]);
+    expect(strip[0]).toMatchObject({ short: "Lun", number: "16", today: true, href: "#day-2026-11-16" });
+    expect(strip[0]?.label.startsWith("Lun 16")).toBe(true);
+    expect(strip[0]?.marks.map((m) => [m.tone, m.minutes])).toEqual([
+      ["hard", 50],
+      ["revision", undefined],
+      ["strength", undefined],
+      ["class", undefined],
+    ]);
+    expect(strip[1]?.marks.map((m) => m.tone)).toEqual(["class"]);
   });
 
   it("orders the day and names times", () => {
@@ -76,7 +79,7 @@ describe("week", () => {
     expect(days).toHaveLength(7);
     expect(days[0]).toMatchObject({ note: "Aujourd'hui", today: true, runMinutes: 50 });
     expect(days[1]?.note).toBe("Pas de course");
-    expect(dayLabel(days[0] as Day)).toBe("Lundi 16 : 1 course, 1 muscu, 1 révision, 1 cours");
+    expect(dayLabel(days[0] as Day)).toBe("Lun 16 : 1 course, 1 muscu, 1 révision, 1 cours");
     const nbsp = (text: string) => text.replaceAll(" ", " ");
     expect(weekHeading(week, MONDAY)).toEqual({
       range: "16 au 22 novembre",
