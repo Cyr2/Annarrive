@@ -3,6 +3,7 @@ import { createMockApi } from "../api/mock/index.ts";
 import type { MoveOptions, Strength } from "../api/schemas.ts";
 import {
   busyEvent,
+  isValidForm,
   isValidSpan,
   repeatLabel,
   revisionEvent,
@@ -16,8 +17,19 @@ import { findItem, findRun, todayOf } from "./plan/selectors.ts";
 import { goalSummary } from "./program/goal.ts";
 import { checkIcsUrl, phaseBar, raceLine, settingValue } from "./program/program.ts";
 import { agenda, contentKey, itemTime, sessionContext, sheetFor, toneOf, weekStrip } from "./today/today.ts";
-import { canContinue, EMPTY, nextStep, painAdvice, toInput } from "./unavailable/unavailable.ts";
-import { dropTargets, isDraggable, moveItem, refreshLine, weekDays, weekHeading } from "./week/week.ts";
+import { canContinue, EMPTY, nextStep, painAdvice, progressOf, toInput } from "./unavailable/unavailable.ts";
+import {
+  classesSpan,
+  type Day,
+  dayLabel,
+  dropTargets,
+  isDraggable,
+  moveItem,
+  refreshLine,
+  rowsOf,
+  weekDays,
+  weekHeading,
+} from "./week/week.ts";
 
 const MONDAY = "2026-11-16";
 const api = createMockApi({ monday: MONDAY });
@@ -61,12 +73,39 @@ describe("today", () => {
 describe("week", () => {
   it("lists days with their notes and the heading of the mockup", () => {
     const days = weekDays(week, MONDAY);
-    expect(days[0]?.note).toBe("Aujourd'hui");
-    expect(days[1]?.note).toBe("Repos");
-    expect(weekHeading(week)).toEqual({
+    expect(days).toHaveLength(7);
+    expect(days[0]).toMatchObject({ note: "Aujourd'hui", today: true, runMinutes: 50 });
+    expect(days[1]?.note).toBe("Pas de course");
+    expect(dayLabel(days[0] as Day)).toBe("Lundi 16 : 1 course, 1 muscu, 1 révision, 1 cours");
+    const nbsp = (text: string) => text.replaceAll(" ", " ");
+    expect(weekHeading(week, MONDAY)).toEqual({
       range: "16 au 22 novembre",
-      summary: "Semaine 4 sur 12 · 4 courses · 3 h 35",
+      load: nbsp("4 courses"),
+      time: nbsp("3 h 35"),
+      position: nbsp("Semaine 4 sur 12"),
     });
+    expect(weekHeading(week, "2026-11-18")).toMatchObject({
+      load: nbsp("Il reste 3 sur 4 courses"),
+      time: nbsp("2 h 45"),
+    });
+    expect(weekHeading({ ...week, items: [] }, MONDAY)).toMatchObject({ load: nbsp("Aucune course"), time: undefined });
+    expect(weekDays({ ...week, items: [] }, "2026-11-18")[0]).toMatchObject({ note: "Rien de prévu", past: true });
+  });
+
+  it("folds a day crowded with classes into one row", () => {
+    const cls = (i: number) => ({
+      id: `c${i}`,
+      kind: "class" as const,
+      date: MONDAY,
+      start: `${8 + i}:00`,
+      end: `${8 + i}:50`,
+      title: "TD",
+    });
+    const crowded = [cls(0), run, cls(1), cls(2), cls(3)];
+    const rows = rowsOf(crowded);
+    expect(rows.map((r) => r.kind)).toEqual(["classes", "item"]);
+    expect(rows[0]?.kind === "classes" && classesSpan(rows[0].items)).toBe("8:00 à 11:50");
+    expect(rowsOf(crowded.slice(0, 3))).toHaveLength(3);
   });
 
   it("locks classes and past weeks", () => {
@@ -134,6 +173,10 @@ describe("add", () => {
     expect(busyEvent(form).title).toBe("Indispo");
     expect(isValidSpan("14:00", "9:00")).toBe(false);
     expect(isValidSpan("9:00", "14:00")).toBe(true);
+    const draft = { title: "", date: MONDAY, start: "14:00", end: "9:00", minutes: 60, repeat: "never" as const };
+    expect(isValidForm("revision", draft)).toBe(true);
+    expect(isValidForm("busy", draft)).toBe(false);
+    expect(isValidForm("revision", { ...draft, date: "" })).toBe(false);
   });
 });
 
@@ -188,6 +231,9 @@ describe("pas dispo", () => {
     expect(toInput({ ...EMPTY, reason: "other" }, "s")).toBeUndefined();
     expect(painAdvice(2)).toMatch(/^Pas de fractionné/);
     expect(painAdvice(6)).toContain("kiné");
+    expect(progressOf("reason", { ...EMPTY, reason: "pain" })).toBeUndefined();
+    expect(progressOf("pain", { ...EMPTY, reason: "pain" })).toBe("Douleur · 3 sur 4");
+    expect(progressOf("fever", { ...EMPTY, reason: "sick" })).toBe("Malade · 2 sur 3");
   });
 });
 

@@ -1,28 +1,31 @@
+import "./week.css";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 import { useEffect, useState } from "react";
 import { useSearch } from "wouter";
-import { ago, daysBetween, mondayOf } from "../../lib/date.ts";
-import { Dot } from "../../ui/bits.tsx";
-import { IconButton } from "../../ui/controls.tsx";
+import { daysBetween, mondayOf } from "../../lib/date.ts";
+import { Button, IconButton } from "../../ui/controls.tsx";
+import { EmptyState } from "../../ui/EmptyState.tsx";
 import { Screen } from "../../ui/Screen.tsx";
-import { Surface } from "../../ui/Surface.tsx";
-import { TextButton } from "../../ui/TextButton.tsx";
 import { todayOf } from "../plan/selectors.ts";
 import { usePlan } from "../plan/store.ts";
 import { useSheet } from "../sheets/store.ts";
+import { RefreshRow } from "./RefreshRow.tsx";
 import { useWeekDrag } from "./useWeekDrag.ts";
 import { WeekDay } from "./WeekDay.tsx";
 import { ItemRow } from "./WeekItem.tsx";
-import { refreshLine, weekDays, weekHeading } from "./week.ts";
+import { WeekStrip } from "./WeekStrip.tsx";
+import { weekDays, weekHeading } from "./week.ts";
 
-/** Semaine (design/Semaine): every day, drag and drop with drop slots, + to add, timetable refresh. */
+/**
+ * Semaine: the strip says the week at a glance (load per day, today, what is left), then each day on a time
+ * column. A long press lifts a session onto another day; + adds strength, a revision or a busy slot.
+ */
 export default function WeekScreen() {
   const plan = usePlan();
   const show = useSheet((s) => s.show);
   const focus = new URLSearchParams(useSearch()).get("jour");
   const today = todayOf(plan);
   const [offset, setOffset] = useState(() => (focus ? Math.floor(daysBetween(mondayOf(today), focus) / 7) : 0));
-  const [refreshed, setRefreshed] = useState<string>();
   const week = plan.weeks[offset];
   const drag = useWeekDrag(week, offset, today);
 
@@ -33,66 +36,61 @@ export default function WeekScreen() {
     if (focus && week) document.getElementById(`day-${focus}`)?.scrollIntoView({ block: "start" });
   }, [focus, week]);
 
-  const refresh = async () => {
-    let summary: string | undefined;
-    const ok = await plan.run(async (client) => {
-      summary = (await client.refreshTimetable()).summary;
-    });
-    if (ok) setRefreshed(refreshLine(summary));
-  };
-
-  const heading = week && weekHeading(week);
+  const days = week ? weekDays(week, today) : [];
+  const heading = week && weekHeading(week, today);
+  const add = () => show({ kind: "add", date: week?.monday });
   return (
     <Screen>
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
+      <header className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-2">
           <h1 className="t-large">Semaine</h1>
-          {!week?.readOnly && (
-            <IconButton
-              icon="plus"
-              label="Ajouter"
-              variant="tinted"
-              tone="action"
-              onClick={() => show({ kind: "add", date: week?.monday })}
-            />
-          )}
+          {!week?.readOnly && <IconButton icon="plus" label="Ajouter" variant="tinted" tone="action" onClick={add} />}
         </div>
-        <Surface variant="inset" className="flex items-center justify-between gap-1 rounded-full p-1">
+        <div className="flex items-center justify-between gap-1">
           <IconButton icon="chevronLeft" label="Semaine précédente" onClick={() => setOffset(offset - 1)} />
-          <div className="flex flex-col items-center text-center">
-            <span className="t-strong">{heading?.range ?? " "}</span>
-            <span className="t-cap">{week?.readOnly ? "Semaine passée, en lecture seule" : heading?.summary}</span>
-          </div>
+          <p aria-live="polite" className="t-strong m-0 text-center">
+            {heading?.range ?? " "}
+          </p>
           <IconButton icon="chevronRight" label="Semaine suivante" onClick={() => setOffset(offset + 1)} />
-        </Surface>
-        <div className="flex items-center justify-between px-1">
-          <span className="t-cap flex items-center gap-1.5">
-            <Dot size="md" className="bg-easy" />
-            {refreshed ??
-              (week?.timetableCheckedAt ? `Emploi du temps à jour ${ago(week.timetableCheckedAt, new Date())}` : "")}
-          </span>
-          <TextButton icon="change" className="t-label" onClick={() => void refresh()}>
-            Actualiser
-          </TextButton>
         </div>
-      </div>
+        {heading && <WeekStrip days={days} heading={heading} readOnly={Boolean(week?.readOnly)} />}
+      </header>
 
-      {week && (
+      {week && week.items.length === 0 && (
+        <EmptyState
+          icon="week"
+          title="Rien de prévu"
+          action={!week.readOnly && <Button onClick={add}>Ajouter une séance</Button>}
+        >
+          Aucune course ni aucun cours cette semaine pour l'instant.
+        </EmptyState>
+      )}
+
+      {week && week.items.length > 0 && (
         <DndContext {...drag.context}>
-          {weekDays(week, today).map((day) => (
-            <WeekDay
-              key={day.date}
-              day={day}
-              readOnly={week.readOnly}
-              dragging={Boolean(drag.active)}
-              target={drag.targets.find((t) => t.date === day.date)}
-            />
-          ))}
+          <div data-dragging={Boolean(drag.active)} className="flex flex-col gap-5">
+            {days.map((day) => (
+              <WeekDay
+                key={day.date}
+                day={day}
+                readOnly={week.readOnly}
+                dragging={Boolean(drag.active)}
+                target={drag.targets.find((t) => t.date === day.date)}
+              />
+            ))}
+          </div>
           <DragOverlay dropAnimation={drag.dropAnimation}>
             {drag.active && <ItemRow item={drag.active} lifted />}
           </DragOverlay>
         </DndContext>
       )}
+
+      {week && !week.readOnly && week.items.length > 0 && (
+        <p className="t-cap m-0 px-4 text-center">
+          Appuie longuement sur une séance pour la glisser vers un autre jour.
+        </p>
+      )}
+      {week && <RefreshRow checkedAt={week.timetableCheckedAt} />}
     </Screen>
   );
 }

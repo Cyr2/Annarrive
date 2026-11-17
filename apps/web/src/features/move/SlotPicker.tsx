@@ -47,6 +47,7 @@ export function SlotPicker({ open, onOpen, monday, options, today, value, onChan
           <Chip
             key={day.date}
             selected={value?.date === day.date}
+            icon={day.blocked ? "busy" : undefined}
             aria-label={`${dayName(day.date)}${day.blocked ? `, ${day.blocked}` : ""}`}
             className={cx(day.blocked && value?.date !== day.date && "opacity-55")}
             onClick={() => onChange({ date: day.date, start })}
@@ -55,6 +56,11 @@ export function SlotPicker({ open, onOpen, monday, options, today, value, onChan
           </Chip>
         ))}
       </ChoiceGroup>
+      {!value && days.some((d) => d.blocked) && (
+        <p className="t-cap m-0 px-4">
+          Un cadenas : ce jour casse une règle de ton plan. Touche-le pour savoir laquelle.
+        </p>
+      )}
       {blocked && (
         <p className="t-cap m-0 flex items-start gap-1.5 rounded-row bg-warn-wash px-3 py-2 text-warn-deep">
           <Icon name="info" size={16} className="mt-px flex-none" />

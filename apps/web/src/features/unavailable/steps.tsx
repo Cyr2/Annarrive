@@ -69,20 +69,36 @@ export function ReasonStep({ draft, today, onChange }: ReasonProps) {
   );
 }
 
-export function FeverStep({ fever, onChange }: { fever?: boolean; onChange: (fever: boolean) => void }) {
+const FEVER = [
+  { value: true, label: "Oui", detail: "Repos tant qu'il y a de la fièvre. Rien n'est bloqué." },
+  { value: false, label: "Non", detail: "Un rhume : tes courses restent, en endurance fondamentale." },
+];
+
+/** A closed question: two cards, and the tap answers it (no Continuer). */
+export function FeverStep({ fever, onPick }: { fever?: boolean; onPick: (fever: boolean) => void }) {
   return (
-    <section className="flex flex-col gap-3">
+    <ChoiceGroup label="Tu as de la fièvre ou ça touche la poitrine ?" className="flex flex-col gap-3">
       <h2 className="t-title m-0 px-1">Tu as de la fièvre ou ça touche la poitrine ?</h2>
-      <SegmentedControl
-        label="Fièvre ou poitrine"
-        items={[
-          { value: "yes", label: "Oui" },
-          { value: "no", label: "Non" },
-        ]}
-        value={fever === undefined ? undefined : fever ? "yes" : "no"}
-        onChange={(v) => onChange(v === "yes")}
-      />
-    </section>
+      {FEVER.map((a) => (
+        <button
+          key={a.label}
+          type="button"
+          aria-pressed={fever === a.value}
+          onClick={() => onPick(a.value)}
+          data-variant="inset"
+          className={cx(
+            "surface select-anim press flex min-h-16 items-center gap-3 border-0 px-4 py-3 text-left text-ink",
+            fever === a.value && "bg-action-wash shadow-ring",
+          )}
+        >
+          <span className="flex flex-1 flex-col">
+            <span className="t-strong">{a.label}</span>
+            <span className="t-cap">{a.detail}</span>
+          </span>
+          <Icon name="chevronRight" size={16} stroke={2.5} className="flex-none text-ink-3" />
+        </button>
+      ))}
+    </ChoiceGroup>
   );
 }
 

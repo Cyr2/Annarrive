@@ -63,9 +63,23 @@ export function toInput(draft: Draft, sessionId: string): UnavailableInput | und
   }
 }
 
+const PATHS: Partial<Record<UnavailableReason, Step[]>> = {
+  tired: ["reason", "summary"],
+  sick: ["reason", "fever", "summary"],
+  pain: ["reason", "zone", "pain", "summary"],
+};
+
+/** Where she is in the flow, under the sheet's title from the second step: "Douleur · 2 sur 4". */
+export function progressOf(step: Step, draft: Draft): string | undefined {
+  const path = draft.reason && PATHS[draft.reason];
+  const label = REASONS.find((r) => r.value === draft.reason)?.label;
+  if (!path || !label || step === "reason") return undefined;
+  return `${label} · ${path.indexOf(step) + 1} sur ${path.length}`;
+}
+
 /** Advice shown with the pain slider: never a diagnosis, a professional past 4 or 3 days. */
 export function painAdvice(pain: number): string {
   return pain <= 3
     ? "Pas de fractionné : footing en endurance fondamentale ou vélo."
-    : "Repos ou vélo conseillé. Si tu cours : 20 min tranquille, arrête-toi si ça monte. Plus de 3 jours : kiné ou médecin.";
+    : "Repos ou vélo conseillé. Si tu cours : 20 min tranquille, arrête-toi si ça monte. Plus de 3 jours : kiné ou médecin.";
 }

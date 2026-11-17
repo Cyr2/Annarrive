@@ -1,50 +1,38 @@
-import { useState } from "react";
 import type { Strength } from "../../api/schemas.ts";
 import { IconTile } from "../../ui/bits.tsx";
-import { Button } from "../../ui/controls.tsx";
 import { Icon } from "../../ui/Icon.tsx";
-import { Group, RowInput, Section } from "../../ui/List.tsx";
+import { Group, Section } from "../../ui/List.tsx";
 import { Surface } from "../../ui/Surface.tsx";
 import { TextButton } from "../../ui/TextButton.tsx";
-import { usePlan } from "../plan/store.ts";
 import { useSheet } from "../sheets/store.ts";
-import { strengthEvent, strengthWhen, usualDate } from "./add.ts";
+import { strengthWhen } from "./add.ts";
 
-type Props = { templates: Strength[]; monday: string; today: string; close: () => void };
+type Props = { templates: Strength[]; onPlace: (template: Strength) => void };
 
 /** Her saved strength sessions: tap to edit, "Placer" to put one in the week at its usual day and time. */
-export function StrengthList({ templates, monday, today, close }: Props) {
+export function StrengthList({ templates, onPlace }: Props) {
   const show = useSheet((s) => s.show);
-  const [placing, setPlacing] = useState<string>();
   return (
     <>
       <Section title="Tes séances de muscu">
         <Surface as="ul" variant="inset" className="m-0 flex list-none flex-col p-0">
           {templates.map((t) => (
-            <li key={t.id} className="flex flex-col">
-              <div className="flex items-center gap-3 pl-4">
-                <IconTile tone="strength" />
-                <button
-                  type="button"
-                  onClick={() => show({ kind: "strength", templateId: t.id })}
-                  className="flex min-h-15 flex-1 flex-col justify-center border-0 bg-transparent p-0 text-left text-ink"
-                >
-                  <span className="flex items-center gap-2">
-                    <span className="t-body">{t.name}</span>
-                    {t.legs && <LegsTag />}
-                  </span>
-                  <span className="t-cap">{strengthWhen(t)}</span>
-                </button>
-                <TextButton
-                  className="t-strong mr-3 font-semibold"
-                  onClick={() => setPlacing(placing === t.id ? undefined : t.id)}
-                >
-                  Placer
-                </TextButton>
-              </div>
-              {placing === t.id && (
-                <PlaceForm template={t} date={usualDate(t, monday, today)} today={today} close={close} />
-              )}
+            <li key={t.id} className="flex items-center gap-3 pl-4 [&+li]:border-t-[0.5px] [&+li]:border-hairline">
+              <IconTile tone="strength" />
+              <button
+                type="button"
+                onClick={() => show({ kind: "strength", templateId: t.id })}
+                className="flex min-h-15 min-w-0 flex-1 flex-col justify-center gap-0.5 border-0 bg-transparent py-2 pr-1 text-left text-ink"
+              >
+                <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="t-body break-words">{t.name}</span>
+                  {t.legs && <LegsTag />}
+                </span>
+                <span className="t-cap">{strengthWhen(t)}</span>
+              </button>
+              <TextButton className="t-label mr-2 flex-none px-2 font-semibold" onClick={() => onPlace(t)}>
+                Placer
+              </TextButton>
             </li>
           ))}
         </Surface>
@@ -53,55 +41,28 @@ export function StrengthList({ templates, monday, today, close }: Props) {
         <button
           type="button"
           onClick={() => show({ kind: "strength" })}
-          className="t-body flex min-h-13 items-center gap-3 border-0 bg-transparent px-4 text-action"
+          className="press t-body flex min-h-13 items-center gap-3 border-0 bg-transparent px-4 text-action"
         >
           <Icon name="plus" size={20} stroke={2.25} />
           Nouvelle séance de muscu
         </button>
       </Group>
       <p className="t-cap m-0 px-4">
-        Tu la places où tu veux dans la semaine. Reggie organise tes courses autour, avec 24 h d'écart après une séance
-        jambes.
+        Reggie organise tes courses autour de tes séances, avec 24 h d'écart après une séance jambes.
       </p>
     </>
   );
 }
 
+/**
+ * "Jambes": a strength session that works the legs, which keeps hard runs and long runs 24 h away. Said in
+ * words, in the strength tones, so it reads at a glance without looking like a warning.
+ */
 export function LegsTag() {
-  return <span className="t-cap rounded-tile bg-strength-wash px-2 py-0.5 text-strength-deep">Jambes</span>;
-}
-
-function PlaceForm({
-  template,
-  date,
-  today,
-  close,
-}: {
-  template: Strength;
-  date: string;
-  today: string;
-  close: () => void;
-}) {
-  const apply = usePlan((s) => s.apply);
-  const [slot, setSlot] = useState({ date, start: template.start });
-  const add = async () => {
-    if (await apply((api) => api.addEvent(strengthEvent(template, slot.date, slot.start)))) close();
-  };
   return (
-    <div className="flex flex-col gap-2 border-t-[0.5px] border-hairline px-4 pt-1 pb-3">
-      <div className="-mx-4 flex flex-col">
-        <RowInput
-          label="Jour"
-          type="date"
-          min={today}
-          value={slot.date}
-          onChange={(d) => setSlot({ ...slot, date: d })}
-        />
-        <RowInput label="Heure" type="time" value={slot.start} onChange={(s) => setSlot({ ...slot, start: s })} />
-      </div>
-      <Button variant="filled" disabled={!slot.date || !slot.start} onClick={() => void add()}>
-        Ajouter
-      </Button>
-    </div>
+    <span className="t-cap inline-flex flex-none items-center gap-1 rounded-full bg-strength-wash px-2 py-0.5 font-semibold text-strength-deep">
+      <Icon name="strength" size={13} stroke={2.4} />
+      Jambes
+    </span>
   );
 }
