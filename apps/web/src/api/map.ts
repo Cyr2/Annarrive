@@ -473,10 +473,11 @@ export function toUnavailable(input: UnavailableInput): Unavailable {
 /** Pas dispo's summary from the server's dry run: each changed day as it would be, then Reggie's advice. */
 export function toPreviewRows(preview: UnavailablePreview, today: string): ChangeRow[] {
   return [
-    ...preview.days.map(({ date, after }): ChangeRow => {
+    ...preview.days.map(({ date, before, after }): ChangeRow => {
       const day = relativeDay(date, today);
-      if (!after) return { day, label: "Repos", tone: "rest" };
-      return { day, label: `${TITLES[after.type]} · ${detail(after)}`, tone: intensityOf(after.type) };
+      const was = before ? `${TITLES[before.type]} · ${detail(before)}` : undefined;
+      if (!after) return { day, label: "Repos", tone: "rest", before: was };
+      return { day, label: `${TITLES[after.type]} · ${detail(after)}`, tone: intensityOf(after.type), before: was };
     }),
     ...preview.warnings.map((label): ChangeRow => ({ day: "Conseil", label, tone: "other" })),
   ];

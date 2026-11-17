@@ -109,6 +109,8 @@ export const changeRowSchema = z.object({
   day: z.string(),
   label: z.string(),
   tone: z.enum(["hard", "easy", "long", "rest", "other"]),
+  /** What the day had before the change, shown struck through above the new label. */
+  before: z.string().optional(),
 });
 
 export const changeResultSchema = z.object({

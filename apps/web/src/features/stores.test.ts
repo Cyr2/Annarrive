@@ -129,7 +129,15 @@ describe("chat store", () => {
     await chat.getState().send("   ");
     expect(chat.getState().messages).toHaveLength(1);
     await chat.getState().send("Salut");
-    expect(chat.getState().messages.at(-1)?.text).toMatch(/^Je n'arrive pas/);
+    const failed = chat.getState().messages.at(-1);
+    expect(failed?.text).toMatch(/^Je n'arrive pas/);
+    // Réessayer sends the same words again, in place of the failed pair.
+    await chat.getState().retry(failed?.id ?? "");
+    expect(chat.getState().messages.map((m) => m.text)).toEqual([
+      expect.stringMatching(/^Salut/),
+      "Salut",
+      expect.stringMatching(/^Je n'arrive pas/),
+    ]);
   });
 
   it("grows the streamed message in place, sends the context, and shows the server's own error", async () => {
