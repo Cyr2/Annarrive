@@ -4,7 +4,7 @@ import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 
 // The top of the sky (styles/tokens.css): the status bar and the splash blend into it.
-const BACKGROUND = "#FDE7DA";
+const BACKGROUND = "#FDEDE3";
 
 export default defineConfig({
   plugins: [

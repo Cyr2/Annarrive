@@ -6,9 +6,7 @@ import { IconTile } from "../../ui/bits.tsx";
 import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
 import { Button } from "../../ui/controls.tsx";
 import type { IconName } from "../../ui/Icon.tsx";
-import { SessionChip } from "../../ui/SessionShape.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
-import { Surface } from "../../ui/Surface.tsx";
 import { findRun, todayOf } from "../plan/selectors.ts";
 import { usePlan } from "../plan/store.ts";
 import { AskReggie } from "../reggie/AskReggie.tsx";
@@ -58,14 +56,11 @@ export default function ChangeSheet({ spec, ...sheet }: SheetProps<"change">) {
           ))}
         </ChoiceGroup>
       )}
+      {/* The chosen card already says what she gets: only what it replaces is added. */}
       {chosen && (
-        <Surface key={chosen.id} variant="inset" className="flip-in flex flex-col gap-2 px-4 py-3">
-          <span className="t-cap">
-            Au lieu de <s>{[run.title, run.mainSet, duration(run.durationMin)].filter(Boolean).join(", ")}</s>
-          </span>
-          <SessionChip tone={chosen.intensity}>{chosen.title}</SessionChip>
-          <span className="t-body">{chosen.detail}</span>
-        </Surface>
+        <p className="t-cap m-0 px-4">
+          Au lieu de <s>{[run.title, run.mainSet, duration(run.durationMin)].filter(Boolean).join(", ")}</s>
+        </p>
       )}
       <AskReggie context={sessionContext(run, today)} sessionId={run.id} onSent={() => sheet.onOpenChange(false)} />
     </Sheet>

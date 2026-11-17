@@ -58,8 +58,8 @@ export function GoalCard({ program, today }: { program: Program; today: string }
   if (program.maintenance) return <Maintenance />;
   const { goal } = program;
   const left = countdown(goal.date, today);
-  const current = phaseBar(program).find((p) => p.current);
-  const note = program.phaseNote || (program.weekTotal ? `Semaine ${program.weekIndex} sur ${program.weekTotal}` : "");
+  // The phase is named once, by the timeline below (PlanPhases): here only where she is in the weeks.
+  const note = program.weekTotal ? `Semaine ${program.weekIndex} sur ${program.weekTotal}` : "";
   return (
     <Surface as="article" aria-label="Ton objectif" className="flex flex-col gap-5 p-5">
       <div className="flex flex-col gap-1">
@@ -80,7 +80,6 @@ export function GoalCard({ program, today }: { program: Program; today: string }
       {goal.targetTag && <TargetTag kind={goal.targetTag} className="-mt-2" />}
       {program.phases.length > 0 && (
         <div className="hairline-top flex flex-col gap-3 pt-4">
-          <span className="t-strong">{current ? `Phase ${current.name.toLowerCase()}` : "Ton plan"}</span>
           <WeekBar program={program} />
           {note && <span className="t-sub">{note}</span>}
         </div>

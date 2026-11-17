@@ -36,11 +36,19 @@ export function SessionShape({ steps, tone, className }: { steps: Step[]; tone: 
   );
 }
 
-type ChipProps = { tone: Tone; children?: ReactNode; className?: string };
+type ChipProps = {
+  tone: Tone;
+  children?: ReactNode;
+  className?: string;
+  /** The session's title next to it: a title that already names the type ("Footing facile") drops the chip. */
+  title?: string;
+};
 
 /** The session's type as a small pill: its wash, a dot, its name in the deep tone. Defaults to the type's name. */
-export function SessionChip({ tone, children, className }: ChipProps) {
+export function SessionChip({ tone, children, className, title }: ChipProps) {
   const style = TONES[tone];
+  // Never say the same thing twice on a screen.
+  if (!children && title?.toLowerCase().includes(style.label.toLowerCase())) return null;
   return (
     <span
       className={cx(

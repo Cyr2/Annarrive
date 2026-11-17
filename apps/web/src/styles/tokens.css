@@ -8,16 +8,15 @@
   /* Only these colors exist as classes: no default palette, no black can sneak in. */
   --color-*: initial;
 
-  /* ---- Sky (Sky.tsx): a warm dawn at the top, a pale morning below ---- */
-  --color-sky-1: #fde7da;
-  --color-sky-2: #f8ece8;
-  --color-sky-3: #f3eff3;
-  --color-sky-4: #f5f3f6;
+  /* ---- Sky (Sky.tsx): a soft apricot wash at the top, a warm near-white below ---- */
+  --color-sky-1: #fdede3;
+  --color-sky-2: #fdf1ea;
+  --color-sky-3: #fbf6f2;
+  --color-sky-4: #f9f6f3;
 
   /* ---- Text: one ink, one secondary, one faint (never for text that must be read) ---- */
   --color-ink: #23303d; /* 13.4:1, 11.3:1 on sky-1 */
-  /* Dark enough to stay readable on glass over the warmest part of the sky. */
-  --color-ink-2: #434e5a; /* 8.5:1, 4.9:1 on the deepest peach of the sky (#ffb48c) */
+  --color-ink-2: #434e5a; /* 8.5:1, 7:1 on the deepest point of the sky */
   --color-ink-3: #8a949e; /* 3.1:1: placeholders, disabled labels, chevrons */
   --color-hairline: rgb(35 48 61 / 0.1);
   --color-hairline-strong: rgb(35 48 61 / 0.16);
@@ -71,8 +70,9 @@
   --surface-rim: inset 0 0 0 0.5px rgb(255 255 255 / 0.75), inset 0 1px 0 rgb(255 255 255 / 0.95);
 
   /* ---- Shadows: tinted warm or with ink, never black ---- */
-  --shadow-card: var(--surface-rim), 0 10px 36px rgb(90 40 10 / 0.12);
-  --shadow-inset: var(--surface-rim), 0 4px 16px rgb(90 40 10 / 0.08);
+  /* The short contact shadow keeps the glass edge visible on the pale sky, where a white rim alone vanishes. */
+  --shadow-card: var(--surface-rim), 0 1px 3px rgb(90 40 10 / 0.07), 0 10px 32px rgb(90 40 10 / 0.11);
+  --shadow-inset: var(--surface-rim), 0 1px 3px rgb(90 40 10 / 0.06), 0 4px 16px rgb(90 40 10 / 0.08);
   /* The glow under a filled button, in its own color (action blue, Reggie green). */
   --shadow-glow-action: inset 0 1px 0 rgb(255 255 255 / 0.35), 0 8px 22px rgb(9 103 214 / 0.35);
   --shadow-glow-reggie: inset 0 1px 0 rgb(255 255 255 / 0.3), 0 8px 22px rgb(11 107 82 / 0.38);
@@ -149,34 +149,31 @@
 }
 
 /*
- * Everything the sky paints: warm light in the upper corners (an orange sun, a golden one, a coral haze between)
- * over a dawn gradient that pales downward, where the lists sit. Sky.tsx shifts the sun per phase of the programme.
+ * Everything the sky paints: a soft apricot wash at the top that fades quickly to a warm near-white, where the
+ * text sits. Calm on purpose: no hot spot, nothing behind a word competes with it. The deepest point (about #fde9de)
+ * keeps the secondary ink at 7:1 and the action blue at 4.5:1. Sky.tsx warms the glow a touch per phase.
  */
 :root {
-  --sky:
-    radial-gradient(70% 42% at 96% 16%, rgb(255 196 110 / 0.75), rgb(255 196 110 / 0)),
-    radial-gradient(80% 40% at 50% 44%, rgb(255 120 100 / 0.28), rgb(255 120 100 / 0)),
-    linear-gradient(
-      180deg,
-      var(--color-sky-1) 0%,
-      var(--color-sky-2) 40%,
-      var(--color-sky-3) 70%,
-      var(--color-sky-4) 100%
-    );
-  /* Never deeper than #ffb48c behind a caption: secondary ink stays at 4.9:1 on the sky itself. */
-  --sky-sun: radial-gradient(closest-side, rgb(255 130 70 / 0.5), rgb(255 130 70 / 0));
-  --sky-haze: radial-gradient(closest-side, rgb(255 190 170 / 0.45), rgb(255 190 170 / 0));
+  --sky: linear-gradient(
+    180deg,
+    var(--color-sky-1) 0%,
+    var(--color-sky-2) 18%,
+    var(--color-sky-3) 40%,
+    var(--color-sky-4) 100%
+  );
+  --sky-sun: radial-gradient(closest-side, rgb(255 218 196 / 0.26), rgb(255 218 196 / 0));
+  --sky-haze: radial-gradient(closest-side, rgb(255 228 205 / 0.35), rgb(255 228 205 / 0));
 }
 
-/* Later phases: the sun grows warmer toward race week. */
+/* Later phases: the glow warms a little toward race week, never brighter. */
 [data-phase="build"] {
-  --sky-sun: radial-gradient(closest-side, rgb(255 140 70 / 0.52), rgb(255 140 70 / 0));
+  --sky-sun: radial-gradient(closest-side, rgb(255 216 192 / 0.27), rgb(255 216 192 / 0));
 }
 [data-phase="peak"] {
-  --sky-sun: radial-gradient(closest-side, rgb(255 125 60 / 0.54), rgb(255 125 60 / 0));
+  --sky-sun: radial-gradient(closest-side, rgb(255 214 188 / 0.28), rgb(255 214 188 / 0));
 }
 [data-phase="race"] {
-  --sky-sun: radial-gradient(closest-side, rgb(255 110 50 / 0.56), rgb(255 110 50 / 0));
+  --sky-sun: radial-gradient(closest-side, rgb(255 212 184 / 0.29), rgb(255 212 184 / 0));
 }
 
 /*
@@ -188,7 +185,7 @@
   --lg-muted: var(--color-ink-2);
   --lg-glass: rgb(255 255 255 / 0.5);
   --lg-glass-active: rgb(255 255 255 / 0.72);
-  --lg-edge: rgb(255 255 255 / 0.75);
+  --lg-edge: rgb(90 40 10 / 0.08);
   --lg-drop: rgb(90 40 10 / 0.1);
   /* Translucent: glisse lays it over the selected tab's label. */
   --lg-selection: rgb(9 103 214 / 0.1);

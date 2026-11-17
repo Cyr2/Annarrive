@@ -23,7 +23,7 @@ export function NextRun({ run, today, label }: { run: Run; today: string; label:
         </span>
         <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className="t-strong">{run.title}</span>
-          <SessionChip tone={run.intensity} />
+          <SessionChip tone={run.intensity} title={run.title} />
         </span>
         <SessionShape steps={run.steps} tone={run.intensity} className="h-7 w-full" />
         <span className="flex w-full flex-wrap items-baseline justify-between gap-x-4">

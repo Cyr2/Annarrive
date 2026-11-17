@@ -6,8 +6,8 @@ Everything a screen draws comes from this folder and from `src/styles/`. A scree
 
 | Layer | What | Component | Material |
 |---|---|---|---|
-| Backdrop | the dawn sky, fixed behind the whole app | `Sky` | gradient + a drifting sun and haze (compositor only) |
-| Content | cards, grouped lists, widgets, sheet bodies | `Surface` | Liquid Glass: translucent white over the sky, blurred and saturated, lit rim, soft warm shadow |
+| Backdrop | the dawn sky, fixed behind the whole app | `Sky` | calm, still gradient: a soft apricot wash at the top fading to warm near-white |
+| Content | cards, grouped lists, widgets, sheet bodies | `Surface` | frost: translucent white over the sky, blurred, lit rim, contact shadow and soft warm shadow |
 | Controls | tab bar, buttons, chips, segmented controls, fields, switches, sliders, toasts | `controls.tsx` | Liquid Glass (glisse) |
 
 Rules that follow from it:
@@ -52,11 +52,11 @@ Paces, times and distances are never colored: the type is said by a `SessionChip
 
 ### Surfaces, shadows, radii, spacing, motion
 
-- Surfaces: content is frost, controls are glass (glisse). `--surface-card` (68 % white), `--surface-inset` (64 %), both blurred with `--surface-blur` on every device (the sky never moves, so it is blurred once), no refraction; `--surface-sheet` (95 %, blurred: the page never reads through), `--surface-on-sheet` (a group on a sheet, no blur of its own), `--surface-solid` (reduced transparency). Glass floating over scrolling content (tab bar, toasts, `.ui-glass`, Reggie's composer with `.ui-float`) takes `--glass-float` (72 % white, 96 % without backdrop blur). A filled button glows in its color (`--shadow-glow-action`, `--shadow-glow-reggie`).
+- Surfaces: content is frost, controls are glass (glisse). `--surface-card` (68 % white), `--surface-inset` (64 %), both blurred with `--surface-blur` on every device (the sky never moves, so it is blurred once), no refraction; `--surface-sheet` (95 %, blurred: the page never reads through), `--surface-on-sheet` (a group on a sheet, no blur of its own), `--surface-solid` (reduced transparency). Glass floating over scrolling content (tab bar, toasts, `.ui-glass`, Reggie's composer with `.ui-float`) takes `--glass-float` (78 % white, 96 % without backdrop blur). A filled button glows in its color (`--shadow-glow-action`, `--shadow-glow-reggie`).
 - Shadows: `shadow-card`, `shadow-inset`, `shadow-sheet`, `shadow-float` (floating controls, toasts), `shadow-lift` (dragged item), `shadow-ring` (selection), `shadow-ring-quiet` (empty radio).
 - Radii by hierarchy: `tile` 10, `row` 16, `inset` 20, `card` 24, `bubble` 22, `sheet` 32, `pill`.
 - Sizes: `--size-target` 44 (every touch target), `--size-control` 50 (main buttons, fields), `--size-action` 60 (round actions), `px-gutter` 16. `--space-under-tabbar` and `--space-above-tabbar` keep content and floating things clear of the tab bar.
-- Durations: `press` 120, `select` 180, `tab` 200, `expand` 250, `message` 220, `sheet` 350, `toast` 400, `fade` 150 (reduced motion), `sky` 24 s. Eases: `ease-out`, `ease-in-out`, `ease-drawer` (iOS sheet).
+- Durations: `press` 120, `select` 180, `tab` 200, `expand` 250, `message` 220, `sheet` 350, `toast` 400, `fade` 150 (reduced motion). Eases: `ease-out`, `ease-in-out`, `ease-drawer` (iOS sheet).
 - JS springs: `lib/motion.ts` (`SPRING_SHEET`, `EXIT_SHEET`, `SPRING_STEP`, `SPRING_BUBBLE`, `FADE`). Every Motion tree sits in `<MotionConfig reducedMotion="user">`. iOS Safari has no haptics: feedback is visual (press scale 0.96, selection ring).
 
 ### Type (`styles/app.css`)
@@ -69,7 +69,7 @@ Other utilities: `.row` (grouped list row with hairlines between rows), `.hairli
 
 ### Backdrop and layout
 
-- **`Sky`** `phase?: "base" | "build" | "peak" | "race"`. Mounted once in `App.tsx` (and inside the onboarding overlay). The phase warms the sun toward race week; wire it to the programme's phase when the Programme redesign is done. Never add a background to a screen.
+- **`Sky`** `phase?: "base" | "build" | "peak" | "race"`. Mounted once in `App.tsx` (and inside the onboarding overlay). The phase warms the top glow a touch toward race week, never brighter. Never add a background to a screen.
 - **`Screen`** a tab's page: safe-area top, room for the tab bar at the bottom, 16 px gutters, 24 px between blocks. No props for color.
 - **`LogoSlot`** `size?`. The logo's place (rounded square, like the app icon) with a neutral placeholder. Do not draw a logo; swap the inside when the real one exists.
 - **`EmptyState`** `icon, title, children?, action?`. Nothing to show or a failed load: icon, one sentence, always a way forward (a button).

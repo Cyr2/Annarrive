@@ -15,8 +15,8 @@ Coach de course à pied en PWA pour Anna (iPhone, Garmin vivoactive 4). L'app pl
 ## Marque et style
 
 - Nom : **Annarrivé**. Assistant : **Reggie** (nom fixe, aucune option pour le changer). Le logo se choisit avec Darius : ne jamais en inventer un, garder un emplacement prévu.
-- Direction « Ciel du matin » : un ciel d'aube chaud derrière chaque écran, surfaces Apple iOS 26 Liquid Glass, police système (SF Pro), titres en gras. Clair, vif, joyeux, jamais criard. Aucun noir.
-- Palette (tokens dans `apps/web/src/styles/tokens.css`) : ciel chaud `#FDE7DA`, `#F8ECE8`, `#F3EFF3`, `#F5F3F6` avec un soleil orangé en haut ; texte `#23303D` ; actions `#0967D6` (bleu vif, à la iOS) ; Reggie `#0B6B52` ; séances : intensité `#EE8A63`, facile `#5DBB92`, sortie longue `#6F9EE6`, révision `#5FBEC9`. Une allure ne s'affiche jamais en rouge ou en orange.
+- Direction « Ciel du matin » : un ciel d'aube chaud et calme derrière chaque écran, surfaces Apple iOS 26 Liquid Glass, police système (SF Pro), titres en gras. Clair, vif, joyeux, jamais criard. Aucun noir.
+- Palette (tokens dans `apps/web/src/styles/tokens.css`) : ciel `#FDEDE3`, `#FDF1EA`, `#FBF6F2`, `#F9F6F3` (abricot doux en haut, presque blanc chaud dessous) ; texte `#23303D` ; actions `#0967D6` (bleu vif, à la iOS) ; Reggie `#0B6B52` ; séances : intensité `#EE8A63`, facile `#5DBB92`, sortie longue `#6F9EE6`, révision `#5FBEC9`. Une allure ne s'affiche jamais en rouge ou en orange.
 - La couleur porte un sens (type de séance, aujourd'hui, action, Reggie, alerte) et fait ressortir ce qui compte. Pas de couleur décorative.
 - Échelle de texte unique : titre de page 28, titre de section 20, texte 17, secondaire 15, légende 13, onglets 11. Une seule couleur de texte secondaire.
 - Aucun tiret long ni demi-tiret dans les textes de l'interface : « 10:15 à 12:15 ».
@@ -27,11 +27,12 @@ Coach de course à pied en PWA pour Anna (iPhone, Garmin vivoactive 4). L'app pl
 Chaque règle vaut pour toute l'app : écrans, feuilles, widgets, onboarding, pages de connexion du serveur, toasts, états vides.
 
 - **Matière, en deux couches (guide Apple)** : la couche fonctionnelle est en Liquid Glass complet (glisse, réfraction, liseré lumineux) : boutons, actions rondes, barre d'onglets, segmentés, pastilles, champs et composeur, poignée et en-tête des feuilles, éléments flottants, toasts. Le contenu (carte de séance, mot de Reggie, blocs de la semaine, cartes du Programme, widgets, bulles) est un verre givré `Surface` : translucide, le ciel chaud le teinte, liseré clair et ombre douce, avec assez de blanc pour que chiffres et textes restent à 4,5:1 mesurés sur le vrai dégradé. Ni carte blanche opaque, ni réfraction sur le contenu. Le tout via `ui/` uniquement. Si le verre coûte en performance au premier écran, le givre moins cher l'emporte sur les cartes.
-- **Fond** : le ciel d'aube chaud (`Sky`) derrière tout, y compris l'onboarding et les pages de connexion. Il ne bouge pas, pour que le flou reste léger.
+- **Fond** : un ciel chaud mais calme (`Sky`) derrière tout, y compris les feuilles, l'onboarding et les pages de connexion : un voile abricot doux en haut qui passe vite à un blanc chaud. Saturation et contraste bas, aucun soleil orange ni point chaud, rien derrière un texte ne lui fait concurrence ; le bleu d'action y reste à 4,5:1 partout. Il ne bouge pas, pour que le flou reste léger. Le verre se lit par son ombre de contact et son liseré, pas par le fond.
 - **Lumière** : une lueur douce sous ce qui compte (action principale, Reggie, aujourd'hui), jamais pour décorer. Reggie est vert et lumineux partout où il apparaît.
 - **Couleur** : des couleurs nettes et vives, jamais délavées, pour chaque séance, pastille, état, graphique et bloc du calendrier. Tout texte à 4,5:1 au moins, jours passés compris. Aucun noir. Le bleu d'action sert à toutes les actions, liens et sélections.
 - **Sélection** : légère, à la Apple : teinte claire, contour fin et coche. Jamais un remplissage sombre.
 - **Champs** : un champ qui s'envoie porte son bouton d'envoi à l'intérieur, à droite.
+- **Pas de répétition** : une information n'est dite qu'une fois par écran. Pas de titre repris en sous-titre, pas de pastille qui répète un mot du titre (« Footing facile » n'a pas de pastille « Facile »), pas de récapitulatif qui redit la carte choisie. Au Programme, la carte de l'objectif donne la semaine (« Semaine 4 sur 12 ») et la frise seule nomme la phase.
 - **Affordance** : ce qui se touche en a l'air (chevron, bouton) ; ce qui informe n'a pas l'air d'un bouton.
 - **Visuels** : profil de séance, barres de phase, blocs de la semaine et progressions sont soignés (dégradés, bouts arrondis), jamais de simples rectangles.
 - **Pas de rail** : aucune barre d'accent sur le côté d'une carte ou d'une ligne. Les composants Apple natifs à la place : listes groupées, carte en verre avec icône, pastille de couleur.

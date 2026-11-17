@@ -39,7 +39,7 @@ export function RunCard({ run, today }: { run: Run; today: string }) {
         </div>
         <div key={contentKey(run)} className="flip-in flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <SessionChip tone={run.intensity} />
+            <SessionChip tone={run.intensity} title={run.title} />
             <h1 className="t-large text-balance">{run.title}</h1>
             {sub && <span className="t-sub">{sub}</span>}
           </div>
