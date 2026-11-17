@@ -1,3 +1,4 @@
+import { isHard } from "./catalog.ts";
 import { addDays, dateOf, daysBetween } from "./dates.ts";
 import { paces } from "./fitness.ts";
 import { capWeekSpikes, weeklyCaps } from "./guards.ts";
@@ -83,15 +84,21 @@ function content(r: WeekRequest, p: Paces): WeekPlan {
   return { sessions: maintenanceWeek(history8w, r.settings, weekIdx, { paces: p }), warnings: [] };
 }
 
-/** Drops one built session per kept session of the same type: what Anna moved replaces its planned twin. */
+/**
+ * Drops one built session per kept session: what Anna moved replaces its planned twin. After a new goal the
+ * week may have no twin of that type: it then replaces one as hard, else any, never the long run, so the
+ * week keeps its number of runs.
+ */
 function withoutKept(built: Session[], kept: Session[]): Session[] {
-  const left = kept.map((k) => k.type);
-  return built.filter((s) => {
-    const i = left.indexOf(s.type);
-    if (i < 0) return true;
-    left.splice(i, 1);
-    return false;
-  });
+  const left = [...built];
+  const drop = (match: (s: Session) => boolean): boolean => {
+    const i = left.findIndex(match);
+    if (i >= 0) left.splice(i, 1);
+    return i >= 0;
+  };
+  const unmatched = kept.filter((k) => !drop((s) => s.type === k.type));
+  for (const k of unmatched) if (!drop((s) => s.type !== "L" && isHard(s) === isHard(k))) drop((s) => s.type !== "L");
+  return left;
 }
 
 /** G1 and G2 to G4 on the new sessions, against the weeks actually run. */

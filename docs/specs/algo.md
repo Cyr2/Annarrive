@@ -549,6 +549,7 @@ Tout `Result` porte `manual: true` sur ce qu'Anna a choisi, passe par `validateW
 | EV16 | Séance ratée : prévue, jour terminé, synchro postérieure à la fin du jour, aucune course ≥ 50 % de la durée prévue ce jour-là → `missed`. Jamais rattrapée, jamais échangée. La semaine est revérifiée (G1 à G3, H4) sans ajout. Si une course a eu lieu un autre jour sans séance prévue : rattachée à la séance la plus proche de J-1 à J+1 non faite, traitée comme un déplacement par Anna | 50 %       | Runna ; décision produit                  | CONS   |
 | EV17 | Synchro absente ou plus ancienne que la fin du jour : pas de `missed`, statut inconnu ; l'app demande « Tu as couru ? »                                                                                                                                                                                                                                                                        |            |                                           | OP     |
 | EV18 | Message de Reggie signalant douleur thoracique, palpitations ou malaise : branche EV9 + drapeau `orientation: 'urgente'` (message consulter rapidement)                                                                                                                                                                                                                                        |            | Elliott 2020                              | CONS   |
+| EV19 | Semaine reconstruite autour de séances gardées (faites, gelées, `manual`) : chaque séance gardée remplace une séance construite, d'abord sa jumelle du même type, sinon une séance aussi dure (`isHard`), sinon une autre, jamais la sortie longue (L). Si Anna a déplacé plus de séances que la semaine n'en compte, elle garde les siennes plus la L. Changer seulement le chrono visé garde le début du plan et ses phases ; une nouvelle distance ou une nouvelle date redémarre le plan | | décision produit | OP |
 
 ### Tests
 
@@ -572,6 +573,10 @@ Tout `Result` porte `manual: true` sur ce qu'Anna a choisi, passe par `validateW
 | EV-16 | Q mardi non faite, dernière synchro mardi 16:00                                   | statut inconnu, question posée                                                     |
 | EV-17 | `bedtime` passe de 23:00 à 22:00 ; E `manual` jeudi finissant à 21:30             | E gardé avec `warning` H7 ; autres séances replacées                               |
 | EV-18 | Course faite mercredi alors que l'E était prévu jeudi                             | E rattaché, marqué fait, traité comme déplacé par Anna                             |
+| EV-19 | TEST `manual` gardé ; la semaine prévoit L, SPE, T, E (aucun TEST) | TEST à la place de la SPE : L, T, E, TEST |
+| EV-20 | Même TEST, semaine de base L, E, E, côtes (aucune Q hors L) | TEST à la place d'un E : L, E, côtes, TEST |
+| EV-21 | 4 séances T `manual` dans une semaine de 4 courses | les 4 T plus la L |
+| EV-22 | Seul le chrono visé change (même distance, même date) | `startedOn` et phases inchangés ; nouvelle date ou distance : `startedOn` = aujourd'hui |
 
 ---
 

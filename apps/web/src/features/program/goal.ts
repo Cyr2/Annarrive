@@ -20,5 +20,5 @@ export function goalSummary(before: GoalInput, after: GoalInput): string {
   }
   if (parts.length === 0) return "Rien ne change pour l'instant.";
   const text = parts.join(", ");
-  return `${text.charAt(0).toUpperCase()}${text.slice(1)}. Les semaines à venir sont recalculées, ta semaine en cours garde ce que tu as déplacé.`;
+  return `${text.charAt(0).toUpperCase()}${text.slice(1)}. Les semaines à venir sont recalculées, ta semaine en cours ne change pas.`;
 }

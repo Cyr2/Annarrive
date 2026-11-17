@@ -317,6 +317,43 @@ describe("settings", () => {
     expect(t.services.plan.program()).toMatchObject({ goal: null, startedOn: "2026-11-18" });
   });
 
+  it("keeps the plan's start for a new target time alone, restarts it for a new distance or a new date (EV19, EV-22)", async () => {
+    const t = await ready();
+    const goal = { distanceM: 10000, date: "2027-03-14", targetMin: 55 };
+    await t.call("PUT", "/api/program", { goal });
+    t.setNow(new Date("2026-11-18T07:00:00Z"));
+    const startedOn = () => t.services.plan.program().startedOn;
+
+    await t.call("PUT", "/api/program", { goal: { ...goal, targetMin: 50 } });
+    expect(startedOn()).toBe("2026-11-16");
+    await t.call("PUT", "/api/program", { goal: { distanceM: 10000, date: "2027-03-14" } });
+    expect(startedOn()).toBe("2026-11-16");
+    await t.call("PUT", "/api/program", { goal: { distanceM: 10000, date: "2027-04-11" } });
+    expect(startedOn()).toBe("2026-11-18");
+    t.setNow(new Date("2026-11-19T07:00:00Z"));
+    await t.call("PUT", "/api/program", { goal: { distanceM: 21097.5, date: "2027-04-11" } });
+    expect(startedOn()).toBe("2026-11-19");
+  });
+
+  it("on a new goal leaves a planned current week alone, rebuilds the next and keeps the declared time (EV14)", async () => {
+    const t = await ready();
+    const declaredTime = { distanceM: 10000, minutes: 52 };
+    await t.call("PUT", "/api/program", { goal: { distanceM: 10000, date: "2027-03-14" }, declaredTime });
+    t.stores.plannedSession.delete("built-2026-11-23");
+    t.stores.plannedSession.delete("built-2026-11-16");
+    t.stores.plannedSession.put(session("mine", "2026-11-18T18:00"));
+
+    const saved = await change(t, "PUT", "/api/program", { goal: { distanceM: 21097.5, date: "2027-04-11" } });
+
+    expect(saved.status).toBe(200);
+    expect(t.stores.plannedSession.get("built-2026-11-16")).toBeUndefined();
+    expect(t.stores.plannedSession.get("built-2026-11-23")).toBeDefined();
+    expect(t.services.plan.program().declaredTime).toEqual(declaredTime);
+    await undo(t, saved.change?.id);
+    expect(t.stores.plannedSession.get("built-2026-11-23")).toBeUndefined();
+    expect(t.services.plan.program().goal).toEqual({ distanceM: 10000, date: "2027-03-14" });
+  });
+
   it("builds next week on Sunday through the coach", async () => {
     const t = setup();
     expect((await t.services.plan.buildNextWeek()).change?.summary).toBe("Ta semaine est prête");

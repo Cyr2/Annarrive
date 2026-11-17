@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Activity, WeekRequest } from "../src/index.ts";
 import { addDays, checkHard, dateOf, isHard, planWeek, programPlan, slotOf, validateWeek } from "../src/index.ts";
-import { easy, LEGS, MONDAY, SETTINGS } from "./fixtures.ts";
+import { easy, hard, LEGS, MONDAY, SETTINGS } from "./fixtures.ts";
 
 const runs = (weeks: number, perWeek: number, durMin: number, lastMonday = addDays(MONDAY, -7)): Activity[] =>
   [...Array(weeks * perWeek).keys()].map((i) => ({
@@ -64,6 +64,28 @@ describe("planWeek (cycle 0.1 buildWeek)", () => {
     expect(sessions).toHaveLength(4);
     const others = sessions.filter((s) => s.id !== "mine");
     expect(others.every((s) => checkHard(s, slotOf(s), weekOf(r, sessions)).length === 0)).toBe(true);
+  });
+
+  it("lets a kept run with no twin of its type replace one as hard, else an easy one, never the long run (EV19, EV-19 to EV-21)", () => {
+    const types = (r: WeekRequest) =>
+      planWeek(r)
+        .sessions.map((s) => s.type)
+        .sort();
+    const test = (monday: string) => ({
+      ...hard("mine", `${addDays(monday, 3)}T07:00`, 30),
+      type: "TEST" as const,
+      manual: true,
+    });
+    const spe = (kept: WeekRequest["kept"]) =>
+      request({ monday: "2027-02-08", now: "2027-02-07T18:00", planStart: addDays(MONDAY, -1), kept });
+
+    expect(types(spe([]))).toEqual(["E", "L", "SPE", "T"]);
+    expect(types(spe([test("2027-02-08")]))).toEqual(["E", "L", "T", "TEST"]);
+    expect(types(request())).toEqual(["COTES_C", "E", "E", "L"]);
+    expect(types(request({ kept: [test(MONDAY)] }))).toEqual(["COTES_C", "E", "L", "TEST"]);
+
+    const fourQ = [0, 2, 4, 6].map((d) => ({ ...hard(`h${d}`, `${addDays(MONDAY, d)}T07:00`, 30), manual: true }));
+    expect(types(request({ kept: fourQ }))).toEqual(["L", "T", "T", "T", "T"]);
   });
 
   it("plans maintenance without a goal: one Q, at most three runs (M9)", () => {
