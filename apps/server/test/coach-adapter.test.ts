@@ -165,6 +165,8 @@ describe("coach adapter: Anna's actions", () => {
 
     expect(sick.warnings[0]).toContain("Repos conseillé");
     expect(t.services.plan.health()).toEqual({ kind: "sick", since: "2026-11-16" });
+    // Aujourd'hui reads it, so Pas dispo offers « Ça va mieux ».
+    expect((await t.call("GET", "/api/today")).json).toMatchObject({ health: { kind: "sick" } });
     expect(t.stores.plannedSession.get("tonight")).toMatchObject({ type: "E" });
     expect(t.stores.plannedSession.get("tonight")?.durMin).toBeLessThanOrEqual(30);
 

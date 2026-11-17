@@ -23,7 +23,13 @@ import { worstItems, worstProgram } from "./worst.ts";
  */
 export type Scenario = "run" | "rest" | "done" | "light" | "worst";
 
-type State = { weeks: Record<string, Item[]>; program: Program; activity?: Activity; refreshed: boolean };
+type State = {
+  weeks: Record<string, Item[]>;
+  program: Program;
+  activity?: Activity;
+  refreshed: boolean;
+  unwell?: boolean;
+};
 
 const ACTIVITY: Activity = {
   id: "a-1",
@@ -119,6 +125,7 @@ export function createMockApi({
         session,
         next,
         activity: state.activity,
+        unwell: state.unwell,
       };
     },
     async week(offset) {
@@ -223,6 +230,7 @@ export function createMockApi({
       commit("Ta semaine est adaptée", () => {
         const { items, rows } = applyUnavailable(all(), input, today);
         for (const key of Object.keys(state.weeks)) state.weeks[key] = items.filter((i) => mondayOf(i.date) === key);
+        if (input.reason === "sick" || input.reason === "pain") state.unwell = true;
         return rows;
       }),
     skip: (id) =>
@@ -231,7 +239,10 @@ export function createMockApi({
         return undefined;
       }),
     feelBetter: () =>
-      commit("Ça va mieux : encore 3 jours en endurance fondamentale, puis retour normal", () => undefined),
+      commit("Ça va mieux : encore 3 jours en endurance fondamentale, puis retour normal", () => {
+        state.unwell = false;
+        return undefined;
+      }),
     // The mock never proposes a new level: these only exist for the Api contract.
     acceptProposal: () => commit("Allures mises à jour", () => undefined),
     declineProposal: () => commit("Proposition refusée", () => undefined),

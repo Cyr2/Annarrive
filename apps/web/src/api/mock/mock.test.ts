@@ -100,6 +100,15 @@ describe("mock api", () => {
     expect(session?.lightened).toContain("vélo");
   });
 
+  it("is unwell from a declared pain until « Ça va mieux »", async () => {
+    const api = make();
+    expect((await api.today()).unwell).toBeFalsy();
+    await api.unavailable({ sessionId: `${MONDAY}-2`, reason: "pain", zone: "Mollet", pain: 2 });
+    expect((await api.today()).unwell).toBe(true);
+    await api.feelBetter();
+    expect((await api.today()).unwell).toBe(false);
+  });
+
   it("handles pas dispo: tired removes today's run", async () => {
     const api = make();
     await api.unavailable({ sessionId: `${MONDAY}-2`, reason: "tired" });

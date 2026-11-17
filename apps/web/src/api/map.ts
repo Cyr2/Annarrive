@@ -277,6 +277,7 @@ export function toToday(
         : undefined,
     next: next && toRun(next),
     proposals: proposals.map(toProposal),
+    unwell: ["sick", "cold", "pain"].includes(today.health.kind),
   };
 }
 

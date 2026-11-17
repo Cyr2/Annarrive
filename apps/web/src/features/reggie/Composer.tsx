@@ -21,9 +21,17 @@ export function Composer({ onHeight, shortcuts }: { onHeight: (height: number) =
   useEffect(() => {
     const element = box.current;
     if (!element) return;
-    const observer = new ResizeObserver(() => report.current(element.offsetHeight));
+    const root = document.documentElement.style;
+    // The toast reads it to float above the field instead of covering it.
+    const observer = new ResizeObserver(() => {
+      report.current(element.offsetHeight);
+      root.setProperty("--composer-height", `${element.offsetHeight}px`);
+    });
     observer.observe(element);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      root.removeProperty("--composer-height");
+    };
   }, []);
 
   const submit = (value: string) => {

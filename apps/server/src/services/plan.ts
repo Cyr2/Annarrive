@@ -172,6 +172,7 @@ export class PlanService {
       session: day?.sessions[0] ?? null,
       events: day?.events ?? [],
       activity: activity ? toActivityView(activity) : null,
+      health: this.health(),
     };
   }
 

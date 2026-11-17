@@ -137,7 +137,7 @@ function Panel({
           </div>
         </header>
         <div
-          className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain px-4 pt-4"
+          className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain px-4 pt-4 *:flex-none"
           style={{ paddingBottom: footer ? 16 : "max(24px, env(safe-area-inset-bottom))" }}
         >
           {children}

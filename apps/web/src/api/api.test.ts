@@ -87,8 +87,10 @@ function server(routes: Record<string, unknown> = {}) {
   return { api, fetcher, onSignedOut, sent };
 }
 
+const OK = { kind: "ok" } as const;
+
 const reads = {
-  "GET /api/today": { date: "2026-11-16", session: SESSION, events: [CLASS], activity: null },
+  "GET /api/today": { date: "2026-11-16", session: SESSION, events: [CLASS], activity: null, health: OK },
   "GET /api/watch": { configured: true, lastSyncAt: "2026-11-16T07:55:00.000Z" },
   "GET /api/program": { goal: { distanceM: 21097.5, date: "2027-01-17", targetMin: 115 } },
   "GET /api/weeks/2026-W47": WEEK,
@@ -201,6 +203,7 @@ describe("http client, reading", () => {
     const { api } = server(reads);
     const today = await api.today();
     expect(today.goal).toEqual({ label: "Semi", daysLeft: 62 });
+    expect(today.unwell).toBe(false);
     expect(today.session).toMatchObject({
       id: "s1",
       title: "Fractionné",
@@ -237,7 +240,7 @@ describe("http client, reading", () => {
     const done = { ...SESSION, status: "done" };
     const today = await server({
       ...reads,
-      "GET /api/today": { date: "2026-11-16", session: done, events: [], activity: run },
+      "GET /api/today": { date: "2026-11-16", session: done, events: [], activity: run, health: OK },
     }).api.today();
     expect(today.activity).toEqual({
       id: "garmin:1",
@@ -253,7 +256,13 @@ describe("http client, reading", () => {
     });
     const answered = await server({
       ...reads,
-      "GET /api/today": { date: "2026-11-16", session: null, events: [], activity: { ...run, answeredFeel: "ok" } },
+      "GET /api/today": {
+        date: "2026-11-16",
+        session: null,
+        events: [],
+        activity: { ...run, answeredFeel: "ok" },
+        health: OK,
+      },
     }).api.today();
     expect(answered.activity).toMatchObject({ title: "Course libre", feel: "fine", askFeel: true });
     const morning = await server({
@@ -263,9 +272,12 @@ describe("http client, reading", () => {
         session: SESSION,
         events: [],
         activity: { ...run, sessionId: undefined },
+        health: { kind: "pain", since: "2026-11-15", level: 2, where: "mollet", orientationSent: false },
       },
     }).api.today();
     expect(morning.activity).toBeUndefined();
+    // Declared pain: « Ça va mieux » is on offer.
+    expect(morning.unwell).toBe(true);
   });
 
   it("asks once for a week that Aujourd'hui and the week both need at launch", async () => {

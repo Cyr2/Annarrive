@@ -77,6 +77,8 @@ export const todaySchema = z.object({
   next: runSchema.optional(),
   activity: activitySchema.optional(),
   proposals: z.array(proposalSchema).optional(),
+  /** Sick or hurt, as declared in Pas dispo: only then does « Ça va mieux » make sense. */
+  unwell: z.boolean().optional(),
 });
 
 export const weekSchema = z.object({

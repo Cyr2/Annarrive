@@ -28,7 +28,7 @@ export function WeekStrip({ days, heading, readOnly }: Props) {
             aria-current={day.today ? "date" : undefined}
             className={cx(
               "press flex flex-col items-center gap-1.5 rounded-row py-1 no-underline",
-              day.past && "opacity-45",
+              day.past && "opacity-55",
             )}
           >
             <span className={cx("t-cap", day.today ? "font-semibold text-action" : "text-ink-2")}>

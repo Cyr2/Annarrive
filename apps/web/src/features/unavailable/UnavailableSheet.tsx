@@ -62,7 +62,9 @@ export default function UnavailableSheet({ spec, ...sheet }: SheetProps<"unavail
                 Continuer
               </Button>
             )}
-            {step === "reason" && <TextButton onClick={() => void feelBetter()}>Ça va mieux</TextButton>}
+            {step === "reason" && plan.today?.unwell && (
+              <TextButton onClick={() => void feelBetter()}>Ça va mieux</TextButton>
+            )}
           </>
         )
       }

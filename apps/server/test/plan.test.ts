@@ -46,6 +46,7 @@ describe("today and week", () => {
       session: null,
       activity: null,
       events: [],
+      health: { kind: "ok" },
     });
   });
 

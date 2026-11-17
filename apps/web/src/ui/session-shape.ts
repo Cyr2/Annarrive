@@ -29,14 +29,19 @@ export function shapeOf(steps: StepLike[]): Bar[] {
   for (const [i, step] of steps.entries()) {
     const previous = steps[i - 1];
     // A recovery without duration was drawn between the repeats of the block before it.
-    if (previous && isGap(step) && (repeatsIn(previous.label) ?? 0) > 1) continue;
-    const repeats = repeatsIn(step.label) ?? 1;
-    const minutes = minutesIn(step.label);
-    if (repeats > 1) bars.push(...repeated(step, repeats, steps[i + 1]));
-    else bars.push({ level: LEVEL[step.tone], weight: minutes ? Math.min(Math.max(minutes / 5, 1), 8) : 2 });
+    if (previous && isGap(step) && blocksOf(previous).some((block) => (repeatsIn(block.label) ?? 0) > 1)) continue;
+    for (const block of blocksOf(step)) {
+      const repeats = repeatsIn(block.label) ?? 1;
+      const minutes = minutesIn(block.label);
+      if (repeats > 1) bars.push(...repeated(block, repeats, steps[i + 1]));
+      else bars.push({ level: LEVEL[block.tone], weight: minutes ? Math.min(Math.max(minutes / 5, 1), 8) : 2 });
+    }
   }
   return bars;
 }
+
+/** "10 × 400 m + 5 × 200 m" is two blocks in one step: each is drawn. */
+const blocksOf = (step: StepLike): StepLike[] => step.label.split(/\s*\+\s*/).map((label) => ({ ...step, label }));
 
 const isGap = (step: StepLike) => step.tone === "muted" && minutesIn(step.label) === undefined;
 
