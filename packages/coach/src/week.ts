@@ -1,10 +1,10 @@
-import { isHard } from "./catalog.ts";
-import { addDays, dateOf, daysBetween } from "./dates.ts";
-import { paces } from "./fitness.ts";
+import { buildSession, isHard, toEasy } from "./catalog.ts";
+import { addDays, at, dateOf, daysBetween, weekDates } from "./dates.ts";
+import { paces, predictTime } from "./fitness.ts";
 import { capWeekSpikes, weeklyCaps } from "./guards.ts";
 import { maintenanceWeek, postRaceWeek } from "./maintenance.ts";
-import { placeWeek } from "./placement.ts";
-import { buildWeek, generatePlan, type Plan } from "./plan.ts";
+import { freeSlots, nearRace, placeWeek } from "./placement.ts";
+import { buildWeek, generatePlan, type Plan, type PlanWeek, taperShares, weekTemplate } from "./plan.ts";
 import type { Activity, CalEvent, Goal, Paces, Session, Settings, Warning } from "./types.ts";
 
 export type WeekRequest = {
@@ -71,12 +71,12 @@ function content(r: WeekRequest, p: Paces): WeekPlan {
     const plan = programPlan({ ...r, goal });
     const first = plan.weeks[0];
     // A programme started mid-week fills the rest of that week with its first plan week.
-    const week = plan.weeks.find((w) => w.monday === r.monday) ?? (first && r.monday < first.monday ? first : null);
-    if (week) {
-      const racePace = goal.targetMin ? { racePaceSKm: (goal.targetMin * 60) / (goal.distanceM / 1000) } : {};
-      const ctx = { paces: p, distM: goal.distanceM, longest30dMin: longest30d(r.history, r.now), ...racePace };
-      return { sessions: buildWeek(week, ctx), warnings: plan.warnings };
-    }
+    const week =
+      plan.weeks.find((w) => w.monday === r.monday) ??
+      (first && r.monday < first.monday ? first : raceWeek(plan, r.monday, r.settings.runsPerWeek));
+    const racePace = goal.targetMin ? { racePaceSKm: (goal.targetMin * 60) / (goal.distanceM / 1000) } : {};
+    const ctx = { paces: p, distM: goal.distanceM, longest30dMin: longest30d(r.history, r.now), ...racePace };
+    return { sessions: buildWeek(week, ctx), warnings: plan.warnings };
   }
   if (goal && daysBetween(goal.date, r.monday) <= 7)
     return { sessions: postRaceWeek(mean(history8w), p), warnings: [] };
@@ -84,10 +84,68 @@ function content(r: WeekRequest, p: Paces): WeekPlan {
   return { sessions: maintenanceWeek(history8w, r.settings, weekIdx, { paces: p }), warnings: [] };
 }
 
+/** P24: a race less than a full week away has no plan week; it gets the taper template at the race-week share (P18). */
+function raceWeek(plan: Plan, monday: string, runsPerWeek: Settings["runsPerWeek"]): PlanWeek {
+  const d = plan.goal.distanceM;
+  const share = taperShares(d, plan.weeks.length).at(-1) ?? 0.5;
+  const template = weekTemplate("taper", runsPerWeek, d, 0);
+  return {
+    index: 0,
+    monday,
+    phase: "taper",
+    volumeMin: share * plan.vPeak,
+    deload: false,
+    progressionStep: 0,
+    template,
+  };
+}
+
+/** Days after Monday within which the race still bars the week's hard runs (H12 starts three days before it). */
+const RACE_REACH_DAYS = 9;
+
+/**
+ * P24: the race on its date, at the first hour her calendar leaves free that day. The date is hers, so a day
+ * without runs does not move it. Null when the race is too far away to touch the week.
+ */
+function raceSession(r: WeekRequest, p: Paces, cal: CalEvent[]): Session | null {
+  const goal = r.goal;
+  if (!goal || goal.date < r.monday || daysBetween(r.monday, goal.date) > RACE_REACH_DAYS) return null;
+  const min = goal.targetMin ?? predictTime(r.fitness.vdot, goal.distanceM);
+  const s = buildSession("RACE", {
+    weeklyMin: 0,
+    paces: p,
+    phase: "taper",
+    progressionStep: 0,
+    distM: goal.distanceM,
+    racePaceSKm: (min * 60) / (goal.distanceM / 1000),
+  });
+  const free = freeSlots(goal.date, cal, { ...r.settings, noRunDays: [] }, s.durMin)[0];
+  return { ...s, start: free?.start ?? at(goal.date, r.settings.earliest), frozen: true };
+}
+
+/**
+ * H12 leaves fewer days for hard runs: those beyond one every other free day become easy runs of the same
+ * length, the lowest priority first, so that placement never drops an easy run for them (A4).
+ */
+function fitHardRuns(sessions: Session[], r: WeekRequest, raceDay: string): Session[] {
+  const days = weekDates(r.monday).filter((d) => d >= dateOf(r.now) && !nearRace(d, raceDay)).length;
+  const room = new Set(
+    sessions
+      .filter(isHard)
+      .sort((a, b) => a.priority - b.priority)
+      .slice(0, Math.ceil(days / 2)),
+  );
+  return sessions.map((s) => (isHard(s) && !room.has(s) ? toEasy(s, s.durMin) : s));
+}
+
+/** A race still planned on another day than the goal's belongs to the old goal: it goes with it. */
+const staleRace = (s: Session, r: WeekRequest): boolean =>
+  s.type === "RACE" && s.status === "planned" && s.start >= r.now && dateOf(s.start) !== r.goal?.date;
+
 /**
  * Drops one built session per kept session: what Anna moved replaces its planned twin. After a new goal the
- * week may have no twin of that type: it then replaces one as hard, else any, never the long run, so the
- * week keeps its number of runs.
+ * week may have no twin of that type: it then replaces one as hard, else any, never the long run nor the
+ * race, so the week keeps its number of runs.
  */
 function withoutKept(built: Session[], kept: Session[]): Session[] {
   const left = [...built];
@@ -97,7 +155,8 @@ function withoutKept(built: Session[], kept: Session[]): Session[] {
     return i >= 0;
   };
   const unmatched = kept.filter((k) => !drop((s) => s.type === k.type));
-  for (const k of unmatched) if (!drop((s) => s.type !== "L" && isHard(s) === isHard(k))) drop((s) => s.type !== "L");
+  const spare = (s: Session): boolean => s.type !== "L" && s.type !== "RACE";
+  for (const k of unmatched) if (!drop((s) => spare(s) && isHard(s) === isHard(k))) drop(spare);
   return left;
 }
 
@@ -118,23 +177,40 @@ function capped(sessions: Session[], r: WeekRequest): Session[] {
  * sessions, only after `now`. Unplaceable sessions are left out with the A4 warning.
  */
 export function planWeek(r: WeekRequest): WeekPlan {
-  const { sessions, warnings } = content(r, paces(r.fitness.vdot));
-  const used = new Set(r.kept.map((k) => k.id));
+  const p = paces(r.fitness.vdot);
+  const { sessions, warnings } = content(r, p);
+  const kept = r.kept.filter((k) => !staleRace(k, r));
+  const used = new Set(kept.map((k) => k.id));
   let n = 0;
   const nextId = (): string => {
     while (used.has(`${r.monday}-${n}`)) n++;
     used.add(`${r.monday}-${n}`);
     return `${r.monday}-${n}`;
   };
-  const built = capped(withoutKept(sessions, r.kept), r).map((s) => ({ ...s, id: nextId() }));
   // The past is one long unavailability, so nothing lands before `now`.
   const past: CalEvent[] =
     r.now > `${r.monday}T00:00`
       ? [{ id: "past", kind: "unavailable", start: `${r.monday}T00:00`, end: r.now, manual: true }]
       : [];
-  const fixed = r.kept.map((k) => ({ ...k, frozen: true }));
-  const placement = placeWeek([...fixed, ...built], [...r.cal, ...past], r.settings, r.monday, r.prev);
-  const builtIds = new Set(built.map((b) => b.id));
+  const cal = [...r.cal, ...past];
+  const race = raceSession(r, p, cal);
+  const raceThisWeek = race !== null && dateOf(race.start) < addDays(r.monday, 7);
+  // P24: the race replaces the week's long run, and is never capped like a planned rise.
+  const left = withoutKept(race && raceThisWeek ? [...sessions.filter((s) => s.type !== "L"), race] : sessions, kept);
+  const sized = capped(
+    left.filter((s) => s.type !== "RACE"),
+    r,
+  );
+  const built = [
+    ...(race ? fitHardRuns(sized, r, dateOf(race.start)) : sized),
+    ...left.filter((s) => s.type === "RACE"),
+  ];
+  const withIds = built.map((s) => ({ ...s, id: nextId() }));
+  const fixed = kept.map((k) => ({ ...k, frozen: true }));
+  // A race early next week still bars this week's last days to hard runs (H12).
+  const nextWeekRace = race && !raceThisWeek ? [{ ...race, id: "next-week-race" }] : [];
+  const placement = placeWeek([...fixed, ...nextWeekRace, ...withIds], cal, r.settings, r.monday, r.prev);
+  const builtIds = new Set(withIds.map((b) => b.id));
   const placed = placement.week.sessions.filter((s) => builtIds.has(s.id) && s.start !== "");
-  return { sessions: [...r.kept, ...placed], warnings: [...warnings, ...placement.warnings] };
+  return { sessions: [...kept, ...placed], warnings: [...warnings, ...placement.warnings] };
 }

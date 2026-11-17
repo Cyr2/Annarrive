@@ -114,7 +114,7 @@ Après ajout, si une course entre en conflit, Reggie la déplace et le dit dans 
 
 | Élément | Au tap | Ce qui se passe |
 |---|---|---|
-| Modifier l'objectif | Reprend les écrans de création du programme, pré-remplis | Avant validation, un résumé montre ce qui change (« 2 semaines de plus, chrono visé atteignable »). Les semaines à venir sont recalculées, la semaine en cours garde ce qu'Anna a déjà déplacé |
+| Modifier l'objectif | Reprend les écrans de création du programme, pré-remplis | Avant validation, un résumé montre ce qui change (« 2 semaines de plus, chrono visé atteignable »). Les semaines à venir sont recalculées, la semaine en cours garde ce qu'Anna a déjà déplacé. Une course dans les 7 jours, nouvelle ou retirée, refait aussi ce qui reste de la semaine en cours (algo.md EV20) ; le résumé le dit : « Ta semaine devient une semaine de course : rien de dur dans les 3 jours avant. » |
 | Courses par semaine, jours sans course, pas avant, pas après, heure de coucher | Choix en feuille (roue ou boutons) | La semaine en cours et les suivantes sont réorganisées. Bandeau « Reggie a réorganisé ta semaine · Voir » |
 | Séance de muscu | Feuille « Séance de muscu » | Comme plus haut |
 | Emploi du temps, Actualiser | Relit l'emploi du temps | Comme dans Semaine |

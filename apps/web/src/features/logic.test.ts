@@ -191,12 +191,18 @@ describe("program", () => {
   });
   it("summarizes a goal change before it is confirmed", () => {
     const before = { race: "Semi-marathon", distanceKm: 21.1, date: "2027-01-17", targetTime: "1:48:00" };
-    expect(goalSummary(before, before)).toBe("Rien ne change pour l'instant.");
-    expect(goalSummary(before, { ...before, date: "2027-01-31" })).toMatch(/^2 semaines de plus\./);
-    expect(goalSummary(before, { ...before, date: "2027-01-10", targetTime: undefined })).toContain(
+    expect(goalSummary(before, before, MONDAY)).toBe("Rien ne change pour l'instant.");
+    expect(goalSummary(before, { ...before, date: "2027-01-31" }, MONDAY)).toMatch(/^2 semaines de plus\./);
+    expect(goalSummary(before, { ...before, date: "2027-01-10", targetTime: undefined }, MONDAY)).toContain(
       "1 semaine de moins, sans chrono",
     );
-    expect(goalSummary(before, { ...before, race: "10 km" })).toMatch(/^Nouvelle course : 10 km/);
+    expect(goalSummary(before, { ...before, race: "10 km" }, MONDAY)).toMatch(/ta semaine en cours ne change pas\.$/);
+  });
+  it("says when a race within 7 days, set or removed, changes the current week too (EV20)", () => {
+    const before = { race: "Semi-marathon", distanceKm: 21.1, date: "2027-01-17" };
+    const soon = { ...before, race: "10 km", distanceKm: 10, date: "2026-11-22" };
+    expect(goalSummary(before, soon, "2026-11-17")).toMatch(/Ta semaine devient une semaine de course/);
+    expect(goalSummary(soon, before, "2026-11-17")).toMatch(/ta semaine en cours aussi\.$/);
   });
 });
 
