@@ -162,6 +162,46 @@ describe("coach adapter: a new goal (EV14)", () => {
     await t.call("POST", `/api/changes/${saved.change?.id}/undo`);
     expect({ current: thisWeek(), next: nextWeek(), program: t.services.plan.program() }).toEqual(before);
   });
+
+  it("turns what is left of this week into a race week for a race within 7 days, and back when it goes (EV20, P24)", async () => {
+    const bridge = fakeBridge();
+    const t = await ready({ bridge });
+    t.setNow(WEDNESDAY);
+    history(t, "2026-11-16");
+    t.stores.fitnessEstimate.put({ id: "2026-11-01", date: "2026-11-01", vdot: 40, source: "test" });
+    await t.call("PUT", "/api/program", { goal: { distanceM: 10000, date: "2027-03-14" } });
+    const sessions = () => t.services.plan.coachState().sessions;
+    const thisWeek = () => sessions().filter((s) => s.start < NEXT_MONDAY);
+    const ahead = thisWeek().filter((s) => s.start > "2026-11-18T09:00");
+    const mine = ahead[0];
+    expect(mine).toBeDefined();
+    // Her own move to the eve of the coming race stays hers (EV19).
+    await change(t, "POST", `/api/sessions/${mine?.id}/move`, { start: "2026-11-21T12:00" });
+    const before = { sessions: sessions(), program: t.services.plan.program() };
+    const moved = sessions().find((s) => s.id === mine?.id);
+    const past = sessions().filter((s) => s.start < "2026-11-18T09:00");
+
+    const saved = await change(t, "PUT", "/api/program", { goal: { distanceM: 10000, date: "2026-11-22" } });
+
+    expect(saved.change?.summary).toMatch(/^Objectif modifié/);
+    expect(sessions()).toEqual(expect.arrayContaining([...past, moved]));
+    const races = sessions().filter((s) => s.type === "RACE");
+    expect(races.map((s) => s.start.slice(0, 10))).toEqual(["2026-11-22"]);
+    const autoHard = sessions().filter((s) => s.type !== "RACE" && !s.manual && isHard(toSession(s)));
+    expect(autoHard.every((s) => s.start < "2026-11-19")).toBe(true);
+    const onWatchSoon = () => sessions().filter((s) => s.start >= "2026-11-18" && s.start < "2026-11-25");
+    await vi.waitFor(() => {
+      for (const s of onWatchSoon()) expect(t.stores.watchSync.get(s.id)?.hash).toBe(workoutHash(s));
+    });
+
+    await t.call("POST", `/api/changes/${saved.change?.id}/undo`);
+    expect({ sessions: sessions(), program: t.services.plan.program() }).toEqual(before);
+
+    await change(t, "PUT", "/api/program", { goal: { distanceM: 10000, date: "2026-11-22" } });
+    await change(t, "PUT", "/api/program", { goal: { distanceM: 10000, date: "2027-03-14" } });
+    expect(sessions().some((s) => s.type === "RACE")).toBe(false);
+    expect(sessions()).toContainEqual(moved);
+  });
 });
 
 describe("coach adapter: Anna's actions", () => {

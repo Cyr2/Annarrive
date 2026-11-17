@@ -76,7 +76,14 @@ function h6(slot: Slot, cal: CalEvent[]): Violation | null {
 const h7 = (slot: Slot, s: Settings): Violation | null =>
   toMin(slot.end) > dayStart(slot.start) + bedMin(s) - 60 ? v("H7", "Moins d'1 h avant ton coucher") : null;
 
-/** H1 to H7 for `session` at `slot`; [] means valid. H8 holds by construction (a session is one block). */
+/** H12: from three days before the race (last Q at J-4, P18) to the end of the week after it (P23). */
+export const nearRace = (day: string, raceDay: string): boolean =>
+  daysBetween(day, raceDay) <= 3 && daysBetween(raceDay, day) <= 6;
+
+const h12 = (slot: Slot, runs: Session[]): Violation | null =>
+  runs.some((r) => r.type === "RACE" && nearRace(slot.start, r.start)) ? v("H12", "Trop près de ta course") : null;
+
+/** H1 to H7 and H12 for `session` at `slot`; [] means valid. H8 holds by construction (a session is one block). */
 export function checkHard(session: Session, slot: Slot, week: WeekState): Violation[] {
   const runs = runsBut(week, session.id);
   const s = week.settings;
@@ -89,6 +96,7 @@ export function checkHard(session: Session, slot: Slot, week: WeekState): Violat
     hard ? h5(slot, week.cal) : null,
     hard ? h6(slot, week.cal) : null,
     h7(slot, s),
+    hard ? h12(slot, runs) : null,
   ].filter((x) => x !== null);
 }
 

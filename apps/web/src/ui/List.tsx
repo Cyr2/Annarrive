@@ -94,15 +94,17 @@ type InputProps = {
   label: string;
   value: string;
   onChange: (value: string) => void;
-  type?: "text" | "time" | "date";
+  type?: "text" | "time" | "date" | "password";
   placeholder?: string;
   min?: string;
   inputMode?: "decimal" | "numeric";
+  /** A login field ("username webauthn", "current-password"): no capital, no correction. */
+  autoComplete?: string;
 };
 
 /** How a date or a time reads in the app ("lundi 16 novembre", "7:30"), whatever the native field shows. */
 function shown(type: InputProps["type"], value: string): string | undefined {
-  if (!value || type === "text") return undefined;
+  if (!value || (type !== "date" && type !== "time")) return undefined;
   return type === "date" ? longDate(value) : value.replace(/^0(\d)/, "$1");
 }
 
@@ -110,7 +112,16 @@ function shown(type: InputProps["type"], value: string): string | undefined {
  * A row with an editable value on the right: name, time, date. 16 px so iOS never zooms in. A date or a time
  * shows the app's own wording, with the native field laid over it to open the iOS wheel.
  */
-export function RowInput({ label, value, onChange, type = "text", placeholder, min, inputMode }: InputProps) {
+export function RowInput({
+  label,
+  value,
+  onChange,
+  type = "text",
+  placeholder,
+  min,
+  inputMode,
+  autoComplete,
+}: InputProps) {
   const id = useId();
   const text = shown(type, value);
   return (
@@ -131,6 +142,10 @@ export function RowInput({ label, value, onChange, type = "text", placeholder, m
         min={min}
         inputMode={inputMode}
         placeholder={placeholder}
+        autoComplete={autoComplete}
+        autoCapitalize={autoComplete ? "none" : undefined}
+        autoCorrect={autoComplete ? "off" : undefined}
+        spellCheck={autoComplete ? false : undefined}
         onChange={(e) => onChange(type === "time" ? e.target.value.replace(/^0(\d)/, "$1") : e.target.value)}
         className={cx(
           "t-body min-h-11 min-w-0 flex-1 border-0 bg-transparent text-right text-ink outline-none",

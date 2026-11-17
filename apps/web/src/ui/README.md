@@ -6,8 +6,8 @@ Everything a screen draws comes from this folder and from `src/styles/`. A scree
 
 | Layer | What | Component | Material |
 |---|---|---|---|
-| Backdrop | the dawn sky, fixed behind the whole app | `Sky` | calm, still gradient: a soft apricot wash at the top fading to warm near-white |
-| Content | cards, grouped lists, widgets, sheet bodies | `Surface` | frost: translucent white over the sky, blurred, lit rim, contact shadow and soft warm shadow |
+| Backdrop | the dawn sky, fixed behind the whole app | `Sky` | calm, still gradient: a soft apricot wash at the top fading to warm near-white, two pale cool fields (periwinkle, mint) for the glass to show |
+| Content | cards, grouped lists, widgets, sheet bodies | `Surface` | glass: 40 % white over the sky, strongly blurred and saturated, lit rim, top-left sheen, soft warm shadow |
 | Controls | tab bar, buttons, chips, segmented controls, fields, switches, sliders, toasts | `controls.tsx` | Liquid Glass (glisse) |
 
 Rules that follow from it:
@@ -52,7 +52,7 @@ Paces, times and distances are never colored: the type is said by a `SessionChip
 
 ### Surfaces, shadows, radii, spacing, motion
 
-- Surfaces: content is frost, controls are glass (glisse). `--surface-card` (68 % white), `--surface-inset` (64 %), both blurred with `--surface-blur` on every device (the sky never moves, so it is blurred once), no refraction; `--surface-sheet` (95 %, blurred: the page never reads through), `--surface-on-sheet` (a group on a sheet, no blur of its own), `--surface-solid` (reduced transparency). Glass floating over scrolling content (tab bar, toasts, `.ui-glass`, Reggie's composer with `.ui-float`) takes `--glass-float` (78 % white, 96 % without backdrop blur). A filled button glows in its color (`--shadow-glow-action`, `--shadow-glow-reggie`).
+- Surfaces: content is frost, controls are glass (glisse). `--surface-card` (40 % white), `--surface-inset` (38 %), both under `--surface-sheen` and blurred with `--surface-blur` on every device (the sky never moves, so it is blurred once), no refraction; `--surface-sheet` (95 %, blurred: the page never reads through), `--surface-on-sheet` (a group on a sheet, no blur of its own), `--surface-solid` (reduced transparency). Glass floating over scrolling content (tab bar, toasts, `.ui-glass`, Reggie's composer with `.ui-float`) takes `--glass-float` (50 % white, 96 % without backdrop blur); a toast `--glass-toast` (68 %) with `--shadow-toast`. A filled button glows in its color (`--shadow-glow-action`, `--shadow-glow-reggie`).
 - Shadows: `shadow-card`, `shadow-inset`, `shadow-sheet`, `shadow-float` (floating controls, toasts), `shadow-lift` (dragged item), `shadow-ring` (selection), `shadow-ring-quiet` (empty radio).
 - Radii by hierarchy: `tile` 10, `row` 16, `inset` 20, `card` 24, `bubble` 22, `sheet` 32, `pill`.
 - Sizes: `--size-target` 44 (every touch target), `--size-control` 50 (main buttons, fields), `--size-action` 60 (round actions), `px-gutter` 16. `--space-under-tabbar` and `--space-above-tabbar` keep content and floating things clear of the tab bar.
@@ -71,7 +71,7 @@ Other utilities: `.row` (grouped list row with hairlines between rows), `.hairli
 
 - **`Sky`** `phase?: "base" | "build" | "peak" | "race"`. Mounted once in `App.tsx` (and inside the onboarding overlay). The phase warms the top glow a touch toward race week, never brighter. Never add a background to a screen.
 - **`Screen`** a tab's page: safe-area top, room for the tab bar at the bottom, 16 px gutters, 24 px between blocks. No props for color.
-- **`LogoSlot`** `size?`. The logo's place (rounded square, like the app icon) with a neutral placeholder. Do not draw a logo; swap the inside when the real one exists.
+- **`LogoSlot`** `size?`. The logo (bib on the peach sky, `public/logo.svg`), rounded like the app icon. Sources live in `design/logo/`.
 - **`EmptyState`** `icon, title, children?, action?`. Nothing to show or a failed load: icon, one sentence, always a way forward (a button).
 
 ### Content
@@ -102,7 +102,7 @@ Other utilities: `.row` (grouped list row with hairlines between rows), `.hairli
 ### Overlays
 
 - **`Sheet`** `open, onOpenChange, title, subtitle?, onBack?, action?, cancelLabel?, footer?`. Rises on a spring over an ink scrim; pulled down by its top (120 px or a flick) it closes; Escape and a tap outside close it; focus moves in, the app behind is `inert`, focus returns on close; it sits above the keyboard. **One main action per sheet**: in `footer` (pinned, always visible, `Button variant="filled" size="large"`), or `action` ("OK" in the header) for a long form, never both. `onBack` replaces Annuler by a chevron for multi-step sheets. Sheets open through `features/sheets` (`useSheet().show(...)`).
-- **Toast**: call `notify(message, action?)` from `toast.ts`. Sonner loads with the first one; `Toast.tsx` styles it in control glass above the tab bar, its action in the action blue. 6 s.
+- **Toast**: call `notify(message, action?)` from `toast.ts`. Sonner loads with the first one; `Toast.tsx` styles it as a centered glass pill above the tab bar (`.ui-toast`), its action in the action blue. 6 s.
 
 ## Accessibility and performance contract
 

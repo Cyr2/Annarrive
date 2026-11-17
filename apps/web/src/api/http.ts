@@ -47,13 +47,13 @@ export const isHealthy = (body: unknown) => healthSchema.safeParse(body).success
 
 const OFFLINE = "Pas de connexion au serveur : vérifie ton réseau, puis réessaie.";
 const UNEXPECTED = "Le serveur a répondu de travers : recharge l'app, puis réessaie.";
-export const SIGNED_OUT = "Ouvre le lien de connexion que tu as reçu.";
+export const SIGNED_OUT = "Connecte-toi pour continuer.";
 
 type Fetch = typeof fetch;
 
 const isJson = (response: Response) => response.headers.get("content-type")?.includes("application/json") ?? false;
 
-async function serverMessage(response: Response): Promise<string | undefined> {
+export async function serverMessage(response: Response): Promise<string | undefined> {
   if (!isJson(response)) return undefined;
   const body: unknown = await response.json().catch(() => undefined);
   return typeof body === "object" && body !== null && "error" in body && typeof body.error === "string"

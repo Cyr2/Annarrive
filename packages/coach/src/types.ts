@@ -12,7 +12,9 @@ export type RunType =
   | "COTES_C"
   | "COTES_L"
   | "FARTLEK"
-  | "TEST";
+  | "TEST"
+  /** The goal race itself, on its date (P24). */
+  | "RACE";
 export type Phase = "base" | "dev" | "spe" | "taper";
 /** Which pace a step follows, so new paces can be applied after a recalibration (RC9). "race" keeps its own target. */
 export type PaceZone = "E" | "M" | "T" | "I" | "R" | "race";

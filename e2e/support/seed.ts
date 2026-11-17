@@ -23,6 +23,7 @@ if (mode === "plan") {
   const services = createServices({
     db,
     clock: systemClock,
+    publicUrl: "http://localhost",
     coach: coachAdapter,
     fetchIcs: icsFetcher(),
     reggie: async function* () {},

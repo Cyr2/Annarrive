@@ -114,7 +114,7 @@ Après ajout, si une course entre en conflit, Reggie la déplace et le dit dans 
 
 | Élément | Au tap | Ce qui se passe |
 |---|---|---|
-| Modifier l'objectif | Reprend les écrans de création du programme, pré-remplis | Avant validation, un résumé montre ce qui change (« 2 semaines de plus, chrono visé atteignable »). Les semaines à venir sont recalculées, la semaine en cours garde ce qu'Anna a déjà déplacé |
+| Modifier l'objectif | Reprend les écrans de création du programme, pré-remplis | Avant validation, un résumé montre ce qui change (« 2 semaines de plus, chrono visé atteignable »). Les semaines à venir sont recalculées, la semaine en cours garde ce qu'Anna a déjà déplacé. Une course dans les 7 jours, nouvelle ou retirée, refait aussi ce qui reste de la semaine en cours (algo.md EV20) ; le résumé le dit : « Ta semaine devient une semaine de course : rien de dur dans les 3 jours avant. » |
 | Courses par semaine, jours sans course, pas avant, pas après, heure de coucher | Choix en feuille (roue ou boutons) | La semaine en cours et les suivantes sont réorganisées. Bandeau « Reggie a réorganisé ta semaine · Voir » |
 | Séance de muscu | Feuille « Séance de muscu » | Comme plus haut |
 | Emploi du temps, Actualiser | Relit l'emploi du temps | Comme dans Semaine |
@@ -150,6 +150,23 @@ Pour une question comme « j'ai mal au tibia, c'est grave ? » ou « je mange qu
 ### Ton
 
 Tutoiement, phrases courtes, pas de point d'exclamation en série, pas d'emoji. Il dit ce qu'il a fait et pourquoi en une phrase. Il oriente vers un professionnel dès qu'une douleur dure ou dépasse 4 sur 10.
+
+## Connexion
+
+Écran « Connecte-toi », affiché dès que le serveur répond sans session (le ciel, le logo, puis les actions). Le nom du déverrouillage suit l'appareil : Face ID sur iPhone, Touch ID sur Mac et iPad, « ton empreinte » ailleurs.
+
+| Élément | Effet |
+|---|---|
+| « Se connecter avec Face ID » (bouton principal, absent si le navigateur n'a pas WebAuthn) | Ouvre Face ID sur les clés d'accès du site, sans rien taper. Réussi : l'app se recharge, connectée. Fenêtre fermée : rien ne s'affiche. Clé refusée ou inconnue : message en haut, le mot de passe reste possible |
+| Champ Identifiant | Là où le navigateur le permet, propose aussi la clé d'accès dans ses suggestions ; la choisir connecte comme le bouton |
+| « Se connecter » (identifiant et mot de passe, actif quand les deux sont remplis) | Réussi : écran « Tu es connectée » si l'appareil a Face ID, sinon l'app directement. Raté : « Identifiant ou mot de passe incorrect. » ; après 5 ratés depuis une même adresse, mots de passe bloqués 15 min pour cette adresse (Face ID et le lien restent possibles) |
+
+Écran « Tu es connectée » (`/face-id`), après un mot de passe ou un lien de connexion fait pour un compte :
+
+| Élément | Effet |
+|---|---|
+| « Utiliser Face ID » | Enregistre la clé d'accès de l'appareil, puis Aujourd'hui. Fenêtre fermée, ou clé déjà présente : Aujourd'hui sans message. Échec : message, les deux boutons restent |
+| « Plus tard » | Aujourd'hui, sans clé. L'offre revient à la prochaine connexion par mot de passe |
 
 ## Animations
 

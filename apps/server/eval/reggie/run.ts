@@ -29,6 +29,7 @@ async function play(scenario: Scenario, reggie: ReggieRun): Promise<Transcript> 
   const services = createServices({
     db,
     clock: () => NOW,
+    publicUrl: "http://localhost",
     coach: coachAdapter,
     fetchIcs: async () => "",
     reggie: recording,

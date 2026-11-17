@@ -3,7 +3,6 @@ import { Typing } from "../../ui/bits.tsx";
 import { Screen } from "../../ui/Screen.tsx";
 import { todayOf } from "../plan/selectors.ts";
 import { usePlan } from "../plan/store.ts";
-import { ReggieAvatar } from "../today/parts.tsx";
 import { Composer } from "./Composer.tsx";
 import { Message } from "./Message.tsx";
 import { type Entry, useChat } from "./store.ts";
@@ -46,13 +45,7 @@ export default function ReggieScreen() {
   const welcome = about?.screen === "today" && about.sessionId ? ABOUT_SESSION : undefined;
   return (
     <Screen className="gap-4!">
-      <div className="flex items-center gap-3 pb-1">
-        <ReggieAvatar size="md" />
-        <div className="flex flex-col">
-          <h1 className="t-large">Reggie</h1>
-          <span className="t-cap">Il connaît ton plan et ta montre.</span>
-        </div>
-      </div>
+      <h1 className="sr-only-label">Reggie</h1>
       {context && (
         <span className="ui-glass t-cap flex min-h-8 max-w-full items-center gap-2 self-center rounded-full px-3.5 font-semibold text-ink">
           <span aria-hidden="true" className="size-2 flex-none rounded-full bg-reggie" />

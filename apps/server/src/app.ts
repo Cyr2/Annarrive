@@ -2,7 +2,13 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { Health } from "@annarrive/protocol";
+import {
+  authenticationResponseSchema,
+  type Health,
+  passwordLoginSchema,
+  registrationResponseSchema,
+} from "@annarrive/protocol";
+import { getConnInfo } from "@hono/node-server/conninfo";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { type Context, Hono, type Next } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -10,7 +16,7 @@ import { compress } from "hono/compress";
 import { getSignedCookie, setSignedCookie } from "hono/cookie";
 import { secureHeaders } from "hono/secure-headers";
 import { ZodError, z } from "zod";
-import { AppError, UnauthorizedError } from "./errors.ts";
+import { AppError, ReadOnlyError, UnauthorizedError } from "./errors.ts";
 import { chatRoutes } from "./routes/chat.ts";
 import { fitnessRoutes } from "./routes/fitness.ts";
 import { planRoutes } from "./routes/plan.ts";
@@ -101,18 +107,43 @@ export async function sameOrigin(c: Context, next: Next): Promise<void> {
   await next();
 }
 
-/** A fixed window per route: one user, so one counter; it bounds the cost of a stolen session or a stuck client. */
-export function rateLimit(max: number, windowMs: number, now: () => number = Date.now) {
-  let windowStart = 0;
-  let count = 0;
-  return async (_c: Context, next: Next): Promise<void> => {
+/**
+ * The client's address. Behind Coolify's Traefik the right-most X-Forwarded-For entry is the one Traefik saw,
+ * the others are whatever the client sent; without a proxy, the socket's.
+ */
+export function clientIp(c: Context): string {
+  const forwarded = c.req.header("x-forwarded-for")?.split(",").at(-1)?.trim();
+  if (forwarded) return forwarded;
+  try {
+    return getConnInfo(c).remote.address ?? "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
+/**
+ * A fixed window per route. Signed-in routes keep one counter (one user: it bounds the cost of a stolen session
+ * or a stuck client); the login routes pass `keyOf: clientIp`, so one address cannot lock everyone out.
+ */
+export function rateLimit(
+  max: number,
+  windowMs: number,
+  now: () => number = Date.now,
+  keyOf: (c: Context) => string = () => "",
+) {
+  const windows = new Map<string, { start: number; count: number }>();
+  return async (c: Context, next: Next): Promise<void> => {
     const t = now();
-    if (t - windowStart >= windowMs) {
-      windowStart = t;
-      count = 0;
+    // Expired windows go once there are many, so a spread of addresses cannot grow the map for ever.
+    if (windows.size > 1000) for (const [key, w] of windows) if (t - w.start >= windowMs) windows.delete(key);
+    const key = keyOf(c);
+    let w = windows.get(key);
+    if (!w || t - w.start >= windowMs) {
+      w = { start: t, count: 0 };
+      windows.set(key, w);
     }
-    count += 1;
-    if (count > max) throw new AppError(429, "Trop de demandes d'un coup : attends une minute, puis réessaie.");
+    w.count += 1;
+    if (w.count > max) throw new AppError(429, "Trop de demandes d'un coup : attends une minute, puis réessaie.");
     await next();
   };
 }
@@ -130,7 +161,7 @@ const LOGIN_CSS = [
   // The app's calm sky: a soft apricot wash fading to warm near-white, still (no script, no animation on a page seen for a second).
   "body{margin:0;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:24px;padding:max(24px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom));background:radial-gradient(70% 30% at 15% 0%,rgb(255 218 196/.26),rgb(255 218 196/0)),linear-gradient(180deg,#fdede3 0%,#fdf1ea 18%,#fbf6f2 40%,#f9f6f3 100%) fixed}",
   "header{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;max-width:400px}",
-  ".logo{width:80px;height:80px;border-radius:22px;display:grid;place-items:center;margin-bottom:8px;background:rgb(255 255 255/.55);-webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);box-shadow:inset 0 0 0 .5px rgb(255 255 255/.75),inset 0 1px 0 rgb(255 255 255/.95),0 1px 3px rgb(90 40 10/.07),0 10px 32px rgb(90 40 10/.11);color:#8a949e;font-weight:700;font-size:20px}",
+  ".logo{width:80px;height:80px;margin-bottom:8px;display:block}",
   "h1{margin:0;font-size:28px;line-height:34px;font-weight:700;letter-spacing:-.022em}",
   "p{margin:0;color:#434e5a}",
   "main{width:100%;max-width:400px;display:flex;flex-direction:column;gap:12px;text-align:center}",
@@ -147,7 +178,7 @@ const LOGIN_CSS = [
 
 /** Server pages of the login: the app's sky, the logo's slot, a title and one sentence, then what to do. */
 const loginPage = (font: string, title: string, lead: string, actions: string) =>
-  `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="referrer" content="no-referrer"><meta name="theme-color" content="#FDEDE3"><meta name="color-scheme" content="light"><title>Connexion à Annarrivé</title><style>${font}${LOGIN_CSS}</style></head><body><header><span class="logo" role="img" aria-label="Annarrivé">A</span><h1>${title}</h1>${lead}</header><main>${actions}</main></body></html>`;
+  `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="referrer" content="no-referrer"><meta name="theme-color" content="#FDEDE3"><meta name="color-scheme" content="light"><title>Connexion à Annarrivé</title><style>${font}${LOGIN_CSS}</style></head><body><header><img class="logo" src="/logo.svg" alt="Annarrivé" width="80" height="80"><h1>${title}</h1>${lead}</header><main>${actions}</main></body></html>`;
 
 /** A login that failed: what happened, and the way out. */
 const loginError = (font: string, message: string) =>
@@ -189,23 +220,13 @@ export function createApp({ services, sessionSecret, webDist }: AppOptions): Hon
         font,
         "Bienvenue sur Annarrivé",
         "<p>Ce lien ouvre Annarrivé sur ce téléphone.</p>",
-        `<form method="post" action="/api/auth/login"><input type="hidden" name="token" value="${parsed.data}"><button type="submit">Se connecter</button></form><small>Pas de mot de passe : tu restes connectée ensuite.</small>`,
+        `<form method="post" action="/api/auth/login"><input type="hidden" name="token" value="${parsed.data}"><button type="submit">Se connecter</button></form><small>Tu restes connectée ensuite.</small>`,
       ),
     );
   });
 
-  app.post("/api/auth/login", async (c) => {
-    let sessionId: string;
-    try {
-      // Browsers flag a form posted from another site; this one must come from the page above.
-      const site = c.req.header("sec-fetch-site");
-      if (site && site !== "same-origin") throw new AppError(403, "Ouvre ton lien de connexion directement.");
-      sessionId = services.auth.login(loginTokenSchema.parse((await c.req.parseBody()).token));
-    } catch (error) {
-      if (error instanceof AppError) return c.html(loginError(font, error.message), error.status);
-      throw error;
-    }
-    await setSignedCookie(c, SESSION_COOKIE, sessionId, sessionSecret, {
+  const startSession = (c: Context, sessionId: string) =>
+    setSignedCookie(c, SESSION_COOKIE, sessionId, sessionSecret, {
       prefix: "host",
       httpOnly: true,
       secure: true,
@@ -213,22 +234,68 @@ export function createApp({ services, sessionSecret, webDist }: AppOptions): Hon
       path: "/",
       maxAge: SESSION_SECONDS,
     });
-    return c.redirect("/");
+  const currentSession = async (c: Context) => {
+    const sessionId = await getSignedCookie(c, sessionSecret, SESSION_COOKIE, "host");
+    return sessionId ? services.auth.session(sessionId) : undefined;
+  };
+  const jsonBodyLimit = bodyLimit({
+    maxSize: MAX_BODY_BYTES,
+    onError: (c) => c.json({ error: "Requête trop grosse : raccourcis ton message." }, 413),
+  });
+
+  app.post("/api/auth/login", async (c) => {
+    let opened: ReturnType<Services["auth"]["login"]>;
+    try {
+      // Browsers flag a form posted from another site; this one must come from the page above.
+      const site = c.req.header("sec-fetch-site");
+      if (site && site !== "same-origin") throw new AppError(403, "Ouvre ton lien de connexion directement.");
+      opened = services.auth.login(loginTokenSchema.parse((await c.req.parseBody()).token));
+    } catch (error) {
+      if (error instanceof AppError) return c.html(loginError(font, error.message), error.status);
+      throw error;
+    }
+    await startSession(c, opened.sessionId);
+    // A link made for an account offers Face ID next (the app's /face-id screen).
+    return c.redirect(opened.userId ? "/face-id" : "/");
+  });
+
+  // Signing in: no session yet, so these come before the session check, each with its own guards, counted per
+  // client address. Each password costs a scrypt (32 MiB, a thread of the pool): 10 a minute per client.
+  app.post("/api/auth/password", sameOrigin, rateLimit(10, 60_000, Date.now, clientIp), jsonBodyLimit, async (c) => {
+    const { username, password } = passwordLoginSchema.parse(await c.req.json());
+    await startSession(c, await services.auth.passwordLogin(username, password, clientIp(c)));
+    return c.body(null, 204);
+  });
+  app.post("/api/auth/passkey/options", sameOrigin, rateLimit(30, 60_000, Date.now, clientIp), async (c) =>
+    c.json(await services.auth.passkeyLoginOptions()),
+  );
+  app.post("/api/auth/passkey", sameOrigin, jsonBodyLimit, async (c) => {
+    const response = authenticationResponseSchema.parse(await c.req.json());
+    await startSession(c, await services.auth.passkeyLogin(response));
+    return c.body(null, 204);
   });
 
   app.use("/api/*", async (c, next) => {
-    const sessionId = await getSignedCookie(c, sessionSecret, SESSION_COOKIE, "host");
-    if (!sessionId || !services.auth.isValidSession(sessionId)) throw new UnauthorizedError();
+    if (!(await currentSession(c))) throw new UnauthorizedError();
     await next();
   });
   app.use("/api/*", sameOrigin);
-  app.use(
-    "/api/*",
-    bodyLimit({
-      maxSize: MAX_BODY_BYTES,
-      onError: (c) => c.json({ error: "Requête trop grosse : raccourcis ton message." }, 413),
-    }),
+  app.use("/api/*", jsonBodyLimit);
+
+  /** The signed-in account; a session opened by a link without a name has none, so it cannot add Face ID. */
+  const accountOf = async (c: Context) => {
+    const userId = (await currentSession(c))?.userId;
+    if (!userId) throw new ReadOnlyError("Connecte-toi avec ton identifiant et ton mot de passe pour activer Face ID.");
+    return userId;
+  };
+  app.post("/api/passkeys/options", rateLimit(30, 60_000), async (c) =>
+    c.json(await services.auth.registrationOptions(await accountOf(c))),
   );
+  app.post("/api/passkeys", async (c) => {
+    const response = registrationResponseSchema.parse(await c.req.json());
+    await services.auth.registerPasskey(await accountOf(c), response);
+    return c.body(null, 204);
+  });
   // Each message runs Reggie (paid model calls); each refresh downloads the ICS.
   app.post("/api/chat", rateLimit(30, 10 * 60_000));
   app.on(["POST", "PUT"], ["/api/timetable/refresh", "/api/timetable/url"], rateLimit(10, 60_000));

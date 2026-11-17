@@ -120,7 +120,7 @@ export function phaseAt(split: Split, i: number): Phase {
 }
 
 /** P18, from the last week backwards. */
-function taperShares(distM: GoalDistance, weeksTotal: number): number[] {
+export function taperShares(distM: GoalDistance, weeksTotal: number): number[] {
   if (distM === 5000) return [0.5];
   if (distM === 10000) return weeksTotal >= 14 ? [0.7, 0.5] : [0.5];
   if (distM === 21097.5) return [0.7, 0.5];
@@ -338,7 +338,7 @@ export function buildWeek(week: PlanWeek, ctx: WeekCtx): Session[] {
     distM: ctx.distM,
   };
   const qFactor = week.phase === "taper" ? 0.55 : week.deload ? 2 / 3 : 1;
-  // shortcut: P18 "last Q at D-4, last L at D-14/21" is not enforced here; the taper volume already shrinks them.
+  // shortcut: P18 "last L at D-14/21" is not enforced; the taper volume already shrinks it. Last Q at D-4 is H12.
   const lMin = longRunMin(runsPerWeek, week.volumeMin, ctx.distM, ctx.longest30dMin) * (week.deload ? 0.75 : 1);
   let qCount = 0;
   const fixed = week.template.map((slot, i): Session | null => {

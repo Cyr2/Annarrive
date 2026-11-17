@@ -160,6 +160,9 @@
 .ui-tab-bar.lg-tab-bar[data-icons] {
   --lg-tab-width: min(80px, calc((100vw - 40px) / 4));
   --lg-tab-height: 54px;
+  /* Lighter than elsewhere: glisse lays it over the label, and on the clear bar a deeper tint took the blue
+     label under 4.5:1. */
+  --lg-selection: var(--color-action-tint);
   box-shadow: var(--shadow-float);
 }
 .ui-tab-bar.lg-tab-bar:has(.lg-tab[data-selected][href="/reggie"]) {

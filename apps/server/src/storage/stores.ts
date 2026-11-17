@@ -85,8 +85,30 @@ const watchSyncSchema = z.object({
   workoutId: z.number().int().optional(),
 });
 export type WatchSync = z.infer<typeof watchSyncSchema>;
-/** Login tokens and sessions are stored by SHA-256 hash, never in clear. */
-const secretSchema = z.object({ id: z.string(), expiresAt: z.string(), usedAt: z.string().optional() });
+/**
+ * Login tokens and sessions are stored by SHA-256 hash, never in clear. `userId` is the account they open;
+ * a link made without a name (and every session from before accounts) has none.
+ */
+const secretSchema = z.object({
+  id: z.string(),
+  expiresAt: z.string(),
+  usedAt: z.string().optional(),
+  userId: z.string().optional(),
+});
+export type AuthSession = z.infer<typeof secretSchema>;
+/** An account, named by its login. The password is kept as a scrypt hash (services/password.ts). */
+const userSchema = z.object({ id: z.string(), passwordHash: z.string().optional() });
+/** A passkey: its credential id, and the public key that checks its signatures (base64url). */
+const passkeySchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  publicKey: z.string(),
+  counter: z.number().int().nonnegative(),
+  transports: z.array(z.string()).optional(),
+  createdAt: z.string(),
+  lastUsedAt: z.string().optional(),
+});
+export type Passkey = z.infer<typeof passkeySchema>;
 
 const single = <T extends z.ZodType>(value: T) => z.object({ id: z.string(), value });
 
@@ -133,6 +155,8 @@ export function createStores(db: DatabaseSync) {
     pushSubscription: new DocumentStore(db, "push_subscription", pushSubscriptionSchema),
     authSession: new DocumentStore(db, "auth_session", secretSchema),
     loginToken: new DocumentStore(db, "login_token", secretSchema),
+    user: new DocumentStore(db, "app_user", userSchema),
+    passkey: new DocumentStore(db, "passkey", passkeySchema),
     meta: new DocumentStore(db, "meta", single(z.string())),
     watchSync: new DocumentStore(db, "watch_sync", watchSyncSchema),
   };

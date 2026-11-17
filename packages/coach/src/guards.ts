@@ -162,7 +162,8 @@ type Violations = { ruleId: string; sessionId: string }[];
 
 function sessionViolations(s: Session, week: WeekState, ctx: ValidateCtx): Violations {
   const out: Violations = checkHard(s, slotOf(s), week).map((x) => ({ ruleId: x.ruleId, sessionId: s.id }));
-  if (ctx.longest30dMin !== undefined && s.durMin > SPIKE * ctx.longest30dMin)
+  // The race is her goal's distance, not a planned rise (P24).
+  if (ctx.longest30dMin !== undefined && s.type !== "RACE" && s.durMin > SPIKE * ctx.longest30dMin)
     out.push({ ruleId: "G1", sessionId: s.id });
   const planned = ctx.plannedLoads?.[s.id];
   if (planned !== undefined && sessionLoad(s) > planned) out.push({ ruleId: "CHANGE_LOAD", sessionId: s.id });
@@ -173,7 +174,7 @@ function sessionViolations(s: Session, week: WeekState, ctx: ValidateCtx): Viola
 export function validateWeek(week: WeekState, ctx: ValidateCtx = {}): { ok: boolean; violations: Violations } {
   const planned = week.sessions.filter((s) => s.status === "planned" && s.start !== "");
   const violations = planned.filter((s) => !s.manual).flatMap((s) => sessionViolations(s, week, ctx));
-  const qs = planned.filter((s) => isHard(s) && s.type !== "L");
+  const qs = planned.filter((s) => isHard(s) && s.type !== "L" && s.type !== "RACE");
   const longs = planned.filter((s) => s.type === "L");
   if (qs.length > 2 || longs.length > 1)
     violations.push({ ruleId: "P11", sessionId: (qs[2] ?? longs[1] ?? qs[0])?.id ?? "" });
