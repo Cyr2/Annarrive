@@ -91,6 +91,8 @@ const WINDOW_DAYS = 14;
 const HISTORY_DAYS = 365;
 /** How old a Garmin VO2max may be to stand in for a level (F10 c). */
 const FITNESS_DAYS = 30;
+/** A race this close, set or removed, rebuilds the current week (EV20). */
+const RACE_CONFLICT_DAYS = 7;
 
 const MORNING_DECISION = "morning.decidedOn";
 const decisionSummaries: Record<DailyDecisionResult["action"], string> = {
@@ -336,8 +338,9 @@ export class PlanService {
   /**
    * EV14: the weeks ahead are regenerated from the new goal (what Anna moved, ran or froze stays) and the level
    * is estimated first if still unknown or provisional. The current week stays (EV14, MA7) unless it has no
-   * session yet, as on the first goal. Without a goal (MA8) it stays too. Weeks after the next are not stored:
-   * the Sunday job builds them from the same programme.
+   * session yet, as on the first goal. Without a goal (MA8) it stays too. A race within 7 days, new or removed,
+   * is a hard conflict (EV20): its automatic sessions still ahead are rebuilt as a race week (P24). Weeks after
+   * the next are not stored: the Sunday job builds them from the same programme.
    */
   updateProgram(input: Program): ChangeResponse {
     const before = this.coachState();
@@ -351,12 +354,14 @@ export class PlanService {
     const program = { ...before.program, ...input, startedOn: sameGoal ? (before.program.startedOn ?? today) : today };
     const write: PlanWrite = { table: "program", id: CURRENT, after: { id: CURRENT, value: program } };
     const emptyWeek = !before.sessions.some((s) => dateOf(s.start) < this.#nextMonday());
+    const raceSoon = (goal: Program["goal"]): boolean =>
+      goal !== null && goal.date >= today && goal.date <= addDays(today, RACE_CONFLICT_DAYS);
     return this.#rebuild(
       "Objectif modifié",
       [write],
       { ...before, program },
       before,
-      program.goal !== null && emptyWeek,
+      (program.goal !== null && emptyWeek) || raceSoon(program.goal) || raceSoon(old),
     );
   }
 

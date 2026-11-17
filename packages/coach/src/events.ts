@@ -65,7 +65,7 @@ function finish(
 }
 
 /** Rules that Anna may force: the run is accepted but adapted (EV1). H6 belongs with H5 (legs on the same day). */
-const FORCEABLE = new Set(["H4", "H5", "H6", "H7"]);
+const FORCEABLE = new Set(["H4", "H5", "H6", "H7", "H12"]);
 
 /** EV1: Déplacer. */
 export function moveSession(st: State, id: string, slot: Slot, now: string): Result {

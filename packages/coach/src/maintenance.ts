@@ -35,9 +35,9 @@ export function maintenanceWeek(
   return [q, ...easy, ...l];
 }
 
-/** P23, MA6: one week of easy runs at 45 % of the usual volume. */
+/** P23, MA6: one week of easy runs at 45 % of the usual volume, never shorter than a 20 min footing. */
 export function postRaceWeek(usualMin: number, paces: Paces, runs = 3): Session[] {
-  const each = Math.floor((0.45 * usualMin) / runs);
+  const each = Math.max(20, Math.floor((0.45 * usualMin) / runs));
   const ctx: BuildCtx = { weeklyMin: usualMin, paces, phase: "base", progressionStep: 0, distM: 10000, durMin: each };
   return [...Array(runs).keys()].map((i) => ({ ...buildSession("E", ctx), id: `post-race-${i}` }));
 }

@@ -23,6 +23,7 @@ export const workoutNames: Record<PlannedSession["type"], string> = {
   COTES_L: "Côtes longues",
   FARTLEK: "Fartlek",
   TEST: "Test",
+  RACE: "Course",
 };
 
 const garminKinds: Record<Step["kind"], WorkoutStep["kind"]> = {

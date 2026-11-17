@@ -1,7 +1,18 @@
 import { describe, expect, it } from "vitest";
 import type { Activity, WeekRequest } from "../src/index.ts";
-import { addDays, checkHard, dateOf, isHard, planWeek, programPlan, slotOf, validateWeek } from "../src/index.ts";
-import { easy, hard, LEGS, MONDAY, SETTINGS } from "./fixtures.ts";
+import {
+  addDays,
+  checkHard,
+  dateOf,
+  isHard,
+  moveSession,
+  planWeek,
+  programPlan,
+  slotAt,
+  slotOf,
+  validateWeek,
+} from "../src/index.ts";
+import { block, easy, hard, LEGS, MONDAY, SETTINGS, state } from "./fixtures.ts";
 
 const runs = (weeks: number, perWeek: number, durMin: number, lastMonday = addDays(MONDAY, -7)): Activity[] =>
   [...Array(weeks * perWeek).keys()].map((i) => ({
@@ -141,5 +152,93 @@ describe("programPlan", () => {
     expect(programPlan({ ...base, history: [...base.history, ...after], goal }).v0).toBe(
       programPlan({ ...base, goal }).v0,
     );
+  });
+});
+
+describe("race week (P24, H12)", () => {
+  const SUNDAY = addDays(MONDAY, 6);
+  const tenK = (date: string) => ({ distanceM: 10000 as const, date });
+  const raceWeek = (extra: Partial<WeekRequest>) => planWeek(request(extra)).sessions;
+  type Sessions = ReturnType<typeof raceWeek>;
+  const others = (sessions: Sessions) => sessions.filter((s) => s.type !== "RACE");
+  const races = (sessions: Sessions) => sessions.filter((s) => s.type === "RACE");
+
+  it("puts the race on its date in place of the long run, the last Q at J-4 at the latest (P-17)", () => {
+    const now = `${addDays(MONDAY, 1)}T12:00`;
+    const sessions = raceWeek({ now, planStart: dateOf(now), goal: tenK(SUNDAY) });
+    expect(races(sessions).map((s) => s.start)).toEqual([`${SUNDAY}T07:00`]);
+    expect(races(sessions)[0]?.frozen).toBe(true);
+    expect(sessions.some((s) => s.type === "L")).toBe(false);
+    expect(sessions).toHaveLength(4);
+    expect(sessions.every((s) => s.start > now)).toBe(true);
+    for (const s of others(sessions).filter(isHard)) expect(dateOf(s.start) <= addDays(SUNDAY, -4)).toBe(true);
+  });
+
+  it("turns the Q into easy runs when no day is left for them, before and after the race (P-18)", () => {
+    const wednesday = addDays(MONDAY, 2);
+    const sessions = raceWeek({ now: `${MONDAY}T06:00`, planStart: MONDAY, goal: tenK(wednesday) });
+    expect(races(sessions).map((s) => dateOf(s.start))).toEqual([wednesday]);
+    expect(others(sessions).length).toBeGreaterThan(0);
+    expect(others(sessions).every((s) => !isHard(s) && dateOf(s.start) !== wednesday)).toBe(true);
+  });
+
+  it("keeps the last three days before a race early next week free of hard runs (P-19)", () => {
+    const tuesday = addDays(MONDAY, 8);
+    const goal = tenK(tuesday);
+    const current = raceWeek({ planStart: addDays(MONDAY, -1), goal });
+    expect(races(current)).toHaveLength(0);
+    expect(current.filter(isHard).every((s) => dateOf(s.start) < addDays(tuesday, -3))).toBe(true);
+    const next = raceWeek({ monday: addDays(MONDAY, 7), planStart: addDays(MONDAY, -1), goal, cal: [] });
+    expect(races(next).map((s) => dateOf(s.start))).toEqual([tuesday]);
+    expect(others(next).some(isHard)).toBe(false);
+  });
+
+  it("makes the plan's last taper week a race week too (P-20)", () => {
+    const sessions = raceWeek({
+      monday: "2027-03-15",
+      now: "2027-03-14T18:00",
+      planStart: addDays(MONDAY, -1),
+      cal: [],
+    });
+    expect(races(sessions).map((s) => dateOf(s.start))).toEqual(["2027-03-21"]);
+    expect(sessions.some((s) => s.type === "L")).toBe(false);
+    for (const s of others(sessions).filter(isHard)) expect(dateOf(s.start) <= "2027-03-17").toBe(true);
+  });
+
+  it("places the race after her class that day, even on a day without runs (P-21)", () => {
+    const now = `${addDays(MONDAY, 1)}T12:00`;
+    const sessions = raceWeek({
+      now,
+      planStart: dateOf(now),
+      goal: tenK(SUNDAY),
+      settings: { ...SETTINGS, noRunDays: [6] },
+      cal: [LEGS, block("class", `${SUNDAY}T07:00`, `${SUNDAY}T12:00`, "class")],
+    });
+    expect(races(sessions).map((s) => s.start)).toEqual([`${SUNDAY}T12:30`]);
+  });
+
+  it("keeps what Anna moved and drops the race of an old date (EV-23)", () => {
+    const now = `${addDays(MONDAY, 1)}T12:00`;
+    const mine = { ...hard("mine", `${addDays(SUNDAY, -2)}T07:00`, 40), manual: true };
+    const old = { ...hard("old", `${addDays(SUNDAY, -1)}T09:00`, 50), type: "RACE" as const, frozen: true };
+    const sessions = raceWeek({ now, planStart: dateOf(now), goal: tenK(SUNDAY), kept: [mine, old] });
+    expect(sessions.find((s) => s.id === "mine")).toEqual(mine);
+    expect(sessions.some((s) => s.id === "old")).toBe(false);
+    expect(races(sessions).map((s) => dateOf(s.start))).toEqual([SUNDAY]);
+  });
+
+  it("bars hard runs from J-3 to the week after the race; Anna may force one, as an easy run (H12, PL-12)", () => {
+    const race = { ...hard("race", `${SUNDAY}T09:00`, 50), type: "RACE" as const };
+    const w = { monday: MONDAY, sessions: [race], cal: [], settings: SETTINGS };
+    const friday = `${addDays(SUNDAY, -2)}T18:00`;
+    const wednesday = `${addDays(MONDAY, 2)}T18:00`;
+    const q = hard("q", wednesday);
+    expect(checkHard(q, slotAt(q, friday), w).map((v) => v.ruleId)).toEqual(["H12"]);
+    expect(checkHard(easy("e", friday), slotAt(q, friday), w)).toEqual([]);
+    expect(checkHard(q, slotOf(q), w)).toEqual([]);
+
+    const r = moveSession(state([race, q], []), "q", slotAt(q, friday), `${MONDAY}T08:00`);
+    expect(r.state.sessions.find((s) => s.id === "q")).toMatchObject({ type: "E", start: friday, manual: true });
+    expect(r.warnings.map((x) => x.ruleId)).toEqual(["H12"]);
   });
 });

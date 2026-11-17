@@ -17,6 +17,7 @@ export const RPE: Record<RunType, number> = {
   COTES_L: 8,
   FARTLEK: 5,
   TEST: 9,
+  RACE: 9,
 };
 
 const PRIORITY: Record<RunType, Session["priority"]> = {
@@ -28,6 +29,7 @@ const PRIORITY: Record<RunType, Session["priority"]> = {
   SPE: 2,
   COTES_L: 2,
   TEST: 2,
+  RACE: 1,
   FARTLEK: 3,
   E: 4,
   COTES_C: 4,
@@ -199,6 +201,17 @@ function fartlek(c: BuildCtx): Step[] {
 
 const test = (c: BuildCtx): Step[] => [step("work", minutesAt(5, c.paces.I), "I", c.paces, RPE.TEST, { distM: 5000 })];
 
+/** P24: the whole distance at race pace; a distance step ends on the watch where the race does. */
+const raceRun = (c: BuildCtx): Step[] => {
+  const pace = c.racePaceSKm ?? c.paces.M;
+  return [
+    step("work", minutesAt(c.distM / 1000, pace), "race", c.paces, RPE.RACE, {
+      distM: c.distM,
+      target: { paceSKm: [pace, pace], rpe: RPE.RACE },
+    }),
+  ];
+};
+
 const BODIES: Record<RunType, (c: BuildCtx) => Step[]> = {
   E: (c) => easyRun("E", c.durMin ?? 45, c),
   RECUP: (c) => easyRun("RECUP", c.durMin ?? 30, c),
@@ -212,6 +225,7 @@ const BODIES: Record<RunType, (c: BuildCtx) => Step[]> = {
   COTES_L: hillsLong,
   FARTLEK: fartlek,
   TEST: test,
+  RACE: raceRun,
 };
 
 const WRAPPED = new Set<RunType>(["T", "CRUISE", "I", "R", "SPE", "COTES_L", "TEST"]);
@@ -236,7 +250,7 @@ export function isHard(s: Session): boolean {
         .filter((st) => st.zone !== "E")
         .reduce((m, st) => m + stepTotal(st), 0) > 6
     );
-  return ["L", "T", "CRUISE", "I", "SPE", "COTES_L", "TEST"].includes(s.type);
+  return ["L", "T", "CRUISE", "I", "SPE", "COTES_L", "TEST", "RACE"].includes(s.type);
 }
 
 /** C3, bounded to 1..10. */

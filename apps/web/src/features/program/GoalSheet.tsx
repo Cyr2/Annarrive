@@ -73,7 +73,7 @@ export default function GoalSheet(sheet: SheetProps<"goal">) {
       </Section>
       <Surface variant="inset" className="flex flex-col gap-1 p-4">
         <span className="t-strong">Ce qui change</span>
-        <span className="t-body">{goalSummary(goal, input)}</span>
+        <span className="t-body">{goalSummary(goal, input, todayOf(plan))}</span>
       </Surface>
     </Sheet>
   );

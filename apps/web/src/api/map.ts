@@ -70,6 +70,7 @@ const TITLES: Record<RunType, string> = {
   COTES_L: "Côtes longues",
   FARTLEK: "Fartlek",
   TEST: "Test",
+  RACE: "Ta course",
 };
 
 const WHY: Record<RunType, string> = {
@@ -85,6 +86,7 @@ const WHY: Record<RunType, string> = {
   COTES_L: "De longues montées pour ton endurance et ta force.",
   FARTLEK: "Des changements d'allure au ressenti.",
   TEST: "Mesure ta forme pour ajuster tes allures.",
+  RACE: "Le jour J. Pars à ton allure, pas plus vite.",
 };
 
 const WATCH: Record<ServerWatch, WatchStatus> = { pending: "sending", sent: "synced", failed: "failed", off: "off" };

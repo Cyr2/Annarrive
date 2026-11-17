@@ -21,6 +21,7 @@ export const runTypeSchema = z.enum([
   "COTES_L",
   "FARTLEK",
   "TEST",
+  "RACE",
 ]);
 
 const range = z.tuple([z.number(), z.number()]);

@@ -49,6 +49,10 @@ describe("maintenance (M9)", () => {
     expect(w.every((s) => s.type === "E")).toBe(true);
   });
 
+  it("keeps 20 min footings after a race when no run is known (MA-7)", () => {
+    expect(postRaceWeek(0, P40).map((s) => s.durMin)).toEqual([20, 20, 20]);
+  });
+
   it("starts the plan next Monday from the maintenance mean (MA-6)", () => {
     expect(exitMaintenance([100, 110, 95, 105], "2026-11-16T09:00")).toEqual({ v0: 102.5, planStart: "2026-11-23" });
   });
