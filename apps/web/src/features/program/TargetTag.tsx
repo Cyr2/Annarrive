@@ -3,7 +3,7 @@ import { Icon } from "../../ui/Icon.tsx";
 
 /** Reachable reads as done-able (green and a check), ambitious as a calm heads-up (amber and an info). */
 const TAGS = {
-  reachable: { label: "Atteignable", icon: "check", className: "bg-easy-wash text-easy-deep" },
+  reachable: { label: "Atteignable", icon: "check", className: "bg-ok-wash text-ok-deep" },
   ambitious: { label: "Ambitieux", icon: "info", className: "bg-warn-wash text-warn-deep" },
 } as const;
 

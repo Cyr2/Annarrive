@@ -60,6 +60,22 @@
     border-radius: var(--radius-card);
     box-shadow: var(--shadow-card);
   }
+  /* The luminous edge: a 1 px gradient ring cut out of a pseudo-element, above the content and the tone wash. */
+  .surface::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    padding: 1px;
+    border-radius: inherit;
+    background: var(--surface-edge);
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    -webkit-mask-composite: xor;
+    pointer-events: none;
+  }
   .surface[data-variant="inset"],
   .surface[data-variant="widget"] {
     background: var(--surface-sheen), var(--surface-inset);
@@ -136,6 +152,8 @@
     --glass-float: var(--surface-solid);
     --glass-toast: var(--surface-solid);
     --surface-sheen: none;
+    --surface-reggie: color-mix(in srgb, var(--color-reggie) 8%, var(--surface-solid));
+    --surface-edge: none;
     --lg-glass-active: #ffffff;
     --lg-blur: 0px;
   }

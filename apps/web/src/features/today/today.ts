@@ -1,32 +1,10 @@
-import type { Item, Run, WatchStatus, Week } from "../../api/schemas.ts";
-import { addDays, addMinutes, dayName, minutesOf, relativeMoment, span } from "../../lib/date.ts";
+import type { Item, Run, WatchStatus } from "../../api/schemas.ts";
+import { addMinutes, minutesOf, relativeMoment, span } from "../../lib/date.ts";
 import type { Tone } from "../../ui/tones.ts";
 import type { SheetSpec } from "../sheets/store.ts";
 
 export function toneOf(item: Item): Tone {
   return item.kind === "run" ? item.intensity : item.kind;
-}
-
-const DOT_ORDER: Tone[] = ["hard", "long", "easy", "revision", "strength", "class"];
-
-/** The seven days of "Cette semaine": letter, number, and one dot per kind of thing planned. */
-export function weekStrip(week: Week, today: string) {
-  return Array.from({ length: 7 }, (_, i) => {
-    const date = addDays(week.monday, i);
-    const kinds = new Set(
-      week.items
-        .filter((item) => item.date === date && !("cancelled" in item && item.cancelled))
-        .map((item): Tone => (item.kind === "run" ? item.intensity : item.kind === "busy" ? "class" : item.kind)),
-    );
-    return {
-      date,
-      letter: dayName(date).charAt(0),
-      day: dayName(date),
-      number: Number(date.slice(8)),
-      today: date === today,
-      dots: DOT_ORDER.filter((tone) => kinds.has(tone)),
-    };
-  });
 }
 
 /** "Ma journée": the day's items in time order. */
@@ -63,12 +41,6 @@ const REST_LINES = [
 /** The rest day's sentence: one per date, so it stays the same all day and changes the next rest day. */
 export function restLine(date: string): string {
   return REST_LINES[Number(date.slice(8)) % REST_LINES.length] ?? "";
-}
-
-/** The run's tone and the other kinds of a day of the week strip: the run is the subject, the rest is context. */
-export function splitDots(dots: Tone[]): { run?: Tone; others: Tone[] } {
-  const run = dots.find((tone) => tone === "hard" || tone === "long" || tone === "easy");
-  return { run, others: dots.filter((tone) => tone !== run) };
 }
 
 /** Changes when what the card shows changes, so the card can turn over to its new content. */

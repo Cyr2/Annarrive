@@ -32,7 +32,7 @@ export function Typing({ label = "Reggie écrit", text }: { label?: string; text
       role="status"
       aria-label={label}
       data-variant="widget"
-      className="surface msg bubble-reggie t-body flex items-center gap-1.5 self-start px-4 py-3.5"
+      className="surface msg bubble-reggie t-body ml-12 flex items-center gap-1.5 self-start px-4 py-3.5"
     >
       <span className="typing-dot" />
       <span className="typing-dot" />

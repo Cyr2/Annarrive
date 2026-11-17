@@ -183,6 +183,6 @@ describe("onboarding payload", () => {
   });
 
   it("writes French copy without long dashes or exclamation marks", () => {
-    for (const step of STEPS) expect(`${COPY[step].title} ${COPY[step].lead}`).not.toMatch(/[—–!]/);
+    for (const step of STEPS) expect(`${COPY[step].title} ${COPY[step].lead ?? ""}`).not.toMatch(/[—–!]/);
   });
 });

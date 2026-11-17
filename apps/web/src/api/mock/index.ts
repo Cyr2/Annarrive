@@ -41,6 +41,7 @@ const ACTIVITY: Activity = {
   mainPace: "4:52",
   verdict: "Cible 4:55 tenue sur les 6 fractions",
   askFeel: true,
+  intensity: "hard",
 };
 
 export type MockOptions = { scenario?: Scenario; monday?: string; latencyMs?: number };

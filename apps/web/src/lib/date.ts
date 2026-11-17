@@ -105,6 +105,12 @@ export function relativeMoment(iso: string, time: string, today: string): string
   return `${momentLabel(iso, time, today)} ${time}`;
 }
 
+/** A moment that is over: never "Ce soir" ("Aujourd'hui 18:00", "Hier 7:30", "Lundi 18:00"). */
+export function pastMoment(iso: string, time: string, today: string): string {
+  const day = daysBetween(today, iso) === -1 ? "Hier" : relativeDay(iso, today);
+  return `${day} ${time}`;
+}
+
 export function minutesOf(time: string): number {
   const [h = 0, m = 0] = time.split(":").map(Number);
   return h * 60 + m;

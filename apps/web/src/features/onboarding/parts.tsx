@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { cx } from "../../lib/cx.ts";
+import { ChoiceCard } from "../../ui/ChoiceCard.tsx";
 import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
 import { Chip } from "../../ui/controls.tsx";
-import { Icon } from "../../ui/Icon.tsx";
 import { Surface } from "../../ui/Surface.tsx";
 import { type Draft, questionSteps, type Step } from "./onboarding.ts";
 import { useOnboarding } from "./store.ts";
@@ -18,30 +18,19 @@ type ChoiceProps = {
   label: ReactNode;
   detail?: string;
   className?: string;
-  /** The check mark, left out on narrow tiles where the ring says enough. */
-  mark?: boolean;
+  /** A narrow tile of a grid: the check sits in its corner. */
+  tile?: boolean;
 };
 
-/** A big answer: the whole row is the target, selected with the action ring and a check. */
-export function BigChoice({ on, onClick, label, detail, className, mark = true }: ChoiceProps) {
+/** A big answer: the whole row is the target, a choice card. */
+export function BigChoice({ on, onClick, label, detail, className, tile }: ChoiceProps) {
   return (
-    <button
-      type="button"
-      aria-pressed={on}
-      onClick={onClick}
-      data-variant="inset"
-      className={cx(
-        "surface select-anim press flex min-h-14 w-full min-w-0 items-center gap-3 border-0 px-4 py-3 text-left text-ink",
-        on && "bg-action-wash shadow-ring",
-        className,
-      )}
-    >
+    <ChoiceCard on={on} onClick={onClick} layout={tile ? "tile" : "row"} className={cx("w-full", className)}>
       <span className="flex min-w-0 flex-1 flex-col [overflow-wrap:anywhere]">
         <span className="t-strong">{label}</span>
         {detail && <span className="t-cap">{detail}</span>}
       </span>
-      {mark && <Icon name="check" size={18} stroke={2.6} className={cx("flex-none text-action", !on && "opacity-0")} />}
-    </button>
+    </ChoiceCard>
   );
 }
 

@@ -17,8 +17,8 @@ export function WeekStep() {
           {([3, 4, 5] as const).map((n) => (
             <BigChoice
               key={n}
-              className="min-h-20"
-              mark={false}
+              tile
+              className="min-h-20 items-center justify-center"
               label={<span className="t-figure block text-center">{n}</span>}
               on={runsPerWeek === n}
               onClick={() => update({ runsPerWeek: n })}
@@ -46,7 +46,7 @@ export function WeekStep() {
 export function HoursStep() {
   const draft = useDraft();
   return (
-    <Section footnote="Tes courses finissent au moins 1 h avant ton coucher.">
+    <Section>
       <Group>
         <DayWindow notBefore={draft.earliest} notAfter={draft.latestEnd} bedtime={draft.bedtime} />
         <RowInput label="Pas avant" type="time" value={draft.earliest} onChange={(earliest) => update({ earliest })} />

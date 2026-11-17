@@ -7,7 +7,7 @@ Everything a screen draws comes from this folder and from `src/styles/`. A scree
 | Layer | What | Component | Material |
 |---|---|---|---|
 | Backdrop | the dawn sky, fixed behind the whole app | `Sky` | calm, still gradient: a soft apricot wash at the top fading to warm near-white, two pale cool fields (periwinkle, mint) for the glass to show |
-| Content | cards, grouped lists, widgets, sheet bodies | `Surface` | glass: 40 % white over the sky, strongly blurred and saturated, lit rim, top-left sheen, soft warm shadow |
+| Content | cards, grouped lists, widgets, sheet bodies | `Surface` | glass: 32 % white over the sky, strongly blurred and saturated, a 1 px gradient light rim, top-left sheen, soft warm shadow |
 | Controls | tab bar, buttons, chips, segmented controls, fields, switches, sliders, toasts | `controls.tsx` | Liquid Glass (glisse) |
 
 Rules that follow from it:
@@ -33,7 +33,8 @@ All values live there and become Tailwind classes (`text-ink`, `bg-intense-wash`
 | `warn` (`-wash`, mid, `-deep`) | `bg-warn-wash text-warn-deep` | look at this, calmly | forced rules, lightened session, watch not synced, ambitious goal, pain from 4, field errors |
 | `danger` | `text-danger` | destroys | the label of a destructive action only (never a fill, never an alert) |
 | `on-color` | `text-on-color` | white | text on a filled action or Reggie button |
-| `scrim` | `bg-scrim` | behind a sheet | ink at 24 % |
+| `ok` (`-wash`, `-deep`) | `bg-ok`, `bg-ok-wash text-ok-deep` | a status is fine (connected, up to date, reachable) | status dots and tags. Never the easy-run green |
+| `scrim` | `bg-scrim` | behind a sheet | ink at 13 %; the page behind steps back to 0.94 (`html[data-sheet]`, motion.css) |
 
 ### Session tones: wash, mid, deep
 
@@ -45,14 +46,14 @@ Each session type has three tones, read through `ui/tones.ts` (`TONES[tone].wash
 | `easy` | `#CDEBDC` | `#5DBB92` | `#2C6337` (5.6:1 on wash), yellower than Reggie's green on purpose |
 | `long` | `#D3E2FA` | `#6F9EE6` | `#2F449A` (6.6:1 on wash), more indigo than the action blue on purpose |
 | `revision` | `#C9EAEE` | `#5FBEC9` | `#155A63` (6.2:1 on wash) |
-| `strength` | `#EEF0F3` | `#A9B2BC` | `#4A5866` (7.3:1) |
+| `strength` | `#E8EDF5` | `#8496B3` | `#3B4D6B` (6.5:1 on wash), a slate blue apart from the class grey |
 | `class`, `busy`, `rest`, `other` | `#F1F2F4` | `#C4CAD1` | `#434E5A` (the secondary ink) |
 
 Paces, times and distances are never colored: the type is said by a `SessionChip`, a `SessionShape` or an `IconTile` next to them.
 
 ### Surfaces, shadows, radii, spacing, motion
 
-- Surfaces: content is frost, controls are glass (glisse). `--surface-card` (40 % white), `--surface-inset` (38 %), both under `--surface-sheen` and blurred with `--surface-blur` on every device (the sky never moves, so it is blurred once), no refraction; `--surface-sheet` (95 %, blurred: the page never reads through), `--surface-on-sheet` (a group on a sheet, no blur of its own), `--surface-solid` (reduced transparency). Glass floating over scrolling content (tab bar, toasts, `.ui-glass`, Reggie's composer with `.ui-float`) takes `--glass-float` (50 % white, 96 % without backdrop blur); a toast `--glass-toast` (68 %) with `--shadow-toast`. A filled button glows in its color (`--shadow-glow-action`, `--shadow-glow-reggie`).
+- Surfaces: content is frost, controls are glass (glisse). `--surface-card` (32 % white), `--surface-inset` (34 %), `--surface-edge` (the 1 px light rim of every surface), both under `--surface-sheen` and blurred with `--surface-blur` on every device (the sky never moves, so it is blurred once), no refraction; `--surface-sheet` (84 %, blurred), `--surface-on-sheet` (a group on a sheet, 50 %, no blur of its own, same rim), `--surface-solid` (reduced transparency). Glass floating over scrolling content (tab bar, toasts, `.ui-glass`, Reggie's composer with `.ui-float`) takes `--glass-float` (50 % white, 96 % without backdrop blur); a toast `--glass-toast` (68 %) with `--shadow-toast`. A filled button glows in its color (`--shadow-glow-action`, `--shadow-glow-reggie`).
 - Shadows: `shadow-card`, `shadow-inset`, `shadow-sheet`, `shadow-float` (floating controls, toasts), `shadow-lift` (dragged item), `shadow-ring` (selection), `shadow-ring-quiet` (empty radio).
 - Radii by hierarchy: `tile` 10, `row` 16, `inset` 20, `card` 24, `bubble` 22, `sheet` 32, `pill`.
 - Sizes: `--size-target` 44 (every touch target), `--size-control` 50 (main buttons, fields), `--size-action` 60 (round actions), `px-gutter` 16. `--space-under-tabbar` and `--space-above-tabbar` keep content and floating things clear of the tab bar.
@@ -78,8 +79,10 @@ Other utilities: `.row` (grouped list row with hairlines between rows), `.hairli
 
 ### Content
 
-- **`Surface`** `variant?: "card" | "inset" | "sheet" | "widget"`, `as?`. `card`: a main block (the day's session, the goal). `inset`: grouped lists and small blocks (a sheet's groups turn plain white). `widget`: Reggie's cards and bubbles, the same glass as `inset`. `sheet`: used by `Sheet` only. Selectable cards are plain `<button data-variant="inset" className="surface ...">` with `bg-action-wash shadow-ring` when selected, plus a check.
-- **`List`**: `Section` (caption title and footnote), `Group` (an inset surface), `RowButton` (label, value, chevron), `RowSelect` (native iOS wheel), `RowInput` (text, date, time). Dates and times show the app's own wording ("lundi 16 novembre", "7:30") over the native field, which still opens the iOS wheel. Placeholders start with "Ex. :".
+- **`Surface`** `variant?: "card" | "inset" | "sheet" | "widget"`, `as?`. `card`: a main block (the day's session, the goal). `inset`: grouped lists and small blocks (a sheet's groups turn plain white). `widget`: Reggie's cards and bubbles, the same glass as `inset`. `sheet`: used by `Sheet` only. Selectable cards are `ChoiceCard`.
+- **`ChoiceCard`** `on, tone?: "action" | "reggie", layout?: "row" | "tile", flat?`. The one selection treatment (light tint, 2 px outline, check in a circle) for every list of choices in sheets and in the onboarding; put in a `ChoiceGroup`. Chips use the same three signs.
+- **`WeekStrip`** `days, label, onSelect?, footer?`. The week's seven days on Aujourd'hui and on Semaine, built by `stripOf` (features/week/week.ts): a bar per run, one mark per other kind, no legend.
+- **`List`**: `SectionTitle` (role 1, 20 px: a section of a screen) and `GroupLabel` (role 2, caption: over a group); `Section` (a `GroupLabel`, content and footnote), `Group` (an inset surface), `RowButton` (label, value, chevron), `RowSelect` (native iOS wheel), `RowInput` (text, date, time). Dates and times show the app's own wording ("lundi 16 novembre", "7:30") over the native field, which still opens the iOS wheel. Placeholders start with "Ex. :".
 - **`PaceValue`** `value, unit?, size?: "figure" | "num" | "title" | "strong", rolling?`. Every pace, time, duration or distance. Always ink and tabular; the unit is smaller in `ink-2`; `rolling` makes digits roll when the value changes.
 - **`SessionShape`** `steps, tone`. The session drawn as rounded bars: warm-up, one bar per repeat (with its recovery low between), cool-down; height is effort, color is the type. Use it wherever a session is shown in some size: day card, detail, and next on Semaine rows, Reggie's widgets, the move and change sheets. Logic in `session-shape.ts` (tested).
 - **`TimeBoxes`** `seconds, onChange, maxHours?`. A target time in two glass boxes, « h » and « min », typed on the number pad (`inputMode="numeric"`). Her target time, never a proposed one. No custom wheels.

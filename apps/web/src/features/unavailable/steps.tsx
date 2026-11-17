@@ -1,9 +1,10 @@
 import { cx } from "../../lib/cx.ts";
 import { IconTile } from "../../ui/bits.tsx";
+import { ChoiceCard } from "../../ui/ChoiceCard.tsx";
 import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
 import { Chip, SegmentedControl, Slider } from "../../ui/controls.tsx";
 import { Icon } from "../../ui/Icon.tsx";
-import { Group, RowInput, Section } from "../../ui/List.tsx";
+import { Group, RowInput, Section, SectionTitle } from "../../ui/List.tsx";
 import { PaceValue } from "../../ui/PaceValue.tsx";
 import { Surface } from "../../ui/Surface.tsx";
 import { type Draft, painAdvice, REASONS, ZONES } from "./unavailable.ts";
@@ -15,28 +16,24 @@ export function ReasonStep({ draft, today, onChange }: ReasonProps) {
   return (
     <>
       <ChoiceGroup label="Qu'est-ce qui se passe ?" className="flex flex-col gap-2">
-        <h2 className="t-title m-0 px-1">Qu'est-ce qui se passe ?</h2>
-        <Surface variant="inset" className="overflow-hidden">
+        <SectionTitle>Qu'est-ce qui se passe ?</SectionTitle>
+        <Surface variant="inset" className="divide-y-[0.5px] divide-hairline overflow-hidden">
           {REASONS.map((r) => {
             const on = draft.reason === r.value;
             return (
-              <button
+              <ChoiceCard
                 key={r.value}
-                type="button"
-                aria-pressed={on}
+                flat
+                on={on}
                 onClick={() => onChange({ reason: r.value })}
-                className={cx(
-                  "select-anim flex min-h-14 w-full items-center gap-3 border-0 px-4 text-left text-ink",
-                  on ? "bg-action-wash" : "bg-transparent",
-                )}
+                className="w-full bg-transparent"
               >
                 <IconTile tone="class" icon={r.icon} />
                 <span className="flex flex-1 flex-col py-2">
                   <span className="t-body">{r.label}</span>
                   <span className="t-cap">{r.effect}</span>
                 </span>
-                <Icon name="check" size={18} stroke={2.6} className={cx("text-action", !on && "opacity-0")} />
-              </button>
+              </ChoiceCard>
             );
           })}
         </Surface>
@@ -82,25 +79,14 @@ const FEVER = [
 export function FeverStep({ fever, onPick }: { fever?: boolean; onPick: (fever: boolean) => void }) {
   return (
     <ChoiceGroup label="Tu as de la fièvre ou ça touche la poitrine ?" className="flex flex-col gap-3">
-      <h2 className="t-title m-0 px-1">Tu as de la fièvre ou ça touche la poitrine ?</h2>
+      <SectionTitle>Tu as de la fièvre ou ça touche la poitrine ?</SectionTitle>
       {FEVER.map((a) => (
-        <button
-          key={a.label}
-          type="button"
-          aria-pressed={fever === a.value}
-          onClick={() => onPick(a.value)}
-          data-variant="inset"
-          className={cx(
-            "surface select-anim press flex min-h-16 items-center gap-3 border-0 px-4 py-3 text-left text-ink",
-            fever === a.value && "bg-action-wash shadow-ring",
-          )}
-        >
+        <ChoiceCard key={a.label} on={fever === a.value} onClick={() => onPick(a.value)} className="min-h-16">
           <span className="flex flex-1 flex-col">
             <span className="t-strong">{a.label}</span>
             <span className="t-cap">{a.detail}</span>
           </span>
-          <Icon name="chevronRight" size={16} stroke={2.5} className="flex-none text-ink-3" />
-        </button>
+        </ChoiceCard>
       ))}
     </ChoiceGroup>
   );
@@ -109,7 +95,7 @@ export function FeverStep({ fever, onPick }: { fever?: boolean; onPick: (fever: 
 export function ZoneStep({ zone, onChange }: { zone?: string; onChange: (zone: string) => void }) {
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="t-title m-0 px-1">Où ?</h2>
+      <SectionTitle>Où ?</SectionTitle>
       <ChoiceGroup label="Où ?" className="flex flex-wrap gap-2">
         {ZONES.map((z) => (
           <Chip key={z} selected={zone === z} onClick={() => onChange(z)}>

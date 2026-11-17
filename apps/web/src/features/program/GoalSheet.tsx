@@ -77,10 +77,11 @@ export default function GoalSheet(sheet: SheetProps<"goal">) {
         />
         {!finish && <TimeBoxes seconds={seconds} onChange={(s) => set({ targetTime: fullClock(s) })} />}
       </Section>
-      <Surface variant="inset" className="flex flex-col gap-1 p-4">
-        <span className="t-strong">Ce qui change</span>
-        <span className="t-body">{goalSummary(goal, input, todayOf(plan))}</span>
-      </Surface>
+      <Section title="Ce qui change">
+        <Surface variant="inset" className="p-4">
+          <span className="t-body">{goalSummary(goal, input, todayOf(plan))}</span>
+        </Surface>
+      </Section>
     </Sheet>
   );
 }

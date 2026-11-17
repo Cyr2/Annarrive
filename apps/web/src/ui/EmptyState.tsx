@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Button } from "./controls.tsx";
 import { Icon, type IconName } from "./Icon.tsx";
+import { SectionTitle } from "./List.tsx";
 import { Surface } from "./Surface.tsx";
 
 type Props = { icon: IconName; title: string; children?: ReactNode; action?: ReactNode };
@@ -12,7 +13,7 @@ export function EmptyState({ icon, title, children, action }: Props) {
       <span className="flex size-12 items-center justify-center rounded-full bg-action-wash text-action">
         <Icon name={icon} />
       </span>
-      <h2 className="t-title">{title}</h2>
+      <SectionTitle className="px-0">{title}</SectionTitle>
       {children && <p className="t-sub m-0 max-w-[32ch]">{children}</p>}
       {action}
     </Surface>

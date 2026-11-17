@@ -85,6 +85,9 @@ function Panel({
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const root = document.getElementById("root");
     root?.setAttribute("inert", "");
+    // The page steps back behind the sheet (motion.css); its scale pivots on the middle of what is on screen.
+    document.documentElement.style.setProperty("--recede-origin", `50% ${scrollY + innerHeight / 2}px`);
+    document.documentElement.dataset.sheet = "";
     (panel.current?.querySelector<HTMLElement>("[data-autofocus]") ?? panel.current)?.focus({ preventScroll: true });
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") close.current();
@@ -94,6 +97,7 @@ function Panel({
     return () => {
       document.removeEventListener("keydown", onKey);
       root?.removeAttribute("inert");
+      delete document.documentElement.dataset.sheet;
       opener?.focus({ preventScroll: true });
     };
   }, []);
@@ -134,7 +138,7 @@ function Panel({
       >
         <header className="flex-none touch-none px-4 pt-2" onPointerDown={(event) => drag.start(event)}>
           <span aria-hidden="true" className="mx-auto block h-1.25 w-9 rounded-full bg-hairline-strong" />
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 pt-2">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 pt-2">
             {onBack ? (
               <TextButton className="justify-self-start" aria-label="Retour" onClick={onBack}>
                 <Icon name="chevronLeft" size={22} stroke={2.4} />
@@ -144,7 +148,7 @@ function Panel({
                 {cancelLabel}
               </TextButton>
             )}
-            <div className="flex min-w-0 flex-col items-center text-center">
+            <div className="flex max-w-[60vw] min-w-0 flex-col items-center text-center text-balance">
               <h2 id={titleId} className="t-strong m-0">
                 {title}
               </h2>

@@ -63,6 +63,8 @@ export const activitySchema = z.object({
   verdict: z.string(),
   /** True when the watch did not record how it felt, so the app asks. */
   askFeel: z.boolean(),
+  /** The matched session's type, for the card's color; a run with no session has none. */
+  intensity: intensitySchema.optional(),
   feel: z.enum(["easy", "fine", "hard"]).optional(),
 });
 

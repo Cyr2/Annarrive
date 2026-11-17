@@ -57,7 +57,7 @@ function Timetable() {
   if (linked)
     return (
       <Card className="flex-row items-start">
-        <Icon name="checkCircle" className="mt-px flex-none text-easy-deep" />
+        <Icon name="checkCircle" className="mt-px flex-none text-ok-deep" />
         <p className="t-body m-0">Ton emploi du temps est relié. Tes courses se placent autour de tes cours.</p>
       </Card>
     );

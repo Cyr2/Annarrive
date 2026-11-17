@@ -24,15 +24,15 @@ export const STEPS = [
 ] as const;
 export type Step = (typeof STEPS)[number];
 
-export const COPY: Record<Step, { title: string; lead: string }> = {
+export const COPY: Record<Step, { title: string; lead?: string }> = {
   welcome: { title: "Annarrivé", lead: "Ton coach de course à pied." },
-  race: { title: "Ton objectif", lead: "La distance et la date. Sans objectif, on entretient ta forme." },
-  target: { title: "Ton chrono", lead: "Choisis le temps que tu vises, ou simplement de finir." },
-  week: { title: "Ta semaine", lead: "Combien de fois tu cours, et les jours que tu gardes libres." },
+  race: { title: "Ton objectif" },
+  target: { title: "Ton chrono" },
+  week: { title: "Ta semaine" },
   hours: { title: "Tes horaires", lead: "Tes courses se placent dans cette plage, jamais trop près du coucher." },
   strength: { title: "Ta muscu", lead: "Facultatif. Ajoute tes séances habituelles, tes courses se placent autour." },
   health: { title: "Ta santé", lead: "Pour démarrer à la bonne intensité. Tout se change ensuite dans Programme." },
-  connect: { title: "Tes cours et tes notifications", lead: "Ton emploi du temps, puis les notifications." },
+  connect: { title: "Tes cours et tes notifications" },
   summary: { title: "Tout est bon ?", lead: "Touche une ligne pour la changer, puis lance-toi." },
 };
 

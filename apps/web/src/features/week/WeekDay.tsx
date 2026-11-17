@@ -2,6 +2,7 @@ import { useDroppable } from "@dnd-kit/core";
 import { cx } from "../../lib/cx.ts";
 import { duration } from "../../lib/date.ts";
 import { Icon } from "../../ui/Icon.tsx";
+import { SectionTitle } from "../../ui/List.tsx";
 import { Surface } from "../../ui/Surface.tsx";
 import { ClassGroup } from "./ClassGroup.tsx";
 import { DraggableItem } from "./WeekItem.tsx";
@@ -24,9 +25,9 @@ export function WeekDay({ day, readOnly, dragging, target }: Props) {
       className={cx("flex scroll-mt-6 flex-col gap-2", !held && "week-dim", held && target.blocked && "week-blocked")}
     >
       <div className="flex min-h-7 flex-wrap items-baseline gap-x-2 px-1">
-        <h2 id={`title-${day.date}`} className={cx("t-title whitespace-nowrap", day.past && "text-ink-2")}>
+        <SectionTitle id={`title-${day.date}`} className={cx("px-0 whitespace-nowrap", day.past && "text-ink-2")}>
           {day.title}
-        </h2>
+        </SectionTitle>
         {day.note && <Note text={day.note} today={day.today} />}
         {day.runMinutes > 0 && (
           <span className="t-cap ml-auto flex flex-none items-center gap-1 self-center tabular-nums">
