@@ -81,7 +81,9 @@ export function TodayScreen() {
           <RunCard run={session} today={date} />
           <div data-tour="actions" className="flex flex-col gap-4">
             <ReggieNote text={session.why} onClick={askReggie} />
-            <div className="grid grid-cols-3 gap-2">
+            {/* The four round actions were chosen by the owner: Reggie first, filled in his green. */}
+            <div className="grid grid-cols-4 gap-2">
+              <RoundAction label="Reggie" icon="reggie" reggie onClick={askReggie} />
               <RoundAction label="Déplacer" icon="move" onClick={() => show({ kind: "move", id: session.id })} />
               <RoundAction label="Changer" icon="change" onClick={() => show({ kind: "change", id: session.id })} />
               <RoundAction
