@@ -35,7 +35,7 @@ describe("server", () => {
     await t.login();
     expect(await t.call("POST", "/api/timetable/refresh")).toEqual({
       status: 500,
-      json: { error: "Erreur du serveur : réessaie dans un instant." },
+      json: { error: "Ça n'a pas marché : réessaie dans un instant." },
     });
   });
 

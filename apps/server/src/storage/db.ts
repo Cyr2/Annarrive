@@ -18,7 +18,15 @@ const initialTables = [
   "login_token",
   "meta",
 ] as const;
-export const tableNames = [...initialTables, "watch_sync", "health", "proposal", "app_user", "passkey"] as const;
+export const tableNames = [
+  ...initialTables,
+  "watch_sync",
+  "health",
+  "proposal",
+  "app_user",
+  "passkey",
+  "session_feel",
+] as const;
 export type TableName = (typeof tableNames)[number];
 
 // Every table keeps its zod-validated document as JSON, plus the time span it covers for range queries.
@@ -33,6 +41,7 @@ const migrations: string[] = [
   documentTable("health"),
   documentTable("proposal"),
   documentTable("app_user") + documentTable("passkey"),
+  documentTable("session_feel"),
 ];
 
 /** `:memory:` for tests, otherwise `annarrive.db` inside `dataDir`. */

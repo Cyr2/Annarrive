@@ -1,6 +1,7 @@
 import {
   type PlannedSession,
   plannedSessionSchema,
+  sessionNames,
   type WatchStatus,
   type WorkoutRequest,
   type WorkoutStep,
@@ -9,22 +10,6 @@ import { addDays, dateOf } from "../time.ts";
 
 type Step = PlannedSession["steps"][number];
 type RequestStep = WorkoutRequest["steps"][number];
-
-export const workoutNames: Record<PlannedSession["type"], string> = {
-  E: "Footing",
-  RECUP: "Récupération",
-  L: "Sortie longue",
-  T: "Seuil",
-  CRUISE: "Seuil fractionné",
-  I: "Fractionné",
-  R: "Vitesse",
-  SPE: "Allure course",
-  COTES_C: "Côtes courtes",
-  COTES_L: "Côtes longues",
-  FARTLEK: "Fartlek",
-  TEST: "Test",
-  RACE: "Course",
-};
 
 const garminKinds: Record<Step["kind"], WorkoutStep["kind"]> = {
   warmup: "warmup",
@@ -73,7 +58,7 @@ export function toWorkoutRequest(session: PlannedSession): WorkoutRequest {
     steps.push({ kind: "repeat", iterations: reps, steps: block });
   }
   if (steps.length === 0) steps.push({ kind: "interval", durationS: session.durMin * 60 });
-  return { name: workoutNames[session.type], date: dateOf(session.start), steps };
+  return { name: sessionNames[session.type], date: dateOf(session.start), steps };
 }
 
 /** What makes an upload stale: the watch shows the day and the steps, not the hour. */

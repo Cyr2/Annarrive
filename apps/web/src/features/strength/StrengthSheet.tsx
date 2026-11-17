@@ -64,7 +64,7 @@ function StrengthForm({ saved, sheet }: FormProps) {
           label="Nom"
           maxLength={TITLE_MAX}
           value={draft.name}
-          placeholder="Ex. : Jambes"
+          placeholder="Ex. : Haut du corps"
           onChange={(name) => set({ name })}
         />
       </Group>

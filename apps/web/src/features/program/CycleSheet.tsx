@@ -1,3 +1,4 @@
+import { PRIVACY_NOTE } from "../../lib/privacy.ts";
 import { Button } from "../../ui/controls.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
 import { Surface } from "../../ui/Surface.tsx";
@@ -30,9 +31,9 @@ export default function CycleSheet(sheet: SheetProps<"cycle">) {
           comme pour toute fatigue.
         </p>
         <p className="m-0">
-          L'app ne change jamais tes séances selon la phase de ton cycle. Tes données restent sur le serveur de l'app et
-          tu peux désactiver ce réglage à tout moment.
+          L'app ne change jamais tes séances selon la phase de ton cycle. Tu peux désactiver ce réglage à tout moment.
         </p>
+        <p className="m-0">{PRIVACY_NOTE}</p>
       </Surface>
     </Sheet>
   );

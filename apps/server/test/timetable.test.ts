@@ -231,7 +231,7 @@ describe("icsFetcher", () => {
       res.statusCode = 404;
       res.end();
     });
-    await expect(fetchIcs(URL_)).rejects.toThrow(/404/);
+    await expect(fetchIcs(URL_)).rejects.toThrow(/ne répond pas à ce lien/);
   });
 
   it("stops reading a feed larger than the limit", async () => {

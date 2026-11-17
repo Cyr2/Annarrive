@@ -183,7 +183,7 @@ export function createPlanStore(getApi: () => Promise<Api>, notify: Notify) {
           try {
             await (await getApi()).undo(changeId);
             set({ lastChangeId: undefined });
-            notify("Modification annulée");
+            notify("Changement annulé");
             readLater();
           } catch (error) {
             notify(errorMessage(error));

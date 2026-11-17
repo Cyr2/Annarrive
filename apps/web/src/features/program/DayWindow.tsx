@@ -28,7 +28,7 @@ export function DayWindow({ notBefore, notAfter, bedtime }: { notBefore: string;
   return (
     <figure className="row my-0 mr-0 flex-col items-stretch gap-2 py-3">
       <figcaption className="t-sub flex justify-between gap-2">
-        <span>Tes courses</span>
+        <span>Tu peux courir</span>
         <span className="font-semibold text-ink tabular-nums">{slot.text}</span>
       </figcaption>
       <div aria-hidden="true" className="relative mt-5 h-3 rounded-full bg-fill">

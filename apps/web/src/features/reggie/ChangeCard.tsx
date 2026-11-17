@@ -41,7 +41,7 @@ export function ChangeCard({
       <div className="hairline-top flex min-h-11 items-center justify-between gap-2 pt-3">
         <span className="t-cap flex items-center gap-1.5">
           <Icon name="watch" size={16} />
-          {undone ? "Montre remise comme avant" : "Montre à jour"}
+          {undone ? "Montre remise comme avant" : "Ta montre se met à jour"}
         </span>
         {state === "live" && (
           <Button variant="tinted" tone="action" icon="change" onClick={onUndo}>

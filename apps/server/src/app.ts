@@ -201,10 +201,14 @@ export function createApp({ services, sessionSecret, webDist }: AppOptions): Hon
     if (error instanceof AppError) return c.json({ error: error.message }, error.status);
     if (error instanceof ZodError) {
       const issue = error.issues[0];
-      return c.json({ error: `Donnée invalide (${issue?.path.join(".") || "requête"}) : ${issue?.message}` }, 400);
+      // The field and its rule stay in the logs. Our own French messages say what to fix; zod's English defaults never reach Anna.
+      console.warn(`Donnée invalide (${issue?.path.join(".") || "requête"}) : ${issue?.message}`);
+      const ours =
+        issue !== undefined && !/^(Invalid|Too (small|big)|Required|Unrecognized|Expected)/.test(issue.message);
+      return c.json({ error: ours ? issue.message : "Une valeur ne va pas : vérifie ce que tu as saisi." }, 400);
     }
     console.error(`Erreur inattendue : ${error.name}`);
-    return c.json({ error: "Erreur du serveur : réessaie dans un instant." }, 500);
+    return c.json({ error: "Ça n'a pas marché : réessaie dans un instant." }, 500);
   });
 
   app.get("/api/health", (c) => c.json<Health>({ status: "ok", version: VERSION }));

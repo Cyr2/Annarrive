@@ -21,8 +21,8 @@ export default function StopSheet(sheet: SheetProps<"stop">) {
       }
     >
       <p className="t-body m-0 px-1">
-        Arrêter le programme {race} ? Tu passes en mode entretien : 2 à 3 courses faciles par semaine et une séance de
-        qualité.
+        Arrêter ton plan {race.toLowerCase()} ? Tu passes en mode entretien : 2 à 3 courses faciles par semaine, dont
+        une un peu plus rythmée.
       </p>
     </Sheet>
   );

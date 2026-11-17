@@ -16,12 +16,12 @@ test("onboarding d'une base vide jusqu'à la première semaine, puis visite guid
   await page.getByRole("button", { name: "Commencer" }).click();
   expect(await page.evaluate(() => "sawRest" in document.documentElement.dataset)).toBe(false);
 
-  await expect(page.getByRole("heading", { name: "Ta course" })).toBeVisible();
-  await page.getByRole("button", { name: "Semi", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Ton objectif" })).toBeVisible();
+  await page.getByRole("button", { name: "Semi-marathon", exact: true }).click();
   await page.getByLabel("Date").fill("2027-03-14");
   await next.click();
   await expect(page.getByRole("heading", { name: "Ton chrono" })).toBeVisible();
-  await page.getByRole("radio", { name: "La finir" }).click();
+  await page.getByRole("radio", { name: "Juste finir" }).click();
   await next.click();
   await expect(page.getByRole("heading", { name: "Ta semaine" })).toBeVisible();
   await page.getByRole("button", { name: /^4/ }).click();
@@ -34,7 +34,7 @@ test("onboarding d'une base vide jusqu'à la première semaine, puis visite guid
   await next.click();
   await expect(page.getByText("Pas encore relié.", { exact: false })).toBeVisible();
   await next.click();
-  await expect(page.getByRole("heading", { name: "Ton plan est prêt" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tout est bon ?" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Récapitulatif" })).toContainText("4 par semaine");
   await page.getByRole("button", { name: "C'est parti" }).click();
 

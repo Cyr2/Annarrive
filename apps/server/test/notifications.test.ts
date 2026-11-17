@@ -67,7 +67,19 @@ describe("notifications", () => {
     await t.services.timetable.refresh();
 
     expect(messages(t.send)).toEqual([
-      { title: "Course déplacée", body: "Ta course de vendredi passe à 10:30.", url: "/" },
+      { title: "Course déplacée", body: "Un cours a bougé vendredi : ta course passe à 10:30.", url: "/" },
+    ]);
+  });
+
+  it("says which day a class moved a run to, with no zero before the hour", async () => {
+    const t = pushSetup();
+    t.services.notifications.subscribe(subscription);
+    const run = session("q", "2026-11-17T18:00");
+    await t.services.notifications.runMoved(run, { ...run, start: "2026-11-19T07:30" });
+    await t.services.notifications.runMoved(run, { ...run, start: "2026-11-17T07:30" });
+    expect(messages(t.send).map((m) => m.body)).toEqual([
+      "Un cours a bougé : ta course de mardi passe à jeudi 7:30.",
+      "Un cours a bougé mardi : ta course passe à 7:30.",
     ]);
   });
 

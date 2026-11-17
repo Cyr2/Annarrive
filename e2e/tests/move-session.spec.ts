@@ -14,9 +14,9 @@ test("déplacer la séance du jour vers un créneau proposé, puis Annuler la re
   await expect(slots.first()).toBeVisible();
   await slots.last().click();
   await expect(slots.last()).toHaveAttribute("aria-pressed", "true");
-  await sheet.getByRole("button", { name: /^Déplacer à/ }).click();
+  await sheet.getByRole("button", { name: /^Déplacer : / }).click();
 
-  const moved = banner(page, "Séance déplacée à");
+  const moved = banner(page, /passée?s? à /);
   await expect(moved).toBeVisible();
   await expect(sheet).toBeHidden();
   await expect(card).not.toContainText("Ce soir · 17:00");
@@ -39,7 +39,7 @@ test("passer la séance du jour : elle part sans être rattrapée, puis Annuler 
   await expect(slots).not.toContainText("le moins gênant");
   await sheet.getByRole("button", { name: "Passer cette séance" }).click();
 
-  const skipped = banner(page, "Séance passée");
+  const skipped = banner(page, "Séance sautée");
   await expect(skipped).toBeVisible();
   await expect(card).not.toContainText("Côtes courtes");
 

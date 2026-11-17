@@ -3,10 +3,10 @@ import { z } from "zod";
 /** Local Europe/Paris wall-clock time, minute precision: "2026-11-16T18:00". */
 export const localDateTimeSchema = z
   .string()
-  .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "Format attendu : AAAA-MM-JJTHH:MM");
-export const localDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format attendu : AAAA-MM-JJ");
-export const timeOfDaySchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Format attendu : HH:MM");
-export const isoWeekSchema = z.string().regex(/^\d{4}-W(0[1-9]|[1-4]\d|5[0-3])$/, "Format attendu : AAAA-Wss");
+  .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "Ce jour ou cette heure n'est pas valide.");
+export const localDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Ce jour n'est pas valide.");
+export const timeOfDaySchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Cette heure n'est pas valide.");
+export const isoWeekSchema = z.string().regex(/^\d{4}-W(0[1-9]|[1-4]\d|5[0-3])$/, "Cette semaine n'est pas valide.");
 
 export const runTypeSchema = z.enum([
   "E",
@@ -23,6 +23,29 @@ export const runTypeSchema = z.enum([
   "TEST",
   "RACE",
 ]);
+
+/** The one name of each run type: on the watch, in the app, in notifications and in Reggie's answers. */
+export const sessionNames: Record<z.infer<typeof runTypeSchema>, string> = {
+  E: "Footing",
+  RECUP: "Footing de récupération",
+  L: "Sortie longue",
+  T: "Seuil",
+  CRUISE: "Seuil en fractions",
+  I: "Fractionné",
+  R: "Vitesse",
+  SPE: "Allure objectif",
+  COTES_C: "Côtes courtes",
+  COTES_L: "Côtes longues",
+  FARTLEK: "Fartlek",
+  TEST: "Test de forme",
+  RACE: "Jour J",
+};
+
+/** « passé », « fait » agreed with the session's name: « Sortie longue passée », « Côtes courtes faites ». */
+export function agreeWith(type: z.infer<typeof runTypeSchema>, participle: string): string {
+  if (type === "COTES_C" || type === "COTES_L") return `${participle}es`;
+  return ["L", "R", "SPE"].includes(type) ? `${participle}e` : participle;
+}
 
 const range = z.tuple([z.number(), z.number()]);
 export const stepSchema = z.object({
@@ -257,6 +280,8 @@ export type HealthStatus = z.infer<typeof healthStatusSchema>;
 export const todaySchema = z.object({
   date: localDateSchema,
   session: sessionViewSchema.nullable(),
+  /** Why the morning check changed today's session (« Allégée : nuit courte »), only on the day it did. */
+  note: z.string().optional(),
   events: z.array(calendarEventSchema),
   /** The latest run of the day, null before she runs. */
   activity: activityViewSchema.nullable(),

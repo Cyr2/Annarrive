@@ -7,7 +7,7 @@ import { Composer } from "./Composer.tsx";
 import { Message } from "./Message.tsx";
 import { type Entry, useChat } from "./store.ts";
 
-const ABOUT_SESSION = "Je regarde ta séance. Tu veux la déplacer, la raccourcir, ou comprendre son allure ?";
+const ABOUT_SESSION = "Je regarde ta séance. Tu veux la déplacer, la raccourcir ou comprendre son allure ?";
 
 /** A question Reggie asked with buttons, a slider or slots, still waiting for her answer. */
 function waiting(messages: Entry[]): boolean {

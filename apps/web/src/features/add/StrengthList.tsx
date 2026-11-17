@@ -26,7 +26,7 @@ export function StrengthList({ templates, onPlace }: Props) {
               >
                 <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span className="t-body break-words">{t.name}</span>
-                  {t.legs && <LegsTag />}
+                  {t.legs && !/jambe/i.test(t.name) && <LegsTag />}
                 </span>
                 <span className="t-cap">{strengthWhen(t)}</span>
               </button>

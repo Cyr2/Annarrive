@@ -58,9 +58,9 @@ function replace(run: Run, input: UnavailableInput): Run | undefined {
     case "sick":
       if (input.fever)
         return advised(easy(run, 20, "Footing tranquille", EF), "Repos conseillé tant que tu as de la fièvre");
-      return run.intensity === "hard" ? easy(run, run.durationMin, "Endurance fondamentale", EF) : run;
+      return run.intensity === "hard" ? easy(run, run.durationMin, "Footing tranquille", EF) : run;
     case "pain":
-      if ((input.pain ?? 10) <= 3) return easy(run, 30, "Endurance fondamentale", EF);
+      if ((input.pain ?? 10) <= 3) return easy(run, 30, "Footing tranquille", EF);
       return advised(
         easy(run, 20, "Footing tranquille", EF),
         "Repos ou vélo conseillé. Si tu cours, arrête-toi si ça monte",

@@ -6,13 +6,13 @@ import { useGo } from "../useGo.ts";
 import { ReggieAvatar } from "./parts.tsx";
 
 /** "Un mot pour Reggie": a free note after the run, sent into the conversation, where he answers. */
-export function NoteForReggie({ title }: { title: string }) {
+export function NoteForReggie({ context }: { context: string }) {
   const [note, setNote] = useState("");
   const go = useGo();
   const send = () => {
     if (!note.trim()) return;
     const chat = useChat.getState();
-    chat.setContext(`${title}, ce soir`, { screen: "after_run" });
+    chat.setContext(context, { screen: "after_run" });
     void chat.send(note);
     setNote("");
     go("/reggie");

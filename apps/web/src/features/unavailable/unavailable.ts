@@ -80,6 +80,6 @@ export function progressOf(step: Step, draft: Draft): string | undefined {
 /** Advice shown with the pain slider: never a diagnosis, a professional past 4 or 3 days. */
 export function painAdvice(pain: number): string {
   return pain <= 3
-    ? "Pas de fractionné : footing en endurance fondamentale ou vélo."
-    : "Repos ou vélo conseillé. Si tu cours : 20 min tranquille, arrête-toi si ça monte. Plus de 3 jours : kiné ou médecin.";
+    ? "Pas de fractionné : footing tranquille ou vélo."
+    : "Repos ou vélo conseillé. Si tu cours : 20 min tranquille, arrête-toi si ça monte. Si ça dure plus de 3 jours, montre-la à un kiné ou un médecin.";
 }

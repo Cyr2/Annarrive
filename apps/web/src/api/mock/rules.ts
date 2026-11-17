@@ -46,7 +46,8 @@ function consequence(date: string, run: Run, items: Item[], today: string) {
 function why(date: string, run: Run, items: Item[], today: string) {
   if (date === run.date) return "Même jour, une heure et demie plus tard";
   const legs = items.find((i) => i.kind === "strength" && i.legs && i.date > date);
-  if (legs && isDemanding(run)) return `Ta muscu jambes est ${dayName(legs.date).toLowerCase()}, l'écart est bon`;
+  if (legs && isDemanding(run) && date < legs.date)
+    return `Ta muscu jambes est ${dayName(legs.date).toLowerCase()}, l'écart est bon`;
   if (minutesOf(run.start) < 12 * 60 || date === addDays(today, 1)) return "Le plus tôt possible après ce soir";
   return "Un créneau libre, loin de tes séances dures";
 }

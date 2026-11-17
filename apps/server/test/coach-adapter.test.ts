@@ -226,7 +226,7 @@ describe("coach adapter: Anna's actions", () => {
 
     const r = await t.call("POST", "/api/sessions/easy/move", { start: "2026-11-17T14:00" });
 
-    expect(r).toEqual({ status: 400, json: { error: "Créneau pris dans ton agenda" } });
+    expect(r).toEqual({ status: 400, json: { error: "Pris par un cours ou un créneau occupé" } });
     expect(t.stores.plannedSession.get("easy")?.start).toBe("2026-11-18T18:00");
   });
 
@@ -377,7 +377,7 @@ describe("coach adapter: Anna's actions", () => {
 
     await t.call("POST", `/api/changes/${done.change?.id}/undo`);
     const skipped = await change(t, "POST", "/api/sessions/morning/skip");
-    expect(skipped.change?.summary).toBe("Séance passée");
+    expect(skipped.change?.summary).toBe("Séance sautée");
     expect(t.stores.plannedSession.get("morning")?.status).toBe("skipped");
     expect(t.stores.plannedSession.get("later")?.start).toBe("2026-11-18T18:00");
     // A session still ahead cannot be done yet, but can be passed.
@@ -480,7 +480,10 @@ describe("coach adapter: morning decision", () => {
     const decided = t.services.plan.morningDecision();
 
     expect(decided?.change?.summary).toBe("Repos proposé aujourd'hui");
-    expect(decided?.warnings).toContain("Tes signaux de récupération sont bas : repos conseillé aujourd'hui.");
+    expect(decided?.warnings).toContain(
+      "Repos conseillé aujourd'hui : cœur au repos plus haut que d'habitude, nuit courte, récupération basse sur ta montre et un examen aujourd'hui ou demain.",
+    );
+    expect(t.services.plan.today().note).toMatch(/^Repos conseillé : cœur au repos/);
     expect(t.stores.plannedSession.get("tonight")).toMatchObject({ type: "E", frozen: true });
   });
 });

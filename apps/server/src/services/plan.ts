@@ -25,9 +25,10 @@ import type {
   UpdateEventInput,
   Week,
 } from "@annarrive/protocol";
+import { agreeWith, sessionNames } from "@annarrive/protocol";
 import { type CoachPort, type CoachResult, type CoachState, type DailyDecisionResult, slotFor } from "../coach-port.ts";
 import { InvalidInputError, NotFoundError, ReadOnlyError } from "../errors.ts";
-import { WATCH_FAILING_SINCE, watchLink, watchStatus, workoutNames } from "../garmin/workout.ts";
+import { WATCH_FAILING_SINCE, watchLink, watchStatus } from "../garmin/workout.ts";
 import type { Activity, Stores } from "../storage/stores.ts";
 import {
   addDays,
@@ -60,7 +61,7 @@ const eventLabels: Record<CalendarEvent["kind"], string> = {
   exam: "Examen",
   strength: "Muscu",
   revision: "Révision",
-  unavailable: "Indispo",
+  unavailable: "Occupée",
 };
 
 /** P19: the coach's five classes shown as two, so a bold target never reads as a refusal. */
@@ -77,10 +78,10 @@ const changeLabels: Record<ChangeOption, string> = {
 };
 
 const unavailableLabels: Record<Unavailable["reason"], string> = {
-  no_time: "Pas le temps : séance passée",
+  no_time: "Pas le temps : séance sautée",
   tired: "Fatiguée : repos aujourd'hui",
-  sick: "Malade : séances adaptées",
-  pain: "Douleur notée : séances adaptées",
+  sick: "Malade : footing tranquille jusqu'à ce que ça aille mieux",
+  pain: "Douleur notée : pas de fractionné pour l'instant",
 };
 
 /** What Reggie reads before answering about form or health. */
@@ -105,6 +106,13 @@ const FITNESS_DAYS = 30;
 const RACE_CONFLICT_DAYS = 7;
 
 const MORNING_DECISION = "morning.decidedOn";
+/** « 2026-11-16|Allégée : nuit courte. » The reason the morning check changed today's session. */
+const MORNING_NOTE = "morning.note";
+const morningNotes: Partial<Record<DailyDecisionResult["action"], string>> = {
+  easier: "Allégée",
+  shorter: "Raccourcie",
+  proposeRest: "Repos conseillé",
+};
 const decisionSummaries: Record<DailyDecisionResult["action"], string> = {
   keep: "Séance du jour confirmée",
   none: "Séance du jour confirmée",
@@ -128,10 +136,7 @@ export function movedRunsText(count: number): string {
 }
 
 /** « Footing passé », « Sortie longue passée », « Côtes courtes passées ». */
-function movedWord(type: PlannedSession["type"]): string {
-  if (type === "COTES_C" || type === "COTES_L") return "passées";
-  return ["RECUP", "L", "R", "SPE", "RACE"].includes(type) ? "passée" : "passé";
-}
+const movedWord = (type: PlannedSession["type"]): string => agreeWith(type, "passé");
 
 /** One run: which, where to and why (« Sortie longue passée à mercredi 17:00 : moins de 24 h après… »). */
 function movedText(moved: [PlannedSession, PlannedSession][], result: CoachResult): string {
@@ -140,7 +145,7 @@ function movedText(moved: [PlannedSession, PlannedSession][], result: CoachResul
   const [pair] = moved;
   const what =
     moved.length === 1 && pair
-      ? `${workoutNames[pair[1].type]} ${movedWord(pair[1].type)} à ${frenchMoment(pair[1].start)}`
+      ? `${sessionNames[pair[1].type]} ${movedWord(pair[1].type)} à ${frenchMoment(pair[1].start)}`
       : movedRunsText(moved.length);
   return why ? `${what} : ${why.charAt(0).toLowerCase()}${why.slice(1)}` : what;
 }
@@ -215,6 +220,11 @@ export class PlanService {
     return { verdict: verdictOf(this.#coach.feasibility(goal, history, vo2max, now)) };
   }
 
+  #morningNote(date: string): string | undefined {
+    const [on, text] = (this.#stores.meta.get(MORNING_NOTE)?.value ?? "").split("|");
+    return on === date ? text : undefined;
+  }
+
   today(): Today {
     const now = this.#now();
     const date = dateOf(now);
@@ -223,6 +233,7 @@ export class PlanService {
     return {
       date,
       session: day?.sessions[0] ?? null,
+      note: this.#morningNote(date),
       events: day?.events ?? [],
       activity: activity ? toActivityView(activity) : null,
       health: this.health(),
@@ -317,7 +328,8 @@ export class PlanService {
       );
     }
     const result = this.#coach.moveSession(before, id, slotFor(session, start), now);
-    return this.#commit(`Séance déplacée à ${frenchMoment(start)}`, [], before, result, id);
+    const what = `${sessionNames[session.type]} ${movedWord(session.type)}`;
+    return this.#commit(`${what} à ${frenchMoment(start)}`, [], before, result, id);
   }
 
   proposeMoveSlots(id: string): MoveSlots {
@@ -349,7 +361,11 @@ export class PlanService {
 
   feelBetter(): ChangeResponse {
     const before = this.coachState();
-    return this.#commit("Retour progressif lancé", [], before, this.#coach.feelBetter(before, this.#now()));
+    const summary =
+      before.health.kind === "sick"
+        ? "Ça va mieux : 3 jours de footing tranquille, puis tes séances reprennent"
+        : "Ça va mieux : tes séances reprennent";
+    return this.#commit(summary, [], before, this.#coach.feelBetter(before, this.#now()));
   }
 
   health(): HealthStatus {
@@ -381,7 +397,7 @@ export class PlanService {
       settings.runsPerWeek !== before.settings.runsPerWeek ||
       settings.preferredLongDay !== before.settings.preferredLongDay;
     if (onboarded || reshaped)
-      return this.#rebuild("Réglages enregistrés", [write], { ...before, settings }, before, true);
+      return this.#rebuild("Reggie a réorganisé ta semaine", [write], { ...before, settings }, before, true);
     return this.#commit(
       "Réglages enregistrés",
       [write],
@@ -431,7 +447,16 @@ export class PlanService {
   bootstrapFitness(): ChangeResponse | null {
     const before = this.coachState();
     const fitness = before.fitness ? null : this.#estimate(before);
-    return fitness && this.#rebuild("Niveau estimé", [], { ...before, fitness }, before, true);
+    return (
+      fitness &&
+      this.#rebuild(
+        "Tes allures sont calculées d'après tes dernières courses",
+        [],
+        { ...before, fitness },
+        before,
+        true,
+      )
+    );
   }
 
   /** Lets FitnessService record an accepted proposal like any other change. */
@@ -504,6 +529,8 @@ export class PlanService {
         ...result,
         state: { ...result.state, sessions },
       });
+      const label = morningNotes[result.action];
+      if (label && result.why) this.#stores.meta.put({ id: MORNING_NOTE, value: `${today}|${label} : ${result.why}.` });
     }
     this.#stores.meta.put({ id: MORNING_DECISION, value: today });
     return response;
@@ -520,7 +547,7 @@ export class PlanService {
   skipSession(id: string): ChangeResponse {
     const before = this.coachState();
     this.#upcoming(before, id);
-    return this.#commit("Séance passée", [], before, this.#coach.skipSession(before, id, this.#now()));
+    return this.#commit("Séance sautée", [], before, this.#coach.skipSession(before, id, this.#now()));
   }
 
   /** A Garmin run matched this session: it is done, and Annuler can still reopen it. */
@@ -550,13 +577,24 @@ export class PlanService {
   /** Feel answers of the runs matched to a session, for SG4. */
   #feels(): CoachState["feels"] {
     const today = dateOf(this.#now());
-    return this.#stores.activity.overlapping(`${addDays(today, -RECENT_DAYS)}T00:00`, this.#now()).flatMap((a) => {
-      const session = a.sessionId ? this.#stores.plannedSession.get(a.sessionId) : undefined;
-      const feel = a.feel ?? a.answeredFeel;
-      return feel && session
-        ? [{ sessionId: session.id, date: dateOf(session.start), feel, rpeTarget: session.rpeTarget }]
+    const fromRuns = this.#stores.activity
+      .overlapping(`${addDays(today, -RECENT_DAYS)}T00:00`, this.#now())
+      .flatMap((a) => {
+        const session = a.sessionId ? this.#stores.plannedSession.get(a.sessionId) : undefined;
+        const feel = a.feel ?? a.answeredFeel;
+        return feel && session
+          ? [{ sessionId: session.id, date: dateOf(session.start), feel, rpeTarget: session.rpeTarget }]
+          : [];
+      });
+    const seen = new Set(fromRuns.map((f) => f.sessionId));
+    const fromSessions = this.#stores.sessionFeel.list().flatMap((f) => {
+      const session = this.#stores.plannedSession.get(f.id);
+      const recent = session && dateOf(session.start) >= addDays(today, -RECENT_DAYS);
+      return session && recent && !seen.has(f.id)
+        ? [{ sessionId: f.id, date: dateOf(session.start), feel: f.feel, rpeTarget: session.rpeTarget }]
         : [];
     });
+    return [...fromRuns, ...fromSessions];
   }
 
   #upcoming(state: CoachState, id: string): PlannedSession {

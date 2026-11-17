@@ -44,7 +44,7 @@ import type { RefreshResult } from "./schemas.ts";
 
 export const isHealthy = (body: unknown) => healthSchema.safeParse(body).success;
 
-const UNEXPECTED = "Le serveur a répondu de travers : recharge l'app, puis réessaie.";
+const UNEXPECTED = "Ça n'a pas marché : recharge l'app, puis réessaie.";
 export const SIGNED_OUT = "Connecte-toi pour continuer.";
 
 type Fetch = typeof fetch;
@@ -109,10 +109,7 @@ export function createHttpApi(
     }
     if (!response.ok) {
       const message = await serverMessage(response);
-      throw new ApiError(
-        response.status,
-        message ?? `Le serveur a répondu ${response.status} : réessaie dans un instant.`,
-      );
+      throw new ApiError(response.status, message ?? "Ça n'a pas marché : réessaie dans un instant.");
     }
     return response;
   }

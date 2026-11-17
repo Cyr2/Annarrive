@@ -48,7 +48,7 @@ const v = (ruleId: string, message: string): Violation => ({ ruleId, message });
 function h1(slot: Slot, cal: CalEvent[], s: Settings): Violation | null {
   const [a, b] = [toMin(slot.start), toMin(slot.end)];
   const hit = cal.some((e) => a < toMin(e.end) + AFTER_EVENT_MIN && b > toMin(e.start) - s.travelMin);
-  return hit ? v("H1", "Créneau pris dans ton agenda") : null;
+  return hit ? v("H1", "Pris par un cours ou un créneau occupé") : null;
 }
 
 function h2(slot: Slot, s: Settings): Violation | null {
@@ -94,7 +94,7 @@ export const nearRace = (day: string, raceDay: string): boolean =>
   daysBetween(day, raceDay) <= 3 && daysBetween(raceDay, day) <= 6;
 
 const h12 = (slot: Slot, runs: Session[]): Violation | null =>
-  runs.some((r) => r.type === "RACE" && nearRace(slot.start, r.start)) ? v("H12", "Trop près de ta course") : null;
+  runs.some((r) => r.type === "RACE" && nearRace(slot.start, r.start)) ? v("H12", "Trop près du jour J") : null;
 
 /** H1 to H7 and H12 for `session` at `slot`; [] means valid. H8 holds by construction (a session is one block). */
 export function checkHard(session: Session, slot: Slot, week: WeekState): Violation[] {
@@ -280,10 +280,10 @@ const lowestQ = (xs: Session[]): Session | undefined =>
     .at(-1);
 
 const RELAXATIONS: { id: string; message: string; apply: (todo: Session[]) => Session[] | null }[] = [
-  { id: "A4a", message: "Deux séances dures d'affilée cette semaine, faute de place", apply: (t) => t },
+  { id: "A4a", message: "Deux séances dures se suivent cette semaine, il manquait de la place", apply: (t) => t },
   {
     id: "A4b",
-    message: "Un footing raccourci faute de place",
+    message: "Un footing raccourci pour que tout tienne",
     apply: (t) => {
       const e = lowestEasy(t);
       return e ? t.map((s) => (s === e ? toEasy(s, Math.floor(s.durMin * 0.7)) : s)) : null;
@@ -291,7 +291,7 @@ const RELAXATIONS: { id: string; message: string; apply: (todo: Session[]) => Se
   },
   {
     id: "A4c",
-    message: "Un footing supprimé faute de place",
+    message: "Un footing en moins cette semaine pour que tout tienne",
     apply: (t) => {
       const e = lowestEasy(t);
       return e ? t.filter((s) => s !== e) : null;
@@ -299,7 +299,7 @@ const RELAXATIONS: { id: string; message: string; apply: (todo: Session[]) => Se
   },
   {
     id: "A4d",
-    message: "Une séance de qualité devient un footing faute de place",
+    message: "Une séance rapide devient un footing tranquille pour que tout tienne",
     apply: (t) => {
       const q = lowestQ(t);
       return q ? t.map((s) => (s === q ? toEasy(s, s.durMin) : s)) : null;
@@ -330,7 +330,7 @@ export function placeWeek(
     warnings.push({ ruleId: r.id, message: r.message });
     placed = search(todo, base, true);
   }
-  if (!placed) warnings.push({ ruleId: "A4", message: "Impossible de placer toutes les courses cette semaine" });
+  if (!placed) warnings.push({ ruleId: "A4", message: "Une course n'a pas trouvé de place cette semaine" });
   return { week: { ...base, sessions: [...fixed, ...(placed ?? todo)] }, relaxations, warnings };
 }
 

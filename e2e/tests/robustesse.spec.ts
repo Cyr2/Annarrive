@@ -45,13 +45,13 @@ test("un double tap sur Déplacer à n'envoie qu'une fois, le bouton attend, Ann
   const card = page.getByRole("article").first();
   await page.getByRole("button", { name: "Déplacer", exact: true }).click();
   const sheet = page.getByRole("dialog", { name: "Déplacer" });
-  const go = sheet.getByRole("button", { name: /^Déplacer à/ });
+  const go = sheet.getByRole("button", { name: /^Déplacer : / });
   await expect(go).toBeEnabled();
   await go.click();
   await expect(go).toBeDisabled();
   await go.click({ force: true });
 
-  const moved = banner(page, "Séance déplacée à");
+  const moved = banner(page, /passée?s? à /);
   await expect(moved).toBeVisible();
   await expect(sheet).toBeHidden();
   expect(posts).toHaveLength(1);
@@ -80,7 +80,7 @@ test("hors ligne avant le premier bandeau : le message s'affiche quand même", a
   await page.getByRole("button", { name: "Changer", exact: true }).click();
   const sheet = page.getByRole("dialog", { name: "Changer la séance" });
   await sheet.getByRole("button", { name: /^Valider/ }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Le serveur a répondu 503" })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: /Ça n.a pas marché/ })).toBeVisible();
   await expect(sheet).toBeVisible();
 });
 

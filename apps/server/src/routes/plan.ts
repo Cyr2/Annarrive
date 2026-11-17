@@ -85,7 +85,11 @@ export function planRoutes({ plan, changes, timetable, garmin, fitness }: Servic
       )
       // "Pas envoyée, réessayer": the app reloads the day afterwards to read the new status.
       .post("/watch/sync", async (c) => {
-        if (!garmin) throw new GarminNotConfiguredError();
+        if (!garmin) {
+          // The technical cause stays in the logs: Anna reads only that the watch is not linked yet.
+          console.error("Montre non reliée : BRIDGE_URL et BRIDGE_SECRET manquants");
+          throw new GarminNotConfiguredError();
+        }
         await garmin.syncWatch();
         return c.body(null, 204);
       })

@@ -27,7 +27,7 @@ function rows(draft: Draft): [string, string, Step][] {
       "strength",
     ],
     ["Douleur", draft.pain && draft.zone ? `${draft.zone}, ${draft.level} sur 10` : "Aucune", "health"],
-    ["Données lues", draft.useSleepHr ? "Sommeil et cœur" : "Aucune", "health"],
+    ["Données lues", draft.useSleepHr ? "Sommeil et fréquence cardiaque" : "Aucune", "health"],
     ["Cycle menstruel", draft.cycleTracking ? "Activé" : "Désactivé", "health"],
   ];
 }
@@ -42,9 +42,9 @@ function Goal({ draft }: { draft: Draft }) {
   if (!distance)
     return (
       <Surface className="flex flex-col gap-1 p-5">
-        <span className="t-cap">Sans course</span>
+        <span className="t-cap">Pas d'objectif</span>
         <h2 className="t-large m-0">Entretenir ta forme</h2>
-        <span className="t-sub">Des courses faciles et une séance de qualité par semaine.</span>
+        <span className="t-sub">2 à 3 courses faciles par semaine, dont une un peu plus rythmée.</span>
       </Surface>
     );
   const weeks = Math.round(daysBetween(today, draft.date) / 7);
@@ -68,7 +68,7 @@ function Goal({ draft }: { draft: Draft }) {
       >
         <span className="t-cap">{target ? "Chrono visé" : "Objectif"}</span>
         <span className="flex flex-wrap items-center justify-between gap-2">
-          <PaceValue value={target ? clock(draft.targetSec) : "La finir"} size="figure" />
+          <PaceValue value={target ? clock(draft.targetSec) : "Finir"} size="figure" />
           {target && verdict && <TargetTag kind={VERDICT_KIND[verdict]} />}
         </span>
       </button>

@@ -47,7 +47,9 @@ export function useTimetableRefresh() {
  */
 export function RefreshRow({ checkedAt, change }: { checkedAt?: string; change?: string }) {
   const { reading, result, button } = useTimetableRefresh();
-  const line = reading ? "Lecture en cours…" : (result ?? change ?? checkedLine(checkedAt, "Se relit tout seul"));
+  const line = reading
+    ? "Lecture en cours…"
+    : (result ?? change ?? checkedLine(checkedAt, "Relu automatiquement plusieurs fois par jour"));
   return (
     <Surface variant="inset" className="flex min-h-14 flex-wrap items-center gap-2 py-1 pr-1 pl-4">
       <Icon name={result ? "checkCircle" : "class"} size={18} className="flex-none text-ink-2" />

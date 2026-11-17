@@ -20,7 +20,8 @@ describe("goal card", () => {
   it("counts the days to the race, down to the day itself", () => {
     expect(countdown("2026-11-20", "2026-11-17")).toEqual({ value: "3", unit: "jours" });
     expect(countdown("2026-11-18", "2026-11-17")).toEqual({ value: "1", unit: "jour" });
-    expect(countdown("2026-11-17", "2026-11-17")).toEqual({ value: "Jour J" });
+    expect(countdown("2026-11-17", "2026-11-17")).toEqual({ value: "Bonne course", label: "C'est aujourd'hui" });
+    expect(countdown("2026-11-16", "2026-11-17")).toEqual({ value: "Terminé", label: "Ton objectif est passé" });
   });
 
   it("warms the sky with the phase, and in full sun the week of the race", () => {

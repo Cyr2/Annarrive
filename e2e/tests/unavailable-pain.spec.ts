@@ -22,7 +22,7 @@ test("douleur au mollet à 3 sur 10 : la séance du jour devient un footing faci
   await expect(card).toContainText("Côtes courtes");
 
   const sheet = await reportCalfPain(page, 3);
-  await expect(sheet).toContainText("Pas de fractionné : footing en endurance fondamentale ou vélo.");
+  await expect(sheet).toContainText("Pas de fractionné : footing tranquille ou vélo.");
   await sheet.getByRole("button", { name: "Continuer" }).click();
   await expect(sheet).toContainText("Ce qui change");
   await sheet.getByRole("button", { name: "Valider" }).click();

@@ -49,9 +49,12 @@ export class FitnessService {
    */
   logFeel(activityId: string, feel: Feel): void {
     const activity = this.#stores.activity.get(activityId);
-    if (!activity) throw new NotFoundError("Cette course est introuvable : recharge l'écran.");
-    if (activity.feel) throw new ReadOnlyError("Ta montre a déjà noté ton ressenti pour cette course.");
-    this.#stores.activity.put({ ...activity, answeredFeel: feel });
+    // A session she confirmed without a run from the watch takes her answer too, under its own id.
+    if (!activity && this.#stores.plannedSession.get(activityId))
+      this.#stores.sessionFeel.put({ id: activityId, feel });
+    else if (!activity) throw new NotFoundError("Cette course est introuvable : recharge l'écran.");
+    else if (activity.feel) throw new ReadOnlyError("Ta montre a déjà noté ton ressenti pour cette course.");
+    else this.#stores.activity.put({ ...activity, answeredFeel: feel });
     const draft = this.#coach.evaluateFeels(this.#plan.coachState(), this.#now());
     const known = this.pending().some((p) => p.ruleId === draft?.ruleId);
     if (draft && !known) this.#stores.proposal.put({ ...draft, id: randomUUID(), status: "pending" });

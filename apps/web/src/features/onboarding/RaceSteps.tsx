@@ -29,7 +29,7 @@ export function RaceStep() {
         ))}
         <BigChoice
           className="col-span-2"
-          label="Pas de course"
+          label="Pas d'objectif"
           detail="Juste entretenir ma forme"
           on={draft.race === "none"}
           onClick={() => update({ race: "none" })}
@@ -73,7 +73,7 @@ const VERDICT_TEXT = {
 
 const MODES = [
   { value: "time", label: "Viser un chrono" },
-  { value: "finish", label: "La finir" },
+  { value: "finish", label: "Juste finir" },
 ] as const;
 
 export function TargetStep() {

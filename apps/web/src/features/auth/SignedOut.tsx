@@ -118,7 +118,7 @@ export function SignedOut() {
         >
           Se connecter
         </Button>
-        <p className="t-cap m-0 text-center">Mot de passe oublié : demande-en un nouveau.</p>
+        <p className="t-cap m-0 text-center">Mot de passe oublié : demande à Darius d'en créer un nouveau.</p>
       </form>
     </AuthFrame>
   );

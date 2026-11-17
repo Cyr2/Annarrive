@@ -238,10 +238,10 @@ describe("http client, reading", () => {
       { label: "Retour au calme 10 min", pace: "6:15 à 6:45", tone: "plain" },
     ]);
     expect(today.proposals?.map((p) => p.text.split(" :")[0])).toEqual([
-      "Tes dernières séances clés sont bien passées",
-      "Tes dernières séances clés ont été dures",
-      "Je propose un test pour recaler tes allures.",
-      "Ton chrono visé semble à revoir",
+      "Tes dernières séances rapides sont bien passées",
+      "Tes dernières séances rapides ont été dures",
+      "Je te propose un test de forme pour régler tes allures.",
+      "Tes dernières courses donnent un autre chrono pour ton objectif. Je te propose de l'ajuster, ou tu gardes le tien.",
     ]);
     expect(today.next).toMatchObject({
       id: "s2",
@@ -276,7 +276,7 @@ describe("http client, reading", () => {
     }).api.today();
     expect(today.activity).toEqual({
       id: "garmin:1",
-      title: "Fractionné",
+      title: "Fractionné fait",
       receivedAt: "18:02",
       distanceKm: 8.3,
       duration: "51:12",
@@ -498,7 +498,7 @@ describe("http client, reading", () => {
       {
         date: "2026-11-18",
         start: "18:00",
-        why: "même heure, mercredi",
+        why: "Même heure, mercredi",
         consequence: "Ton footing de jeudi passe à vendredi",
       },
     ]);
@@ -673,7 +673,7 @@ describe("http client, errors", () => {
     const html = createHttpApi(vi.fn(async () => new Response("<html>", { status: 200 })));
     await expect(html.week(0)).rejects.toThrow("recharge l'app");
     const down = createHttpApi(vi.fn(async () => new Response("", { status: 503 })));
-    await expect(down.feelBetter()).rejects.toThrow("Le serveur a répondu 503");
+    await expect(down.feelBetter()).rejects.toThrow("Ça n'a pas marché");
     const offline = createHttpApi(vi.fn(() => Promise.reject(new TypeError("Failed to fetch"))));
     await expect(offline.feelBetter()).rejects.toThrow("vérifie ton réseau");
     await expect(api.logFeel("a1", "easy")).rejects.toBeInstanceOf(ApiError);
@@ -741,7 +741,7 @@ describe("Reggie over the server", () => {
           id: "reggie-5-1",
           role: "reggie",
           text: "",
-          widget: { type: "choices", label: "Ta réponse", options: ["Oui", "Non"] },
+          widget: { type: "choices", label: "C'est déplacé.", options: ["Oui", "Non"] },
         },
       },
     ]);
@@ -801,7 +801,7 @@ describe("Reggie over the server", () => {
       ["m2-1", "reggie", "slots"],
       ["m2-2", "reggie", "preview"],
     ]);
-    expect(history[2]?.widget).toMatchObject({ slots: [{ date: "2026-11-18", start: "18:00", why: "mercredi" }] });
+    expect(history[2]?.widget).toMatchObject({ slots: [{ date: "2026-11-18", start: "18:00", why: "Mercredi" }] });
     expect(history[3]?.widget).toMatchObject({ optionId: "jog", session: { title: "Footing", intensity: "easy" } });
   });
 

@@ -1,13 +1,30 @@
 import { describe, expect, it } from "vitest";
 import {
+  agreeWith,
   createEventInputSchema,
   deleteEventQuerySchema,
   feasibilityInputSchema,
   icsUrlSchema,
   isoWeekSchema,
   profilePatchSchema,
+  runTypeSchema,
+  sessionNames,
   updateEventInputSchema,
 } from "../src/index.ts";
+
+describe("session names", () => {
+  it("names every run type once, in words Anna reads", () => {
+    const names = runTypeSchema.options.map((type) => sessionNames[type]);
+    expect(new Set(names).size).toBe(names.length);
+    expect(names.join(" ")).not.toMatch(/endurance fondamentale|VO2|Ta course/);
+  });
+
+  it("agrees « passé » and « fait » with the name", () => {
+    expect(agreeWith("E", "fait")).toBe("fait");
+    expect(agreeWith("L", "passé")).toBe("passée");
+    expect(agreeWith("COTES_C", "fait")).toBe("faites");
+  });
+});
 
 describe("feasibility input", () => {
   it("needs the target time she typed", () => {
