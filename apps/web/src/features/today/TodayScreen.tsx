@@ -3,6 +3,7 @@ import { EmptyState } from "../../ui/EmptyState.tsx";
 import { Icon } from "../../ui/Icon.tsx";
 import { RoundAction } from "../../ui/RoundAction.tsx";
 import { Screen } from "../../ui/Screen.tsx";
+import { Surface } from "../../ui/Surface.tsx";
 import { usePlan } from "../plan/store.ts";
 import { useChat } from "../reggie/store.ts";
 import { useSheet } from "../sheets/store.ts";
@@ -10,12 +11,13 @@ import { useGo } from "../useGo.ts";
 import { AfterRun } from "./AfterRun.tsx";
 import { DayAgenda } from "./DayAgenda.tsx";
 import { ProposalCard } from "./ProposalCard.tsx";
+import { ReggieNote } from "./ReggieNote.tsx";
 import { RestCard } from "./RestCard.tsx";
 import { RunCard } from "./RunCard.tsx";
 import { sessionContext } from "./today.ts";
 import { WeekStrip } from "./WeekStrip.tsx";
 
-/** Aujourd'hui: run day, rest day or after the run (design/Main, Repos, Apres). */
+/** Aujourd'hui: run day, rest day or after the run. */
 export function TodayScreen() {
   const { status, today, weeks } = usePlan();
   const show = useSheet((s) => s.show);
@@ -35,12 +37,19 @@ export function TodayScreen() {
             </Button>
           }
         >
-          Impossible de charger ton plan pour l'instant. Vérifie ta connexion, puis réessaie.
+          Impossible de charger ton plan. Vérifie ta connexion, puis réessaie.
         </EmptyState>
       </Screen>
     );
   }
-  if (!today || !week) return <Screen>{null}</Screen>;
+  if (!today || !week) {
+    // The card's place, held while the plan loads, so nothing jumps when it arrives.
+    return (
+      <Screen>
+        <Surface aria-busy="true" aria-label="Chargement de ta journée" className="h-96 motion-safe:animate-pulse" />
+      </Screen>
+    );
+  }
 
   const { session, activity, next, goal, date } = today;
   const askReggie = () => {
@@ -70,11 +79,19 @@ export function TodayScreen() {
       {!activity && session && (
         <>
           <RunCard run={session} today={date} />
-          <div data-tour="actions" className="grid grid-cols-4 gap-2">
-            <RoundAction label="Reggie" icon="reggie" reggie onClick={askReggie} />
-            <RoundAction label="Déplacer" icon="move" onClick={() => show({ kind: "move", id: session.id })} />
-            <RoundAction label="Changer" icon="change" onClick={() => show({ kind: "change", id: session.id })} />
-            <RoundAction label="Pas dispo" icon="close" onClick={() => show({ kind: "unavailable", id: session.id })} />
+          <div data-tour="actions" className="flex flex-col gap-4">
+            <ReggieNote text={session.why} onClick={askReggie} />
+            {/* The four round actions were chosen by the owner: Reggie first, filled in his green. */}
+            <div className="grid grid-cols-4 gap-2">
+              <RoundAction label="Reggie" icon="reggie" reggie onClick={askReggie} />
+              <RoundAction label="Déplacer" icon="move" onClick={() => show({ kind: "move", id: session.id })} />
+              <RoundAction label="Changer" icon="change" onClick={() => show({ kind: "change", id: session.id })} />
+              <RoundAction
+                label="Pas dispo"
+                icon="close"
+                onClick={() => show({ kind: "unavailable", id: session.id })}
+              />
+            </div>
           </div>
         </>
       )}

@@ -129,6 +129,32 @@
   --y: translateY(0);
 }
 
+/* After the run: the check pops once, the day's small moment of pride. */
+@keyframes done-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+}
+.done-pop {
+  animation: done-pop var(--duration-toast) var(--ease-out) both;
+}
+
+/* Rest day: the moon rises into place once, slowly. */
+@keyframes moon-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px) rotate(-14deg);
+  }
+}
+.rest-moon {
+  animation: moon-rise calc(var(--duration-sheet) * 2) var(--ease-out) both;
+}
+
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -152,7 +178,9 @@
   }
   .flip-in,
   .roll,
-  .msg {
+  .msg,
+  .done-pop,
+  .rest-moon {
     animation: fade-in var(--duration-fade) linear both;
   }
   .typing-dot {
