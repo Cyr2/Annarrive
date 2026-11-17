@@ -26,6 +26,18 @@ async function undo(t: Awaited<ReturnType<typeof ready>>, id: string | undefined
 }
 
 describe("today and week", () => {
+  it("answers the first screen in one request, each part as its own route does", async () => {
+    const t = await ready();
+    t.stores.plannedSession.put(session("today", "2026-11-16T18:00"));
+    const paths = ["/today", "/program", "/proposals", "/timetable", "/weeks/2026-W47", "/weeks/2026-W48"];
+
+    const first = (await t.call("GET", "/api/first-screen")).json;
+
+    expect(first).toEqual(
+      Object.fromEntries(await Promise.all(paths.map(async (p) => [p, (await t.call("GET", `/api${p}`)).json]))),
+    );
+  });
+
   it("shows today's session and the day's events in order", async () => {
     const t = await ready();
     t.stores.plannedSession.put(session("today", "2026-11-16T18:00"));

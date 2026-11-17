@@ -285,7 +285,8 @@ export function toToday(
   const next = days
     .flatMap((d) => d.sessions)
     .filter((s) => s.status === "planned" && dateOf(s.start) > today.date)
-    .sort((a, b) => a.start.localeCompare(b.start))[0];
+    // ISO strings sort as text; localeCompare would load the collator at boot, on the first screen's path.
+    .sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0))[0];
   return {
     date: today.date,
     goal: goal

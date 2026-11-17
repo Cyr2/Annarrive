@@ -125,12 +125,31 @@ export function createHttpApi(
   }
   const call = async <T>(method: string, path: string, schema: z.ZodType<T>, body?: unknown) =>
     parse(await read(method, path, body), schema);
+  // At launch Aujourd'hui reads six routes: /first-screen answers them all in one request (preloaded by
+  // index.html). Each part serves once, through its route's schema; any later read asks its route.
+  const weekPath = (monday: string) => `/weeks/${isoWeek(monday)}`;
+  const firstPaths = () => {
+    const monday = mondayOf(toIso(now()));
+    return ["/today", "/program", "/proposals", "/timetable", weekPath(monday), weekPath(addDays(monday, 7))];
+  };
+  let firstLeft: Set<string> | undefined;
+  let firstAnswers: Promise<Record<string, unknown>> | undefined;
+  const fromFirst = async (path: string) => {
+    firstLeft ??= new Set(firstPaths());
+    if (!firstLeft.delete(path)) return read("GET", path);
+    // An older server, or any failure: each route is asked on its own, as before.
+    firstAnswers ??= read("GET", "/first-screen")
+      .then((json) => z.looseObject({}).parse(json))
+      .catch(() => ({}));
+    const answers = await firstAnswers;
+    return path in answers ? answers[path] : read("GET", path);
+  };
   // Aujourd'hui and its week ask for the same week at the same time: one request answers both.
   const pending = new Map<string, Promise<unknown>>();
   const get = async <T>(path: string, schema: z.ZodType<T>) => {
     let json = pending.get(path);
     if (!json) {
-      json = read("GET", path).finally(() => pending.delete(path));
+      json = fromFirst(path).finally(() => pending.delete(path));
       pending.set(path, json);
     }
     return parse(await json, schema);
@@ -143,7 +162,7 @@ export function createHttpApi(
   const id = encodeURIComponent;
   const today = () => toIso(now());
   const thisMonday = () => mondayOf(today());
-  const week = (monday: string) => get(`/weeks/${isoWeek(monday)}`, serverWeekSchema);
+  const week = (monday: string) => get(weekPath(monday), serverWeekSchema);
   const twoWeeks = async () => {
     const weeks = await Promise.all([week(thisMonday()), week(addDays(thisMonday(), 7))]);
     return weeks.flatMap((w) => w.days);

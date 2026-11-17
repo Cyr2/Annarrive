@@ -16,6 +16,7 @@ import { type Context, Hono } from "hono";
 import type { z } from "zod";
 import { GarminNotConfiguredError, InvalidInputError } from "../errors.ts";
 import type { Services } from "../services/index.ts";
+import { addDays, isoWeekOf } from "../time.ts";
 
 export async function body<T extends z.ZodType>(c: Context, schema: T): Promise<z.infer<T>> {
   const json: unknown = await c.req.json().catch(() => {
@@ -25,10 +26,22 @@ export async function body<T extends z.ZodType>(c: Context, schema: T): Promise<
 }
 
 /** JSON routes of the web app; each validates its input and calls one service. */
-export function planRoutes({ plan, changes, timetable, garmin }: Services): Hono {
+export function planRoutes({ plan, changes, timetable, garmin, fitness }: Services): Hono {
   return (
     new Hono()
       .get("/today", (c) => c.json(plan.today()))
+      // Everything Aujourd'hui reads at launch in one request, keyed by the route that serves each part alone.
+      .get("/first-screen", (c) => {
+        const today = plan.today();
+        const weeks = [isoWeekOf(today.date), isoWeekOf(addDays(today.date, 7))];
+        return c.json({
+          "/today": today,
+          "/program": plan.program(),
+          "/proposals": fitness.pending(),
+          "/timetable": timetable.status(),
+          ...Object.fromEntries(weeks.map((week) => [`/weeks/${week}`, plan.week(week)])),
+        });
+      })
       .get("/weeks/:week", (c) => c.json(plan.week(isoWeekSchema.parse(c.req.param("week")))))
       .post("/events", async (c) => c.json(plan.createEvent(await body(c, createEventInputSchema)), 201))
       .patch("/events/:id", async (c) =>
