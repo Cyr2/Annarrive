@@ -15,6 +15,8 @@ export const test = base.extend<{ session: string }>({
       route.fulfill({ response: await route.fetch({ headers: { ...route.request().headers(), cookie: session } }) }),
     );
     await use(page);
+    // A call still in flight when the test ends (an idle preload) must not fail it.
+    await page.unrouteAll({ behavior: "ignoreErrors" });
   },
 });
 

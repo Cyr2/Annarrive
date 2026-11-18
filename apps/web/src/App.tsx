@@ -12,6 +12,7 @@ import { preloadSheet, SheetHost } from "./features/sheets/SheetHost.tsx";
 import { type SheetSpec, useSheet } from "./features/sheets/store.ts";
 import { TodayScreen } from "./features/today/TodayScreen.tsx";
 import { watchForUpdates } from "./features/updates.ts";
+import { whenIdle } from "./lib/idle.ts";
 import { ChunkBoundary, lazyChunk } from "./ui/ChunkBoundary.tsx";
 import { preloadControls, type Tab, TabBar } from "./ui/controls.tsx";
 import { LoadFailed } from "./ui/EmptyState.tsx";
@@ -51,21 +52,22 @@ const SHEETS: SheetSpec["kind"][] = [
   "stop",
 ];
 
-/** After the first screen's render has settled. Safari has no requestIdleCallback: a timeout stands in. */
-function whenIdle(task: () => void) {
-  if (typeof requestIdleCallback === "function") requestIdleCallback(task, { timeout: 2000 });
-  else setTimeout(task, 500);
-}
-
 const PRELOAD_DELAY_MS = 800;
 
 /** Everything a first tap would otherwise wait for: the other tabs, the sheets (with motion), the banner, glisse. */
-function preloadAll() {
-  void usePlan.getState().loadProgram();
-  for (const screen of [WeekScreen, ProgramScreen, ReggieScreen]) screen.preload();
-  loadToast().catch(() => undefined);
-  for (const kind of SHEETS) preloadSheet(kind);
-  preloadControls();
+const PRELOADS: (() => void)[] = [
+  () => void usePlan.getState().loadProgram(),
+  ...[WeekScreen, ProgramScreen, ReggieScreen].map((screen) => screen.preload),
+  () => loadToast().catch(() => undefined),
+  ...SHEETS.map((kind) => () => preloadSheet(kind)),
+  preloadControls,
+];
+
+/** One preload per idle moment: all at once held the main thread for a long task. */
+function preloadAll(steps = PRELOADS) {
+  const [step, ...rest] = steps;
+  step?.();
+  if (rest.length > 0) whenIdle(() => preloadAll(rest));
 }
 
 /** Back to the screen, or a new day while it is open: the plan is read again if it may have changed. */
@@ -151,7 +153,7 @@ export function App() {
             () => undefined,
           );
           // Well after the first paint, so it never competes with it: a tap before then preloads what it opens.
-          setTimeout(() => whenIdle(preloadAll), PRELOAD_DELAY_MS);
+          setTimeout(() => whenIdle(() => preloadAll()), PRELOAD_DELAY_MS);
         }),
       );
   }, []);
