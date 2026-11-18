@@ -82,8 +82,12 @@ test("une feuille n'est que du givre tant qu'elle bouge, et retrouve son verre u
   await page.mouse.down();
   await page.mouse.move(box.x + box.width / 2, box.y + 60, { steps: 6 });
   await expect(detail).toHaveAttribute("data-moving", "");
-  // A short pull springs back: once it stands again, the glass is back.
+  // A short, slow pull springs back: the finger rests, then moves 1 px, so the release is no flick (a flick closes,
+  // and a slow machine turned the quick moves above into one).
+  await page.waitForTimeout(200);
+  await page.mouse.move(box.x + box.width / 2, box.y + 61);
   await page.mouse.up();
+  // Once it stands again, the glass is back.
   await expect(detail).not.toHaveAttribute("data-moving");
   await expect(detail).toBeVisible();
 });
