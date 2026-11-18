@@ -20,6 +20,7 @@ import {
 } from "@annarrive/protocol";
 import { z } from "zod";
 import { addDays, addMinutes, isoWeek, minutesOf, mondayOf, toIso } from "../lib/date.ts";
+import { yieldToMain } from "../lib/idle.ts";
 import type { Api } from "./client.ts";
 import { ApiError, OFFLINE } from "./errors.ts";
 import { apiCall, incident } from "./journal.ts";
@@ -160,7 +161,10 @@ export function createHttpApi(
       json = fromFirst(path).finally(() => pending.delete(path));
       pending.set(path, json);
     }
-    return parse(await json, schema, path);
+    const body = await json;
+    // Each answer parses in a task of its own: the six of the first screen in one go held the main thread too long.
+    await yieldToMain();
+    return parse(body, schema, path);
   };
   // When the timetable was last read and the watch's link change on their own actions, not with the plan: read
   // once and kept a few minutes, so a change re-reads only the plan. Down, they leave their own line unknown.

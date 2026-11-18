@@ -1,5 +1,5 @@
 import "./zod-config.ts";
-import { StrictMode } from "react";
+import { StrictMode, startTransition } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App.tsx";
 import { installJournal, renderError } from "./api/journal.ts";
@@ -16,8 +16,11 @@ const journaled = (error: unknown, info: { componentStack?: string }) => {
   renderError(error, info.componentStack);
 };
 
-createRoot(root, { onCaughtError: journaled, onUncaughtError: journaled }).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
+// A transition: React renders the first screen in short slices, so no single task holds the main thread.
+startTransition(() =>
+  createRoot(root, { onCaughtError: journaled, onUncaughtError: journaled }).render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  ),
 );

@@ -1,3 +1,5 @@
+import { useDeferredValue, useEffect, useState } from "react";
+import type { Week } from "../../api/schemas.ts";
 import { LoadFailed } from "../../ui/EmptyState.tsx";
 import { Icon } from "../../ui/Icon.tsx";
 import { RoundAction } from "../../ui/RoundAction.tsx";
@@ -22,9 +24,42 @@ import { ThisWeek } from "./ThisWeek.tsx";
 import { sessionContext } from "./today.ts";
 import { Unwell } from "./Unwell.tsx";
 
+let firstDayDrawn = false;
+
+/**
+ * The first time the day shows after launch, the week and « Ma journée » under its card wait for the frame after:
+ * the card lays out and paints alone, in a shorter task. Every later visit draws them at once.
+ */
+function useBelowCard(ready: boolean) {
+  const [shown, setShown] = useState(firstDayDrawn);
+  useEffect(() => {
+    if (!ready || shown) return;
+    const frame = requestAnimationFrame(() =>
+      setTimeout(() => {
+        firstDayDrawn = true;
+        setShown(true);
+      }),
+    );
+    return () => cancelAnimationFrame(frame);
+  }, [ready, shown]);
+  return shown;
+}
+
+/** Under the card: the week and « Ma journée » (not after the run), then when the timetable was last read. */
+function BelowCard({ week, date, day }: { week: Week; date: string; day: boolean }) {
+  return (
+    <>
+      {day && <ThisWeek week={week} today={date} />}
+      {day && <DayAgenda items={week.items} date={date} />}
+      <RefreshRow checkedAt={week.timetableCheckedAt} change={week.timetableChange} />
+    </>
+  );
+}
+
 /** Aujourd'hui: run day, rest day or after the run. */
 export function TodayScreen() {
-  const { status, today, weeks } = usePlan();
+  // Deferred: the screen built from the plan renders in short slices rather than in one long task.
+  const { status, today, weeks } = useDeferredValue(usePlan());
   const show = useSheet((s) => s.show);
   const go = useGo();
   const week = weeks[0];
@@ -33,6 +68,7 @@ export function TodayScreen() {
   const need = useOnboardingNeed((s) => s.need);
   const setUp = Boolean(today?.goal) || Boolean(week?.items.some((item) => item.kind === "run"));
   const onboarding = need === true || (need === undefined && !setUp);
+  const belowCard = useBelowCard(Boolean(today && week && !onboarding));
 
   if (status === "error") {
     return (
@@ -121,9 +157,7 @@ export function TodayScreen() {
         <ProposalCard key={p.id} proposal={p} />
       ))}
 
-      {!activity && <ThisWeek week={week} today={date} />}
-      {!activity && <DayAgenda items={week.items} date={date} />}
-      <RefreshRow checkedAt={week.timetableCheckedAt} change={week.timetableChange} />
+      {belowCard && <BelowCard week={week} date={date} day={!activity} />}
     </Screen>
   );
 }

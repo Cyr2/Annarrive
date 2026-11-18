@@ -37,6 +37,14 @@ jobs:
         run: pnpm lighthouse
         env:
           LHCI_BUILD_CONTEXT__CURRENT_BRANCH: ${{ github.head_ref || github.ref_name }}
+      # The runner's speed explains most of the spread between two runs of the same code: logged next to each score.
+      - name: Lighthouse runs (runner speed, score, TBT, LCP)
+        if: always()
+        run: >-
+          node -e 'for (const f of require("fs").readdirSync(".lighthouseci").filter((f) => /^lhr-.*\.json$/.test(f))) {
+          const r = require("./.lighthouseci/" + f), a = r.audits;
+          console.log(`benchmarkIndex ${r.environment.benchmarkIndex}  performance ${r.categories.performance.score}
+          TBT ${Math.round(a["total-blocking-time"].numericValue)} ms  LCP ${Math.round(a["largest-contentful-paint"].numericValue)} ms`) }'
 
   e2e:
     name: e2e

@@ -12,6 +12,7 @@ import { preloadSheet, SheetHost } from "./features/sheets/SheetHost.tsx";
 import { type SheetSpec, useSheet } from "./features/sheets/store.ts";
 import { TodayScreen } from "./features/today/TodayScreen.tsx";
 import { watchForUpdates } from "./features/updates.ts";
+import { whenIdle } from "./lib/idle.ts";
 import { ChunkBoundary, lazyChunk } from "./ui/ChunkBoundary.tsx";
 import { preloadControls, type Tab, TabBar } from "./ui/controls.tsx";
 import { LoadFailed } from "./ui/EmptyState.tsx";
@@ -50,12 +51,6 @@ const SHEETS: SheetSpec["kind"][] = [
   "cycle",
   "stop",
 ];
-
-/** After the first screen's render has settled. Safari has no requestIdleCallback: a timeout stands in. */
-function whenIdle(task: () => void) {
-  if (typeof requestIdleCallback === "function") requestIdleCallback(task, { timeout: 2000 });
-  else setTimeout(task, 500);
-}
 
 const PRELOAD_DELAY_MS = 800;
 

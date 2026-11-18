@@ -5,6 +5,7 @@ import { errorMessage, OFFLINE } from "../../api/errors.ts";
 import { api as defaultApi } from "../../api/index.ts";
 import type { ChangeResult, Program, Today, Week } from "../../api/schemas.ts";
 import { toIso } from "../../lib/date.ts";
+import { whenIdle } from "../../lib/idle.ts";
 import { notify as defaultNotify } from "../../ui/toast.ts";
 
 /** `quiet`: no banner. `action`: replaces Annuler (settings show "Voir", docs/interactions.md). */
@@ -117,7 +118,8 @@ export function createPlanStore(getApi: () => Promise<Api>, notify: Notify) {
           const [today, week] = await Promise.all([client.today(), client.week(0)]);
           if (mine !== reads) return;
           set((s) => ({ status: "ready", today, weeks: { ...s.weeks, 0: week }, loadedAt: Date.now() }));
-          saveFirstScreen({ today, week });
+          // Written once the screen is up: the copy is for the next launch, not for this paint.
+          whenIdle(() => saveFirstScreen({ today, week }));
         } catch {
           // Offline with a copy from today: keep showing it rather than an error.
           if (!get().today) set({ status: "error" });
