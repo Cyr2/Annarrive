@@ -2,13 +2,14 @@ import {
   AnimatePresence,
   type DragControls,
   MotionConfig,
+  type MotionValue,
   motion,
   useDragControls,
   useMotionValue,
   useReducedMotion,
   useTransform,
 } from "motion/react";
-import { type ReactNode, type RefObject, useEffect, useId, useRef } from "react";
+import { type ReactNode, type RefObject, useEffect, useId, useLayoutEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { EXIT_SHEET, FADE_REDUCED, SPRING_SHEET } from "../lib/motion.ts";
 import { Icon } from "./Icon.tsx";
@@ -145,6 +146,39 @@ function usePullToClose(panel: RefObject<HTMLElement | null>, drag: DragControls
   }, [panel, drag, active]);
 }
 
+/**
+ * While the sheet slides or follows the finger nothing blurs, the page behind included (`data-moving`,
+ * surfaces.css): under a moving sheet and scrim every blur is filtered again at every frame, more than a phone's
+ * GPU draws in 16 ms. The glass comes back once the sheet stands still.
+ */
+function useFrostWhileMoving(panel: RefObject<HTMLElement | null>, y: MotionValue<number | string>, rising: boolean) {
+  const dragging = useRef(false);
+  useLayoutEffect(() => {
+    const element = panel.current;
+    if (!element) return;
+    const start = () => element.toggleAttribute("data-moving", true);
+    // Motion still counts the animation as running when it reports its end: only the finger can keep it frost.
+    const end = () => element.toggleAttribute("data-moving", dragging.current);
+    // Before the first frame: a sheet that rises starts as frost.
+    element.toggleAttribute("data-moving", rising);
+    const off = [y.on("animationStart", start), y.on("animationComplete", end), y.on("animationCancel", end)];
+    return () => {
+      for (const unsubscribe of off) unsubscribe();
+    };
+  }, [panel, y, rising]);
+  return {
+    onDragStart: () => {
+      dragging.current = true;
+      panel.current?.setAttribute("data-moving", "");
+    },
+    // The spring back (or the slide out) starts in the same frame: a frame later, it is running or there is none.
+    onDragEnd: () => {
+      dragging.current = false;
+      requestAnimationFrame(() => panel.current?.toggleAttribute("data-moving", y.isAnimating()));
+    },
+  };
+}
+
 /** While it is the sheet on screen: the app behind is inert, focus is inside, Escape closes, focus goes back after. */
 function useModal(panel: RefObject<HTMLElement | null>, close: RefObject<() => void>, covered: boolean) {
   useEffect(() => {
@@ -240,6 +274,7 @@ function Panel({
   const progress = useTransform(y, (value) => standing(value, panel.current));
   const back = onBack ?? previous;
   usePullToClose(panel, drag, !still && !covered);
+  const frost = useFrostWhileMoving(panel, y, appear && !still);
 
   useModal(panel, close, covered);
 
@@ -268,7 +303,7 @@ function Panel({
         aria-labelledby={titleId}
         tabIndex={-1}
         data-variant="sheet"
-        className="surface absolute inset-x-0 bottom-0 mx-auto flex max-h-[calc(100%-env(safe-area-inset-top)-16px)] w-full max-w-xl flex-col outline-none"
+        className="surface contain-layout absolute inset-x-0 bottom-0 mx-auto flex max-h-[calc(100%-env(safe-area-inset-top)-16px)] w-full max-w-xl flex-col outline-none"
         aria-busy={busy}
         style={{ y }}
         initial={appear && (still ? { opacity: 0 } : { y: "105%" })}
@@ -283,7 +318,9 @@ function Panel({
         onPointerDownCapture={() => {
           pressedScrim.current = false;
         }}
+        onDragStart={frost.onDragStart}
         onDragEnd={(_event, info) => {
+          frost.onDragEnd();
           if (info.offset.y > DISMISS_DISTANCE || info.velocity.y > DISMISS_SPEED) close.current();
         }}
       >

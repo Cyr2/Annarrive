@@ -68,6 +68,26 @@ test("la page derrière une feuille reste immobile, feuille ouverte comme tirée
   await page.mouse.up();
 });
 
+test("une feuille n'est que du givre tant qu'elle bouge, et retrouve son verre une fois posée", async ({ page }) => {
+  // A blur that moves is filtered again at every frame: on a phone, sheets with more content stuttered.
+  await page.goto("/");
+  await page.getByRole("button", { name: /^\d+:\d+.*Côtes courtes/ }).click();
+  const detail = page.getByRole("dialog", { name: "Côtes courtes" });
+  await expect(detail).toHaveAttribute("data-moving", "");
+  await expect(detail).toHaveCSS("transform", "none");
+  await expect(detail).not.toHaveAttribute("data-moving");
+  const box = await detail.getByRole("heading", { name: "Côtes courtes" }).boundingBox();
+  if (!box) throw new Error("Titre invisible");
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2, box.y + 60, { steps: 6 });
+  await expect(detail).toHaveAttribute("data-moving", "");
+  // A short pull springs back: once it stands again, the glass is back.
+  await page.mouse.up();
+  await expect(detail).not.toHaveAttribute("data-moving");
+  await expect(detail).toBeVisible();
+});
+
 test("une feuille ouverte depuis une autre offre Retour, et tirer vers le bas ferme tout", async ({ page }) => {
   const detail = await openRunDetail(page);
   await detail.getByRole("button", { name: "Déplacer" }).click();
