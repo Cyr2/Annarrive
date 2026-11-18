@@ -11,11 +11,12 @@ export type SheetSpec =
   | { kind: "strength"; templateId?: string }
   | { kind: "setting"; key: SettingKey }
   | { kind: "goal" }
+  | { kind: "lastTime" }
   | { kind: "watch" }
   | { kind: "cycle" }
   | { kind: "stop" };
 
-export type SettingKey = "runsPerWeek" | "noRunDays" | "notBefore" | "notAfter" | "bedtime";
+export type SettingKey = "runsPerWeek" | "noRunDays" | "longRunDays" | "notBefore" | "notAfter" | "bedtime";
 
 type SheetState = {
   current?: SheetSpec;

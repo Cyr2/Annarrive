@@ -12,6 +12,7 @@
     "eval:reggie": "node --env-file-if-exists=../../.env --import tsx eval/reggie/run.ts",
     "lighthouse": "tsx src/cli/lighthouse.ts",
     "incidents": "node --env-file-if-exists=../../.env --import tsx src/cli/incidents.ts",
+    "level": "node --env-file-if-exists=../../.env --import tsx src/cli/level.ts",
     "login-link": "node --env-file-if-exists=../../.env --import tsx src/cli/login-link.ts",
     "users": "node --env-file-if-exists=../../.env --import tsx src/cli/users.ts"
   },

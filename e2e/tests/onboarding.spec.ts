@@ -20,6 +20,12 @@ test("onboarding d'une base vide jusqu'à la première semaine, puis visite guid
   await page.getByRole("button", { name: "Semi-marathon", exact: true }).click();
   await page.getByLabel("Date").fill("2027-03-14");
   await next.click();
+  await expect(page.getByRole("heading", { name: "Ton dernier chrono" })).toBeVisible();
+  // The race screen is still sliding out: the new one is the last.
+  await page.getByRole("button", { name: "10 km", exact: true }).last().click();
+  await page.getByLabel("Minutes").fill("52");
+  await page.getByLabel("Quand").selectOption("Il y a 3 à 6 mois");
+  await next.click();
   await expect(page.getByRole("heading", { name: "Ton chrono" })).toBeVisible();
   await page.getByRole("radio", { name: "Juste finir" }).click();
   await next.click();
@@ -36,6 +42,7 @@ test("onboarding d'une base vide jusqu'à la première semaine, puis visite guid
   await next.click();
   await expect(page.getByRole("heading", { name: "Tout est bon ?" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Récapitulatif" })).toContainText("4 par semaine");
+  await expect(page.getByRole("region", { name: "Récapitulatif" })).toContainText("10 km en 52:00");
   await page.getByRole("button", { name: "C'est parti" }).click();
 
   const tour = page.getByRole("dialog", { name: "Visite guidée" });

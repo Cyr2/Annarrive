@@ -316,6 +316,7 @@ export function createHttpApi(
     },
     updateSettings: (patch) => change("PATCH", "/profile", toProfilePatch(patch)),
     updateGoal: (goal) => change("PUT", "/program", { goal: toGoal(goal) }),
+    updateLastTime: (declaredTime) => change("PUT", "/program", { declaredTime }),
     stopProgram: () => change("PUT", "/program", { goal: null }),
     async reconnectWatch() {
       await run("POST", "/watch/sync");

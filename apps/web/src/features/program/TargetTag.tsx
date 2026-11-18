@@ -4,8 +4,7 @@ import { cx } from "../../lib/cx.ts";
 import { duration } from "../../lib/date.ts";
 import { Icon } from "../../ui/Icon.tsx";
 import { TextButton } from "../../ui/TextButton.tsx";
-import { useChat } from "../reggie/store.ts";
-import { useGo } from "../useGo.ts";
+import { TalkLink } from "../reggie/TalkLink.tsx";
 
 /** Reachable reads as done-able (green and a check), ambitious as a calm heads-up (amber and a flag). */
 const TAGS = {
@@ -68,14 +67,6 @@ function TargetButton({ kind, why, goal, className }: Props & { why: Why }) {
   const tag = TAGS[kind];
   const id = useId();
   const box = useRef<HTMLDivElement>(null);
-  const go = useGo();
-  const ask = () => {
-    box.current?.hidePopover();
-    const chat = useChat.getState();
-    chat.setContext(goal ?? "Ton objectif", { screen: "program" });
-    void chat.send(QUESTIONS[kind]);
-    go("/reggie");
-  };
   return (
     <>
       <button
@@ -106,9 +97,13 @@ function TargetButton({ kind, why, goal, className }: Props & { why: Why }) {
             </p>
           ))}
           <div className="flex items-center justify-between gap-2">
-            <TextButton className="-ml-1 text-left" onClick={ask}>
-              En parler avec Reggie
-            </TextButton>
+            <TalkLink
+              className="-ml-1 text-left"
+              context={goal ?? "Ton objectif"}
+              about={{ screen: "program" }}
+              question={QUESTIONS[kind]}
+              onGo={() => box.current?.hidePopover()}
+            />
             <TextButton tone="ink" popoverTarget={id} popoverTargetAction="hide">
               OK
             </TextButton>

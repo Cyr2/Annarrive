@@ -15,6 +15,8 @@ Référence pour les maquettes et le code. Chaque action dit ce qu'elle ouvre, c
 4. **Ce qu'Anna change à la main n'est jamais remis en cause** par une adaptation automatique.
 5. **Une séance ratée n'est jamais rattrapée.** Le plan avance.
 6. **Une seule question à la fois** quand Reggie a besoin d'une info, avec des réponses en boutons.
+Chaque explication (pourquoi cette séance, séance allégée, verdict de la cible) se termine par le lien bleu « En parler avec Reggie › » : il ouvre Reggie sur ce sujet et envoie la question pour elle.
+7. **Une allure s'écrit toujours avec son unité**, en notation de coureur : « 5'15 /km », « 6'37 à 7'53 /km ». Les durées restent « 50 min », « 1 h 06 ». Chaque étape courue a son allure, comme sur la montre.
 
 ## Aujourd'hui
 
@@ -22,7 +24,7 @@ Référence pour les maquettes et le code. Chaque action dit ce qu'elle ouvre, c
 |---|---|---|
 | Puce « Semi · J-62 » | Ouvre l'onglet Programme | Rien ne change |
 | Carte de la séance | Ouvre le détail de la séance (étapes, allures, pourquoi cette séance) | Rien ne change |
-| Voir les étapes | Déplie les étapes dans la carte. Absent quand la séance n'a qu'une étape | Rien ne change. Deuxième tap = replie |
+| Voir les étapes | Déplie les étapes dans la carte, comme une séance Garmin : « Échauffement · 15 min », un groupe « Répéter 3 fois » autour des lignes qu'il répète (« 8 min », « Récupérer · 2 min »), « Retour au calme · 10 min », chaque ligne avec son allure. Absent quand la séance n'a qu'une étape | Rien ne change. Deuxième tap = replie |
 | Carte « Tu l'as faite ? » | Apparaît quand une séance de la semaine est finie sans course reçue de la montre. « Oui, je l'ai faite » ou « Non, je l'ai sautée » | Oui : séance faite. Non : séance passée, jamais rattrapée. Bandeau Annuler dans les deux cas |
 | Ligne « Tu es enrhumée » (ou fièvre, douleur) et « Ça va mieux » | Reste en haut tant qu'un état Malade ou Douleur dure | « Ça va mieux » lance le retour, comme dans Pas dispo. Bandeau Annuler |
 | **Reggie** | Ouvre la conversation, avec le contexte « À propos de : Fractionné, ce soir 18:00 » | Reggie sait de quelle séance on parle |
@@ -119,10 +121,10 @@ Après ajout, si une course entre en conflit, Reggie la déplace, même si elle 
 
 | Élément | Au tap | Ce qui se passe |
 |---|---|---|
-| Pastille « Ambitieux » ou « Atteignable » (carte de l'objectif) | Une petite bulle explique le verdict en mots simples : son niveau aujourd'hui (temps prédit sur la course), le gain que sa cible demande sur les semaines d'entraînement du plan, et le gain habituel sur cette durée. Jamais un chrono proposé (algo.md P20). « OK » ou un tap à côté la ferme | « En parler avec Reggie » ouvre Reggie, à propos de l'objectif, et envoie « Pourquoi mon objectif est ambitieux ? Qu'est-ce que je peux faire ? » (ou « Mon objectif est atteignable : comment je m'y prends ? »). Pendant l'onboarding, la pastille informe seulement : elle n'a pas de chevron |
+| Pastille « Ambitieux » ou « Atteignable » (carte de l'objectif) | Une petite bulle explique le verdict en mots simples : son niveau aujourd'hui (temps prédit sur la course), le gain que sa cible demande sur les semaines d'entraînement du plan, et le gain habituel sur cette durée. Jamais un chrono proposé (algo.md P20). « OK » ou un tap à côté la ferme. Tant qu'elle est ouverte, la page derrière ne défile pas | « En parler avec Reggie » ouvre Reggie, à propos de l'objectif, et envoie « Pourquoi mon objectif est ambitieux ? Qu'est-ce que je peux faire ? » (ou « Mon objectif est atteignable : comment je m'y prends ? »). Pendant l'onboarding, la pastille informe seulement : elle n'a pas de chevron |
 | Modifier l'objectif | Reprend les écrans de création du programme, pré-remplis, avec l'heure de départ de la course | Avant validation, un résumé montre ce qui change (« 2 semaines de plus, chrono visé atteignable »). Les semaines à venir sont recalculées, la semaine en cours garde ce qu'Anna a déjà déplacé. Une course dans les 7 jours, nouvelle ou retirée, refait aussi ce qui reste de la semaine en cours (algo.md EV20) ; le résumé le dit : « Ta semaine devient une semaine de course : rien de dur dans les 3 jours avant. » |
-| Courses par semaine, jours sans course, pas avant, pas après, heure de coucher | Choix en feuille (roue ou boutons) | La semaine en cours et les suivantes sont réorganisées. Bandeau « Reggie a réorganisé ta semaine · Voir » |
-| Sortie longue le | Liste des jours (dimanche par défaut) | Les séances automatiques à venir sont refaites, la sortie longue passe à ce jour quand il est libre. Bandeau Annuler |
+| Ton dernier chrono | Feuille : distance, temps (h, min), « Quand » (moins de 3 mois, 3 à 6 mois, plus de 6 mois, estimation), Enregistrer | Son niveau est recalculé avec ce chrono (algo.md F10) et les séances à venir prennent les nouvelles allures. Bandeau « Allures recalculées avec ton chrono · Annuler » |
+| Courses par semaine, jours sans course, sortie longue, pas avant, pas après, heure de coucher | Chaque réglage ouvre la même feuille : le choix (boutons ou jours à cocher), puis Enregistrer. Rien ne change avant Enregistrer. Sortie longue : plusieurs jours possibles (samedi et dimanche par défaut à l'onboarding) | La semaine en cours et les suivantes sont réorganisées en un seul changement ; la sortie longue va sur le plus libre des jours cochés. Bandeau « Reggie a réorganisé ta semaine · Voir », Annuler |
 | Séance de muscu | Feuille « Séance de muscu » | Comme plus haut |
 | Emploi du temps, Actualiser | Relit l'emploi du temps | Comme dans Semaine |
 | Montre Garmin | Fiche : modèle, dernière synchro, « Reconnecter » | Reconnecter relance la connexion Garmin |

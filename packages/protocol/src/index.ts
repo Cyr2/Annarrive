@@ -8,3 +8,5 @@ export const healthSchema = z.object({ status: z.literal("ok"), version: z.strin
 export type Health = z.infer<typeof healthSchema>;
 export * from "./garmin.ts";
 export * from "./incident.ts";
+export * from "./pace.ts";
+export * from "./steps.ts";

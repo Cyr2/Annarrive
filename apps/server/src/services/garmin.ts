@@ -1,4 +1,4 @@
-import type { GarminActivity, GarminDailySignals, PlannedSession } from "@annarrive/protocol";
+import type { GarminActivity, GarminDailySignals, GarminLap, PlannedSession } from "@annarrive/protocol";
 import {
   type BridgeClient,
   BridgeUnreachableError,
@@ -39,6 +39,15 @@ export function toActivity(a: GarminActivity): Activity | null {
     // Garmin stores RPE × 10.
     rpe: a.rpe === null ? undefined : a.rpe / 10,
   };
+}
+
+/** Laps without a time or a distance (a pause, a manual lap pressed twice) say nothing about pace. */
+export function toLaps(laps: GarminLap[]): NonNullable<Activity["laps"]> {
+  return laps.flatMap((l) =>
+    l.durationS && l.distanceM
+      ? [{ durMin: l.durationS / 60, distM: l.distanceM, ...(l.avgHr === null ? {} : { avgHr: l.avgHr }) }]
+      : [],
+  );
 }
 
 const minutesApart = (a: string, b: string) => Math.abs(Date.parse(`${a}:00Z`) - Date.parse(`${b}:00Z`)) / 60_000;
@@ -90,10 +99,21 @@ export class GarminService {
     for (const run of runs) {
       const stored = this.#stores.activity.get(run.id);
       const sessionId = stored?.sessionId ?? this.#matchingSession(run)?.id;
-      this.#stores.activity.put({ ...run, answeredFeel: stored?.answeredFeel, sessionId });
+      const laps = stored?.laps ?? (await this.#laps(run.id));
+      this.#stores.activity.put({ ...run, answeredFeel: stored?.answeredFeel, sessionId, laps });
       if (sessionId && !stored?.sessionId) this.#plan.markDone(sessionId);
       if (!stored) this.#fitness.afterRun({ ...run, sessionId });
       if (!stored && dateOf(run.start) === today) await this.#notifications.runSynced();
+    }
+  }
+
+  /** A run's laps, read once; undefined when the bridge fails, so the next sync tries again. */
+  async #laps(runId: string): Promise<Activity["laps"]> {
+    try {
+      return toLaps(await this.#bridge.activityLaps(Number(runId.replace("garmin:", ""))));
+    } catch (error) {
+      if (stopsSync(error)) throw error;
+      return undefined;
     }
   }
 

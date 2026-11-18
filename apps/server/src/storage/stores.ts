@@ -11,9 +11,9 @@ import {
   localDateSchema,
   localDateTimeSchema,
   plannedSessionSchema,
-  profileSchema,
   programSchema,
   proposalSchema,
+  storedProfileSchema,
 } from "@annarrive/protocol";
 import { z } from "zod";
 import { addMinutes } from "../time.ts";
@@ -60,6 +60,8 @@ export const activitySchema = z.object({
   /** Garmin self-evaluation, 1 to 10. */
   rpe: z.number().optional(),
   sessionId: z.string().optional(),
+  /** Garmin laps, read once per run: the best efforts of F18 are found in them. */
+  laps: z.array(z.object({ durMin: z.number(), distM: z.number(), avgHr: z.number().optional() })).optional(),
 });
 export type Activity = z.infer<typeof activitySchema>;
 
@@ -139,7 +141,7 @@ const ranged =
 
 export function createStores(db: DatabaseSync) {
   return {
-    profile: new DocumentStore(db, "profile", single(profileSchema)),
+    profile: new DocumentStore(db, "profile", single(storedProfileSchema)),
     program: new DocumentStore(db, "program", single(programSchema)),
     health: new DocumentStore(db, "health", single(healthStatusSchema)),
     plannedSession: new DocumentStore(db, "planned_session", plannedSessionSchema, (s) => [

@@ -8,11 +8,17 @@ const clock = z.string().regex(/^\d{1,2}:\d{2}$/);
 export const intensitySchema = z.enum(["hard", "easy", "long"]);
 export const watchStatusSchema = z.enum(["synced", "sending", "failed", "off"]);
 
-export const stepSchema = z.object({
+/** One line of a workout as Garmin lists it: « Échauffement · 15 min », its pace « 6'37 à 7'53 /km ». */
+export const stepLineSchema = z.object({
   label: z.string(),
   pace: z.string(),
   tone: z.enum(["plain", "hard", "muted"]),
+  /** How long one pass lasts, for the width of its bar in the session's shape. */
+  minutes: z.number().positive().optional(),
 });
+/** « Répéter 3 fois » and the lines it repeats, as on the watch. */
+export const stepRepeatSchema = z.object({ repeat: z.number().int().min(2), steps: z.array(stepLineSchema).min(1) });
+export const stepSchema = z.union([stepLineSchema, stepRepeatSchema]);
 
 export const runSchema = z.object({
   id: z.string(),
@@ -24,7 +30,7 @@ export const runSchema = z.object({
   intensity: intensitySchema,
   distanceKm: z.number().positive().optional(),
   mainSet: z.string().optional(),
-  /** Garmin style target, "4:55" or "6:15 à 6:45". */
+  /** The main target with its unit, "4'55 /km" or "6'15 à 6'45 /km". */
   pace: z.string(),
   steps: z.array(stepSchema),
   why: z.string(),
@@ -155,8 +161,8 @@ export const settingsSchema = z.object({
   recoveryData: z.boolean(),
   cycle: z.boolean(),
   notifications: z.boolean(),
-  /** 0 = Monday to 6 = Sunday; Sunday unless she chose. */
-  longRunDay: z.number().int().min(0).max(6).optional(),
+  /** The days her long run may go on, 0 = Monday to 6 = Sunday; Sunday unless she chose. */
+  longRunDays: z.array(z.number().int().min(0).max(6)),
 });
 
 export const programSchema = z.object({
@@ -185,6 +191,10 @@ export const programSchema = z.object({
   timetableCheckedAt: z.string().optional(),
   /** The ICS link Anna pasted; absent when the server uses its own. */
   timetableUrl: z.string().optional(),
+  /** « Ton dernier chrono », as she gave it: it sets her paces (algo.md F10). */
+  lastTime: z
+    .object({ distanceM: z.number().positive(), minutes: z.number().positive(), date: isoDate.optional() })
+    .optional(),
   /** `connected` is absent when the server could not reach the watch's state. */
   watch: z.object({ model: z.string(), connected: z.boolean().optional(), lastSync: z.string().optional() }),
 });
@@ -226,6 +236,9 @@ export const chatEventSchema = z.discriminatedUnion("type", [
 export type Intensity = z.infer<typeof intensitySchema>;
 export type WatchStatus = z.infer<typeof watchStatusSchema>;
 export type Step = z.infer<typeof stepSchema>;
+export type StepLine = z.infer<typeof stepLineSchema>;
+export type StepRepeat = z.infer<typeof stepRepeatSchema>;
+export const isRepeat = (step: Step): step is StepRepeat => "repeat" in step;
 export type Run = z.infer<typeof runSchema>;
 export type EventKind = z.infer<typeof eventKindSchema>;
 export type CalendarEvent = z.infer<typeof eventSchema>;

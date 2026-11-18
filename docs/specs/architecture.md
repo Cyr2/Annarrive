@@ -66,6 +66,7 @@ Pourquoi ce découpage :
     - `node --import tsx src/cli/incidents.ts` : les incidents des 7 derniers jours, du plus récent au plus ancien, chacun avec sa chronologie de gestes à l'heure de Paris.
     - `--since 2d` (aussi `12h`, `30m`), `--id <id>` pour un seul, `--json` pour le coller à un agent.
     - Pour une pile illisible : reconstruire le commit déployé avec `build.sourcemap: "hidden"`, vérifier que le fichier d'entrée a le même nom que `version`, puis lire la ligne dans la carte.
+- **Diagnostic du niveau** : `node --import tsx src/cli/level.ts [nom]` (dans le conteneur, depuis `/app/apps/server` ; en local, `pnpm --filter @annarrive/server level`). Lecture seule : imprime comment F10 lit son niveau aujourd'hui, à coller tel quel. Courses lues sur 12 semaines (et combien ont leurs tours), FC max observée, VO2max Garmin (30 j), chrono déclaré et son VDOT, les 8 meilleurs efforts (date, distance, temps, allure, lecture `course/max`, `seuil (FC)` ou `plancher`, VDOT), le VDOT retenu avec sa source et ses allures E, M, T, I, R, puis le niveau en service. Les tours Garmin sont lus une fois par course à la synchro (`activityLaps`) ; les courses d'avant ce changement les reçoivent à la prochaine synchro tant qu'elles figurent dans les 20 dernières.
 
 ### apps/garmin-bridge
 

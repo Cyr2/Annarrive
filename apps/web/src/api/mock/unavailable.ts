@@ -38,7 +38,7 @@ export function applyUnavailable(items: Item[], input: UnavailableInput, today: 
     next = next.map((item) => {
       if (!isRun(item) || item.date !== tomorrow || item.intensity !== "hard") return item;
       const lighter = {
-        ...easy(item, item.durationMin, "Footing facile", "6:15 à 6:45"),
+        ...easy(item, item.durationMin, "Footing facile", "6'15 à 6'45 /km"),
         lightened: "Allégée : tu étais fatiguée la veille",
       };
       row(lighter, `${lighter.title} · allégé`, "easy", item);
@@ -48,7 +48,7 @@ export function applyUnavailable(items: Item[], input: UnavailableInput, today: 
   return { items: next, rows };
 }
 
-const EF = "6:30 à 7:00";
+const EF = "6'30 à 7'00 /km";
 
 /** Sickness and pain never block a run: rest is advised, and a run she still wants becomes easy. */
 function replace(run: Run, input: UnavailableInput): Run | undefined {

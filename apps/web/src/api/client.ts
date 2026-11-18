@@ -81,6 +81,8 @@ export interface Api {
   setTimetableUrl(url: string): Promise<RefreshResult>;
   updateSettings(patch: Partial<Settings>): Promise<ChangeResult>;
   updateGoal(goal: GoalInput): Promise<ChangeResult>;
+  /** « Ton dernier chrono »: her paces are recomputed with it. */
+  updateLastTime(time: NonNullable<Program["lastTime"]>): Promise<ChangeResult>;
   stopProgram(): Promise<ChangeResult>;
   reconnectWatch(): Promise<void>;
   resendToWatch(sessionId: string): Promise<void>;

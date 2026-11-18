@@ -1,11 +1,13 @@
 import { randomUUID } from "node:crypto";
-import type { ChangeResponse, Feel, Proposal } from "@annarrive/protocol";
+import type { ChangeResponse, Feel, PlannedSession, Proposal } from "@annarrive/protocol";
 import type { CoachPort } from "../coach-port.ts";
 import { NotFoundError, ReadOnlyError } from "../errors.ts";
 import type { Activity, Stores } from "../storage/stores.ts";
-import { type Clock, dateOf, toParisLocal } from "../time.ts";
+import { addDays, type Clock, dateOf, toParisLocal } from "../time.ts";
 import type { ChangeService } from "./changes.ts";
 import type { PlanService } from "./plan.ts";
+
+const KEY_DAYS = 28;
 
 /** Level proposals (algo.md M8): raised after each run, accepted or declined in one tap, both undoable. */
 export class FitnessService {
@@ -35,12 +37,23 @@ export class FitnessService {
       return null;
     }
     const session = run.sessionId ? this.#stores.plannedSession.get(run.sessionId) : undefined;
-    const draft = this.#coach.evaluateRun(
-      this.#plan.coachState(),
-      { ...run, isTest: session?.type === "TEST" },
-      this.#now(),
-    );
-    return draft && this.#stores.proposal.put({ ...draft, id: randomUUID(), status: "pending" });
+    const state = this.#plan.coachState();
+    const draft =
+      this.#coach.evaluateRun(state, { ...run, isTest: session?.type === "TEST" }, this.#now()) ??
+      (session
+        ? this.#coach.evaluateKeySessions(state, this.#doneSessions(), this.#stores.proposal.list(), this.#now())
+        : null);
+    const known = this.pending().some((p) => p.ruleId === draft?.ruleId);
+    return draft && !known ? this.#stores.proposal.put({ ...draft, id: randomUUID(), status: "pending" }) : null;
+  }
+
+  /** Runs of the last 4 weeks matched to a planned session (RC3 counts from the last level change, at most 28 days). */
+  #doneSessions(): { session: PlannedSession; activity: Activity }[] {
+    const now = this.#now();
+    return this.#stores.activity.overlapping(`${addDays(dateOf(now), -KEY_DAYS)}T00:00`, now).flatMap((activity) => {
+      const session = activity.sessionId ? this.#stores.plannedSession.get(activity.sessionId) : undefined;
+      return session ? [{ session, activity }] : [];
+    });
   }
 
   /**

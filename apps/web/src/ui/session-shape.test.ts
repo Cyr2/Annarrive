@@ -2,39 +2,34 @@ import { describe, expect, it } from "vitest";
 import { minutesIn, shapeOf } from "./session-shape.ts";
 
 describe("shapeOf", () => {
-  it("draws warm-up, one bar per repeat with the recovery between, then cool-down", () => {
+  it("draws warm-up, every pass of a repeat with the recovery between, then cool-down", () => {
     const bars = shapeOf([
-      { label: "Échauffement 15 min", tone: "plain" },
-      { label: "6 × 800 m", tone: "hard" },
-      { label: "Récup 2 min en trottinant", tone: "muted" },
-      { label: "Retour au calme 10 min", tone: "plain" },
+      { label: "Échauffement · 15 min", tone: "plain", minutes: 15 },
+      {
+        repeat: 6,
+        steps: [
+          { label: "800 m", tone: "hard", minutes: 4 },
+          { label: "Récupérer · 2 min", tone: "muted", minutes: 2 },
+        ],
+      },
+      { label: "Retour au calme · 10 min", tone: "plain", minutes: 10 },
     ]);
-    // The recovery says its minutes: it is a step of its own, not the gap between repeats.
     expect(bars.filter((b) => b.level === 1)).toHaveLength(6);
+    expect(bars.filter((b) => b.kind === "muted")).toHaveLength(5);
     expect(bars[0]).toEqual({ level: 0.52, weight: 3, kind: "plain" });
     expect(bars.at(-1)).toEqual({ level: 0.52, weight: 2, kind: "plain" });
   });
 
-  it("puts a recovery without duration between the repeats", () => {
-    const bars = shapeOf([
-      { label: "4 × 1 km", tone: "hard" },
-      { label: "Récup en trottinant", tone: "muted" },
+  it("draws a group without recovery as its passes alone, and caps the repeats", () => {
+    expect(shapeOf([{ repeat: 4, steps: [{ label: "1 km", tone: "hard" }] }]).map((b) => b.level)).toEqual([
+      1, 1, 1, 1,
     ]);
-    expect(bars.map((b) => b.level)).toEqual([1, 0.3, 1, 0.3, 1, 0.3, 1]);
+    expect(shapeOf([{ repeat: 40, steps: [{ label: "100 m", tone: "hard" }] }])).toHaveLength(12);
   });
 
-  it("draws every block of a step, not only the first", () => {
-    const bars = shapeOf([
-      { label: "10 × 400 m + 5 × 200 m", tone: "hard" },
-      { label: "Récup en trottinant", tone: "muted" },
-    ]);
-    expect(bars.filter((b) => b.level === 1)).toHaveLength(15);
-  });
-
-  it("reads hours and minutes, and caps the repeats", () => {
+  it("reads hours and minutes from a label without minutes", () => {
     expect(minutesIn("1 h 10 en endurance")).toBe(70);
     expect(minutesIn("45 min en endurance")).toBe(45);
     expect(minutesIn("6 lignes droites de 20 s")).toBeUndefined();
-    expect(shapeOf([{ label: "40 × 100 m", tone: "hard" }])).toHaveLength(12);
   });
 });

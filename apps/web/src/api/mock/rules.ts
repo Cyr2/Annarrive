@@ -8,7 +8,15 @@ import {
   relativeDay,
   weekday,
 } from "../../lib/date.ts";
-import type { ChangeOption, ChangeOptionId, Item, ProposedSlot, Run, Settings } from "../schemas.ts";
+import {
+  type ChangeOption,
+  type ChangeOptionId,
+  type Item,
+  isRepeat,
+  type ProposedSlot,
+  type Run,
+  type Settings,
+} from "../schemas.ts";
 
 /**
  * shortcut: a small copy of the algo rules (docs/interactions.md, rule 3) so the mock proposes plausible slots.
@@ -106,11 +114,11 @@ export function changeOptions(run: Run): ChangeOption[] {
     {
       id: "easier",
       title: "Plus facile",
-      detail: `${duration(run.durationMin)}, allure 6:15 à 6:45`,
+      detail: `${duration(run.durationMin)}, 6'15 à 6'45 /km`,
       intensity: "easy",
     },
-    { id: "equivalent", title: "Équivalente", detail: "3 × 1 600 m à 5:10 · 50 min", intensity: "hard" },
-    { id: "jog", title: "Footing tranquille", detail: "30 min, allure 6:30 à 7:00", intensity: "easy" },
+    { id: "equivalent", title: "Équivalente", detail: "3 × 1 600 m à 5'10 /km · 50 min", intensity: "hard" },
+    { id: "jog", title: "Footing tranquille", detail: "30 min, 6'30 à 7'00 /km", intensity: "easy" },
   ];
   return run.intensity === "hard" ? options : options.filter((o) => o.id === "shorter" || o.id === "jog");
 }
@@ -120,18 +128,27 @@ export function applyChange(run: Run, option: ChangeOptionId): Run {
   switch (option) {
     case "shorter": {
       const mainSet = set ? `${Math.max(2, Math.round(set.count * 0.67))} × ${set.rest}` : run.mainSet;
-      const steps = run.steps.map((s) => (s.label === run.mainSet && mainSet ? { ...s, label: mainSet } : s));
+      const steps = run.steps.map((s) =>
+        isRepeat(s) && set ? { ...s, repeat: Math.max(2, Math.round(set.count * 0.67)) } : s,
+      );
       const distanceKm = run.distanceKm && Math.round(run.distanceKm * 0.75 * 10) / 10;
       return { ...run, mainSet, steps, distanceKm, durationMin: Math.round((run.durationMin * 0.75) / 5) * 5 };
     }
     case "easier":
-      return easy(run, run.durationMin, "Footing facile", "6:15 à 6:45");
+      return easy(run, run.durationMin, "Footing facile", "6'15 à 6'45 /km");
     case "equivalent": {
-      const steps = run.steps.map((s) => (s.tone === "hard" ? { ...s, label: "3 × 1 600 m", pace: "5:10 /km" } : s));
-      return { ...run, mainSet: "3 × 1 600 m", pace: "5:10", steps };
+      const steps = run.steps.map((s) =>
+        isRepeat(s)
+          ? {
+              repeat: 3,
+              steps: s.steps.map((l) => (l.tone === "hard" ? { ...l, label: "1 600 m", pace: "5'10 /km" } : l)),
+            }
+          : s,
+      );
+      return { ...run, mainSet: "3 × 1 600 m", pace: "5'10 /km", steps };
     }
     case "jog":
-      return easy(run, 30, "Footing tranquille", "6:30 à 7:00");
+      return easy(run, 30, "Footing tranquille", "6'30 à 7'00 /km");
   }
 }
 
@@ -144,7 +161,7 @@ export function easy(run: Run, durationMin: number, title: string, pace: string)
     intensity: "easy",
     mainSet: undefined,
     distanceKm: undefined,
-    steps: [{ label: `${durationMin} min en endurance`, pace: `${pace} /km`, tone: "plain" }],
+    steps: [{ label: `${durationMin} min`, pace, tone: "plain" }],
     why: "Une séance facile à la place : tu gardes l'habitude sans forcer.",
   };
 }

@@ -1,9 +1,10 @@
 import type { CSSProperties, ReactNode } from "react";
 import { cx } from "../lib/cx.ts";
-import { shapeOf } from "./session-shape.ts";
+import { type ShapeStep as Step, shapeOf } from "./session-shape.ts";
 import { TONES, type Tone } from "./tones.ts";
 
-type Step = { label: string; tone: "plain" | "hard" | "muted" };
+const spoken = (step: Step): string =>
+  "repeat" in step ? `répéter ${step.repeat} fois ${step.steps.map((s) => s.label).join(" puis ")}` : step.label;
 
 /**
  * The session's effort profile: one bar per block, its height the effort. Every repeat is drawn, with its
@@ -18,7 +19,7 @@ export function SessionShape({ steps, tone, className }: { steps: Step[]; tone: 
   return (
     <div
       role="img"
-      aria-label={`Profil de la séance : ${steps.map((step) => step.label).join(", ")}`}
+      aria-label={`Profil de la séance : ${steps.map(spoken).join(", ")}`}
       className={cx("flex h-9 items-end gap-[3px]", className)}
       style={color}
     >

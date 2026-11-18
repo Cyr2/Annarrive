@@ -25,7 +25,7 @@ import type {
   UnavailablePreview,
   WatchInfo,
 } from "@annarrive/protocol";
-import { agreeWith, sessionNames } from "@annarrive/protocol";
+import { agreeWith, paceLabel, sessionNames, stepBlocks } from "@annarrive/protocol";
 import {
   daysBetween,
   decimal,
@@ -58,6 +58,7 @@ import type {
   Run,
   Settings,
   Step,
+  StepLine,
   Strength,
   Today,
   WatchStatus,
@@ -88,13 +89,14 @@ const WHY: Record<RunType, string> = {
 };
 
 const WATCH: Record<ServerWatch, WatchStatus> = { pending: "sending", sent: "synced", failed: "failed", off: "off" };
-const STEP_LABELS: Record<ServerStep["kind"], string> = {
+/** As a Garmin workout names its steps; a work step is named by its length alone (« 8 min »). */
+const STEP_LABELS: Record<ServerStep["kind"], string | undefined> = {
   warmup: "Échauffement",
-  work: "Bloc",
-  recover: "Récupération",
+  work: undefined,
+  recover: "Récupérer",
   cooldown: "Retour au calme",
-  strides: "Accélérations",
-  hills: "Côtes",
+  strides: "Accélération",
+  hills: undefined,
 };
 const EVENT_KINDS: Record<ServerEvent["kind"], EventKind> = {
   class: "class",
@@ -125,15 +127,6 @@ function intensityOf(type: RunType): Intensity {
   return type === "E" || type === "RECUP" || type === "COTES_C" ? "easy" : "hard";
 }
 
-function paceText([a, b]: [number, number]): string {
-  const one = (s: number) => {
-    const total = Math.round(s);
-    return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
-  };
-  const [fast, slow] = [Math.min(a, b), Math.max(a, b)];
-  return one(fast) === one(slow) ? one(fast) : `${one(fast)} à ${one(slow)}`;
-}
-
 type ServerStep = PlannedSession["steps"][number];
 
 /** "20 s", "1 min 30", "45 min", "1 h 06": a step under a minute never reads "0 min". */
@@ -144,35 +137,46 @@ export function stepDuration(minutes: number): string {
   return seconds % 60 === 0 || whole >= 60 ? duration(Math.round(seconds / 60)) : `${whole} min ${seconds % 60}`;
 }
 
-function amount(step: ServerStep): string {
+/** One pass: "800 m", "8 min", "10 s en côte". */
+function size(step: ServerStep): string {
   const metres = step.distM ?? 0;
-  const size = metres
+  const one = metres
     ? metres >= 1000
       ? `${decimal(metres / 1000)} km`
       : `${metres} m`
     : step.durMin
       ? stepDuration(step.durMin)
       : "";
-  const reps = step.reps && step.reps > 1 ? `${step.reps} × ${size}` : size;
-  return step.kind === "hills" ? `${reps} en côte` : reps;
+  return step.kind === "hills" ? `${one} en côte` : one;
+}
+
+/** The main set as the card names it: "6 × 800 m". */
+function amount(step: ServerStep): string {
+  return step.reps && step.reps > 1 ? `${step.reps} × ${size(step)}` : size(step);
 }
 
 /** The steady easy part of a run is drawn plain, so a long run with a faster block shows its shape. */
-function toneOf(step: ServerStep): Step["tone"] {
+function toneOf(step: ServerStep): StepLine["tone"] {
   if (step.kind === "recover") return "muted";
   if (step.kind === "strides" || step.kind === "hills") return "hard";
   return step.kind === "work" && step.zone !== "E" ? "hard" : "plain";
 }
 
-function toStep(step: ServerStep): Step {
-  const size = amount(step);
-  const { paceSKm, rpe } = step.target;
-  const own = step.kind === "work" || step.kind === "hills";
+function toLine(step: ServerStep): StepLine {
+  const { paceSKm } = step.target;
   return {
-    label: own && size ? size : [STEP_LABELS[step.kind], size].filter(Boolean).join(" "),
-    pace: paceSKm ? paceText(paceSKm) : rpe ? `Ressenti ${rpe}/10` : "",
+    label: [STEP_LABELS[step.kind], size(step)].filter(Boolean).join(" · "),
+    pace: paceSKm ? paceLabel(paceSKm) : "",
     tone: toneOf(step),
+    ...(step.durMin ? { minutes: step.durMin } : {}),
   };
+}
+
+/** The steps as the watch gets them (`stepBlocks`): lines, and « Répéter n fois » groups. */
+export function toSteps(steps: ServerStep[]): Step[] {
+  return stepBlocks(steps).map((b) =>
+    b.kind === "step" ? toLine(b.step) : { repeat: b.times, steps: b.steps.map(toLine) },
+  );
 }
 
 export function toRun(session: SessionView | PlannedSession): Run {
@@ -188,8 +192,8 @@ export function toRun(session: SessionView | PlannedSession): Run {
     title: TITLES[session.type],
     intensity: intensityOf(session.type),
     mainSet: work?.reps ? amount(work) : undefined,
-    pace: paced ? paceText(paced) : "",
-    steps: session.steps.map(toStep),
+    pace: paced ? paceLabel(paced) : "",
+    steps: toSteps(session.steps),
     why: WHY[session.type],
     watch,
   };
@@ -300,7 +304,7 @@ export function toActivity(run: ActivityView, session: SessionView | null): Acti
     distanceKm: Math.round(run.distM / 100) / 10,
     duration: clockDuration(run.durMin),
     mainPaceLabel: "Allure moyenne",
-    mainPace: paceS ? paceText([paceS, paceS]) : "",
+    mainPace: paceS ? paceLabel(paceS) : "",
     verdict: planned
       ? `Prévu ${duration(Math.round(planned.durMin))}, fait en ${duration(Math.round(run.durMin))}`
       : "Course en plus, je la compte dans ta semaine.",
@@ -360,7 +364,7 @@ export function toSettings(profile: Profile): Settings {
     bedtime: clockOf(profile.bedtime),
     recoveryData: profile.useSleepHr,
     cycle: profile.cycleTracking,
-    longRunDay: (profile.preferredLongDay ?? 7) - 1,
+    longRunDays: (profile.preferredLongDays ?? [7]).map((d) => d - 1),
     // The switch reads the browser's subscription, not the profile.
     notifications: false,
   };
@@ -380,7 +384,7 @@ export function toProfilePatch(patch: Partial<Settings>): ProfilePatch {
   if (patch.bedtime) out.bedtime = fullClock(patch.bedtime);
   if (patch.recoveryData !== undefined) out.useSleepHr = patch.recoveryData;
   if (patch.cycle !== undefined) out.cycleTracking = patch.cycle;
-  if (patch.longRunDay !== undefined) out.preferredLongDay = patch.longRunDay + 1;
+  if (patch.longRunDays?.length) out.preferredLongDays = patch.longRunDays.map((d) => d + 1).sort((a, b) => a - b);
   return out;
 }
 
@@ -462,6 +466,7 @@ export function toProgram({ program, profile, lastSyncAt, days, today, watch }: 
     strength: toStrength(days),
     timetableCheckedAt: lastSyncAt === undefined ? undefined : (lastSyncAt ?? ""),
     timetableUrl: profile.icsUrl,
+    lastTime: program.declaredTime,
     watch: {
       model: "vivoactive 4",
       connected: watch?.configured && !days.some((d) => d.sessions.some((s) => s.watch === "failed")),
@@ -519,7 +524,7 @@ const OPTION_IDS = ["shorter", "easier", "equivalent", "jog"] as const;
 
 function detail(session: PlannedSession): string {
   const run = toRun(session);
-  return [duration(run.durationMin), run.pace && `${run.pace} /km`].filter(Boolean).join(" · ");
+  return [duration(run.durationMin), run.pace].filter(Boolean).join(" · ");
 }
 
 export function toChangeOptions(options: ChangeOptions): ChangeOption[] {

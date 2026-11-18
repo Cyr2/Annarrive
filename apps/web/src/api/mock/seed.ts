@@ -13,14 +13,19 @@ export const INTERVALS: RunSeed = {
   intensity: "hard",
   distanceKm: 8,
   mainSet: "6 × 800 m",
-  pace: "4:55",
+  pace: "4'55 /km",
   steps: [
-    { label: "Échauffement 15 min", pace: "6:20 /km", tone: "plain" },
-    { label: "6 × 800 m", pace: "4:55 /km", tone: "hard" },
-    { label: "Récup 2 min en trottinant", pace: "libre", tone: "muted" },
-    { label: "Retour au calme 10 min", pace: "6:30 /km", tone: "plain" },
+    { label: "Échauffement · 15 min", pace: "6'20 à 7'10 /km", tone: "plain", minutes: 15 },
+    {
+      repeat: 6,
+      steps: [
+        { label: "800 m", pace: "4'55 /km", tone: "hard", minutes: 4 },
+        { label: "Récupérer · 2 min", pace: "6'20 à 7'10 /km", tone: "muted", minutes: 2 },
+      ],
+    },
+    { label: "Retour au calme · 10 min", pace: "6'20 à 7'10 /km", tone: "plain", minutes: 10 },
   ],
-  why: "Des fractions un peu plus rapides que ton allure semi, pour que 5:07 te paraisse confortable le jour J.",
+  why: "Des fractions un peu plus rapides que ton allure semi, pour que 5'07 /km te paraisse confortable le jour J.",
 };
 
 export const easyRun = (start: string, durationMin: number, title = "Footing facile"): RunSeed => ({
@@ -28,8 +33,8 @@ export const easyRun = (start: string, durationMin: number, title = "Footing fac
   durationMin,
   title,
   intensity: "easy",
-  pace: "6:15 à 6:45",
-  steps: [{ label: `${durationMin} min en endurance`, pace: "6:15 à 6:45 /km", tone: "plain" }],
+  pace: "6'15 à 6'45 /km",
+  steps: [{ label: `${durationMin} min`, pace: "6'15 à 6'45 /km", tone: "plain", minutes: durationMin }],
   why: "Des kilomètres faciles : ils construisent ton endurance sans te fatiguer.",
 });
 
@@ -39,10 +44,10 @@ const LONG: RunSeed = {
   title: "Sortie longue",
   intensity: "long",
   distanceKm: 12,
-  pace: "6:10 à 6:40",
+  pace: "6'10 à 6'40 /km",
   steps: [
-    { label: "1 h 10 en endurance", pace: "6:10 à 6:40 /km", tone: "plain" },
-    { label: "10 min à allure semi", pace: "5:07 /km", tone: "hard" },
+    { label: "1 h 10", minutes: 70, pace: "6'10 à 6'40 /km", tone: "plain" },
+    { label: "10 min", minutes: 10, pace: "5'07 /km", tone: "hard" },
   ],
   why: "La séance clé de la semaine : elle habitue ton corps à durer.",
 };
@@ -50,8 +55,8 @@ const LONG: RunSeed = {
 const STRIDES: RunSeed = {
   ...easyRun("17:30", 40, "Footing et accélérations"),
   steps: [
-    { label: "30 min en endurance", pace: "6:15 à 6:45 /km", tone: "plain" },
-    { label: "6 accélérations de 20 s", pace: "vite et relâché", tone: "hard" },
+    { label: "30 min", minutes: 30, pace: "6'15 à 6'45 /km", tone: "plain" },
+    { repeat: 6, steps: [{ label: "Accélération · 20 s", pace: "4'25 /km", tone: "hard" }] },
   ],
 };
 
@@ -150,6 +155,7 @@ export function seedProgram(raceDate: string, now: Date): Program {
     settings: {
       runsPerWeek: 4,
       noRunDays: [5],
+      longRunDays: [6],
       notBefore: "7:00",
       notAfter: "21:00",
       bedtime: "23:00",

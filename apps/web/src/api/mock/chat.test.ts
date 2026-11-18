@@ -60,7 +60,7 @@ describe("scripted Reggie", () => {
 
   it("explains, welcomes good news and answers anything else", async () => {
     const api = createMockApi({ monday: MONDAY });
-    expect((await say(api, "Pourquoi cette allure ?"))[0]?.text).toContain("5:07");
+    expect((await say(api, "Pourquoi cette allure ?"))[0]?.text).toContain("5'07 /km");
     expect((await say(api, "Ça va mieux"))[0]?.text).toContain("3 jours");
     expect((await say(api, "Bonjour"))[0]?.text).toMatch(/^Je note/);
   });

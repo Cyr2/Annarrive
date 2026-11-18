@@ -107,7 +107,8 @@ export const profileSchema = z.object({
   latestEnd: timeOfDaySchema,
   noRunDays: z.array(z.number().int().min(1).max(7)),
   bedtime: timeOfDaySchema,
-  preferredLongDay: z.number().int().min(1).max(7).optional(),
+  /** Days her long run may go on (algo.md S8), 1 = Monday; the coach picks the freest of them each week. */
+  preferredLongDays: z.array(z.number().int().min(1).max(7)).min(1).optional(),
   preferredHour: timeOfDaySchema.optional(),
   useSleepHr: z.boolean(),
   travelMin: z.number().int().min(0).max(120),
@@ -115,6 +116,15 @@ export const profileSchema = z.object({
   icsUrl: icsUrlSchema.optional(),
 });
 export type Profile = z.infer<typeof profileSchema>;
+
+/** A profile stored before the long run took several days: its one `preferredLongDay` becomes a list of one. */
+export const storedProfileSchema = z.preprocess((raw) => {
+  if (typeof raw !== "object" || raw === null || !("preferredLongDay" in raw)) return raw;
+  const { preferredLongDay, ...rest } = raw;
+  return "preferredLongDays" in rest || preferredLongDay === undefined
+    ? rest
+    : { ...rest, preferredLongDays: [preferredLongDay] };
+}, profileSchema);
 
 export const goalSchema = z.object({
   distanceM: z.union([z.literal(5000), z.literal(10000), z.literal(21097.5), z.literal(42195)]),
@@ -124,8 +134,21 @@ export const goalSchema = z.object({
   startTime: timeOfDaySchema.optional(),
 });
 
-/** POST /api/feasibility: a goal with the target time she typed. */
-export const feasibilityInputSchema = goalSchema.required({ targetMin: true });
+/**
+ * « Ton dernier chrono »: a race time and roughly when, or her estimate when `date` is absent. It feeds the level
+ * estimate (algo.md F10).
+ */
+export const declaredTimeSchema = z.object({
+  distanceM: z.number().positive(),
+  minutes: z.number().positive(),
+  date: localDateSchema.optional(),
+});
+export type DeclaredTime = z.infer<typeof declaredTimeSchema>;
+
+/** POST /api/feasibility: a goal with the target time she typed, and her last time when she gave one. */
+export const feasibilityInputSchema = goalSchema
+  .required({ targetMin: true })
+  .extend({ declaredTime: declaredTimeSchema.optional() });
 export type FeasibilityInput = z.infer<typeof feasibilityInputSchema>;
 /** How her own target looks, never discouraging and never a proposed time; null until her form is known. */
 export const feasibilitySchema = z.object({ verdict: z.enum(["atteignable", "ambitieux"]).nullable() });
@@ -138,12 +161,14 @@ export type OnboardingStatus = z.infer<typeof onboardingStatusSchema>;
 /** No goal means maintenance mode (algo.md M9). */
 export const programSchema = z.object({
   goal: goalSchema.nullable(),
-  /** A recent race time, used only when Garmin has no usable effort (algo.md F10 c). */
-  declaredTime: z.object({ distanceM: z.number().positive(), minutes: z.number().positive() }).optional(),
+  declaredTime: declaredTimeSchema.optional(),
   /** Set by the server when the goal changes: the plan's phases count from this day. */
   startedOn: localDateSchema.optional(),
 });
 export type Program = z.infer<typeof programSchema>;
+/** PUT /api/program: the goal may be left out, when only her last time changes. */
+export const programInputSchema = programSchema.extend({ goal: goalSchema.nullable().optional() });
+export type ProgramInput = z.infer<typeof programInputSchema>;
 
 /** GET /api/program: the stored programme, with the plan the coach follows when there is a goal and a known form. */
 export const programViewSchema = programSchema.extend({
