@@ -1,0 +1,86 @@
+{
+  "anna": {
+    "volume": 9.7,
+    "intensite": 7.7,
+    "sortie-longue": 4,
+    "espacement": 10,
+    "allures": 9.3,
+    "sante": 9.4,
+    "sautees": 10,
+    "affutage": 5,
+    "stabilite": 10,
+    "structure": 9.5
+  },
+  "debutant-10k": {
+    "volume": 10,
+    "intensite": 8.9,
+    "sortie-longue": 9.3,
+    "espacement": 10,
+    "allures": 0,
+    "sante": null,
+    "sautees": 10,
+    "affutage": 7.5,
+    "stabilite": 10,
+    "structure": 8.9
+  },
+  "marathon": {
+    "volume": 9.8,
+    "intensite": 10,
+    "sortie-longue": 9.8,
+    "espacement": 10,
+    "allures": 0,
+    "sante": null,
+    "sautees": 10,
+    "affutage": null,
+    "stabilite": 10,
+    "structure": 9.7
+  },
+  "malade": {
+    "volume": 9.1,
+    "intensite": 10,
+    "sortie-longue": 4,
+    "espacement": 10,
+    "allures": 10,
+    "sante": 3.3,
+    "sautees": 8.8,
+    "affutage": null,
+    "stabilite": 10,
+    "structure": 9.3
+  },
+  "sauteuse": {
+    "volume": 9.7,
+    "intensite": 10,
+    "sortie-longue": 4,
+    "espacement": 10,
+    "allures": 10,
+    "sante": 10,
+    "sautees": 6.9,
+    "affutage": null,
+    "stabilite": 10,
+    "structure": 8.9
+  },
+  "plus-forte": {
+    "volume": 9.7,
+    "intensite": 10,
+    "sortie-longue": 9.4,
+    "espacement": 10,
+    "allures": 0,
+    "sante": 10,
+    "sautees": 10,
+    "affutage": null,
+    "stabilite": 10,
+    "structure": 9.8
+  },
+  "surmenage": {
+    "volume": 9.7,
+    "intensite": 10,
+    "sortie-longue": 9.9,
+    "espacement": 10,
+    "allures": 0,
+    "sante": 4,
+    "sautees": 10,
+    "affutage": null,
+    "stabilite": 9.7,
+    "structure": 9.8
+  }
+}
