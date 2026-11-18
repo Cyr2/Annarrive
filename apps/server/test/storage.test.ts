@@ -2,7 +2,9 @@ import { existsSync, renameSync } from "node:fs";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { CalendarEvent } from "@annarrive/protocol";
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import { loadConfig } from "../src/config.ts";
 import { openDatabase, transaction } from "../src/storage/db.ts";
 import { createStores } from "../src/storage/stores.ts";
@@ -60,7 +62,65 @@ describe("database", () => {
     expect(stores.chatMessage.list()).toHaveLength(1);
     expect(stores.pushSubscription.list()).toHaveLength(1);
   });
+
+  it("removes the duplicated classes of past reads, keeping her « n'a pas lieu » and what Annuler points to", async () => {
+    const dir = join(await mkdtemp(join(tmpdir(), "annarrive-db-")), "data");
+    const old = openDatabase(dir);
+    const version = z.object({ user_version: z.number() }).parse(old.prepare("PRAGMA user_version").get()).user_version;
+    // Back to the database as it was before the fix, duplicates allowed.
+    old.exec(`DROP INDEX calendar_event_class; PRAGMA user_version = ${version - 1}`);
+    const stores = createStores(old);
+    const at = (title: string, start: string, end: string, id: string, over: Partial<CalendarEvent> = {}) =>
+      stores.calendarEvent.put({ ...classEvent(title, start, end), id, ...over });
+    for (const id of ["a1", "a2", "a3"])
+      at("Maths", "2026-11-09T10:00", "2026-11-09T12:00", id, { cancelled: id === "a2" });
+    for (const id of ["b1", "b2"]) at("Physique", "2026-11-17T10:00", "2026-11-17T12:00", id);
+    for (const id of ["c1", "c2", "c3"]) at("Chimie", "2026-11-18T10:00", "2026-11-18T12:00", id);
+    at("Physique", "2026-11-17T14:00", "2026-11-17T16:00", "d1");
+    for (const id of ["m1", "m2"])
+      at("Muscu", "2026-11-18T10:00", "2026-11-18T12:00", id, { kind: "strength", manual: true });
+    stores.changeLog.put({
+      id: "x",
+      at: "2026-11-16T07:00:00Z",
+      summary: "Cours modifié",
+      mutations: [{ table: "calendar_event", id: "b2", before: null, after: null }],
+    });
+    old.close();
+
+    const repaired = createStores(openDatabase(dir));
+
+    expect(repaired.calendarEvent.list().map((e) => `${e.id}${e.cancelled ? " annulé" : ""}`)).toEqual([
+      "a2 annulé",
+      "b2",
+      "d1",
+      "c1",
+      "m1",
+      "m2",
+    ]);
+    // A class written twice under two ids keeps one row.
+    repaired.calendarEvent.put({ ...classEvent("Physique", "2026-11-17T14:00", "2026-11-17T16:00"), id: "d2" });
+    expect(
+      repaired.calendarEvent
+        .list()
+        .filter((e) => e.title === "Physique")
+        .map((e) => e.id),
+    ).toEqual(["b2", "d2"]);
+  });
 });
+
+function classEvent(title: string, start: string, end: string): CalendarEvent {
+  return {
+    id: "",
+    kind: "class",
+    title,
+    start,
+    end,
+    manual: false,
+    cancelled: false,
+    recurrence: "none",
+    exceptions: [],
+  };
+}
 
 describe("time", () => {
   it("converts instants to Paris wall-clock time across DST", () => {
