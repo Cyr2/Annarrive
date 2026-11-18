@@ -1,7 +1,9 @@
 /** One bar of a session's shape: its height (0 to 1), its share of the width, and the kind of effort it draws. */
-export type Bar = { level: number; weight: number; kind: StepLike["tone"] };
+export type Bar = { level: number; weight: number; kind: Line["tone"] };
 
-type StepLike = { label: string; tone: "plain" | "hard" | "muted" };
+type Line = { label: string; tone: "plain" | "hard" | "muted"; minutes?: number };
+/** The steps as the list and the watch have them: lines, and repeat groups with the lines they repeat. */
+export type ShapeStep = Line | { repeat: number; steps: Line[] };
 
 const LEVEL = { hard: 1, plain: 0.52, muted: 0.3 } as const;
 const MAX_REPEATS = 12;
@@ -14,46 +16,28 @@ export function minutesIn(label: string): number | undefined {
   return minutes ? Number(minutes[1]) : undefined;
 }
 
-/** "6 × 800 m" → 6, "6 lignes droites" → 6. */
-function repeatsIn(label: string): number | undefined {
-  const match = /^(\d+)\s*(?:×|x\b|lignes?|fois)/.exec(label);
-  return match ? Math.min(Number(match[1]), MAX_REPEATS) : undefined;
+/** A long steady part is wide, a short one never vanishes; inside a repeat every pass stays narrow. */
+function bar(line: Line, repeated: boolean): Bar {
+  const minutes = line.minutes ?? minutesIn(line.label);
+  const weight = repeated
+    ? Math.min(Math.max((minutes ?? 1) / 4, 0.3), 1)
+    : minutes
+      ? Math.min(Math.max(minutes / 5, 1), 8)
+      : 2;
+  return { level: LEVEL[line.tone], weight, kind: line.tone };
 }
 
 /**
- * The session drawn as bars: warm-up, the blocks, cool-down. A repeated block becomes one bar per repeat,
- * with the recovery that follows it drawn low between them. Widths follow the minutes when the label says them.
+ * The session drawn as bars, block for block what the watch runs: warm-up, every pass of a repeat group with
+ * its recovery low between them, cool-down.
  */
-export function shapeOf(steps: StepLike[]): Bar[] {
-  const bars: Bar[] = [];
-  for (const [i, step] of steps.entries()) {
-    const previous = steps[i - 1];
-    // A recovery without duration was drawn between the repeats of the block before it.
-    if (previous && isGap(step) && blocksOf(previous).some((block) => (repeatsIn(block.label) ?? 0) > 1)) continue;
-    for (const block of blocksOf(step)) {
-      const repeats = repeatsIn(block.label) ?? 1;
-      const minutes = minutesIn(block.label);
-      if (repeats > 1) bars.push(...repeated(block, repeats, steps[i + 1]));
-      else
-        bars.push({
-          level: LEVEL[block.tone],
-          weight: minutes ? Math.min(Math.max(minutes / 5, 1), 8) : 2,
-          kind: block.tone,
-        });
-    }
-  }
-  return bars;
-}
-
-/** "10 × 400 m + 5 × 200 m" is two blocks in one step: each is drawn. */
-const blocksOf = (step: StepLike): StepLike[] => step.label.split(/\s*\+\s*/).map((label) => ({ ...step, label }));
-
-const isGap = (step: StepLike) => step.tone === "muted" && minutesIn(step.label) === undefined;
-
-function repeated(step: StepLike, repeats: number, next: StepLike | undefined): Bar[] {
-  const gap = next && isGap(next);
-  return Array.from({ length: repeats }, (_, k): Bar[] => [
-    ...(k > 0 && gap ? [{ level: LEVEL.muted, weight: 0.4, kind: "muted" as const }] : []),
-    { level: LEVEL[step.tone], weight: 0.55, kind: step.tone },
-  ]).flat();
+export function shapeOf(steps: ShapeStep[]): Bar[] {
+  return steps.flatMap((step) => {
+    if (!("repeat" in step)) return [bar(step, false)];
+    const passes = Math.min(step.repeat, MAX_REPEATS);
+    return Array.from({ length: passes }, (_, k) =>
+      // The last recovery of a group is not run: the next step follows the last pass.
+      step.steps.filter((line, i) => k < passes - 1 || i === 0 || line.tone !== "muted").map((line) => bar(line, true)),
+    ).flat();
+  });
 }

@@ -63,7 +63,8 @@ export type Settings = {
   latestEnd: string;
   noRunDays: number[];
   bedtime: string;
-  preferredLongDay?: number;
+  /** Days the long run may go on (S8), 0 = Monday. */
+  preferredLongDays?: number[];
   preferredHour?: string;
   useSleepHr: boolean;
   travelMin: number;
@@ -94,7 +95,11 @@ export type Activity = {
   isTest?: boolean;
   tempC?: number;
   feel?: Feel;
+  /** Garmin laps (auto-lap 1 km by default), in order: where the best sustained efforts are found (F18). */
+  laps?: Lap[];
 };
+
+export type Lap = { durMin: number; distM: number; avgHr?: number };
 
 export type Proposal = {
   kind: "vdot" | "test" | "goal";

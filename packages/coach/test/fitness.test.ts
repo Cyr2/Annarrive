@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { Activity, RunType } from "../src/index.ts";
 import {
+  addDays,
   detrainingFactor,
+  effortReadings,
   formatPace,
   fractionF,
   hrMax,
@@ -183,14 +185,83 @@ describe("initialFitness (F10)", () => {
     expect(f.status).toBe("measured");
   });
 
-  it("falls back to the lower of Garmin VO2max and the declared time, provisional with a test (F-17)", () => {
+  it("trusts a recent declared time over Garmin VO2max, provisional with a test (F-17, F-24)", () => {
     const f = initialFitness({ activities: [], vo2maxGarmin: 44, declared: { distM: 21097.5, tMin: 110 } }, NOW);
     expect(f.vdot).toBeCloseTo(40.38, 2);
     expect(f).toMatchObject({ status: "provisional", testWeek: [2, 4], source: "declared" });
+    const higher = initialFitness(
+      { activities: [], vo2maxGarmin: 34, declared: { distM: 21097.5, tMin: 110, date: "2026-09-20" } },
+      NOW,
+    );
+    expect(higher).toMatchObject({ vdot: expect.closeTo(40.38, 2), source: "declared" });
+  });
+
+  it("keeps the lower of VO2max and a declared time older than 6 months (F-25)", () => {
+    const old = { distM: 21097.5, tMin: 110, date: "2026-01-10" };
+    expect(initialFitness({ activities: [], vo2maxGarmin: 34, declared: old }, NOW)).toMatchObject({
+      vdot: 34,
+      source: "garmin_vo2max",
+    });
+  });
+
+  it("never goes below what a recent run proves (F-26)", () => {
+    const run: Activity = { id: "f", start: "2026-11-10T08:00", durMin: 50, distM: 10000, avgHr: 150 };
+    const f = initialFitness({ activities: [run], vo2maxGarmin: 34, hr: { hrMax: 195 } }, NOW);
+    expect(f).toMatchObject({ vdot: expect.closeTo(40, 0), status: "provisional", source: "floor:f" });
+    expect(() => initialFitness({ activities: [run], hr: { hrMax: 195 } }, NOW)).toThrow("NO_FITNESS_DATA");
   });
 
   it("throws NO_FITNESS_DATA when nothing is known (F-18)", () => {
     expect(() => initialFitness({ activities: [] }, NOW)).toThrow("NO_FITNESS_DATA");
+  });
+
+  it("reads an easy-heavy runner from her few faster laps, not her watch (F-23)", () => {
+    const lap = (minPerKm: number, avgHr: number) => ({ durMin: minPerKm, distM: 1000, avgHr });
+    const easyRun = (i: number): Activity => ({
+      id: `e${i}`,
+      start: `${addDays("2026-11-15", -2 * i)}T18:00`,
+      durMin: 50,
+      distM: 7400,
+      avgHr: 150,
+      laps: Array.from({ length: 7 }, () => lap(6.75, 150)),
+    });
+    const tempo = (id: string, day: string): Activity => {
+      const laps = [lap(6.67, 140), lap(6.67, 146), ...Array.from({ length: 4 }, () => lap(5.25, 170)), lap(6.8, 150)];
+      return {
+        id,
+        start: `${day}T18:00`,
+        durMin: laps.reduce((t, l) => t + l.durMin, 0),
+        distM: 7000,
+        avgHr: 158,
+        laps,
+      };
+    };
+    const activities = [
+      ...Array.from({ length: 18 }, (_, i) => easyRun(i)),
+      tempo("t1", "2026-11-04"),
+      tempo("t2", "2026-11-11"),
+    ];
+    const f = initialFitness({ activities, vo2maxGarmin: 34, hr: { hrMax: 192 } }, NOW);
+    expect(f.status).toBe("measured");
+    const t = paces(f.vdot).T;
+    expect(t).toBeGreaterThanOrEqual(310);
+    expect(t).toBeLessThanOrEqual(320);
+    expect(paces(34).T).toBeGreaterThan(340);
+  });
+
+  it("reads laps past 92 % of HRmax as a race and leaves GPS glitches out (F-27)", () => {
+    const hard: Activity = {
+      id: "h",
+      start: "2026-11-09T08:00",
+      durMin: 30,
+      distM: 5000,
+      laps: [
+        { durMin: 20, distM: 4000, avgHr: 180 },
+        { durMin: 0.5, distM: 1000, avgHr: 180 },
+      ],
+    };
+    const [r] = effortReadings({ activities: [hard], hr: { hrMax: 192 } }, NOW);
+    expect(r).toMatchObject({ kind: "race", vdot: expect.closeTo(vdot(4000, 20), 2) });
   });
 
   it("counts a hard run as eligible when heart rate proves it", () => {

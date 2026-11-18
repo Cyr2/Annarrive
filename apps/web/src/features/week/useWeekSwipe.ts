@@ -1,5 +1,6 @@
 import { animate, useMotionValue, useReducedMotion } from "motion/react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { SPRING_SWIPE } from "../../lib/motion.ts";
 
 /** A finger has to travel this far (px) before a swipe is told from a tap or a scroll. */
@@ -24,14 +25,17 @@ export function gestureOf(dx: number, dy: number, heldMs: number): "unsure" | "s
 }
 
 /**
- * Semaine: a sideways swipe follows the finger, then the week leaves on that side and the next one springs in
- * from the other. A vertical move stays a scroll, a long press stays the drag of a session.
+ * Semaine, a carousel of weeks: as soon as a sideways swipe is told apart, the weeks on each side are drawn beside
+ * this one (`active`) and all move with the finger. Past the threshold the next one springs into place and becomes
+ * the week on screen; short of it, everything springs back and nothing is read. Reduced motion: the week switches at
+ * once. A vertical move stays a scroll, a long press stays the drag of a session.
  * `ref` goes on what listens (the whole page), `x` on what moves.
  */
 export function useWeekSwipe(turn: (step: -1 | 1) => void) {
   const x = useMotionValue(0);
   const still = useReducedMotion() ?? false;
   const ref = useRef<HTMLDivElement>(null);
+  const [active, setActive] = useState(false);
   const latest = useRef({ turn, still });
   latest.current = { turn, still };
 
@@ -42,18 +46,21 @@ export function useWeekSwipe(turn: (step: -1 | 1) => void) {
     let swiping = false;
     let last = { x: 0, time: 0, velocity: 0 };
 
+    // The week beside sits one width and one gutter away (WeekScreen's Neighbour).
+    const page = () =>
+      element.offsetWidth + (Number.parseFloat(getComputedStyle(element).getPropertyValue("--spacing-gutter")) || 0);
+    const settle = (step: -1 | 0 | 1) => {
+      // The page that slid in becomes the week on screen in the same frame as x goes back to 0: no jump.
+      flushSync(() => {
+        if (step !== 0) latest.current.turn(step);
+        setActive(false);
+      });
+      x.set(0);
+    };
     const release = (dx: number, velocity: number) => {
       const step = turnOf(dx, velocity, element.offsetWidth);
-      if (step === 0) return void animate(x, 0, { ...SPRING_SWIPE, velocity });
-      const width = element.offsetWidth;
-      const enter = () => {
-        latest.current.turn(step);
-        if (latest.current.still) return x.set(0);
-        x.set(step * width);
-        void animate(x, 0, SPRING_SWIPE);
-      };
-      if (latest.current.still) return enter();
-      void animate(x, -step * width, { ...SPRING_SWIPE, velocity }).then(enter);
+      if (step !== 0 && latest.current.still) return settle(step);
+      void animate(x, -step * page(), { ...SPRING_SWIPE, velocity }).then(() => settle(step));
     };
     const down = (event: PointerEvent) => {
       swiping = false;
@@ -74,6 +81,7 @@ export function useWeekSwipe(turn: (step: -1 | 1) => void) {
           return;
         }
         swiping = true;
+        setActive(true);
         last = { x: event.clientX, time: event.timeStamp, velocity: 0 };
       }
       const elapsed = Math.max(1, event.timeStamp - last.time);
@@ -84,7 +92,7 @@ export function useWeekSwipe(turn: (step: -1 | 1) => void) {
       if (!from || event.pointerId !== from.id) return;
       from = undefined;
       if (!swiping) return;
-      if (event.type === "pointercancel") return void animate(x, 0, SPRING_SWIPE);
+      if (event.type === "pointercancel") return release(0, 0);
       release(x.get(), last.velocity);
     };
     // A swipe that ends on a session does not open it.
@@ -108,5 +116,5 @@ export function useWeekSwipe(turn: (step: -1 | 1) => void) {
     };
   }, [x]);
 
-  return { ref, x };
+  return { ref, x, active };
 }

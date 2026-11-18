@@ -80,11 +80,34 @@
   }
 }
 .msg,
+.rise,
 .pop-in:popover-open {
   animation: rise var(--duration-message) var(--ease-out) both;
 }
 .msg-widget {
   animation-delay: var(--delay-widget);
+}
+
+/* A card that goes (ui/Presence.tsx): it fades and shrinks a little where it was, the others close the gap. */
+@keyframes card-out {
+  to {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+.card-out {
+  animation: card-out var(--duration-select) var(--ease-out) forwards;
+  pointer-events: none;
+}
+
+/* Actualiser and the pull of a page: the arrows turn while the timetable is read. */
+@keyframes week-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.week-spin svg {
+  animation: week-spin 0.9s linear infinite;
 }
 
 @keyframes blink {
@@ -189,13 +212,21 @@
   .expand {
     transition: opacity var(--duration-fade) linear;
   }
+  .week-spin svg {
+    animation: none;
+  }
   .flip-in,
   .roll,
+  .rise,
   .msg,
   .pop-in:popover-open,
   .done-pop,
   .rest-moon {
     animation: fade-in var(--duration-fade) linear both;
+  }
+  /* After .rise: a card that came and goes again must still fade out, or it never leaves. */
+  .card-out {
+    animation: fade-out var(--duration-fade) linear forwards;
   }
   .typing-dot {
     animation: none;

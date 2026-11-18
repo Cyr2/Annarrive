@@ -1,9 +1,34 @@
+import * as coach from "@annarrive/coach";
 import { workoutRequestSchema } from "@annarrive/protocol";
 import { describe, expect, it } from "vitest";
 import { toWorkoutRequest, WATCH_GIVE_UP_MS, watchLink, watchStatus, workoutHash } from "../src/garmin/workout.ts";
 import { session } from "./helpers.ts";
 
 describe("toWorkoutRequest", () => {
+  it("sends a pace target on every step of every session the coach builds, hills included (C5)", () => {
+    const paces = coach.paces(38.5);
+    const ctx = { weeklyMin: 200, paces, phase: "dev" as const, progressionStep: 0, distM: 21097.5, strides: true };
+    for (const type of [
+      "E",
+      "L",
+      "T",
+      "CRUISE",
+      "I",
+      "R",
+      "SPE",
+      "COTES_C",
+      "COTES_L",
+      "FARTLEK",
+      "TEST",
+      "RACE",
+    ] as const) {
+      const built = coach.buildSession(type, ctx);
+      const request = toWorkoutRequest(session("x", "2026-11-18T18:00", { type, steps: built.steps }));
+      const leaves = request.steps.flatMap((s) => (s.kind === "repeat" ? s.steps : [s]));
+      for (const step of leaves) expect(step, type).toHaveProperty("pace");
+    }
+  });
+
   it("turns an interval session into warmup, a repeat block with its recovery, and cooldown", () => {
     const intervals = session("i", "2026-11-18T18:00", {
       type: "I",

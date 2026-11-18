@@ -36,9 +36,9 @@ describe("buildSession (C1)", () => {
   it("builds short hills as real hill sprints inside an easy run (C-9)", () => {
     const h = buildSession("COTES_C", { ...ctx, phase: "base", durMin: 48 });
     expect(h.steps.map((s) => s.kind)).toEqual(["warmup", "hills", "recover", "cooldown"]);
-    expect(h.steps[1]).toMatchObject({ reps: 6, durMin: 10 / 60, target: { rpe: 8 } });
-    expect(h.steps[1]?.target.paceSKm).toBeUndefined();
-    expect(h.steps[2]).toMatchObject({ reps: 5, durMin: 1.5 });
+    expect(h.steps[1]).toMatchObject({ reps: 6, durMin: 10 / 60, zone: "R", target: { rpe: 8 } });
+    expect(h.steps[1]?.target.paceSKm).toEqual([ctx.paces.R, ctx.paces.R]);
+    expect(h.steps[2]).toMatchObject({ reps: 5, durMin: 1.5, zone: "E", target: { paceSKm: ctx.paces.E } });
     expect(h.durMin).toBeLessThanOrEqual(48);
     expect(isHard(h)).toBe(false);
   });
@@ -192,6 +192,14 @@ describe("session transforms", () => {
     const jog = toEasy(recup, 20, "rpe");
     expect(jog).toMatchObject({ type: "RECUP", durMin: 20, rpeTarget: 2, pilot: "rpe" });
     expect(toEasy(buildSession("I", ctx), 50).type).toBe("E");
+  });
+
+  it("gives every running step a pace, a race day turned easy included (C-10)", () => {
+    for (const type of ["E", "L", "T", "CRUISE", "I", "R", "SPE", "COTES_C", "COTES_L", "FARTLEK", "TEST", "RACE"])
+      for (const s of buildSession(type as RunType, { ...ctx, strides: true }).steps)
+        expect(s.target.paceSKm, `${type} ${s.kind}`).toBeDefined();
+    const easy = toEasy(buildSession("RACE", { ...ctx, distM: 21097.5, racePaceSKm: 311 }), 30);
+    expect(easy.steps[0]?.target.paceSKm?.[0]).toBeGreaterThan(311);
   });
 
   it("downgrades I to T and T to fartlek at equal work time", () => {

@@ -1,5 +1,5 @@
-import type { Item, Run, WatchStatus } from "../../api/schemas.ts";
-import { addMinutes, minutesOf, relativeMoment, span } from "../../lib/date.ts";
+import { type Item, isRepeat, type Run, type StepLine, type WatchStatus } from "../../api/schemas.ts";
+import { addMinutes, minutesOf, relativeDay, relativeMoment, span } from "../../lib/date.ts";
 import type { Tone } from "../../ui/tones.ts";
 import type { SheetSpec } from "../sheets/store.ts";
 
@@ -18,6 +18,29 @@ export function itemTime(item: Item): string {
 
 export function endOf(run: Run): string {
   return addMinutes(run.start, run.durationMin);
+}
+
+const GOAL_WORDS: Record<string, string> = {
+  "Semi-marathon": "mon semi",
+  Marathon: "mon marathon",
+  "10 km": "mon 10 km",
+  "5 km": "mon 5 km",
+};
+
+/** « En parler avec Reggie » under « Pourquoi cette séance »: « Pourquoi cette séance de Seuil aujourd'hui ? … ». */
+export function whyQuestion(run: Run, today: string, goal?: string): string {
+  const day = relativeDay(run.date, today).replace(/^\S/, (c) => c.toLowerCase());
+  const target = goal && GOAL_WORDS[goal];
+  return `Pourquoi cette séance de ${run.title} ${day} ? À quoi elle me sert${target ? ` pour ${target}` : ""} ?`;
+}
+
+/** What Reggie reads about the session: its moment, then each step as the watch has it. */
+export function sessionDetail(run: Run, today: string): string {
+  const line = (s: StepLine) => [s.label, s.pace].filter(Boolean).join(" à ");
+  const steps = run.steps.map((s) =>
+    isRepeat(s) ? `Répéter ${s.repeat} fois (${s.steps.map(line).join(", ")})` : line(s),
+  );
+  return [sessionContext(run, today), ...steps].join(" · ");
 }
 
 /** The context chip Reggie opens with: "Fractionné, ce soir 18:00". */

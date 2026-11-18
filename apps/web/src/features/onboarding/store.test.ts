@@ -67,9 +67,11 @@ describe("onboarding store", () => {
     expect(s().step).toBe("race");
     s().update({ race: "none" });
     s().next();
+    expect(s().step).toBe("last");
+    s().next();
     expect(s().step).toBe("week");
     s().back();
-    expect(s().step).toBe("race");
+    expect(s().step).toBe("last");
     expect(s().direction).toBe(-1);
   });
 
@@ -140,8 +142,8 @@ describe("onboarding store", () => {
     expect(api.saveProfile).toHaveBeenCalledWith(
       expect.objectContaining({ runsPerWeek: 4, earliest: "07:00", bedtime: "23:30", noRunDays: [3, 7] }),
     );
-    // Sunday is a day without runs here: the long-run day is left to the coach rather than sent.
-    expect(vi.mocked(api.saveProfile).mock.calls[0]?.[0].preferredLongDay).toBeUndefined();
+    // Sunday is a day without runs here: of Saturday and Sunday, only Saturday is sent.
+    expect(vi.mocked(api.saveProfile).mock.calls[0]?.[0].preferredLongDays).toEqual([6]);
     expect(s().phase).toBe("tour");
   });
 

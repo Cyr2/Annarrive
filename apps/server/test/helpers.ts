@@ -109,6 +109,7 @@ export const passThroughCoach: CoachPort = {
   decisionDue: () => true,
   estimateFitness: () => null,
   evaluateRun: () => null,
+  evaluateKeySessions: () => null,
   evaluateFeels: () => null,
   acceptProposal: (st) => ({ state: st, changes: [], warnings: [] }),
 };

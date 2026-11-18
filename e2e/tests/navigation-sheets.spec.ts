@@ -110,6 +110,26 @@ test("Semaine : glisser vers la gauche montre la semaine suivante, vers la droit
   await expect(range).toHaveText("23 au 29 novembre");
   await pull(page, page.locator("#day-2026-11-25"), 220, 0);
   await expect(range).toHaveText("16 au 22 novembre");
+  // While the finger is down, the next week is already drawn beside this one and comes in with it.
+  const anchor = await page.locator("#day-2026-11-18").boundingBox();
+  if (!anchor) throw new Error("Jour invisible");
+  await page.mouse.move(anchor.x + anchor.width / 2, anchor.y + 10);
+  await page.mouse.down();
+  // Slowly, then still: a drag, not a flick.
+  for (let dx = 10; dx <= 70; dx += 10) {
+    await page.mouse.move(anchor.x + anchor.width / 2 - dx, anchor.y + 10);
+    await page.waitForTimeout(40);
+  }
+  await page.waitForTimeout(150);
+  await page.mouse.move(anchor.x + anchor.width / 2 - 71, anchor.y + 10);
+  const next = page.locator("[data-neighbour='1'] #day-2026-11-25");
+  await expect(next).toBeAttached();
+  const peek = await next.boundingBox();
+  expect(peek?.x ?? 9999).toBeLessThan(page.viewportSize()?.width ?? 0);
+  // Short of the threshold, it springs back: still this week, the weeks beside gone.
+  await page.mouse.up();
+  await expect(page.locator("[data-neighbour]")).toHaveCount(0);
+  await expect(range).toHaveText("16 au 22 novembre");
   // A vertical move stays a scroll, never a turn.
   await pull(page, page.locator("#day-2026-11-18"), 10, 160);
   await expect(range).toHaveText("16 au 22 novembre");

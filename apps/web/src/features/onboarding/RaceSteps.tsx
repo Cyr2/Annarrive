@@ -3,10 +3,10 @@ import { addDays } from "../../lib/date.ts";
 import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
 import { SegmentedControl } from "../../ui/controls.tsx";
 import { Icon } from "../../ui/Icon.tsx";
-import { Group, RowInput } from "../../ui/List.tsx";
+import { Group, RowInput, RowSelect } from "../../ui/List.tsx";
 import { TimeBoxes } from "../../ui/TimeBoxes.tsx";
 import { TargetTag, VERDICT_KIND } from "../program/TargetTag.tsx";
-import { DISTANCES, distanceOf, type Race } from "./onboarding.ts";
+import { DISTANCES, distanceOf, LAST_WHEN, type Race } from "./onboarding.ts";
 import { BigChoice, Card, update, useDraft } from "./parts.tsx";
 import { useOnboarding } from "./store.ts";
 
@@ -62,6 +62,34 @@ export function RaceStep() {
         </Group>
       )}
       {closest && <p className="t-cap m-0 px-4">Ton plan suivra celui du {closest.label.toLowerCase()}.</p>}
+    </>
+  );
+}
+
+/** « Ton dernier chrono »: the distance, the time in h and min boxes, and roughly when. Optional. */
+export function LastStep() {
+  const draft = useDraft();
+  return (
+    <>
+      <ChoiceGroup label="Distance" className="grid grid-cols-2 gap-2">
+        {DISTANCES.map((d) => (
+          <BigChoice
+            key={d.label}
+            label={d.label}
+            on={draft.lastRace === d.value}
+            onClick={() => update({ lastRace: d.value })}
+          />
+        ))}
+      </ChoiceGroup>
+      <TimeBoxes seconds={draft.lastSec} onChange={(lastSec) => update({ lastSec })} />
+      <Group>
+        <RowSelect
+          label="Quand"
+          value={draft.lastWhen}
+          options={LAST_WHEN.map((w) => ({ value: w.value, label: w.label }))}
+          onChange={(lastWhen) => update({ lastWhen })}
+        />
+      </Group>
     </>
   );
 }

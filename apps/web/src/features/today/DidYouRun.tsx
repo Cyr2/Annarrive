@@ -1,4 +1,3 @@
-import { useState } from "react";
 import type { Run } from "../../api/schemas.ts";
 import { pastMoment } from "../../lib/date.ts";
 import { Button } from "../../ui/controls.tsx";
@@ -39,13 +38,6 @@ export function DidYouRun({ run, today, onDone }: { run: Run; today: string; onD
       </div>
     </Surface>
   );
-}
-
-/** « Tu l'as faite ? », then, once she says yes, how it felt. The state stays here: the question card is gone by then. */
-export function ConfirmZone({ toConfirm, today }: { toConfirm?: Run; today: string }) {
-  const [confirmed, setConfirmed] = useState<Run>();
-  if (toConfirm) return <DidYouRun run={toConfirm} today={today} onDone={setConfirmed} />;
-  return confirmed ? <FeelAfterConfirm run={confirmed} onClose={() => setConfirmed(undefined)} /> : null;
 }
 
 /**

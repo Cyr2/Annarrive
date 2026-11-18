@@ -41,9 +41,12 @@ test("Semaine : appui long puis glisser une course vers un autre jour la déplac
   await expect(moved).toBeVisible();
   await expect(friday.getByRole("button", { name: /Footing/ })).toBeVisible();
   await expect(day(page, "2026-11-19").getByRole("button", { name: /Footing/ })).toHaveCount(0);
+  // What moved glows where it landed.
+  await expect(friday.getByRole("button", { name: /Footing/ })).toHaveClass(/week-changed/);
 
   await moved.getByRole("button", { name: "Annuler" }).click();
   await expect(day(page, "2026-11-19").getByRole("button", { name: /Footing/ })).toBeVisible();
+  await expect(day(page, "2026-11-19").getByRole("button", { name: /Footing/ })).toHaveClass(/week-changed/);
 });
 
 test("Semaine : un cours de l'emploi du temps ne se glisse pas", async ({ page }) => {

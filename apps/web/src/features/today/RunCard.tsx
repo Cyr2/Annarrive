@@ -4,8 +4,8 @@ import { cx } from "../../lib/cx.ts";
 import { decimal, duration, momentLabel } from "../../lib/date.ts";
 import { tidy } from "../../lib/text.ts";
 import { Icon } from "../../ui/Icon.tsx";
-import { PaceValue } from "../../ui/PaceValue.tsx";
 import { SessionChip, SessionShape } from "../../ui/SessionShape.tsx";
+import { StepList } from "../../ui/StepList.tsx";
 import { Surface } from "../../ui/Surface.tsx";
 import { useSheet } from "../sheets/store.ts";
 import { Figure, ToneWash } from "./parts.tsx";
@@ -20,7 +20,7 @@ export function RunCard({ run, today }: { run: Run; today: string }) {
   const [open, setOpen] = useState(false);
   const show = useSheet((s) => s.show);
   const sub = [run.mainSet, run.distanceKm && `${decimal(run.distanceKm)} km environ`].filter(Boolean).join(" · ");
-  const longPace = run.pace.length > 5;
+  const longPace = run.pace.includes(" à ");
   return (
     <Surface as="article" className="flex flex-col overflow-hidden">
       <ToneWash tone={run.intensity} />
@@ -53,7 +53,7 @@ export function RunCard({ run, today }: { run: Run; today: string }) {
           {/* A range of paces is too wide for the big size: both figures drop to the smaller one, side by side or stacked. */}
           <dl className="m-0 flex flex-wrap items-end gap-x-10 gap-y-3">
             <Figure label="Durée" value={duration(run.durationMin)} size={longPace ? "num" : "figure"} />
-            <Figure label="Allure cible" value={run.pace} unit="/km" size={longPace ? "num" : "figure"} rolling />
+            <Figure label="Allure cible" value={run.pace} size={longPace ? "num" : "figure"} rolling />
           </dl>
         </div>
       </div>
@@ -61,17 +61,9 @@ export function RunCard({ run, today }: { run: Run; today: string }) {
       {run.steps.length > 1 && (
         <>
           <div className="expand relative" data-open={open}>
-            <ol className="m-0 flex list-none flex-col px-5 pt-3" aria-hidden={!open}>
-              {run.steps.map((step) => (
-                <li
-                  key={step.label}
-                  className="hairline-top flex min-h-11 flex-wrap items-center justify-between gap-x-3 py-2"
-                >
-                  <span className={cx("t-body", step.tone === "hard" && "font-semibold")}>{step.label}</span>
-                  <PaceValue value={step.pace} className={step.tone === "muted" ? "text-ink-2!" : undefined} />
-                </li>
-              ))}
-            </ol>
+            <div aria-hidden={!open} className="hairline-top mx-5 mt-3">
+              <StepList steps={run.steps} rowClassName="row ml-0! pr-0! flex-wrap gap-y-0" />
+            </div>
           </div>
           <StepsToggle count={run.steps.length} open={open} onToggle={() => setOpen(!open)} />
         </>

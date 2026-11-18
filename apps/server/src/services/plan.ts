@@ -17,6 +17,7 @@ import type {
   Profile,
   ProfilePatch,
   Program,
+  ProgramInput,
   ProgramView,
   SessionView,
   Today,
@@ -380,7 +381,7 @@ export class PlanService {
       signals: this.#stores.dailySignal.overlapping(from, to),
       activities: this.#stores.activity
         .overlapping(`${from}T00:00`, to)
-        .map(({ hrSeries: _hr, ...activity }) => activity),
+        .map(({ hrSeries: _hr, laps: _laps, ...activity }) => activity),
     };
   }
 
@@ -395,7 +396,7 @@ export class PlanService {
     const onboarded = !this.#stores.profile.get(CURRENT) && this.#stores.program.get(CURRENT) !== undefined;
     const reshaped =
       settings.runsPerWeek !== before.settings.runsPerWeek ||
-      settings.preferredLongDay !== before.settings.preferredLongDay;
+      JSON.stringify(settings.preferredLongDays) !== JSON.stringify(before.settings.preferredLongDays);
     if (onboarded || reshaped)
       return this.#rebuild("Reggie a réorganisé ta semaine", [write], { ...before, settings }, before, true);
     return this.#commit(
@@ -420,26 +421,35 @@ export class PlanService {
    * is a hard conflict (EV20): its automatic sessions still ahead are rebuilt as a race week (P24). Weeks after
    * the next are not stored: the Sunday job builds them from the same programme.
    */
-  updateProgram(input: Program): ChangeResponse {
+  updateProgram(input: ProgramInput): ChangeResponse {
     const before = this.coachState();
     const today = dateOf(this.#now());
     // A new target time alone keeps the plan's start and phases: only a new race or date restarts it.
     const old = before.program.goal;
+    const goal = input.goal === undefined ? old : input.goal;
     const sameGoal =
-      input.goal === old ||
-      (input.goal !== null && old !== null && input.goal.distanceM === old.distanceM && input.goal.date === old.date);
+      goal === old || (goal !== null && old !== null && goal.distanceM === old.distanceM && goal.date === old.date);
     // Modifier l'objectif sends the goal alone: the declared time stays for the level estimate (F10).
-    const program = { ...before.program, ...input, startedOn: sameGoal ? (before.program.startedOn ?? today) : today };
+    const program: Program = {
+      ...before.program,
+      ...input,
+      goal,
+      startedOn: sameGoal ? (before.program.startedOn ?? today) : today,
+    };
+    // A time she types is her own word on her level: F10 runs again with it, measured or not (F10, RC11).
+    const declaredChanged =
+      input.declaredTime !== undefined &&
+      JSON.stringify(input.declaredTime) !== JSON.stringify(before.program.declaredTime);
     const write: PlanWrite = { table: "program", id: CURRENT, after: { id: CURRENT, value: program } };
     const emptyWeek = !before.sessions.some((s) => dateOf(s.start) < this.#nextMonday());
     const raceSoon = (goal: Program["goal"]): boolean =>
       goal !== null && goal.date >= today && goal.date <= addDays(today, RACE_CONFLICT_DAYS);
     return this.#rebuild(
-      "Objectif modifié",
+      input.goal === undefined ? "Allures recalculées avec ton chrono" : "Objectif modifié",
       [write],
-      { ...before, program },
+      { ...before, program, fitness: declaredChanged ? null : before.fitness },
       before,
-      (program.goal !== null && emptyWeek) || raceSoon(program.goal) || raceSoon(old),
+      declaredChanged || (program.goal !== null && emptyWeek) || raceSoon(program.goal) || raceSoon(old),
     );
   }
 

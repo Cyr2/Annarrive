@@ -33,7 +33,12 @@ export default function SettingSheet({ spec, ...sheet }: SheetProps<"setting">) 
       {...sheet}
       title={SETTING_LABELS[key]}
       footer={
-        <Button variant="filled" size="large" onClick={() => void save()}>
+        <Button
+          variant="filled"
+          size="large"
+          disabled={key === "longRunDays" && draft.longRunDays.length === 0}
+          onClick={() => void save()}
+        >
           Enregistrer
         </Button>
       }
@@ -46,8 +51,12 @@ export default function SettingSheet({ spec, ...sheet }: SheetProps<"setting">) 
           onChange={(v) => setDraft({ ...draft, runsPerWeek: Number(v) })}
         />
       )}
-      {key === "noRunDays" && (
-        <DayToggles days={draft.noRunDays} onChange={(noRunDays) => setDraft({ ...draft, noRunDays })} />
+      {(key === "noRunDays" || key === "longRunDays") && (
+        <DayToggles
+          label={SETTING_LABELS[key]}
+          days={draft[key]}
+          onChange={(days) => setDraft({ ...draft, [key]: days })}
+        />
       )}
       {(key === "notBefore" || key === "notAfter" || key === "bedtime") && (
         <Group>
@@ -62,16 +71,18 @@ export default function SettingSheet({ spec, ...sheet }: SheetProps<"setting">) 
       <p className="t-cap m-0 px-4">
         {key === "bedtime"
           ? "Reggie finit tes courses au moins 1 h avant ton coucher."
-          : "La semaine en cours et les suivantes sont réorganisées. Ce que tu as déplacé à la main reste en place."}
+          : key === "longRunDays"
+            ? "Reggie place ta sortie longue sur le plus libre de ces jours, chaque semaine."
+            : "La semaine en cours et les suivantes sont réorganisées. Ce que tu as déplacé à la main reste en place."}
       </p>
     </Sheet>
   );
 }
 
-function DayToggles({ days, onChange }: { days: number[]; onChange: (days: number[]) => void }) {
+function DayToggles({ label, days, onChange }: { label: string; days: number[]; onChange: (days: number[]) => void }) {
   return (
-    <Section title="Jours sans course">
-      <ChoiceGroup label="Jours sans course" className="flex flex-wrap gap-2">
+    <Section title={label}>
+      <ChoiceGroup label={label} className="flex flex-wrap gap-2">
         {Array.from({ length: 7 }, (_, i) => {
           const on = days.includes(i);
           return (

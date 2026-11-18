@@ -1,7 +1,9 @@
-import { useDeferredValue, useEffect, useState } from "react";
-import type { Week } from "../../api/schemas.ts";
+import { Fragment, useDeferredValue, useEffect, useState } from "react";
+import type { Run, Today, Week } from "../../api/schemas.ts";
 import { LoadFailed } from "../../ui/EmptyState.tsx";
 import { Icon } from "../../ui/Icon.tsx";
+import { Presence } from "../../ui/Presence.tsx";
+import { PullToRefresh } from "../../ui/PullToRefresh.tsx";
 import { RoundAction } from "../../ui/RoundAction.tsx";
 import { Screen } from "../../ui/Screen.tsx";
 import { Skeleton } from "../../ui/Skeleton.tsx";
@@ -12,10 +14,10 @@ import { preloadSheet } from "../sheets/SheetHost.tsx";
 import { useSheet } from "../sheets/store.ts";
 import { useGo } from "../useGo.ts";
 import { changeOptions, moveOptions } from "../useLoad.ts";
-import { RefreshRow } from "../week/RefreshRow.tsx";
+import { RefreshRow, refreshTimetable } from "../week/RefreshRow.tsx";
 import { AfterRun } from "./AfterRun.tsx";
 import { DayAgenda } from "./DayAgenda.tsx";
-import { ConfirmZone } from "./DidYouRun.tsx";
+import { DidYouRun, FeelAfterConfirm } from "./DidYouRun.tsx";
 import { ProposalCard } from "./ProposalCard.tsx";
 import { ReggieNote } from "./ReggieNote.tsx";
 import { RestCard } from "./RestCard.tsx";
@@ -56,6 +58,15 @@ function BelowCard({ week, date, day }: { week: Week; date: string; day: boolean
   );
 }
 
+/**
+ * A first launch: the onboarding comes before the plan, never after a glimpse of an empty rest day. A goal or a
+ * run this week is someone already set up: it paints at once, without waiting for the server's answer.
+ */
+function waitsForOnboarding(need: boolean | undefined, today: Today | undefined, week: Week | undefined) {
+  const setUp = Boolean(today?.goal) || Boolean(week?.items.some((item) => item.kind === "run"));
+  return need === true || (need === undefined && !setUp);
+}
+
 /** Aujourd'hui: run day, rest day or after the run. */
 export function TodayScreen() {
   // Deferred: the screen built from the plan renders in short slices rather than in one long task.
@@ -63,11 +74,13 @@ export function TodayScreen() {
   const show = useSheet((s) => s.show);
   const go = useGo();
   const week = weeks[0];
-  // A first launch: the onboarding comes before the plan, never after a glimpse of an empty rest day. A goal or a
-  // run this week is someone already set up: it paints at once, without waiting for the server's answer.
-  const need = useOnboardingNeed((s) => s.need);
-  const setUp = Boolean(today?.goal) || Boolean(week?.items.some((item) => item.kind === "run"));
-  const onboarding = need === true || (need === undefined && !setUp);
+  // After « Oui, je l'ai faite » the question is gone: how it felt is asked where it was.
+  const [confirmed, setConfirmed] = useState<Run>();
+  const onboarding = waitsForOnboarding(
+    useOnboardingNeed((s) => s.need),
+    today,
+    week,
+  );
   const belowCard = useBelowCard(Boolean(today && week && !onboarding));
 
   if (status === "error") {
@@ -99,65 +112,72 @@ export function TodayScreen() {
 
   return (
     <Screen>
-      {goal && (
-        <a
-          href="/programme"
-          onClick={(e) => {
-            e.preventDefault();
-            go("/programme");
-          }}
-          className="ui-glass press t-label inline-flex min-h-11 items-center gap-2 self-start rounded-full px-4 text-ink"
-        >
-          <Icon name="flag" size={16} />
-          {goal.label} · J-{goal.daysLeft}
-        </a>
-      )}
+      <PullToRefresh onRefresh={refreshTimetable} />
+      {/* Settled once what sits under the card is drawn: the first screen's later frames arrive without motion. */}
+      <Presence settled={belowCard}>
+        {goal && (
+          <a
+            href="/programme"
+            onClick={(e) => {
+              e.preventDefault();
+              go("/programme");
+            }}
+            className="ui-glass press t-label inline-flex min-h-11 items-center gap-2 self-start rounded-full px-4 text-ink"
+          >
+            <Icon name="flag" size={16} />
+            {goal.label} · J-{goal.daysLeft}
+          </a>
+        )}
 
-      {unwellText && <Unwell text={unwellText} />}
-      {!activity && <ConfirmZone toConfirm={toConfirm} today={date} />}
-      {activity && <AfterRun activity={activity} next={next} today={date} />}
-      {!activity && session && (
-        <>
-          <RunCard run={session} today={date} />
-          <div data-tour="actions" className="flex flex-col gap-4">
-            <ReggieNote text={session.why} onClick={askReggie} />
-            {/* The four round actions were chosen by the owner: Reggie first, filled in his green. */}
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(3.5rem,1fr))] gap-2">
-              <RoundAction label="Reggie" icon="reggie" reggie onClick={askReggie} />
-              <RoundAction
-                label="Déplacer"
-                icon="move"
-                onPrepare={() => {
-                  preloadSheet("move");
-                  moveOptions.start(session.id);
-                }}
-                onClick={() => show({ kind: "move", id: session.id })}
-              />
-              <RoundAction
-                label="Changer"
-                icon="change"
-                onPrepare={() => {
-                  preloadSheet("change");
-                  changeOptions.start(session.id);
-                }}
-                onClick={() => show({ kind: "change", id: session.id })}
-              />
-              <RoundAction
-                label="Pas dispo"
-                icon="close"
-                onPrepare={() => preloadSheet("unavailable")}
-                onClick={() => show({ kind: "unavailable", id: session.id })}
-              />
+        {unwellText && <Unwell text={unwellText} />}
+        {!activity && toConfirm && <DidYouRun key="ask" run={toConfirm} today={date} onDone={setConfirmed} />}
+        {!activity && !toConfirm && confirmed && (
+          <FeelAfterConfirm key="feel" run={confirmed} onClose={() => setConfirmed(undefined)} />
+        )}
+        {activity && <AfterRun activity={activity} next={next} today={date} />}
+        {!activity && session && (
+          <Fragment key="session">
+            <RunCard run={session} today={date} />
+            <div data-tour="actions" className="flex flex-col gap-4">
+              <ReggieNote text={session.why} onClick={askReggie} />
+              {/* The four round actions were chosen by the owner: Reggie first, filled in his green. */}
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(3.5rem,1fr))] gap-2">
+                <RoundAction label="Reggie" icon="reggie" reggie onClick={askReggie} />
+                <RoundAction
+                  label="Déplacer"
+                  icon="move"
+                  onPrepare={() => {
+                    preloadSheet("move");
+                    moveOptions.start(session.id);
+                  }}
+                  onClick={() => show({ kind: "move", id: session.id })}
+                />
+                <RoundAction
+                  label="Changer"
+                  icon="change"
+                  onPrepare={() => {
+                    preloadSheet("change");
+                    changeOptions.start(session.id);
+                  }}
+                  onClick={() => show({ kind: "change", id: session.id })}
+                />
+                <RoundAction
+                  label="Pas dispo"
+                  icon="close"
+                  onPrepare={() => preloadSheet("unavailable")}
+                  onClick={() => show({ kind: "unavailable", id: session.id })}
+                />
+              </div>
             </div>
-          </div>
-        </>
-      )}
-      {!activity && !session && !toConfirm && <RestCard next={next} today={date} />}
-      {today.proposals?.map((p) => (
-        <ProposalCard key={p.id} proposal={p} />
-      ))}
+          </Fragment>
+        )}
+        {!activity && !session && !toConfirm && <RestCard next={next} today={date} />}
+        {today.proposals?.map((p) => (
+          <ProposalCard key={p.id} proposal={p} />
+        ))}
 
-      {belowCard && <BelowCard week={week} date={date} day={!activity} />}
+        {belowCard && <BelowCard key="below" week={week} date={date} day={!activity} />}
+      </Presence>
     </Screen>
   );
 }
