@@ -1,23 +1,33 @@
-import { isHard, sessionLoad, stepTotal, toEasy, withReps } from "./catalog.ts";
+import { isHard, MAX_E, sessionLoad, stepTotal, toEasy, withReps } from "./catalog.ts";
 import { checkHard, slotOf } from "./placement.ts";
-import type { Change, Phase, Session, WeekState } from "./types.ts";
+import type { Change, Phase, Session, Step, WeekState } from "./types.ts";
 
 const SPIKE = 1.1;
 const WEEK_RISE = 1.1;
 const FORTNIGHT_RISE = 1.3;
 const MIN_EASY = 20;
+/** Catalogue E (P15): 30 min at least while the week allows it. */
+const MIN_E = 30;
+const CHRONIC_WEEKS = 4;
+const LIGHT = 0.8;
 
 const totalMin = (week: Session[]): number => week.reduce((sum, s) => sum + s.durMin, 0);
 const isContinuous = (s: Session): boolean => s.type === "E" || s.type === "RECUP" || s.type === "L";
 
-/** Sets the duration of a continuous run by resizing its main step. */
+/** Sets the duration of a run by resizing its main step; a distance step keeps its pace (the watch ends on distance). */
 function resize(s: Session, durMin: number): Session {
   const delta = durMin - s.durMin;
   const main = s.steps.reduce(
     (best, st, i) => (st.kind === "work" && st.durMin > (s.steps[best]?.durMin ?? 0) ? i : best),
     0,
   );
-  const steps = s.steps.map((st, i) => (i === main ? { ...st, durMin: Math.max(1, st.durMin + delta) } : st));
+  const sized = (st: Step): Step => {
+    const dur = Math.max(1, st.durMin + delta / (st.reps ?? 1));
+    return st.distM
+      ? { ...st, durMin: dur, distM: Math.round((st.distM * dur) / st.durMin / 100) * 100 }
+      : { ...st, durMin: dur };
+  };
+  const steps = s.steps.map((st, i) => (i === main ? sized(st) : st));
   return { ...s, steps, durMin: steps.reduce((sum, st) => sum + stepTotal(st), 0) };
 }
 
@@ -54,7 +64,7 @@ export function capWeekSpikes(
     if (surplusMin === 0) continue;
     out = out.map((x) => (x.id === s.id ? session : x));
     changes.push({ ruleId: "G1", sessionId: s.id, before: s, after: session, detail: `surplus ${surplusMin} min` });
-    const easy = out.find((x) => x.type === "E" && x.durMin + surplusMin <= SPIKE * longest30dMin);
+    const easy = out.find((x) => x.type === "E" && x.durMin + surplusMin <= Math.min(SPIKE * longest30dMin, MAX_E));
     if (!easy) continue;
     const grown = resize(easy, easy.durMin + surplusMin);
     out = out.map((x) => (x.id === easy.id ? grown : x));
@@ -63,35 +73,74 @@ export function capWeekSpikes(
   return { week: out, changes };
 }
 
-/** Shortens continuous runs, lowest priority first, until the week fits `cap` minutes. */
-function trimTo(week: Session[], cap: number, ruleId: string): { week: Session[]; changes: Change[] } {
+/** P14: the long run's share of the week, by runs per week. */
+export const longShare = (runs: number): number => (runs <= 3 ? 0.4 : runs === 4 ? 0.35 : 0.3);
+
+const isEasy = (s: Session): boolean => s.type === "E" || s.type === "RECUP" || s.type === "COTES_C";
+const isQ = (s: Session): boolean => s.type !== "L" && s.type !== "RACE" && s.type !== "TEST" && !isEasy(s);
+/** Catalogue floors (P15): RECUP 20 min, E 30 min. */
+const easyFloor = (s: Session): number => (s.type === "RECUP" ? MIN_EASY : MIN_E);
+
+/** A Q shortened by `excess` minutes, never below 2/3 of itself (P9's cut): fractions first, else its main block. */
+function shortenQ(s: Session, excess: number): Session {
+  const target = Math.max((2 / 3) * s.durMin, s.durMin - excess);
+  const reps = s.steps.find((st) => st.kind === "work")?.reps ?? 1;
+  if (reps <= 2) return resize(s, Math.ceil(target));
+  let out = s;
+  for (let n = reps - 1; n >= 2 && out.durMin > target; n--) out = withReps(s, n);
+  return out;
+}
+
+/**
+ * Shortens the week until it fits `cap` minutes, in the order the research keeps sessions (02 §4.2, 03 §8.1):
+ * easy runs down to the catalogue's 30 min (P15), then each Q by a third (P9's cut), then the long run down to its
+ * share of the capped week (P14). Only then, when a hard cap still binds, easy runs and the long run go to 20 min.
+ */
+export function trimTo(week: Session[], cap: number, ruleId: string): { week: Session[]; changes: Change[] } {
   let out = week;
   const changes: Change[] = [];
-  const order = week.filter(isContinuous).sort((a, b) => b.priority - a.priority);
-  for (const s of order) {
-    const excess = totalMin(out) - cap;
-    if (excess <= 0) break;
-    const target = Math.max(MIN_EASY, s.durMin - excess);
-    if (target >= s.durMin) continue;
-    const after = resize(s, target);
+  const excess = (): number => totalMin(out) - cap;
+  const set = (s: Session, after: Session): void => {
+    if (after.durMin >= s.durMin) return;
     out = out.map((x) => (x.id === s.id ? after : x));
     changes.push({ ruleId, sessionId: s.id, before: s, after });
-  }
+  };
+  const lowestFirst = (f: (s: Session) => boolean): Session[] =>
+    out.filter(f).sort((a, b) => b.priority - a.priority || b.durMin - a.durMin);
+  for (const s of lowestFirst(isEasy)) if (excess() > 0) set(s, resize(s, Math.max(easyFloor(s), s.durMin - excess())));
+  for (const s of lowestFirst(isQ)) if (excess() > 0) set(s, shortenQ(s, excess()));
+  const lFloor = Math.max(MIN_EASY, longShare(out.length) * cap);
+  for (const s of lowestFirst((x) => x.type === "L"))
+    if (excess() > 0) set(s, resize(s, Math.max(lFloor, s.durMin - excess())));
+  for (const s of lowestFirst(isContinuous))
+    if (excess() > 0) set(s, resize(s, Math.max(MIN_EASY, s.durMin - excess())));
   return { week: out, changes };
 }
 
 /** Minutes actually run in past weeks, oldest first. Strength never counts (G5). */
 export type WeekActual = { minutes: number };
 
-/** G2 (7 d ≤ 1.10 × previous 7 d), G3 (14 d ≤ 1.30 × previous 14 d), G4 (3 rising weeks → -25 %). */
+/**
+ * G2 (7 d ≤ 1.10 × the chronic load: the best of the 4 weeks before), G3 (14 d ≤ 1.30 × the best fortnight of the
+ * weeks given), G4 (3
+ * rising weeks to above the peak before them → -25 %). A deload, an illness or a skipped run lowers one week, not the
+ * chronic load: the week after returns to the plan (Pfitzinger, Daniels; Frandsen 2025 finds no link between
+ * week-to-week ratios and injury, research 03 §3.3).
+ */
 export function weeklyCaps(week: Session[], prev: WeekActual[]): { week: Session[]; changes: Change[] } {
-  const [w1, w2, w3, w4] = prev.map((p) => p.minutes).reverse();
+  const back = prev.map((p) => p.minutes).reverse();
+  const [w1, w2, w3, w4] = back;
   const caps: [string, number][] = [];
-  if (w1 !== undefined) caps.push(["G2", WEEK_RISE * w1]);
-  if (w1 !== undefined && w2 !== undefined && w3 !== undefined) caps.push(["G3", FORTNIGHT_RISE * (w2 + w3) - w1]);
-  if (w1 !== undefined && w2 !== undefined && w3 !== undefined && w4 !== undefined && w1 > w2 && w2 > w3 && w3 > w4) {
-    caps.push(["G4", 0.75 * w1]);
+  if (w1 !== undefined) caps.push(["G2", WEEK_RISE * Math.max(...back.slice(0, CHRONIC_WEEKS))]);
+  if (w1 !== undefined && w2 !== undefined && w3 !== undefined) {
+    const fortnights = back.slice(1, -1).map((w, k) => w + (back[k + 2] ?? 0));
+    caps.push(["G3", FORTNIGHT_RISE * Math.max(...fortnights) - w1]);
   }
+  const peakBefore = Math.max(0, ...back.slice(4));
+  const rising = w1 !== undefined && w2 !== undefined && w3 !== undefined && w4 !== undefined;
+  // A rise that starts from a light week (a deload, an illness, a break: under 80 % of the peak) is a return.
+  const fromLight = w4 !== undefined && w4 < LIGHT * peakBefore;
+  if (rising && w1 > w2 && w2 > w3 && w3 > w4 && w1 > peakBefore && !fromLight) caps.push(["G4", 0.75 * w1]);
   const tightest = caps.sort((a, b) => a[1] - b[1])[0];
   if (!tightest || totalMin(week) <= tightest[1]) return { week, changes: [] };
   // Whole minutes; the epsilon absorbs float noise such as 1.1 × 190 = 209.00000000000003.
@@ -101,26 +150,57 @@ export function weeklyCaps(week: Session[], prev: WeekActual[]): { week: Session
 const zoneTime = (week: Session[], test: (rpe: number) => boolean): number =>
   week.flatMap((s) => s.steps).reduce((sum, st) => sum + (test(st.target.rpe) ? stepTotal(st) : 0), 0);
 
-/** P16 on planned time: Z1 = RPE ≤ 4, Z3 = RPE ≥ 8. */
+/**
+ * P16 on planned training time: Z1 = RPE ≤ 4, Z3 = RPE ≥ 8. A test or a race measures her, it is not training
+ * intensity (like G1 and P11 leave the race out, P24).
+ */
 export function distributionCheck(week: Session[], phase: Phase): { ok: boolean; z1: number; z3: number } {
-  const all = totalMin(week) || 1;
-  const z1 = zoneTime(week, (r) => r <= 4) / all;
-  const z3 = zoneTime(week, (r) => r >= 8) / all;
+  const training = week.filter((s) => s.type !== "TEST" && s.type !== "RACE");
+  const all = totalMin(training) || 1;
+  const z1 = zoneTime(training, (r) => r <= 4) / all;
+  const z3 = zoneTime(training, (r) => r >= 8) / all;
   return { ok: z1 >= (phase === "base" ? 0.9 : 0.75) && z3 <= 0.1, z1, z3 };
 }
 
-/** P16: remove fractions from the most intense Q until the distribution holds or nothing is left to remove. */
+/** The minutes P16 takes off a Q go to the shortest easy run, up to 75 min (P15) and never past the long run. */
+function toEasiest(week: Session[], minutes: number): Session[] {
+  const top = Math.min(MAX_E, ...week.filter((s) => s.type === "L").map((s) => s.durMin));
+  const e = week.filter((s) => s.type === "E" && s.durMin + minutes <= top).sort((a, b) => a.durMin - b.durMin)[0];
+  return e ? week.map((s) => (s.id === e.id ? resize(e, e.durMin + minutes) : s)) : week;
+}
+
+/** Shortest block a continuous Q keeps under P16 (Daniels' shortest tempo). */
+const MIN_BLOCK = 10;
+/** Fractions of the Q's fast work (a fartlek opens on an easy block). */
+const workReps = (s: Session): number => s.steps.find((st) => st.kind === "work" && st.zone !== "E")?.reps ?? 1;
+const mainBlock = (s: Session): number =>
+  Math.max(0, ...s.steps.filter((st) => st.kind === "work" && st.zone !== "E").map((st) => st.durMin));
+
+/** P16's next cut on a Q: a fraction less, else its main block 10 % shorter. Null when it cannot shrink. */
+function cutQ(s: Session): Session | null {
+  if (!isQ(s)) return null;
+  if (workReps(s) > 2) return withReps(s, workReps(s) - 1);
+  const block = mainBlock(s);
+  const cut = Math.min(Math.max(1, 0.1 * block), block - MIN_BLOCK);
+  return block > MIN_BLOCK ? resize(s, s.durMin - workReps(s) * cut) : null;
+}
+
+/**
+ * P16: shortens the most intense Q until the distribution holds: fractions first, then continuous threshold and
+ * race-pace blocks (Seiler 2010, Rosenblat 2025: easy time stays at 75 % or more). The week keeps its volume: the
+ * minutes move to an easy run (P15).
+ */
 export function enforceDistribution(week: Session[], phase: Phase): { week: Session[]; changes: Change[] } {
   let out = week;
   const changes: Change[] = [];
   for (let guard = 0; guard < 50 && !distributionCheck(out, phase).ok; guard++) {
-    const q = out
-      .filter((s) => s.steps.some((st) => st.kind === "work" && (st.reps ?? 1) > 2))
-      .sort((a, b) => b.rpeTarget - a.rpeTarget)[0];
-    const reps = q?.steps.find((st) => st.kind === "work")?.reps;
-    if (!q || reps === undefined) break;
-    const after = withReps(q, reps - 1);
-    out = out.map((x) => (x.id === q.id ? after : x));
+    const q = out.filter((s) => cutQ(s) !== null).sort((a, b) => b.rpeTarget - a.rpeTarget)[0];
+    const after = q && cutQ(q);
+    if (!q || !after) break;
+    out = toEasiest(
+      out.map((x) => (x.id === q.id ? after : x)),
+      q.durMin - after.durMin,
+    );
     changes.push({ ruleId: "P16", sessionId: q.id, before: q, after });
   }
   return { week: out, changes };

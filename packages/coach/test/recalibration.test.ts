@@ -4,13 +4,13 @@ import {
   acceptProposal,
   addDays,
   evaluateFeels,
-  evaluateGoal,
   evaluateKeySessions,
   evaluateRace,
   evaluateTrends,
   paces,
   predictTime,
   proposeMeasured,
+  vdot,
 } from "../src/index.ts";
 import { easy, hard, sixBy800, state } from "./fixtures.ts";
 
@@ -48,6 +48,26 @@ describe("evaluateRace (RC1, RC2)", () => {
     expect(evaluateRace(race(10000, 52, { tempC: 22 }), 40.38, ctx)).toBeNull();
   });
 
+  it("reads a test on its effort lap, not with its warm-up (RC-18)", () => {
+    // 10 min easy, 20 min all out at the speed of VDOT 44, 5 min easy.
+    const fast = 4400 / 20;
+    const laps = [
+      { durMin: 10, distM: 1500, avgHr: 140 },
+      { durMin: 20, distM: 20 * fast, avgHr: 182 },
+      { durMin: 5, distM: 700, avgHr: 150 },
+    ];
+    const test: Activity = {
+      id: "t",
+      start: "2026-11-22T09:00",
+      durMin: 35,
+      distM: 2200 + 20 * fast,
+      isTest: true,
+      laps,
+      tempC: 12,
+    };
+    expect(evaluateRace(test, 40, ctx)?.to).toBeCloseTo(vdot(4400, 20), 1);
+  });
+
   it("ignores a gap of 1.0 (RC-4) and excused slow races", () => {
     expect(evaluateRace(race(10000, predictTime(39.38, 10000)), 40.38, ctx)).toBeNull();
     expect(evaluateRace(race(10000, 52, { tempC: 17 }), 40.38, ctx)).toBeNull();
@@ -66,31 +86,51 @@ describe("evaluateKeySessions (RC3, RC4, RC8)", () => {
   });
   const thirtyDaysAgo = addDays("2026-11-23", -30);
 
-  it("proposes +1 after two T sessions at 101 % 30 days after the last change (RC-5)", () => {
-    const p = evaluateKeySessions([key(17, [1.01]), key(20, [1.01, 1.01])], 40, thirtyDaysAgo, [], NOW);
+  const easyKey = (day: number, fractions: number[], extra: Partial<KeySession> = {}): KeySession => {
+    const k = key(day, fractions, extra);
+    return { ...k, activity: { ...k.activity, feel: "easy" } };
+  };
+
+  it("proposes the proven VDOT, one point at most, after two easy-feeling T sessions at 103 % (RC-5)", () => {
+    const p = evaluateKeySessions([easyKey(17, [1.03]), easyKey(20, [1.03, 1.03])], 40, thirtyDaysAgo, [], NOW);
     expect(p).toMatchObject({ to: 41, ruleId: "RC3", evidence: ["a17", "a20"] });
+    const small = evaluateKeySessions([easyKey(17, [1.02]), easyKey(20, [1.02])], 40, thirtyDaysAgo, [], NOW);
+    // 2 % faster at T proves about one point at VDOT 40 (40.998): what it proves, not a rounded +1.
+    expect(small?.to).toBeGreaterThan(40.5);
+    expect(small?.to).toBeLessThanOrEqual(41);
   });
 
-  it("needs two sessions (RC-6) and 28 days since the last change (RC-7)", () => {
-    expect(evaluateKeySessions([key(20, [1.03])], 40, thirtyDaysAgo, [], NOW)).toBeNull();
-    expect(evaluateKeySessions([key(17, [1.01]), key(20, [1.01])], 40, addDays("2026-11-23", -20), [], NOW)).toBeNull();
+  it("needs two sessions (RC-6) and, below a full point, 28 days since the last change (RC-7)", () => {
+    expect(evaluateKeySessions([easyKey(20, [1.03])], 40, thirtyDaysAgo, [], NOW)).toBeNull();
+    const twentyDays = addDays("2026-11-23", -20);
+    expect(evaluateKeySessions([easyKey(17, [1.02]), easyKey(20, [1.02])], 40, twentyDays, [], NOW)).toBeNull();
   });
 
-  it("proposes the VDOT clearly faster laps prove, without the 28-day wait (RC-13)", () => {
-    const p = evaluateKeySessions([key(17, [1.06]), key(20, [1.08])], 34, addDays("2026-11-23", -10), [], NOW);
-    expect(p?.ruleId).toBe("RC3");
-    // 6 % faster at T from VDOT 34: the T pace of VDOT 36.5.
-    expect(p?.to).toBeCloseTo(36.5, 0);
+  it("caps a clear proof at one point and waits 14 days for it (RC-13)", () => {
+    const keys = [easyKey(17, [1.06]), easyKey(20, [1.08])];
+    expect(evaluateKeySessions(keys, 34, addDays("2026-11-23", -10), [], NOW)).toBeNull();
+    expect(evaluateKeySessions(keys, 34, addDays("2026-11-23", -15), [], NOW)).toMatchObject({ to: 35, ruleId: "RC3" });
   });
 
-  it("waives the wait for +1 when both sessions felt easy (RC-14)", () => {
-    const easyFeel = (day: number) => {
-      const k = key(day, [1]);
-      return { ...k, activity: { ...k.activity, feel: "easy" as const } };
-    };
-    const tenDays = addDays("2026-11-23", -10);
-    expect(evaluateKeySessions([easyFeel(17), easyFeel(20)], 40, tenDays, [], NOW)).toMatchObject({ to: 41 });
-    expect(evaluateKeySessions([key(17, [1]), key(20, [1])], 40, tenDays, [], NOW)).toBeNull();
+  it("asks for a clearly faster pattern with a supporting sign, not laps on target (RC-14)", () => {
+    expect(evaluateKeySessions([key(17, [1.01]), key(20, [1.01])], 40, thirtyDaysAgo, [], NOW)).toBeNull();
+    expect(evaluateKeySessions([key(17, [1.03]), key(20, [1.03])], 40, thirtyDaysAgo, [], NOW)).toBeNull();
+    const lowHr = [key(17, [1.03], { hrDelta: -2 }), key(20, [1.03], { hrDelta: 0 })];
+    expect(evaluateKeySessions(lowHr, 40, thirtyDaysAgo, [], NOW)).toMatchObject({ to: 41 });
+  });
+
+  it("reads only the sessions run after the last change, once per 14 days (RC-15, RC-16)", () => {
+    const keys = [easyKey(17, [1.06]), easyKey(20, [1.06])];
+    // The 17th and 20th proved the level she accepted on the 20th: they never prove it again.
+    expect(evaluateKeySessions(keys, 41, "2026-11-20", [], NOW)).toBeNull();
+    const accepted: PastProposal[] = [
+      {
+        proposal: { kind: "vdot", from: 39, to: 40, ruleId: "RC3", evidence: [], expiresOn: "2026-11-27" },
+        decision: "accepted",
+        on: addDays("2026-11-23", -10),
+      },
+    ];
+    expect(evaluateKeySessions(keys, 40, undefined, accepted, NOW)).toBeNull();
   });
 
   it("leaves aberrant fractions out", () => {
@@ -119,45 +159,41 @@ describe("evaluateKeySessions (RC3, RC4, RC8)", () => {
   });
 });
 
-describe("evaluateTrends (RC6, RC7)", () => {
-  it("proposes a test when Garmin VO2max rises by 2 for 14 days (RC-11)", () => {
+const recent = (ruleId: string, daysAgo: number): PastProposal[] => [
+  {
+    proposal: { kind: "test", from: 40, to: 40, ruleId, evidence: [], expiresOn: "2026-12-01" },
+    decision: "accepted",
+    on: addDays("2026-11-23", -daysAgo),
+  },
+];
+
+describe("evaluateTrends (RC7)", () => {
+  it("proposes a test when Garmin VO2max rises by 2 for 14 days, once per 14 days (RC-11)", () => {
     const signals: DailySignal[] = [
       { date: addDays("2026-11-23", -20), vo2max: 42 },
       ...[14, 10, 5, 0].map((d) => ({ date: addDays("2026-11-23", -d), vo2max: 44.5 })),
     ];
-    expect(evaluateTrends(signals, [], 40, NOW)).toMatchObject({ kind: "test", from: 42, to: 44.5, ruleId: "RC7" });
-    expect(evaluateTrends(signals.slice(0, 1), [], 40, NOW)).toBeNull();
-  });
-
-  it("proposes -1 when HR at easy pace stays 5 bpm up for 14 days", () => {
-    const base = [50, 45, 40, 35].map((d) => ({ date: addDays("2026-11-23", -d), hr: 140 }));
-    const up = [20, 15, 10, 5].map((d) => ({ date: addDays("2026-11-23", -d), hr: 146 }));
-    expect(evaluateTrends([], [...base, ...up], 40, NOW)).toMatchObject({ to: 39, ruleId: "RC6" });
-    expect(evaluateTrends([], [...base, ...up.slice(2)], 40, NOW)).toBeNull();
-    expect(evaluateTrends([], up, 40, NOW)).toBeNull();
+    expect(evaluateTrends(signals, NOW)).toMatchObject({ kind: "test", from: 42, to: 44.5, ruleId: "RC7" });
+    expect(evaluateTrends(signals.slice(0, 1), NOW)).toBeNull();
+    expect(evaluateTrends(signals, NOW, recent("RC7", 5))).toBeNull();
   });
 });
 
 describe("evaluateFeels (RC5)", () => {
-  it("needs three hard feels in a row on easy sessions", () => {
-    const f = (d: string, feel: "hard" | "ok") => ({ sessionId: d, date: d, feel, rpeTarget: 3 });
-    expect(
-      evaluateFeels([f("2026-11-18", "hard"), f("2026-11-20", "hard"), f("2026-11-22", "hard")], 40, NOW)?.to,
-    ).toBe(39);
-    expect(
-      evaluateFeels([f("2026-11-18", "hard"), f("2026-11-20", "ok"), f("2026-11-22", "hard")], 40, NOW),
-    ).toBeNull();
+  const f = (d: string, feel: "hard" | "ok") => ({ sessionId: d, date: d, feel, rpeTarget: 3 });
+  const three = [f("2026-11-18", "hard"), f("2026-11-20", "hard"), f("2026-11-22", "hard")];
+
+  it("proposes a test, never a lower level, after three hard feels in a row on easy sessions (RC-19)", () => {
+    expect(evaluateFeels(three, 40, NOW)).toMatchObject({ kind: "test", from: 40, to: 40, ruleId: "RC5" });
+    const broken = [f("2026-11-18", "hard"), f("2026-11-20", "ok"), f("2026-11-22", "hard")];
+    expect(evaluateFeels(broken, 40, NOW)).toBeNull();
   });
-});
 
-describe("evaluateGoal (RC10)", () => {
-  const g = { p0Min: 110, targetMin: 100, rate: 0.0035, weeksLeft: 10, previousOff: true, alreadySignalled: false };
-
-  it("signals once after two misses in a row, never proposing a time", () => {
-    expect(evaluateGoal(g)).toEqual({ off: true, signal: true });
-    expect(evaluateGoal({ ...g, alreadySignalled: true }).signal).toBe(false);
-    expect(evaluateGoal({ ...g, previousOff: false }).signal).toBe(false);
-    expect(evaluateGoal({ ...g, targetMin: 106.2 })).toEqual({ off: false, signal: false });
+  it("reads fatigue as fatigue, counts only feels after the last change, once per 14 days (RC-20)", () => {
+    expect(evaluateFeels(three, 40, NOW, { fatigueDays: ["2026-11-20"] })).toBeNull();
+    expect(evaluateFeels(three, 40, NOW, { lastChange: "2026-11-19" })).toBeNull();
+    expect(evaluateFeels(three, 40, NOW, { history: recent("RC5", 10) })).toBeNull();
+    expect(evaluateFeels(three, 40, NOW, { history: recent("RC5", 15) })?.ruleId).toBe("RC5");
   });
 });
 
@@ -178,14 +214,15 @@ describe("acceptProposal (RC9)", () => {
     expect(r.state).toMatchObject({ vdot: 41, vdotChangedOn: "2026-11-23" });
   });
 
-  it("changes no pace for a test proposal", () => {
+  it("changes no pace for a test proposal: the test replaces the next Q, else nothing moves (RC-17)", () => {
+    const test = { kind: "test" as const, from: 42, to: 44.5, ruleId: "RC7", evidence: [], expiresOn: "2026-12-07" };
     const st = state([easy("e", "2026-11-28T09:00")]);
-    const r = acceptProposal(
-      st,
-      { kind: "test", from: 42, to: 44.5, ruleId: "RC7", evidence: [], expiresOn: "2026-12-07" },
-      NOW,
-    );
-    expect(r.state).toBe(st);
+    expect(acceptProposal(st, test, NOW).state).toBe(st);
+    const withQ = state([sixBy800("q", "2026-11-26T18:00"), easy("e", "2026-11-28T09:00")]);
+    const r = acceptProposal(withQ, test, NOW);
+    expect(r.state.sessions[0]).toMatchObject({ id: "q", type: "TEST", start: "2026-11-26T18:00" });
+    expect(r.state.sessions[1]).toEqual(withQ.sessions[1]);
+    expect(r.state.vdot).toBe(40);
   });
 });
 

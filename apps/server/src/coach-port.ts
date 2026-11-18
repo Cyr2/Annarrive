@@ -43,6 +43,8 @@ export type CoachState = {
   fitness: FitnessEstimate | null;
   /** Feel answers of the last two weeks, with the RPE the session aimed for (SG4). */
   feels: { sessionId: string; date: string; feel: "easy" | "ok" | "hard"; rpeTarget: number }[];
+  /** Morning signals of the last five weeks, oldest first: confirmed fatigue (P9, RC5) and Garmin VO2max (RC7). */
+  signals?: DailySignal[];
 };
 
 /** A level change as the coach proposes it, before the server stores it. */
@@ -124,8 +126,13 @@ export interface CoachPort {
     past: Proposal[],
     now: string,
   ): ProposalDraft | null;
-  /** M8 RC5 after a feel answer: three "hard" in a row on easy sessions propose easier paces. */
-  evaluateFeels(st: CoachState, now: string): ProposalDraft | null;
+  /**
+   * M8 RC5 after a feel answer: three "hard" in a row on easy sessions since the last level change propose a test,
+   * unless the mornings confirmed fatigue on those days; once per 14 days (RC8).
+   */
+  evaluateFeels(st: CoachState, past: Proposal[], now: string): ProposalDraft | null;
+  /** M8 RC7 after a run: Garmin VO2max shifted by 2 for 14 days proposes a test, once per 14 days. */
+  evaluateTrends(st: CoachState, past: Proposal[], now: string): ProposalDraft | null;
   /** M8 `acceptProposal` (RC9): new paces for future sessions, and the new estimate in `state.fitness`. */
   acceptProposal(st: CoachState, proposal: ProposalDraft, now: string): CoachResult;
   /**

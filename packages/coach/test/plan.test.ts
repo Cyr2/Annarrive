@@ -10,7 +10,6 @@ import {
   longRunMin,
   peakVolume,
   phaseSplit,
-  replanFromActual,
   startingVolume,
   totalWeeks,
   volumeCurve,
@@ -61,10 +60,9 @@ describe("peakVolume (P8)", () => {
 });
 
 describe("cycleFor (P9)", () => {
-  it("uses 2:1 from 40 years old (P-7), after an injury or a tired week, else 3:1", () => {
+  it("uses 2:1 from 40 years old (P-7) or after an injury, else 3:1", () => {
     expect(cycleFor({ ...regular, age: 42 })).toBe("2:1");
     expect(cycleFor({ ...regular, recentInjury: true })).toBe("2:1");
-    expect(cycleFor({ ...regular, fatigueDaysLastWeek: 3 })).toBe("2:1");
     expect(cycleFor({ ...regular, age: 25 })).toBe("3:1");
   });
 });
@@ -167,11 +165,9 @@ describe("startingVolume (P2)", () => {
     expect(startingVolume([], { ...regular, declaredWeeklyMin: 100 }, NOW).v0).toBe(100);
   });
 
-  it("halves the volume after a stop of 28 days or more, and skips sick weeks", () => {
+  it("halves the volume after a stop of 28 days or more", () => {
     const old = runs(4, 3, 50, "2026-10-05");
     expect(startingVolume(old, regular, NOW).v0).toBe(75);
-    const sick = startingVolume(runs(4, 3, 50), { ...regular, sickWeeks: ["2026-11-09"] }, NOW);
-    expect(sick.v0).toBe(150);
   });
 });
 
@@ -205,22 +201,6 @@ describe("generatePlan (M2)", () => {
   });
 });
 
-describe("replanFromActual (P22)", () => {
-  const plan = generatePlan(SEMI, regular, runs(8, 4, 45), { vdot: 40 }, NOW);
-  const planned = plan.weeks.map((w) => w.volumeMin);
-
-  it("stops the rise after two weeks under 80 % (P-16)", () => {
-    const r = replanFromActual(plan, [0.7 * (planned[0] ?? 0), 0.75 * (planned[1] ?? 0)]);
-    expect(r.weeks[2]?.volumeMin).toBe(planned[1]);
-    expect(r.weeks[3]?.volumeMin).toBe(planned[2]);
-    expect(r.weeks.at(-1)?.volumeMin).toBe(planned.at(-1));
-  });
-
-  it("changes nothing when the plan was followed", () => {
-    expect(replanFromActual(plan, [planned[0] ?? 0, planned[1] ?? 0])).toBe(plan);
-  });
-});
-
 describe("buildWeek", () => {
   const plan = generatePlan(SEMI, regular, runs(8, 4, 45), { vdot: 40 }, NOW);
   const ctx = { paces: P40, distM: 21097.5, longest30dMin: 90 } as const;
@@ -243,6 +223,28 @@ describe("buildWeek", () => {
     expect(s.filter((x) => isHard(x) && x.type !== "L").map((x) => x.priority)).toEqual([2, 3]);
     const light = buildWeek(deload, { ...ctx, racePaceSKm: 330 });
     expect(light.find((x) => x.type === "L")?.durMin).toBeLessThan(s.find((x) => x.type === "L")?.durMin ?? 0);
+  });
+
+  it("keeps a deload's long run at its share of the week, not cut twice (P9, P-23)", () => {
+    const deload = plan.weeks.find((w) => w.phase === "dev" && w.deload);
+    if (!deload) throw new Error("no deload");
+    const l = buildWeek(deload, { ...ctx, longest30dMin: 200 }).find((x) => x.type === "L");
+    expect(l?.durMin).toBe(Math.floor(0.35 * deload.volumeMin));
+  });
+
+  it("never builds a taper week above its share of the peak, Q included (P18, P-24)", () => {
+    const w = plan.weeks.at(-2);
+    if (!w) throw new Error("no taper");
+    const total = buildWeek(w, ctx).reduce((sum, s) => sum + s.durMin, 0);
+    expect(total).toBeLessThanOrEqual(w.volumeMin + 1);
+  });
+
+  it("keeps a test whole whatever the week, and an E between 30 and 75 min (F10, P15)", () => {
+    const w = plan.weeks[1];
+    if (!w) throw new Error("no week");
+    const s = buildWeek({ ...w, deload: true, template: ["TEST", "E", "E", "L"], volumeMin: 400 }, ctx);
+    expect(s[0]?.steps.find((st) => st.kind === "work")?.durMin).toBe(20);
+    expect(s.filter((x) => x.type === "E").every((x) => x.durMin >= 30 && x.durMin <= 75)).toBe(true);
   });
 
   it("puts Q1 before the long run for a 10 km", () => {

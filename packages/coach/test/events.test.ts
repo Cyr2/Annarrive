@@ -12,6 +12,7 @@ import {
   moveSession,
   onTimetableChange,
   reportUnavailable,
+  sickDays,
   skipSession,
   slotAt,
   updateSettings,
@@ -152,8 +153,17 @@ describe("health: advise, never block (EV9 to EV13)", () => {
   it("returns with easy runs for 3 days, then the first Q one notch easier", () => {
     const r = feelBetter(state([], [], { health: sick }), "2026-11-27T08:00");
     const h = r.state.health;
-    expect(h).toEqual({ kind: "recovering", easyUntil: "2026-11-30", qEasierUntil: "2026-12-07" });
+    expect(h).toEqual({ kind: "recovering", easyUntil: "2026-11-30", qEasierUntil: "2026-12-07", since: "2026-11-23" });
     expect(adaptForHealth(sixBy800("q", ""), h, "2026-11-29", P40).type).toBe("E");
+    // EV-28: light runs for 3 days (half, 30 min at most), moderate ones for 2 (three quarters), then Q one notch down.
+    expect(adaptForHealth(long("l", "", 69), h, "2026-11-28", P40)).toMatchObject({ type: "E", durMin: 30 });
+    expect(adaptForHealth(easy("e", "", 40), h, "2026-11-29", P40).durMin).toBe(20);
+    expect(adaptForHealth(long("l", "", 60), h, "2026-12-01", P40)).toMatchObject({ type: "E", durMin: 45 });
+    expect(adaptForHealth(long("l", "", 60), h, "2026-12-02", P40).durMin).toBe(60);
+    // B1: the fever days are left out of the morning baselines.
+    expect(sickDays(h, "2026-12-03")).toEqual(["2026-11-23", "2026-11-24", "2026-11-25", "2026-11-26", "2026-11-27"]);
+    expect(sickDays(sick, "2026-11-24")).toEqual(["2026-11-23", "2026-11-24"]);
+    expect(sickDays({ kind: "ok" }, "2026-11-24")).toEqual([]);
     expect(adaptForHealth(sixBy800("q", ""), h, "2026-12-02", P40).type).toBe("T");
     expect(adaptForHealth(sixBy800("q", ""), h, "2026-12-08", P40).type).toBe("I");
   });

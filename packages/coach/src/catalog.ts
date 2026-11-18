@@ -1,4 +1,4 @@
-import { paces, pilotFor, vdot } from "./fitness.ts";
+import { fractionF, paces, pilotFor, speedForVo2, vdot, vo2 } from "./fitness.ts";
 import type { Feel, Paces, PaceZone, Phase, RunType, Session, Step } from "./types.ts";
 
 const WARMUP_MIN = 15;
@@ -214,7 +214,25 @@ function fartlek(c: BuildCtx): Step[] {
   ];
 }
 
-const test = (c: BuildCtx): Step[] => [step("work", minutesAt(5, c.paces.I), "I", c.paces, RPE.TEST, { distM: 5000 })];
+/** TEST (research 02 §7.2: 20 to 30 min all out): 20 min, short enough for a beginner's week, read by F3 on its lap. */
+const TEST_MIN = 20;
+const TEST_WARMUP_MIN = 10;
+const TEST_COOLDOWN_MIN = 5;
+
+/** The pace of a 20 min all-out effort at the VDOT the paces come from (F7 inverted, then F2). */
+function testPace(p: Paces): number {
+  const level = vo2(60_000 / p.T) / 0.88;
+  return 60_000 / speedForVo2(level * fractionF(TEST_MIN));
+}
+
+const test = (c: BuildCtx): Step[] => {
+  const pace = testPace(c.paces);
+  return [
+    step("warmup", TEST_WARMUP_MIN, "E", c.paces, RPE.E),
+    step("work", TEST_MIN, "race", c.paces, RPE.TEST, { target: { paceSKm: [pace, pace], rpe: RPE.TEST } }),
+    step("cooldown", TEST_COOLDOWN_MIN, "E", c.paces, RPE.E),
+  ];
+};
 
 /** P24: the whole distance at race pace; a distance step ends on the watch where the race does. */
 const raceRun = (c: BuildCtx): Step[] => {
@@ -243,7 +261,17 @@ const BODIES: Record<RunType, (c: BuildCtx) => Step[]> = {
   RACE: raceRun,
 };
 
-const WRAPPED = new Set<RunType>(["T", "CRUISE", "I", "R", "SPE", "COTES_L", "TEST"]);
+const WRAPPED = new Set<RunType>(["T", "CRUISE", "I", "R", "SPE", "COTES_L"]);
+
+/** Catalogue E: 75 min at most (P15). */
+export const MAX_E = 75;
+
+/** Race week (P18: the taper Q at its fewest fractions, same pace; Pfitzinger): 2 × 1 km at race pace, 2 min jog. */
+export function raceReminder(p: Paces, racePaceSKm: number): Session {
+  const body = intervals(2, minutesAt(1, racePaceSKm), "race", p, RPE.SPE, 2, 1000);
+  for (const s of body) if (s.kind === "work") s.target.paceSKm = [racePaceSKm, racePaceSKm];
+  return quality("SPE", body, p);
+}
 
 /** M3 catalogue, sized by C1. */
 export function buildSession(type: RunType, ctx: BuildCtx): Session {
@@ -364,11 +392,14 @@ export function scaleSession(s: Session, f: number, roundTo = 1): Session {
   const reps = s.steps.find((st) => st.kind === "work" && (st.reps ?? 1) > 1)?.reps;
   if (reps !== undefined) return withReps(s, Math.floor(reps * f));
   const main = s.steps.reduce((m, st, i) => (st.kind === "work" && st.durMin > (s.steps[m]?.durMin ?? 0) ? i : m), 0);
-  const steps = s.steps.map((st, i) =>
-    i === main
-      ? { ...st, durMin: Math.max(1, Math.min(st.durMin, Math.round((st.durMin * f) / roundTo) * roundTo)) }
-      : st,
-  );
+  const sized = (st: Step): Step => {
+    const durMin = Math.max(1, Math.min(st.durMin, Math.round((st.durMin * f) / roundTo) * roundTo));
+    // A distance step ends on the watch at its distance: it shrinks with its time, at the same pace.
+    return st.distM
+      ? { ...st, durMin, distM: Math.round((st.distM * durMin) / st.durMin / 100) * 100 }
+      : { ...st, durMin };
+  };
+  const steps = s.steps.map((st, i) => (i === main ? sized(st) : st));
   return { ...s, steps, durMin: total(steps) };
 }
 

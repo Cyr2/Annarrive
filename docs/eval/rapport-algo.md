@@ -48,7 +48,7 @@ La CI lance `eval` après les tests : une note qui baisse sous `eval/baseline.js
 
 - Le modèle de résultat est simple : la coureuse court la cible si elle le peut, sinon son allure réelle. FC par zone fixe (E 72 %, T 89 %, I 93,5 % de la FCmax). Une vraie FC dérive dans la séance ; les effets vus ici sur F18 (problème 5) y seraient plus forts, pas plus faibles.
 - Un seul tirage par persona. Les défauts critiques sont structurels et ne dépendent pas du tirage.
-- Le banc juge l'API du coach telle que le serveur l'appelle. Deux écarts avec le serveur sont voulus et notés : le serveur ne passe pas `prev` à `planWeek` (le banc non plus), et il n'appelle pas `detectMissed` (le banc rattache la course du jour comme `services/garmin.ts`).
+- Le banc juge l'API du coach telle que le serveur l'appelle. Un écart avec le serveur est voulu et noté : il n'appelle pas `detectMissed` (le banc rattache la course du jour comme `services/garmin.ts`). Depuis les corrections du §6, le serveur et le banc passent tous deux `prev`, l'état de santé, les signaux du matin et les ressentis à `planWeek`.
 
 ## 2. Notes
 
@@ -187,7 +187,34 @@ Chaque problème donne la persona et la semaine où le banc le montre, la règle
 
 Avec les problèmes 1 à 5 corrigés, le banc donnerait une préparation comparable à celle d'une app premium, avec un placement qu'aucune des deux ne propose. C'est l'ordre de travail recommandé : 1 et 2 (allures), puis 3 et 4 (charge), puis 5.
 
-## 6. Fichiers
+## 6. Après les corrections de la boucle (18/11/2026)
+
+Les problèmes 1 à 10, 12 et 14 sont corrigés à la racine (règles dans `docs/specs/algo.md`, avec leurs sources et leurs tests). **Note automatique : 8,5 → 9,7 / 10 ; échecs : 159 → 28 (critiques 68 → 2).**
+
+| Critère | anna | debutant-10k | marathon | malade | sauteuse | plus-forte | surmenage | Moyenne |
+|---|---|---|---|---|---|---|---|---|
+| Volume et progression | 10,0 | 10,0 | 10,0 | 9,7 | 9,7 | 10,0 | 9,7 | 9,9 |
+| Intensité 80/20 | 10,0 | 10,0 | 10,0 | 10,0 | 10,0 | 10,0 | 10,0 | 10,0 |
+| Sortie longue | 9,8 | 10,0 | 9,6 | 10,0 | 9,5 | 10,0 | 10,0 | 9,8 |
+| Dur / facile et muscu jambes | 10,0 | 10,0 | 10,0 | 10,0 | 10,0 | 10,0 | 10,0 | 10,0 |
+| Allures et recalibrage | 10,0 | 4,0 | 8,8 | 10,0 | 10,0 | 4,0 | 10,0 | 8,1 |
+| Maladie et fatigue | 9,4 | n/a | n/a | 10,0 | 10,0 | 10,0 | 10,0 | 9,9 |
+| Séances sautées | 10,0 | 10,0 | 10,0 | 8,8 | 8,8 | 10,0 | 10,0 | 9,7 |
+| Affûtage et semaine de course | 10,0 | 7,5 | n/a | n/a | n/a | n/a | n/a | 8,8 |
+| Stabilité | 10,0 | 10,0 | 10,0 | 10,0 | 10,0 | 10,0 | 10,0 | 10,0 |
+| Structure de la semaine | 9,7 | 9,2 | 10,0 | 10,0 | 10,0 | 10,0 | 10,0 | 9,8 |
+| **Note** | **9,9** | **9,0** | **9,8** | **9,8** | **9,8** | **9,3** | **10,0** | **9,7** |
+
+Ce qui reste :
+
+- **Semaine 1 d'un niveau provisoire** (débutant, plus-forte : les 2 critiques). Le test arrive en semaine 2 (F10, recherche 02 §7.2) et règle le niveau dès qu'il est couru : 28,5 → 33,3 pour un niveau réel de 33, 36,6 → 41,0 pour 41. Le critère reste plafonné à 4 par la semaine 1.
+- **Sortie longue du marathonien à 32 % du volume** (mineur) : les E sont plafonnés à 75 min (catalogue) et le catalogue n'a pas de sortie moyenne-longue ; les minutes au-delà ne sont pas courues. C'est le seul critère qui baisse (9,8 → 9,6), pendant que sa structure passe de 9,7 à 10.
+- **Semaine de retour après la fièvre** (malade S3, 85 % du plan, G7) et **séances sautées une sur trois** (sauteuse) : la semaine reste sous 85 % du plan parce que la charge chronique réelle l'est. Ce sont les règles voulues (recherche 03 §8.3 et §9.1 ; G2).
+- Le problème 11 (un examen seul confirmé par sa répétition) et le 15 (`detectMissed`) restent ouverts.
+
+Deux changements du banc lui-même, notés ici : le contrôle G2 lit la charge chronique sur les 3 semaines courues avant, celles d'avant le programme comprises (il ne lisait que les semaines du banc) ; la coureuse court un `TEST` à fond (F2 à son niveau, FC 94 %) et chaque course porte le type de la séance prévue, comme le serveur les envoie.
+
+## 7. Fichiers
 
 - `packages/coach/eval/personas.ts` : personas, scripts, emplois du temps.
 - `packages/coach/eval/sim.ts` : la boucle fermée et le modèle de résultat.

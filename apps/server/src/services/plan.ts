@@ -105,6 +105,8 @@ const HISTORY_DAYS = 365;
 const FITNESS_DAYS = 30;
 /** A race this close, set or removed, rebuilds the current week (EV20). */
 const RACE_CONFLICT_DAYS = 7;
+/** Morning signals the coach reads: last week's fatigue on its 28-day baselines (P9, RC5), VO2max over 14 days (RC7). */
+const SIGNAL_DAYS = 35;
 
 const MORNING_DECISION = "morning.decidedOn";
 /** « 2026-11-16|Allégée : nuit courte. » The reason the morning check changed today's session. */
@@ -581,6 +583,10 @@ export class PlanService {
       activities: this.#stores.activity.overlapping(`${addDays(from, -HISTORY_DAYS)}T00:00`, this.#now()),
       fitness: this.#stores.fitnessEstimate.list().at(-1) ?? null,
       feels: this.#feels(),
+      signals: this.#stores.dailySignal.overlapping(
+        addDays(dateOf(this.#now()), -SIGNAL_DAYS),
+        addDays(dateOf(this.#now()), 1),
+      ),
     };
   }
 

@@ -11,6 +11,7 @@ import {
   sessionLoad,
   spikeCap,
   trainingLoad,
+  trimTo,
   validateWeek,
   weeklyCaps,
 } from "../src/index.ts";
@@ -74,6 +75,28 @@ describe("weeklyCaps (G2 to G5)", () => {
     const r = weeklyCaps(w, [{ minutes: 150 }, { minutes: 160 }, { minutes: 170 }, { minutes: 180 }]);
     expect(total(r.week)).toBe(135);
     expect(r.changes[0]?.ruleId).toBe("G4");
+  });
+
+  const weeks = (...minutes: number[]) => minutes.map((m) => ({ minutes: m }));
+  const w200 = [long("l", "", 70), hard("q", "", 60, { priority: 2 }), easy("e1", "", 35), easy("e2", "", 35)];
+
+  it("reads the chronic load: one short week (deload, illness, skips) does not lower the next (G-9)", () => {
+    expect(weeklyCaps(w200, weeks(200, 190, 200, 100)).changes).toEqual([]);
+    expect(total(weeklyCaps(w200, weeks(100, 100, 100, 100)).week)).toBe(110);
+  });
+
+  it("never reads a return from a light week as three rising weeks, nor a fortnight after it (G-10)", () => {
+    // Before: 180 a week; then an illness (60), and the return 120, 160, 190.
+    expect(weeklyCaps(w200, weeks(180, 180, 180, 180, 60, 120, 160, 190)).changes).toEqual([]);
+  });
+
+  it("cuts easy runs to 30 min first, then the Q by a third at most, the long run last (G-11)", () => {
+    const r = weeklyCaps(w200, weeks(150));
+    expect(total(r.week)).toBe(165);
+    expect([dur(r.week, "e1"), dur(r.week, "q"), dur(r.week, "l")]).toEqual([30, 40, 65]);
+    // Only a hard cap that the floors cannot meet takes the easy runs and the long run further.
+    const hardCap = trimTo(w200, 120, "G3").week;
+    expect([dur(hardCap, "e1"), dur(hardCap, "q"), dur(hardCap, "l")]).toEqual([20, 40, 40]);
   });
 });
 
@@ -148,7 +171,23 @@ describe("distribution (P16)", () => {
 
   it("asks for 90 % easy time in base and stops when nothing can be removed", () => {
     expect(distributionCheck([sixBy800()], "base").ok).toBe(false);
-    expect(enforceDistribution([hard("t", "", 60)], "dev").changes).toEqual([]);
+    const t = enforceDistribution([hard("t", "", 60)], "dev").week;
+    expect(dur(t, "t")).toBe(10);
+  });
+
+  it("shortens a continuous block and gives its minutes to an easy run (P-25)", () => {
+    // 45 min at threshold, 60 min of long run and 40 min of E: 72 % easy.
+    const w = [hard("t", "", 45), long("l", "", 60), easy("e", "", 40)];
+    expect(distributionCheck(w, "spe").ok).toBe(false);
+    const r = enforceDistribution(w, "spe").week;
+    expect(distributionCheck(r, "spe").ok).toBe(true);
+    expect(total(r)).toBeCloseTo(145);
+    expect(dur(r, "e")).toBeGreaterThan(40);
+  });
+
+  it("leaves a test and the race out of the training distribution (P-26)", () => {
+    const test = makeSession("TEST", [{ kind: "work", durMin: 20, zone: "race", target: { rpe: 9 } }], { id: "x" });
+    expect(distributionCheck([test, long("l", "", 60), easy("e", "", 40)], "base").ok).toBe(true);
   });
 });
 

@@ -1,6 +1,7 @@
-import { repace } from "./catalog.ts";
+import { buildSession, isHard, repace } from "./catalog.ts";
 import { addDays, dateOf, daysBetween } from "./dates.ts";
-import { type InitialFitness, isEligibleEffort, paces, speedForVo2, vdot, vo2 } from "./fitness.ts";
+import { effortReadings, type InitialFitness, isEligibleEffort, paces, speedForVo2, vdot, vo2 } from "./fitness.ts";
+import { checkHard, slotOf } from "./placement.ts";
 import type { Activity, DailySignal, FeelLog, Proposal, Result, Session, State } from "./types.ts";
 
 const PROPOSAL_DAYS = 14;
@@ -26,7 +27,10 @@ export type RaceCtx = { hrMax: number; lthr?: number; illnessLast14d?: boolean; 
 /** RC1, RC2: an eligible race or test proposes its own VDOT when clearly better, or clearly worse without excuse. */
 export function evaluateRace(a: Activity, current: number, ctx: RaceCtx): Proposal | null {
   if (!(a.isRace || a.isTest) || !isEligibleEffort(a, ctx).ok) return null;
-  const v = vdot(a.distM, a.durMin);
+  // A test is run inside a warm-up and a cool-down: its effort is its laps (F18), not the whole run.
+  const v = a.isTest
+    ? (effortReadings({ activities: [a], hr: { hrMax: ctx.hrMax } }, ctx.now)[0]?.vdot ?? vdot(a.distM, a.durMin))
+    : vdot(a.distM, a.durMin);
   if (v > current + 0.5) return proposal("vdot", current, v, "RC1", [a.id], ctx.now);
   const excused =
     (a.tempC ?? 0) > 15 || (a.elevGainM ?? 0) / a.distM >= 0.01 || ctx.illnessLast14d === true || a.feel === "easy";
@@ -68,18 +72,35 @@ const refusedRecently = (history: PastProposal[], up: boolean, now: string): boo
     (h) => h.decision === "refused" && h.proposal.to > h.proposal.from === up && daysBetween(h.on, now) < PROPOSAL_DAYS,
   );
 
+/** RC8: one proposal per rule per 14 days, accepted or refused, so the same evidence never ratchets. */
+const proposedRecently = (history: PastProposal[], ruleId: string, now: string): boolean =>
+  history.some((h) => h.proposal.ruleId === ruleId && daysBetween(h.on, now) < PROPOSAL_DAYS);
+
 /** F7's share of VDOT for the pace a key session aims at. */
 const ZONE_FRACTION: Partial<Record<Session["type"], number>> = { T: 0.88, CRUISE: 0.88, I: 0.975 };
+/** RC3: a pattern clearly faster than the targets (Runna Pace Insights), not the noise around them. */
+const UP_RATIO = 1.02;
+const SETTLE_DAYS = 28;
 
-/** RC3: the VDOT whose pace for that zone is the one she held (F7 inverted). */
-const impliedVdot = (k: KeySession, current: number): number => {
-  const f = ZONE_FRACTION[k.session.type] ?? 0.88;
-  return vo2((ratio(k) ?? 1) * speedForVo2(f * current)) / f;
+/** Speed (m/min) the session's first work step aimed at. */
+const targetSpeed = (s: Session): number | undefined => {
+  const pace = s.steps.find((st) => st.kind === "work")?.target.paceSKm;
+  return pace ? 120_000 / (pace[0] + pace[1]) : undefined;
 };
 
+/** RC3: the VDOT whose pace for that zone is the speed she held (F7 inverted), from the session's own target. */
+const impliedVdot = (k: KeySession, current: number): number => {
+  const f = ZONE_FRACTION[k.session.type] ?? 0.88;
+  return vo2((ratio(k) ?? 1) * (targetSpeed(k.session) ?? speedForVo2(f * current))) / f;
+};
+
+/** Felt easy, or heart rate at or under the F15 prediction: what makes a fast session a proof (Daniels). */
+const supported = (k: KeySession): boolean => k.activity.feel === "easy" || (k.hrDelta !== undefined && k.hrDelta <= 0);
+
 /**
- * RC3 and RC4 from T, CRUISE and I sessions. Up: the paces they prove (at least +1); the 28-day wait is waived
- * when the proof is strong: both a full point faster, or both felt easy.
+ * RC3 and RC4 from T, CRUISE and I sessions run after the last level change. Up: at least two sessions 2 % faster
+ * than their targets with a supporting sign; the proven VDOT, one point at most (research 02 R23), 28 days after the
+ * last change, or 14 when the sessions prove a full point.
  */
 export function evaluateKeySessions(
   done: KeySession[],
@@ -90,101 +111,107 @@ export function evaluateKeySessions(
 ): Proposal | null {
   const keys = done
     .filter((k) => ZONE_FRACTION[k.session.type] !== undefined)
+    .filter((k) => lastChange === undefined || dateOf(k.activity.start) > lastChange)
     .sort((a, b) => a.activity.start.localeCompare(b.activity.start));
   const evidence = (ks: KeySession[]): string[] => ks.map((k) => k.activity.id);
-  const up = keys.filter((k) => (ratio(k) ?? 0) >= 1 && (k.hrDelta ?? 0) <= 3 && k.activity.feel !== "hard");
+  const days = lastChange === undefined ? Number.POSITIVE_INFINITY : daysBetween(lastChange, now);
+  const up = keys.filter(
+    (k) => (ratio(k) ?? 0) >= UP_RATIO && (k.hrDelta ?? 0) <= 3 && k.activity.feel !== "hard" && supported(k),
+  );
   const proven = Math.min(...up.map((k) => impliedVdot(k, current)));
-  const strong = proven >= current + 1 || up.every((k) => k.activity.feel === "easy");
-  const settled = lastChange === undefined || daysBetween(lastChange, now) >= 28 || strong;
-  if (settled && up.length >= 2 && !refusedRecently(history, true, now)) {
-    return proposal("vdot", current, Math.max(current + 1, proven), "RC3", evidence(up), now);
+  const settled = days >= SETTLE_DAYS || (days >= PROPOSAL_DAYS && proven >= current + 1);
+  const quiet = !refusedRecently(history, true, now) && !proposedRecently(history, "RC3", now);
+  if (up.length >= 2 && settled && proven >= current + 0.5 && quiet) {
+    return proposal("vdot", current, Math.min(proven, current + 1), "RC3", evidence(up), now);
   }
   const lastTwo = keys.slice(-2);
   const slow = lastTwo.length === 2 && lastTwo.every((k) => (ratio(k) ?? 1) < 0.97 && !k.externalFactor);
-  if (slow && !refusedRecently(history, false, now))
+  if (slow && !refusedRecently(history, false, now) && !proposedRecently(history, "RC4", now))
     return proposal("vdot", current, current - 1, "RC4", evidence(lastTwo), now);
   return null;
 }
 
-/** RC5: three "hard" in a row on easy sessions. Anna picks -1 or a test. */
-export function evaluateFeels(feels: FeelLog[], current: number, now: string): Proposal | null {
-  const easy = feels.filter((f) => f.rpeTarget <= 4).sort((a, b) => a.date.localeCompare(b.date));
+export type FeelCtx = {
+  /** Date of the last level change: only the feels after it count. */
+  lastChange?: string;
+  history?: PastProposal[];
+  /** Days with confirmed fatigue (M5): a hard feel on such a day is fatigue, not fitness. */
+  fatigueDays?: string[];
+};
+
+/**
+ * RC5: three "hard" in a row on easy sessions propose a test, never a lower level: a feel mixes fatigue and
+ * fitness (Foster 2001, research 03 §6), only a performance proves a loss (RC2, RC4). Confirmed fatigue on those
+ * days explains them: the week is lightened instead (P9).
+ */
+export function evaluateFeels(feels: FeelLog[], current: number, now: string, ctx: FeelCtx = {}): Proposal | null {
+  const easy = feels
+    .filter((f) => f.rpeTarget <= 4 && (ctx.lastChange === undefined || f.date > ctx.lastChange))
+    .sort((a, b) => a.date.localeCompare(b.date));
   const last3 = easy.slice(-3);
   if (last3.length < 3 || !last3.every((f) => f.feel === "hard")) return null;
+  if (proposedRecently(ctx.history ?? [], "RC5", now) || last3.some((f) => ctx.fatigueDays?.includes(f.date)))
+    return null;
   return proposal(
-    "vdot",
+    "test",
     current,
-    current - 1,
+    current,
     "RC5",
     last3.map((f) => f.sessionId),
     now,
   );
 }
 
-/** HR at the reference E pace for one run (F15). */
-export type HrPace = { date: string; hr: number; hot?: boolean };
-
-function hrDrift(points: HrPace[], current: number, now: string): Proposal | null {
-  const cool = points.filter((p) => !p.hot).sort((a, b) => a.date.localeCompare(b.date));
-  const age = (p: HrPace): number => daysBetween(p.date, now);
-  const base = cool.filter((p) => age(p) > 28 && age(p) <= 56).map((p) => p.hr);
-  if (base.length < 3) return null;
-  const ref = base.reduce((a, b) => a + b, 0) / base.length;
-  const recent = cool.filter((p) => age(p) <= 28);
-  const firstOk = recent.findLastIndex((p) => p.hr < ref + 5);
-  const streak = recent.slice(firstOk + 1);
-  const first = streak[0];
-  if (streak.length < 3 || !first || age(first) < 14) return null;
-  return proposal(
-    "vdot",
-    current,
-    current - 1,
-    "RC6",
-    streak.map((p) => p.date),
-    now,
-  );
-}
-
-function vo2Shift(signals: DailySignal[], now: string): Proposal | null {
+/** RC7: Garmin VO2max shifted by 2 or more for 14 days → a test, never a VDOT. */
+export function evaluateTrends(signals: DailySignal[], now: string, history: PastProposal[] = []): Proposal | null {
   const vals = signals.filter((s) => s.vo2max !== undefined).sort((a, b) => a.date.localeCompare(b.date));
   const before = vals.filter((s) => daysBetween(s.date, now) > 14).at(-1)?.vo2max;
   const window = vals.filter((s) => daysBetween(s.date, now) <= 14).map((s) => s.vo2max ?? 0);
-  if (before === undefined || window.length === 0) return null;
+  if (before === undefined || window.length === 0 || proposedRecently(history, "RC7", now)) return null;
   const up = window.every((v) => v - before >= 2);
   const down = window.every((v) => before - v >= 2);
   const last = window.at(-1) ?? before;
   return up || down ? proposal("test", before, last, "RC7", ["garmin_vo2max"], now) : null;
 }
 
-/** RC6 (HR drift at easy pace → -1) and RC7 (Garmin VO2max shift → test, never a VDOT). */
-export function evaluateTrends(
-  signals: DailySignal[],
-  hrModel: HrPace[],
-  current: number,
-  now: string,
-): Proposal | null {
-  return hrDrift(hrModel, current, now) ?? vo2Shift(signals, now);
-}
-
-/** RC10: the projection is off the target by > 2 %; signalled once after two misses in a row, no time proposed. */
-export function evaluateGoal(g: {
-  p0Min: number;
-  targetMin: number;
-  rate: number;
-  weeksLeft: number;
-  previousOff: boolean;
-  alreadySignalled: boolean;
-}): { off: boolean; signal: boolean } {
-  const projected = g.p0Min * (1 - g.rate * g.weeksLeft);
-  const off = Math.abs(projected - g.targetMin) / g.targetMin > 0.02;
-  return { off, signal: off && g.previousOff && !g.alreadySignalled };
+/** A test replaces the next automatic Q (or short-hill run) where it breaks no hard rule (research 02 §7.2). */
+function scheduleTest(st: State, now: string): { state: State; changes: Result["changes"] } {
+  const test = buildSession("TEST", {
+    weeklyMin: 0,
+    paces: paces(st.vdot),
+    phase: "base",
+    progressionStep: 0,
+    distM: 5000,
+  });
+  const fits = (s: Session): boolean => {
+    const rest = { ...st, sessions: st.sessions.filter((x) => x.id !== s.id) };
+    const at = { ...test, start: s.start };
+    return checkHard(at, slotOf(at), rest).length === 0;
+  };
+  const candidate = st.sessions
+    .filter((s) => s.status === "planned" && !s.frozen && !s.manual && s.start > now)
+    .filter((s) => (isHard(s) && s.type !== "L" && s.type !== "RACE") || s.type === "COTES_C" || s.type === "FARTLEK")
+    .sort((a, b) => a.start.localeCompare(b.start))
+    .find(fits);
+  if (!candidate) return { state: st, changes: [] };
+  const after: Session = { ...test, id: candidate.id, start: candidate.start };
+  const sessions = st.sessions.map((s) => (s.id === candidate.id ? after : s));
+  return {
+    state: { ...st, sessions },
+    changes: [{ ruleId: "RC9", sessionId: candidate.id, before: candidate, after }],
+  };
 }
 
 /**
- * RC9: new paces for future sessions that are neither frozen nor manual. A test or goal proposal changes no pace;
- * the caller schedules the test or opens the goal screen.
+ * RC9: new paces for future sessions that are neither frozen nor manual. A test proposal changes no pace: the test
+ * takes the place of the next Q. A goal proposal changes nothing here.
  */
 export function acceptProposal(st: State, p: Proposal, now: string): Result {
+  if (p.kind === "test") {
+    const t = scheduleTest(st, now);
+    const changes = [{ ruleId: p.ruleId, detail: p.kind }, ...t.changes];
+    return { ok: true, state: t.state, previous: st, changes, warnings: [] };
+  }
   if (p.kind !== "vdot")
     return { ok: true, state: st, previous: st, changes: [{ ruleId: p.ruleId, detail: p.kind }], warnings: [] };
   const newPaces = paces(p.to);

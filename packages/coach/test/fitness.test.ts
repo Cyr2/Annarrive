@@ -264,6 +264,39 @@ describe("initialFitness (F10)", () => {
     expect(r).toMatchObject({ kind: "race", vdot: expect.closeTo(vdot(4000, 20), 2) });
   });
 
+  // The bench's beginner: 5 × 3 min at I pace (93 % HRmax) with 3 min jogs read as a maximal 3 min, VDOT 26.6 for 33.
+  const intervals = (plannedType?: Activity["plannedType"]): Activity => ({
+    id: "i",
+    start: "2026-11-09T08:00",
+    durMin: 55,
+    distM: 9000,
+    ...(plannedType ? { plannedType } : {}),
+    laps: [
+      { durMin: 15, distM: 2300, avgHr: 135 },
+      ...[0, 1, 2, 3, 4].flatMap(() => [
+        { durMin: 3, distM: 750, avgHr: 176 },
+        { durMin: 3, distM: 450, avgHr: 150 },
+      ]),
+      { durMin: 10, distM: 1500, avgHr: 140 },
+    ],
+  });
+
+  it("never reads reps and their recoveries as one effort, nor a 3 min rep as a maximal one (F-28)", () => {
+    const readings = effortReadings({ activities: [intervals()], hr: { hrMax: 188 } }, NOW);
+    expect(readings.every((r) => r.kind === "training")).toBe(true);
+  });
+
+  it("reads no lap window of a planned interval session (F-29)", () => {
+    const steady: Activity = {
+      ...intervals("CRUISE"),
+      laps: [{ durMin: 20, distM: 4000, avgHr: 170 }],
+    };
+    expect(effortReadings({ activities: [steady], hr: { hrMax: 188 } }, NOW)[0]?.kind).toBe("training");
+    expect(effortReadings({ activities: [{ ...steady, plannedType: "T" }], hr: { hrMax: 188 } }, NOW)[0]?.kind).toBe(
+      "threshold",
+    );
+  });
+
   it("counts a hard run as eligible when heart rate proves it", () => {
     const a: Activity = { id: "h", start: "2026-11-09T08:00", durMin: 30, distM: 6500, avgHr: 185 };
     expect(initialFitness({ activities: [a], hr: { hrMax: 195 } }, NOW).source).toBe("effort:h");

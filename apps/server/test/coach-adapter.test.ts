@@ -101,6 +101,30 @@ describe("coach adapter: building weeks", () => {
     expect((await t.services.plan.buildNextWeek()).change).toBeNull();
   });
 
+  /** Minutes of next week for a semi started on Sunday, after a week of tired mornings or not. */
+  async function nextWeekAfter(tired: boolean): Promise<number> {
+    const t = await ready();
+    t.setNow(SUNDAY_6PM);
+    // Three runs of 70 min a week: long enough that G1 does not hide the deload.
+    for (let i = 0; i < 24; i++) {
+      const start = `${addDays("2026-11-16", 3 * (i % 3) - 7 * (1 + Math.floor(i / 3)))}T08:00`;
+      t.stores.activity.put({ id: `h${i}`, start, durMin: 70, distM: 11_000 });
+    }
+    t.stores.fitnessEstimate.put({ id: "2026-11-01", date: "2026-11-01", vdot: 40, source: "test" });
+    for (let k = 0; k < 35; k++) {
+      const id = addDays("2026-10-11", k);
+      const bad = tired && id >= "2026-11-09" && id <= "2026-11-13";
+      t.stores.dailySignal.put({ id, rhr: bad ? 61 : 52 + (k % 2), sleepMin: bad ? 320 : 450 + (k % 3) * 10 });
+    }
+    await t.call("PUT", "/api/program", { goal: { distanceM: 21097.5, date: "2027-03-14" } });
+    const next = t.services.plan.coachState().sessions.filter((s) => s.start >= "2026-11-16");
+    return next.reduce((sum, s) => sum + s.durMin, 0);
+  }
+
+  it("turns next week into a deload after three mornings of confirmed fatigue (P9)", async () => {
+    expect(await nextWeekAfter(true)).toBeLessThan(0.85 * (await nextWeekAfter(false)));
+  });
+
   it("plans maintenance without a goal, and asks for a level before planning anything", async () => {
     const t = await ready();
     t.setNow(SUNDAY_6PM);
@@ -311,7 +335,46 @@ describe("coach adapter: Anna's actions", () => {
     t.services.fitness.logFeel("run-2026-11-12", "hard");
     expect(t.services.fitness.pending()).toEqual([]);
     t.services.fitness.logFeel("run-2026-11-14", "hard");
-    expect(t.services.fitness.pending()).toMatchObject([{ kind: "vdot", ruleId: "RC5" }]);
+    // A feel is never proof of a lost level: RC5 proposes a test.
+    expect(t.services.fitness.pending()).toMatchObject([{ kind: "test", ruleId: "RC5" }]);
+  });
+
+  it("proposes a test when Garmin VO2max moved for 14 days, and accepting it puts the test in place of the next Q (RC7)", async () => {
+    const t = await ready();
+    t.stores.fitnessEstimate.put({ id: "2026-11-01", date: "2026-11-01", vdot: 40, source: "test" });
+    t.stores.dailySignal.put({ id: "2026-11-01", vo2max: 40 });
+    for (let k = 2; k <= 16; k++)
+      t.stores.dailySignal.put({ id: `2026-11-${String(k).padStart(2, "0")}`, vo2max: 42.5 });
+    t.stores.plannedSession.put(built("q", "I", "2026-11-19T18:00"));
+    t.services.fitness.afterRun({ id: "run", start: "2026-11-16T07:00", durMin: 40, distM: 7000 });
+    const [proposal] = t.services.fitness.pending();
+    expect(proposal).toMatchObject({ kind: "test", ruleId: "RC7" });
+    t.services.fitness.accept(proposal?.id ?? "");
+    expect(t.stores.plannedSession.get("q")).toMatchObject({ type: "TEST", start: "2026-11-19T18:00" });
+    expect(level(t)).toBe(40);
+  });
+
+  it("reads easy runs felt hard on mornings of confirmed fatigue as fatigue: no proposal (RC5, P9)", async () => {
+    const t = await ready();
+    t.stores.fitnessEstimate.put({ id: "2026-11-01", date: "2026-11-01", vdot: 40, source: "test" });
+    // 28 calm mornings, then high resting heart rate and short nights from the 10th.
+    for (let k = 0; k < 35; k++) {
+      const id = addDays("2026-10-12", k);
+      const tired = id >= "2026-11-09";
+      t.stores.dailySignal.put({ id, rhr: tired ? 61 : 52 + (k % 2), sleepMin: tired ? 320 : 450 + (k % 3) * 10 });
+    }
+    for (const day of ["2026-11-10", "2026-11-12", "2026-11-14"]) {
+      t.stores.plannedSession.put({ ...built(`e-${day}`, "E", `${day}T18:00`), status: "done" });
+      t.stores.activity.put({
+        id: `run-${day}`,
+        start: `${day}T18:05`,
+        durMin: 45,
+        distM: 7000,
+        sessionId: `e-${day}`,
+      });
+      t.services.fitness.logFeel(`run-${day}`, "hard");
+    }
+    expect(t.services.fitness.pending()).toEqual([]);
   });
 
   it("after a fever, feeling better starts the easy return (EV9)", async () => {
@@ -322,6 +385,7 @@ describe("coach adapter: Anna's actions", () => {
       kind: "recovering",
       easyUntil: "2026-11-19",
       qEasierUntil: "2026-11-26",
+      since: "2026-11-14",
     });
     expect((await t.call("POST", "/api/feel-better")).status).toBe(400);
   });
