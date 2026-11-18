@@ -26,8 +26,8 @@ const env = z
   .parse(process.env);
 
 const today = dateOf(toParisLocal(systemClock()));
-// The server's day stops at 06:00 UTC, before the earliest run: Aujourd'hui is always a run day, the fullest screen,
-// whatever the hour of the CI run (from the evening on, the run was gone and the audit measured a lighter screen).
+// The server's day stops at 06:00 UTC, before the earliest run: a day's run is still ahead whatever the hour of the
+// CI run (from the evening on, it had no slot left and the audit measured a lighter screen than in the morning).
 const morning = new Date(`${today}T06:00:00Z`);
 
 const db = openDatabase(mkdtempSync(join(tmpdir(), "annarrive-lighthouse-")));
