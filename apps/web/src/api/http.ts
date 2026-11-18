@@ -22,6 +22,7 @@ import { z } from "zod";
 import { addDays, addMinutes, isoWeek, minutesOf, mondayOf, toIso } from "../lib/date.ts";
 import type { Api } from "./client.ts";
 import { ApiError, OFFLINE } from "./errors.ts";
+import { apiCall, incident } from "./journal.ts";
 import {
   localAt,
   toChange,
@@ -95,14 +96,17 @@ export function createHttpApi(
   now = () => new Date(),
 ): Api {
   async function send(method: string, path: string, body?: unknown): Promise<Response> {
+    const started = performance.now();
     const response = await fetcher(`/api${path}`, {
       method,
       credentials: "same-origin",
       headers: body === undefined ? undefined : { "content-type": "application/json" },
       body: body === undefined ? undefined : JSON.stringify(body),
     }).catch(() => {
+      apiCall(method, path, 0, performance.now() - started);
       throw new ApiError(0, OFFLINE);
     });
+    apiCall(method, path, response.status, performance.now() - started);
     if (response.status === 401) {
       onSignedOut();
       throw new ApiError(401, SIGNED_OUT);
@@ -117,13 +121,18 @@ export function createHttpApi(
     const response = await send(method, path, body);
     return isJson(response) ? await response.json().catch(() => undefined) : undefined;
   }
-  function parse<T>(json: unknown, schema: z.ZodType<T>): T {
+  function parse<T>(json: unknown, schema: z.ZodType<T>, path: string): T {
     const parsed = schema.safeParse(json);
-    if (!parsed.success) throw new ApiError(502, UNEXPECTED);
+    if (!parsed.success) {
+      // Where the answer and the app disagree, never the values themselves.
+      const issues = parsed.error.issues.slice(0, 3).map((i) => `${i.path.join(".")} ${i.code}`);
+      incident("api", `Réponse illisible ${path.split("?")[0]} : ${issues.join(", ")}`);
+      throw new ApiError(502, UNEXPECTED);
+    }
     return parsed.data;
   }
   const call = async <T>(method: string, path: string, schema: z.ZodType<T>, body?: unknown) =>
-    parse(await read(method, path, body), schema);
+    parse(await read(method, path, body), schema, path);
   // At launch Aujourd'hui reads six routes: /first-screen answers them all in one request (preloaded by
   // index.html). Each part serves once, through its route's schema; any later read asks its route.
   const weekPath = (monday: string) => `/weeks/${isoWeek(monday)}`;
@@ -151,7 +160,7 @@ export function createHttpApi(
       json = fromFirst(path).finally(() => pending.delete(path));
       pending.set(path, json);
     }
-    return parse(await json, schema);
+    return parse(await json, schema, path);
   };
   // When the timetable was last read and the watch's link change on their own actions, not with the plan: read
   // once and kept a few minutes, so a change re-reads only the plan. Down, they leave their own line unknown.

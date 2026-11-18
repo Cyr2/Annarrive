@@ -1,5 +1,6 @@
 import { Suspense, useCallback, useEffect, useRef } from "react";
 import { Redirect, Route, Switch, useLocation } from "wouter";
+import { crumb } from "./api/journal.ts";
 import { useSignedOut } from "./api/session.ts";
 import { SignedOut } from "./features/auth/SignedOut.tsx";
 import { OfflineLine } from "./features/OfflineLine.tsx";
@@ -8,7 +9,7 @@ import { isStale, usePlan } from "./features/plan/store.ts";
 import { skyPhase } from "./features/program/sky.ts";
 import { usePush } from "./features/push/store.ts";
 import { preloadSheet, SheetHost } from "./features/sheets/SheetHost.tsx";
-import type { SheetSpec } from "./features/sheets/store.ts";
+import { type SheetSpec, useSheet } from "./features/sheets/store.ts";
 import { TodayScreen } from "./features/today/TodayScreen.tsx";
 import { watchForUpdates } from "./features/updates.ts";
 import { ChunkBoundary, lazyChunk } from "./ui/ChunkBoundary.tsx";
@@ -139,6 +140,15 @@ export function App() {
       );
   }, []);
   useFreshPlan();
+  // The journal's breadcrumbs: which screen, which sheet (api/journal.ts).
+  useEffect(() => crumb("route", location), [location]);
+  useEffect(
+    () =>
+      useSheet.subscribe((s, before) => {
+        if (s.current !== before.current) crumb("sheet", s.current?.kind ?? "fermée");
+      }),
+    [],
+  );
 
   if (signedOut)
     return (

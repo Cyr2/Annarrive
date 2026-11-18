@@ -129,6 +129,7 @@ Après ajout, si une course entre en conflit, Reggie la déplace, même si elle 
 | Cycle menstruel | Interrupteur | Activé : explication et accord demandés d'abord. L'app ne change jamais les séances selon la phase du cycle. Seuls les symptômes qu'Anna signale comptent |
 | Notifications | Réglages iOS de l'app | Rien ne change dans le plan |
 | Arrêter ce programme | Confirmation « Arrêter le programme Semi-marathon ? » | Passe en mode entretien : 2 à 3 courses faciles par semaine, une séance de qualité |
+| Signaler un souci (tout en bas) | Champ facultatif, bouton d'envoi dedans à droite | Ses 50 derniers gestes (écrans, boutons touchés, appels au serveur) partent au journal des incidents avec sa phrase, même vide. Rien ne change dans le plan. Bandeau « Merci, c'est envoyé. » ; hors ligne, « Merci. Il partira dès que tu auras du réseau. » et l'envoi part au retour du réseau |
 
 ## Reggie (la conversation)
 

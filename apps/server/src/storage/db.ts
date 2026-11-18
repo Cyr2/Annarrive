@@ -26,6 +26,7 @@ export const tableNames = [
   "app_user",
   "passkey",
   "session_feel",
+  "incident",
 ] as const;
 export type TableName = (typeof tableNames)[number];
 
@@ -42,6 +43,7 @@ const migrations: string[] = [
   documentTable("proposal"),
   documentTable("app_user") + documentTable("passkey"),
   documentTable("session_feel"),
+  documentTable("incident"),
 ];
 
 /** `:memory:` for tests, otherwise `annarrive.db` inside `dataDir`. */

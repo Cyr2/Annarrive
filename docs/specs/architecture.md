@@ -45,7 +45,7 @@ Pourquoi ce découpage :
 | Garmin, récupération | Au réveil (dès que le sommeil de la nuit est disponible, au plus tard 10 h) | Sommeil, FC de repos, Body Battery, stress |
 | Décision du matin | Juste après la récupération | Applique la règle d'allègement du jour, fige la séance, envoie la montre si besoin |
 | Semaine suivante | Dimanche 18 h | Construit la semaine, l'envoie sur la montre, notifie « Ta semaine est prête » |
-| Sauvegarde | Chaque nuit à 3 h 30 | Copie cohérente de la base dans `/app/data/backups` (`VACUUM INTO`), 30 jours gardés. Les sauvegardes de volume Coolify vers un stockage externe protègent si le serveur disparaît |
+| Sauvegarde | Chaque nuit à 3 h 30 | Copie cohérente de la base dans `/app/data/backups` (`VACUUM INTO`), 30 jours gardés. Les sauvegardes de volume Coolify vers un stockage externe protègent si le serveur disparaît. Efface aussi les incidents de plus de 30 jours |
 | Montre | Après chaque changement | Envoie ou met à jour la séance dans le calendrier Garmin, avec nouvel essai en cas d'échec |
 
 - **Notifications** : Web Push (clés VAPID en variables d'environnement). iOS 26 les accepte pour une PWA installée sur l'écran d'accueil. L'abonnement est revérifié à chaque ouverture de l'app.
@@ -58,6 +58,14 @@ Pourquoi ce découpage :
     - `node --import tsx src/cli/users.ts list` : comptes et clés d'accès (id, ajout, dernier usage).
     - `node --import tsx src/cli/users.ts revoke <id>` : supprime une clé d'accès (téléphone perdu) et ferme les sessions du compte.
     - `node --import tsx src/cli/login-link.ts [nom]` : lien de connexion valable 15 min. Avec un nom, il mène ensuite à l'offre Face ID.
+- **Journal des incidents** : Darius ne teste pas sur l'iPhone d'Anna, alors l'app note elle-même ce qui casse, sur son propre serveur, sans service tiers.
+  - Côté app (`apps/web/src/api/journal.ts`, branché dans `main.tsx`, `App.tsx` et `api/http.ts`) : les 50 derniers gestes (écran, feuille ouverte ou fermée, bouton touché par son nom accessible ou `data-crumb`, appel au serveur avec méthode, chemin sans paramètres, statut et durée, app visible ou cachée, réseau, nouvelle version). Un incident part sur erreur JavaScript, promesse rejetée, erreur attrapée par React (avec la pile des composants), fichier d'écran qui ne charge pas, appel en 5xx ou sans réponse en ligne, réponse illisible pour les schémas, appel de plus de 3 s, et « Signaler un souci » (Programme). Chaque incident porte type, message, pile, gestes, route, appareil (navigateur, taille d'écran, PWA installée ou non, iOS ou Android, fichier d'entrée `index-<hash>.js` pour retrouver le build, fuseau, réseau). Envoi groupé par 3 avec `fetch keepalive`, file gardée dans `localStorage` hors ligne et renvoyée au retour du réseau, 20 incidents au plus par chargement, un même message une seule fois.
+  - Jamais envoyé : ce qu'elle tape (Reggie, champs, notes), cookies, jetons, paramètres d'URL, adresses e-mail, longues chaînes opaques (`redact` de `packages/protocol`, appliqué par l'app puis à nouveau par le serveur). Seule exception : la phrase qu'elle écrit elle-même dans « Signaler un souci ».
+  - Côté serveur : `POST /api/incidents` (session, même origine, zod avec tailles plafonnées, 30 requêtes par 10 min et par session), table `incident`. Les erreurs inattendues des routes (`app.onError`) y vont aussi : route, nom, message et pile, jamais le corps de la requête. Gardés 30 jours.
+  - Lecture (dans le conteneur, depuis `/app/apps/server` ; en local, `pnpm --filter @annarrive/server incidents …`) :
+    - `node --import tsx src/cli/incidents.ts` : les incidents des 7 derniers jours, du plus récent au plus ancien, chacun avec sa chronologie de gestes à l'heure de Paris.
+    - `--since 2d` (aussi `12h`, `30m`), `--id <id>` pour un seul, `--json` pour le coller à un agent.
+    - Pour une pile illisible : reconstruire le commit déployé avec `build.sourcemap: "hidden"`, vérifier que le fichier d'entrée a le même nom que `version`, puis lire la ligne dans la carte.
 
 ### apps/garmin-bridge
 
@@ -99,7 +107,7 @@ Pourquoi ce découpage :
 
 ## Données
 
-Tables principales (SQLite) : `profile` (réglages de l'onboarding), `program` (objectif, phases), `planned_session`, `calendar_event` (cours importés, muscu, révisions, indispos), `activity` (courses Garmin), `daily_signal` (sommeil, FC repos, Body Battery, stress), `fitness_estimate` (VDOT et historique), `change_log` (toute modification, avec son annulation), `chat_message`, `push_subscription`.
+Tables principales (SQLite) : `profile` (réglages de l'onboarding), `program` (objectif, phases), `planned_session`, `calendar_event` (cours importés, muscu, révisions, indispos), `activity` (courses Garmin), `daily_signal` (sommeil, FC repos, Body Battery, stress), `fitness_estimate` (VDOT et historique), `change_log` (toute modification, avec son annulation), `chat_message`, `push_subscription`, `incident` (journal des incidents, 30 jours).
 
 Toute modification passe par `change_log` : c'est ce qui rend le bouton Annuler fiable.
 

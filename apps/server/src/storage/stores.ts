@@ -4,8 +4,10 @@ import {
   calendarEventSchema,
   chatMessageSchema,
   dailySignalSchema,
+  deviceSchema,
   feelSchema,
   healthStatusSchema,
+  incidentInputSchema,
   localDateSchema,
   localDateTimeSchema,
   plannedSessionSchema,
@@ -113,6 +115,17 @@ const passkeySchema = z.object({
 });
 export type Passkey = z.infer<typeof passkeySchema>;
 
+/** An incident as kept: what the phone sent (or the server saw), stamped and tied to its account on arrival. */
+const incidentSchema = incidentInputSchema.extend({
+  id: z.string(),
+  type: z.enum([...incidentInputSchema.shape.type.options, "server"]),
+  /** When the server received it; `clientAt` is the phone's own clock. */
+  clientAt: z.string().optional(),
+  device: deviceSchema.optional(),
+  userId: z.string().optional(),
+});
+export type Incident = z.infer<typeof incidentSchema>;
+
 const single = <T extends z.ZodType>(value: T) => z.object({ id: z.string(), value });
 
 function eventSpan(event: CalendarEvent): [string, string] {
@@ -163,6 +176,12 @@ export function createStores(db: DatabaseSync) {
     meta: new DocumentStore(db, "meta", single(z.string())),
     watchSync: new DocumentStore(db, "watch_sync", watchSyncSchema),
     sessionFeel: new DocumentStore(db, "session_feel", sessionFeelSchema),
+    incident: new DocumentStore(
+      db,
+      "incident",
+      incidentSchema,
+      ranged((i) => i.at),
+    ),
   };
 }
 export type Stores = ReturnType<typeof createStores>;

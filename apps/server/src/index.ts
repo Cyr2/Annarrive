@@ -41,7 +41,10 @@ const jobs = createJobs({
   morningDecision: () => services.plan.morningDecision(),
   buildNextWeek: () => services.plan.buildNextWeek(),
   syncWatch: () => services.garmin?.syncWatch(),
-  backup: () => backupDatabase(db, join(config.DATA_DIR, "backups"), dateOf(toParisLocal(systemClock()))),
+  backup: () => {
+    services.incidents.purge();
+    return backupDatabase(db, join(config.DATA_DIR, "backups"), dateOf(toParisLocal(systemClock())));
+  },
 });
 new Scheduler(jobs, systemClock).start();
 
