@@ -258,7 +258,7 @@ describe("chat store", () => {
     const chatHistory = vi
       .fn<Api["chatHistory"]>()
       .mockRejectedValueOnce(new Error("offline"))
-      .mockResolvedValue([{ id: "m1", role: "user", text: "Bonjour" }]);
+      .mockResolvedValue({ day: "2026-11-16", messages: [{ id: "m1", role: "user", text: "Bonjour" }] });
     const chat = createChatStore(async () => ({ chatHistory }) as unknown as Api, vi.fn());
     await chat.getState().loadHistory();
     expect(chat.getState().messages).toHaveLength(1);
@@ -266,6 +266,29 @@ describe("chat store", () => {
     await chat.getState().loadHistory();
     expect(chatHistory).toHaveBeenCalledTimes(2);
     expect(chat.getState().messages.map((m) => m.id)).toEqual(["welcome", "m1"]);
+  });
+
+  it("puts one earlier day at a time above the conversation, until there is none", async () => {
+    const pages: Record<string, Awaited<ReturnType<Api["chatHistory"]>>> = {
+      today: { day: "2026-11-16", earlier: "2026-11-15", messages: [{ id: "t1", role: "user", text: "Ce matin" }] },
+      "2026-11-15": { day: "2026-11-15", earlier: "2026-11-12", messages: [{ id: "y1", role: "user", text: "Hier" }] },
+      "2026-11-12": { day: "2026-11-12", messages: [{ id: "o1", role: "reggie", text: "Jeudi" }] },
+    };
+    const chatHistory = vi.fn<Api["chatHistory"]>(async (day) => pages[day ?? "today"] ?? Promise.reject());
+    const chat = createChatStore(async () => ({ chatHistory }) as unknown as Api, vi.fn());
+    await chat.getState().loadHistory();
+    expect(chat.getState()).toMatchObject({ today: "2026-11-16", earlier: "2026-11-15" });
+    await chat.getState().loadEarlier();
+    await chat.getState().loadEarlier();
+    expect(chat.getState().earlier).toBeUndefined();
+    await chat.getState().loadEarlier();
+    expect(chatHistory).toHaveBeenCalledTimes(3);
+    expect(chat.getState().messages.map((m) => [m.id, m.day])).toEqual([
+      ["o1", "2026-11-12"],
+      ["y1", "2026-11-15"],
+      ["welcome", undefined],
+      ["t1", "2026-11-16"],
+    ]);
   });
 });
 

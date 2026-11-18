@@ -88,7 +88,8 @@ html[data-sheet] main {
     transform: translateY(8px);
   }
 }
-.msg {
+.msg,
+.pop-in:popover-open {
   animation: rise var(--duration-message) var(--ease-out) both;
 }
 .msg-widget {
@@ -203,6 +204,7 @@ html[data-sheet] main {
   .flip-in,
   .roll,
   .msg,
+  .pop-in:popover-open,
   .done-pop,
   .rest-moon {
     animation: fade-in var(--duration-fade) linear both;

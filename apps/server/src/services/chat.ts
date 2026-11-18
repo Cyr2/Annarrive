@@ -12,11 +12,9 @@ import { AppError } from "../errors.ts";
 import type { ReggieRun } from "../reggie/agent.ts";
 import { reggieTools } from "../reggie/tools.ts";
 import type { Stores } from "../storage/stores.ts";
-import { type Clock, dateOf, frenchMoment, toParisLocal } from "../time.ts";
+import { addDays, type Clock, dateOf, frenchMoment, toParisLocal } from "../time.ts";
 import type { PlanService } from "./plan.ts";
 
-/** What the screen shows when it opens the conversation. */
-const HISTORY_SIZE = 100;
 // shortcut: Reggie sees the last messages as text, not the SDK session; switch to `resume` if answers lose the thread.
 const MEMORY_SIZE = 20;
 
@@ -27,6 +25,8 @@ const screens: Record<ChatContext["screen"], string> = {
   after_run: "Après la course",
   session: "Détail de la séance",
 };
+
+const parisDay = (message: ChatMessage): string => dateOf(toParisLocal(new Date(message.at)));
 
 /** The one global conversation with Reggie, stored in `chat_message`. */
 /** What Anna reads when Reggie fails; `retry: false` when Reggie is off on this server (503). */
@@ -51,8 +51,17 @@ export class ChatService {
     this.#clock = clock;
   }
 
-  history(): ChatHistory {
-    return { messages: this.#stores.chatMessage.list().slice(-HISTORY_SIZE) };
+  /** One Paris day of the conversation (today by default), and the day before it that has messages. */
+  history(day = dateOf(toParisLocal(this.#clock()))): ChatHistory {
+    const store = this.#stores.chatMessage;
+    // Paris is UTC+1 or +2: three hours on each side hold the whole day, the filter keeps it exact.
+    const messages = store
+      .overlapping(`${addDays(day, -1)}T21:00`, `${addDays(day, 1)}T03:00`)
+      .filter((m) => parisDay(m) === day);
+    // The UTC midnight falls early on the Paris day: at most a couple of hours of it to step over.
+    let earlier = store.lastBefore(`${day}T00:00`);
+    while (earlier && parisDay(earlier) >= day) earlier = store.lastBefore(earlier.at);
+    return { day, messages, ...(earlier ? { earlier: parisDay(earlier) } : {}) };
   }
 
   /** Typing, then the text as it comes, then the widgets, then the stored message. */

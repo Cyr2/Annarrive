@@ -639,6 +639,10 @@ describe("coach adapter: the programme's plan", () => {
     expect(plan?.phases.map((p) => p.phase)).toEqual(["base", "dev", "spe", "taper"]);
     expect(plan?.phases.reduce((sum, p) => sum + p.weeks, 0)).toBe(17);
     expect(plan?.verdict).toBe("atteignable");
+    expect(plan?.odds).toMatchObject({ weeks: 16 });
+    const odds = plan?.odds;
+    if (!odds) throw new Error("odds expected");
+    expect(odds.gain).toBeCloseTo((odds.currentMin - 52) / odds.currentMin);
 
     await t.call("PUT", "/api/program", { goal: { ...goal, targetMin: 30 } });
     expect((await program(t)).plan?.verdict).toBe("ambitieux");

@@ -4,6 +4,21 @@ import { EMPTY, issue, toPayload } from "../onboarding/onboarding.ts";
 import { runWindow } from "./DayWindow.tsx";
 import { clock, countdown, secondsOf } from "./program.ts";
 import { skyPhase } from "./sky.ts";
+import { targetReasons } from "./TargetTag.tsx";
+
+describe("why a target is ambitious or reachable", () => {
+  const why = { currentMin: 112.4, weeks: 12, gain: 0.08, gainMax: 0.042 };
+  it("says her level, the gain asked and the usual gain, never a time to aim for", () => {
+    expect(targetReasons("ambitious", why)).toEqual([
+      "Aujourd'hui, ton niveau te donne environ 1 h 52 sur cette course.",
+      "Ta cible demande de gagner 8 % sur les 12 semaines d'entraînement du plan.",
+      "En général, on gagne jusqu'à 4 % sur cette durée. Ta cible va au-delà : c'est jouable, avec peu de marge.",
+    ]);
+    expect(targetReasons("reachable", { ...why, gain: 0.004 })[1]).toContain("moins de 1 %");
+    expect(targetReasons("reachable", { ...why, gain: 0.03 })[2]).toContain("Ta cible reste dans cette marge.");
+    expect(targetReasons("reachable", { ...why, gain: -0.02 })).toHaveLength(2);
+  });
+});
 
 describe("target time", () => {
   it("writes and reads a race clock", () => {

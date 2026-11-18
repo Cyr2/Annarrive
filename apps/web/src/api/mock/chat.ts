@@ -1,5 +1,5 @@
-import { relativeMoment } from "../../lib/date.ts";
-import type { Api, ChatInput } from "../client.ts";
+import { addDays, relativeMoment } from "../../lib/date.ts";
+import type { Api, ChatDay, ChatInput } from "../client.ts";
 import type { ChangeResult, ChatEvent, ChatMessage, ProposedSlot, Run, Widget } from "../schemas.ts";
 
 /**
@@ -262,4 +262,23 @@ export async function* reggie(
     }
   }
   yield* fallback(turn) ?? [];
+}
+
+const PAST: [ChatMessage["role"], string][][] = [
+  [
+    ["user", "Je peux décaler le fractionné à jeudi ?"],
+    ["reggie", "Oui : jeudi 18:00 est libre. Je l'ai déplacé, tu peux annuler."],
+  ],
+  [
+    ["user", "Je mange quoi avant une sortie longue ?"],
+    ["reggie", "Un repas léger 2 à 3 h avant, riche en glucides : pâtes, riz, pain. Bois un peu avant de partir."],
+  ],
+];
+
+/** shortcut: two earlier days, yesterday and three days ago, so « Voir la discussion d'hier » has days to show. */
+export function chatDay(today: string, day = today): ChatDay {
+  const days = [addDays(today, -1), addDays(today, -3)];
+  const at = days.indexOf(day);
+  const messages = (PAST[at] ?? []).map(([role, text], i) => ({ id: `${day}-${i}`, role, text }));
+  return { day, messages, earlier: day === today ? days[0] : days[at + 1] };
 }

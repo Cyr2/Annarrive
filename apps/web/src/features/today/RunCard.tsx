@@ -46,7 +46,6 @@ export function RunCard({ run, today }: { run: Run; today: string }) {
           </div>
           {run.lightened && (
             <p className="t-cap m-0 flex items-start gap-2 rounded-row bg-warn-wash px-3 py-2 text-warn-deep">
-              <Icon name="info" size={16} className="mt-px flex-none" />
               {run.lightened}
             </p>
           )}

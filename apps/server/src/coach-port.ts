@@ -20,6 +20,7 @@ import type {
   Program,
   Proposal,
   Slot,
+  TargetOdds,
   Unavailable,
 } from "@annarrive/protocol";
 import type { Activity, FitnessEstimate } from "./storage/stores.ts";
@@ -49,6 +50,7 @@ export type ProgramPlan = {
   firstMonday: string;
   phases: { phase: Phase; weeks: number }[];
   feasibility: FeasibilityClass;
+  odds: TargetOdds;
 };
 
 /** A `Change` or `Warning` of algo.md, reduced to what the screen shows; a change names its session. */

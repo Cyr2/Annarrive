@@ -1,7 +1,6 @@
 import { cx } from "../../lib/cx.ts";
 import { decimal, duration, relativeMoment } from "../../lib/date.ts";
 import { tidy } from "../../lib/text.ts";
-import { Icon } from "../../ui/Icon.tsx";
 import { GroupLabel } from "../../ui/List.tsx";
 import { PaceValue } from "../../ui/PaceValue.tsx";
 import { RoundAction } from "../../ui/RoundAction.tsx";
@@ -39,7 +38,6 @@ export default function SessionSheet({ spec, ...sheet }: SheetProps<"session">) 
         <SessionShape steps={run.steps} tone={run.intensity} className="relative h-11" />
         {run.lightened && (
           <p className="t-cap relative m-0 flex items-start gap-2 rounded-row bg-warn-wash px-3 py-2 text-warn-deep">
-            <Icon name="info" size={16} className="mt-px flex-none" />
             {run.lightened}
           </p>
         )}

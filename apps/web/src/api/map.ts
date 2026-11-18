@@ -449,6 +449,7 @@ export function toProgram({ program, profile, lastSyncAt, days, today, watch }: 
           targetTime: goal.targetMin ? targetTime(goal.targetMin) : undefined,
           startTime: goal.startTime && clockOf(goal.startTime),
           targetTag: plan?.verdict && TARGET_TAGS[plan.verdict],
+          targetWhy: plan?.odds,
         }
       : // Maintenance: "Choisir un objectif" starts from a half marathon in 12 weeks.
         { race: "Semi-marathon", distanceKm: 21.1, date: today },

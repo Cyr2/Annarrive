@@ -157,10 +157,23 @@ export const programViewSchema = programSchema.extend({
       ),
       /** Her target as POST /api/feasibility rates it; absent without a target time. */
       verdict: feasibilitySchema.shape.verdict.unwrap().optional(),
+      /**
+       * What the verdict rests on (P19), with it: her predicted time today, the training weeks before the taper,
+       * the gain her target asks and the usual gain over those weeks (fractions, 0.05 = 5 %).
+       */
+      odds: z
+        .object({
+          currentMin: z.number().positive(),
+          weeks: z.number().int().nonnegative(),
+          gain: z.number(),
+          gainMax: z.number().nonnegative(),
+        })
+        .optional(),
     })
     .optional(),
 });
 export type ProgramView = z.infer<typeof programViewSchema>;
+export type TargetOdds = NonNullable<NonNullable<ProgramView["plan"]>["odds"]>;
 
 /** A level change the coach proposes (algo.md M8), accepted or declined in one tap. */
 export const proposalSchema = z.object({

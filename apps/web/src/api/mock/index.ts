@@ -11,7 +11,7 @@ import {
 } from "../../lib/date.ts";
 import type { Api } from "../client.ts";
 import type { Activity, CalendarEvent, ChangeRow, Item, Program, Run } from "../schemas.ts";
-import { type ReggieMemory, reggie } from "./chat.ts";
+import { chatDay, type ReggieMemory, reggie } from "./chat.ts";
 import { applyChange, blockedDays, changeOptions, isRun, proposeSlots } from "./rules.ts";
 import { seedProgram, seedWeek, strengthEvent } from "./seed.ts";
 import { applyUnavailable } from "./unavailable.ts";
@@ -303,7 +303,7 @@ export function createMockApi({
       if (state.activity) state.activity = { ...state.activity, feel };
     },
     chat: (input) => reggie(api, input, { today, latencyMs, memory }),
-    chatHistory: async () => [],
+    chatHistory: async (day) => chatDay(today, day),
     // No VAPID key: the mock hides the notifications switch, as a server without keys does.
     pushKey: async () => null,
     subscribePush: async () => undefined,

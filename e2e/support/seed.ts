@@ -52,5 +52,14 @@ if (mode === "plan") {
     recurrence: "weekly",
   });
   await services.timetable.setUrl(icsUrl("timetable.ics"));
+  // Three days of talk with Reggie: this morning, yesterday evening, and last Friday.
+  const said = (day: string, time: string, role: "anna" | "reggie", text: string) => {
+    const at = `${day}T${time}:00.000Z`;
+    createStores(db).chatMessage.put({ id: `${at}-${role}`, at, role, text, widgets: [] });
+  };
+  said(addDays(today, -4), "17:00", "anna", "Je mange quoi avant une sortie longue ?");
+  said(addDays(today, -4), "17:01", "reggie", "Un repas léger 2 à 3 h avant.");
+  said(addDays(today, -1), "18:00", "anna", "Je cours avec une amie jeudi.");
+  said(today, "06:30", "anna", "Bien dormi cette nuit.");
 }
 db.close();

@@ -129,7 +129,14 @@ export function seedWeek(monday: string, strength: Strength[]): Item[] {
 
 export function seedProgram(raceDate: string, now: Date): Program {
   return {
-    goal: { race: "Semi-marathon", distanceKm: 21.1, date: raceDate, targetTime: "1:48:00", targetTag: "reachable" },
+    goal: {
+      race: "Semi-marathon",
+      distanceKm: 21.1,
+      date: raceDate,
+      targetTime: "1:48:00",
+      targetTag: "reachable",
+      targetWhy: { currentMin: 110, weeks: 10, gain: 0.018, gainMax: 0.035 },
+    },
     phases: [
       { name: "Base", weeks: 4 },
       { name: "Développement", weeks: 3 },
