@@ -222,6 +222,12 @@ export const coachAdapter: CoachPort = {
         { phase: "taper", weeks: taper },
       ],
       feasibility: plan.feasibility.class,
+      odds: {
+        currentMin: coach.predictTime(st.fitness.vdot, goal.distanceM),
+        weeks: base + dev + spe,
+        gain: plan.feasibility.gain,
+        gainMax: plan.feasibility.gainMax,
+      },
     };
   },
   buildWeek(st, weekStart, now) {

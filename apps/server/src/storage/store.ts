@@ -42,6 +42,14 @@ export class DocumentStore<T extends { id: string }> {
       .map((row) => this.#parse(row));
   }
 
+  /** The latest document starting strictly before `at`. */
+  lastBefore(at: string): T | undefined {
+    const row = this.#db
+      .prepare(`SELECT data FROM ${this.table} WHERE start_at < ? ORDER BY start_at DESC, id DESC LIMIT 1`)
+      .get(at);
+    return row === undefined ? undefined : this.#parse(row);
+  }
+
   /** Validates, then inserts or replaces; returns the stored document. */
   put(doc: unknown): T {
     const valid = this.#schema.parse(doc);

@@ -3,7 +3,6 @@ import { IconTile } from "../../ui/bits.tsx";
 import { ChoiceCard } from "../../ui/ChoiceCard.tsx";
 import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
 import { Chip, SegmentedControl, Slider } from "../../ui/controls.tsx";
-import { Icon } from "../../ui/Icon.tsx";
 import { Group, RowInput, Section, SectionTitle } from "../../ui/List.tsx";
 import { PaceValue } from "../../ui/PaceValue.tsx";
 import { Surface } from "../../ui/Surface.tsx";
@@ -128,7 +127,6 @@ export function PainStep({ pain, zone, onChange }: { pain: number; zone?: string
           pain >= 4 && "rounded-row bg-warn-wash px-3 py-2 text-warn-deep",
         )}
       >
-        {pain >= 4 && <Icon name="info" size={16} className="mt-px flex-none" />}
         {painAdvice(pain)}
       </p>
     </Surface>

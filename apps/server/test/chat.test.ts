@@ -109,6 +109,30 @@ describe("POST /api/chat", () => {
   });
 });
 
+describe("GET /api/chat", () => {
+  it("gives one Paris day at a time, today first, with the day to load next", async () => {
+    const t = await ready(scripted([]));
+    const say = (at: string, text: string) => t.stores.chatMessage.put({ id: at, at, role: "anna", text, widgets: [] });
+    say("2026-11-13T10:00:00.000Z", "vendredi");
+    say("2026-11-15T22:30:00.000Z", "dimanche 23:30");
+    say("2026-11-15T23:30:00.000Z", "lundi 0:30");
+    say("2026-11-16T06:30:00.000Z", "lundi 7:30");
+    const day = async (query = "") =>
+      chatHistorySchema.parse(await (await t.request("GET", `/api/chat${query}`)).json());
+
+    const today = await day();
+    expect(today).toMatchObject({ day: "2026-11-16", earlier: "2026-11-15" });
+    expect(today.messages.map((m) => m.text)).toEqual(["lundi 0:30", "lundi 7:30"]);
+    const sunday = await day("?day=2026-11-15");
+    expect(sunday).toMatchObject({ earlier: "2026-11-13" });
+    expect(sunday.messages.map((m) => m.text)).toEqual(["dimanche 23:30"]);
+    const friday = await day("?day=2026-11-13");
+    expect(friday.messages.map((m) => m.text)).toEqual(["vendredi"]);
+    expect(friday.earlier).toBeUndefined();
+    expect((await t.request("GET", "/api/chat?day=hier")).status).toBe(400);
+  });
+});
+
 describe("Changer, Pas dispo and Ça va mieux routes", () => {
   it("share the services Reggie uses", async () => {
     const t = await ready(scripted([]));

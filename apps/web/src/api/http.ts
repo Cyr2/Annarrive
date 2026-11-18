@@ -333,7 +333,10 @@ export function createHttpApi(
         yield* toChatEvents(parsed.data, draft);
       }
     },
-    chatHistory: async () => (await get("/chat", chatHistorySchema)).messages.flatMap(toMessages),
+    async chatHistory(day) {
+      const page = await get(day ? `/chat?day=${day}` : "/chat", chatHistorySchema);
+      return { day: page.day, earlier: page.earlier, messages: page.messages.flatMap(toMessages) };
+    },
 
     pushKey: async () => (await get("/push/key", pushKeySchema)).publicKey,
     async subscribePush(subscription) {

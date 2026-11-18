@@ -38,6 +38,8 @@ export type UnavailableInput = {
 export type GoalInput = { race: string; distanceKm: number; date: string; targetTime?: string; startTime?: string };
 
 export type ChatInput = { text: string; context?: ChatContext };
+/** One day of the conversation, and the day before it that has messages (absent when none). */
+export type ChatDay = { day: string; messages: ChatMessage[]; earlier?: string };
 
 /**
  * Everything the screens ask the server. The HTTP client and the in-memory mock both implement it,
@@ -86,7 +88,8 @@ export interface Api {
 
   /** Reggie answers as a stream: status updates ("Je vérifie"), then messages (an id seen again replaces it). */
   chat(input: ChatInput): AsyncIterable<ChatEvent>;
-  chatHistory(): Promise<ChatMessage[]>;
+  /** Today without `day`. */
+  chatHistory(day?: string): Promise<ChatDay>;
 
   /** Null when the server has no VAPID keys: the notifications switch then stays hidden. */
   pushKey(): Promise<string | null>;

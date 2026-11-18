@@ -7,20 +7,37 @@ import { useChat } from "./store.ts";
 /** The same journeys as the buttons of Aujourd'hui, one tap away. */
 export const SHORTCUTS = ["Je suis malade", "Plus court", "Déplacer à demain", "Pourquoi cette allure ?"];
 
+type Props = { onHeight: (height: number) => void; onTyping: (typing: boolean) => void; shortcuts: boolean };
+
 /**
- * Shortcuts and the message field, floating just above the tab bar. It reports its height, so the
- * conversation always keeps its last widget clear of it.
+ * Shortcuts and the message field, floating just above the tab bar. While she types, the tab bar steps aside
+ * and the field rides on the keyboard, as in Messages. It reports its height and whether she types, so the
+ * conversation always keeps its last message clear of it.
  */
-export function Composer({ onHeight, shortcuts }: { onHeight: (height: number) => void; shortcuts: boolean }) {
+export function Composer({ onHeight, onTyping, shortcuts }: Props) {
   const send = useChat((s) => s.send);
   const busy = useChat((s) => s.status !== "idle");
   const [text, setText] = useState("");
+  const [focused, setFocused] = useState(false);
   const box = useRef<HTMLDivElement>(null);
-  // iOS: the keyboard shrinks the visual viewport only; the field rides on top of it instead of under it.
+  // The keyboard covers the bottom of the page: the field sits on top of what is left visible.
   const area = useVisibleArea();
-  const above = area ? `${window.innerHeight - area.top - area.height + 8}px` : undefined;
+  const typing = focused && area !== undefined;
+  const above = area && typing ? `${window.innerHeight - area.top - area.height + 8}px` : undefined;
   const report = useRef(onHeight);
   report.current = onHeight;
+  const reportTyping = useRef(onTyping);
+  reportTyping.current = onTyping;
+
+  useEffect(() => {
+    reportTyping.current(typing);
+    if (!typing) return;
+    // The tab bar hides while the keyboard is up (styles/app.css), as iOS and Android apps do.
+    document.documentElement.dataset.typing = "";
+    return () => {
+      delete document.documentElement.dataset.typing;
+    };
+  }, [typing]);
 
   useEffect(() => {
     const element = box.current;
@@ -60,6 +77,8 @@ export function Composer({ onHeight, shortcuts }: { onHeight: (height: number) =
         </div>
       )}
       <form
+        onFocus={(e) => setFocused(e.target instanceof HTMLInputElement)}
+        onBlur={() => setFocused(false)}
         onSubmit={(e) => {
           e.preventDefault();
           submit(text);
