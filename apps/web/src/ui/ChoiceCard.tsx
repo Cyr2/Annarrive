@@ -44,7 +44,7 @@ export function ChoiceCard({ on, tone = "action", layout = "row", flat = false, 
           layout === "tile" ? "absolute top-3 right-3" : "ml-auto",
         )}
       >
-        {on && <Icon name="check" size={14} stroke={3} />}
+        <Icon name="check" size={14} stroke={3} className="choice-check" />
       </span>
     </button>
   );

@@ -1,5 +1,6 @@
 import "./week.css";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
+import { motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { useSearch } from "wouter";
 import type { Week } from "../../api/schemas.ts";
@@ -15,6 +16,7 @@ import { usePlan } from "../plan/store.ts";
 import { useSheet } from "../sheets/store.ts";
 import { RefreshRow } from "./RefreshRow.tsx";
 import { useWeekDrag } from "./useWeekDrag.ts";
+import { useWeekSwipe } from "./useWeekSwipe.ts";
 import { WeekDay } from "./WeekDay.tsx";
 import { ItemRow } from "./WeekItem.tsx";
 import { stripOf, weekDays, weekHeading } from "./week.ts";
@@ -62,6 +64,7 @@ export default function WeekScreen() {
   const [offset, setOffset] = useState(() => (focus ? Math.floor(daysBetween(mondayOf(today), focus) / 7) : 0));
   const { week, fresh, failed } = useShownWeek(offset);
   const drag = useWeekDrag(fresh, offset, today);
+  const swipe = useWeekSwipe((step) => setOffset((current) => current + step));
   useEffect(() => {
     if (focus && week) document.getElementById(`day-${focus}`)?.scrollIntoView({ block: "start" });
   }, [focus, week]);
@@ -71,76 +74,82 @@ export default function WeekScreen() {
   const add = () => show({ kind: "add", date: fresh?.monday });
   return (
     <Screen>
-      <header className="flex flex-col gap-3">
-        <h1 className="sr-only-label">Semaine</h1>
-        <div className="flex items-center gap-0.5">
-          <IconButton icon="chevronLeft" label="Semaine précédente" onClick={() => setOffset(offset - 1)} />
-          <p aria-live="polite" className="t-range m-0 min-w-0 flex-1 text-center whitespace-nowrap">
-            {heading?.range ?? " "}
-          </p>
-          <IconButton icon="chevronRight" label="Semaine suivante" onClick={() => setOffset(offset + 1)} />
-          {!week?.readOnly && (
-            <IconButton icon="plus" label="Ajouter" variant="tinted" tone="action" className="ml-2" onClick={add} />
-          )}
-        </div>
-        {heading && (
-          <WeekStrip
-            days={stripOf(days, (day) => `#day-${day.date}`)}
-            label="Jours de la semaine"
-            footer={
-              <p className="t-sub m-0 flex flex-wrap justify-between gap-x-3 px-4">
-                <span className="t-label font-semibold text-ink">
-                  {heading.load}
-                  {heading.time && <span className="font-normal text-ink-2"> · {heading.time}</span>}
-                </span>
-                <span>{week?.readOnly ? "Semaine passée" : heading.position}</span>
-              </p>
-            }
-          />
-        )}
-      </header>
-
-      {!week && <WeekWaiting failed={failed} offset={offset} />}
-
-      {week && week.items.length === 0 && (
-        <EmptyState
-          icon="week"
-          title="Rien de prévu pour l'instant"
-          action={!week.readOnly && <Button onClick={add}>Ajouter</Button>}
-        >
-          Ta semaine se remplit le dimanche soir.
-        </EmptyState>
-      )}
-
-      {week && week.items.length > 0 && (
-        <DndContext {...drag.context}>
-          <div
-            data-dragging={Boolean(drag.active)}
-            aria-busy={!fresh}
-            className={cx("flex flex-col gap-5", !fresh && "week-stale")}
-          >
-            {days.map((day) => (
-              <WeekDay
-                key={day.date}
-                day={day}
-                readOnly={week.readOnly || !fresh}
-                dragging={Boolean(drag.active)}
-                target={drag.targets.find((t) => t.date === day.date)}
-              />
-            ))}
+      <div ref={swipe.ref} className="flex touch-pan-y flex-col gap-6">
+        <header className="flex flex-col gap-3">
+          <h1 className="sr-only-label">Semaine</h1>
+          <div className="flex items-center gap-0.5">
+            <IconButton icon="chevronLeft" label="Semaine précédente" onClick={() => setOffset(offset - 1)} />
+            <p aria-live="polite" className="t-range m-0 min-w-0 flex-1 truncate text-center">
+              {heading?.range ?? " "}
+            </p>
+            <IconButton icon="chevronRight" label="Semaine suivante" onClick={() => setOffset(offset + 1)} />
+            {!week?.readOnly && (
+              <IconButton icon="plus" label="Ajouter" variant="tinted" tone="action" className="ml-2" onClick={add} />
+            )}
           </div>
-          <DragOverlay dropAnimation={drag.dropAnimation}>
-            {drag.active && <ItemRow item={drag.active} lifted />}
-          </DragOverlay>
-        </DndContext>
-      )}
+          {heading && (
+            <motion.div style={{ x: swipe.x }}>
+              <WeekStrip
+                days={stripOf(days, (day) => `#day-${day.date}`)}
+                label="Jours de la semaine"
+                footer={
+                  <p className="t-sub m-0 flex flex-wrap justify-between gap-x-3 px-4">
+                    <span className="t-label font-semibold text-ink">
+                      {heading.load}
+                      {heading.time && <span className="font-normal text-ink-2"> · {heading.time}</span>}
+                    </span>
+                    <span>{week?.readOnly ? "Semaine passée" : heading.position}</span>
+                  </p>
+                }
+              />
+            </motion.div>
+          )}
+        </header>
 
-      {week && !week.readOnly && week.items.length > 0 && (
-        <p className="t-cap m-0 px-4 text-center">
-          Appuie longuement sur une séance pour la glisser vers un autre jour.
-        </p>
-      )}
-      {week && <RefreshRow checkedAt={week.timetableCheckedAt} change={week.timetableChange} />}
+        <motion.div style={{ x: swipe.x }} className="flex flex-col gap-6">
+          {!week && <WeekWaiting failed={failed} offset={offset} />}
+
+          {week && week.items.length === 0 && (
+            <EmptyState
+              icon="week"
+              title="Rien de prévu pour l'instant"
+              action={!week.readOnly && <Button onClick={add}>Ajouter</Button>}
+            >
+              Ta semaine se remplit le dimanche soir.
+            </EmptyState>
+          )}
+
+          {week && week.items.length > 0 && (
+            <DndContext {...drag.context}>
+              <div
+                data-dragging={Boolean(drag.active)}
+                aria-busy={!fresh}
+                className={cx("flex flex-col gap-5", !fresh && "week-stale")}
+              >
+                {days.map((day) => (
+                  <WeekDay
+                    key={day.date}
+                    day={day}
+                    readOnly={week.readOnly || !fresh}
+                    dragging={Boolean(drag.active)}
+                    target={drag.targets.find((t) => t.date === day.date)}
+                  />
+                ))}
+              </div>
+              <DragOverlay dropAnimation={drag.dropAnimation}>
+                {drag.active && <ItemRow item={drag.active} lifted />}
+              </DragOverlay>
+            </DndContext>
+          )}
+
+          {week && !week.readOnly && week.items.length > 0 && (
+            <p className="t-cap m-0 px-4 text-center">
+              Appuie longuement sur une séance pour la glisser vers un autre jour.
+            </p>
+          )}
+          {week && <RefreshRow checkedAt={week.timetableCheckedAt} change={week.timetableChange} />}
+        </motion.div>
+      </div>
     </Screen>
   );
 }

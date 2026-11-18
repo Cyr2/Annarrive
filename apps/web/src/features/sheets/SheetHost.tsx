@@ -13,6 +13,10 @@ export type SheetProps<K extends SheetSpec["kind"]> = {
   busy: boolean;
   /** False when it took the place of another sheet: it is already up. */
   appear: boolean;
+  /** Opened from another sheet: Retour goes back to it. */
+  previous?: () => void;
+  /** A sheet opened from this one is on screen: this one waits, hidden, with its state. */
+  covered: boolean;
 };
 
 type Kind = SheetSpec["kind"];
@@ -76,19 +80,26 @@ function failed(spec: SheetSpec) {
 }
 
 export function SheetHost() {
-  const { current, open, chained, close } = useSheet();
+  const { current, below, open, chained, close, back } = useSheet();
   const busy = usePlan((s) => s.busy);
   if (!current) return null;
-  return (
-    <ChunkBoundary key={current.kind} fallback={() => null} onError={() => failed(current)}>
-      <Suspense fallback={null}>
-        {render(current, {
-          open,
-          busy,
-          appear: !chained,
-          onOpenChange: (next) => (next ? undefined : close()),
-        })}
-      </Suspense>
-    </ChunkBoundary>
-  );
+  // Keyed by place in the stack: a sheet keeps its state while another one covers it.
+  return [...below, current].map((spec, index) => {
+    const covered = index < below.length;
+    return (
+      // biome-ignore lint/suspicious/noArrayIndexKey: the place in the stack is what identifies a sheet here.
+      <ChunkBoundary key={`${index}:${spec.kind}`} fallback={() => null} onError={() => failed(spec)}>
+        <Suspense fallback={null}>
+          {render(spec, {
+            open,
+            busy,
+            covered,
+            appear: !chained,
+            previous: index > 0 ? back : undefined,
+            onOpenChange: (next) => (next ? undefined : close()),
+          })}
+        </Suspense>
+      </ChunkBoundary>
+    );
+  });
 }

@@ -78,7 +78,7 @@ type SelectProps<T extends string> = {
 export function RowSelect<T extends string>({ label, value, options, onChange }: SelectProps<T>) {
   const id = useId();
   return (
-    <div className="row focus-within:rounded-row focus-within:outline-2 focus-within:outline-action">
+    <div className="row field-ring">
       <label htmlFor={id} className="t-body">
         {label}
       </label>
@@ -142,7 +142,7 @@ export function RowInput({
   const id = useId();
   const text = shown(type, value);
   return (
-    <div className="row relative focus-within:rounded-row focus-within:outline-2 focus-within:outline-action">
+    <div className="row field-ring">
       <label htmlFor={id} className="t-body flex-none">
         {label}
       </label>

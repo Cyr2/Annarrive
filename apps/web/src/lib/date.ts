@@ -77,12 +77,30 @@ export function longDate(iso: string): string {
   return `${dayName(iso).toLowerCase()} ${d} ${MONTHS[m - 1]}`;
 }
 
-/** "16 au 22 novembre", or "30 novembre au 6 décembre" across two months. */
+/** French abbreviations: "juin", "juil.", "sept.". */
+const SHORT_MONTHS = [
+  "janv.",
+  "févr.",
+  "mars",
+  "avr.",
+  "mai",
+  "juin",
+  "juil.",
+  "août",
+  "sept.",
+  "oct.",
+  "nov.",
+  "déc.",
+];
+
+/** "16 au 22 novembre", or "30 nov. au 6 déc." across two months: two full names would not fit at 320 px. */
 export function weekRange(monday: string): string {
   const sunday = addDays(monday, 6);
   const [, m1, d1] = parts(monday);
   const [, m2, d2] = parts(sunday);
-  return m1 === m2 ? `${d1} au ${d2} ${MONTHS[m2 - 1]}` : `${d1} ${MONTHS[m1 - 1]} au ${d2} ${MONTHS[m2 - 1]}`;
+  return m1 === m2
+    ? `${d1} au ${d2} ${MONTHS[m2 - 1]}`
+    : `${d1} ${SHORT_MONTHS[m1 - 1]} au ${d2} ${SHORT_MONTHS[m2 - 1]}`;
 }
 
 /** How a day is named relative to today: "Aujourd'hui", "Demain", "Mercredi", "Lundi 23". */
