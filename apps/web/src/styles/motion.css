@@ -21,12 +21,6 @@
   animation: busy var(--duration-typing) var(--ease-in-out) infinite;
 }
 
-/* A sheet is up: the page behind steps back, iOS style, its scale written frame by frame from the sheet's position
-   (ui/Sheet.tsx). The pivot stays after the sheet has gone, so the page never jumps on its way back. */
-main {
-  transform-origin: var(--recede-origin, 50% 0);
-}
-
 /* A choice that becomes selected (segments, options, switches). */
 .select-anim {
   transition:

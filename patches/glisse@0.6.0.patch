@@ -1,5 +1,5 @@
 diff --git a/dist/index.cjs b/dist/index.cjs
-index f62917dd478b60076df29d2c3b44ccb60ba2c562..074e5783815415433ac63ce01d28d94ceb9410bf 100644
+index f62917dd478b60076df29d2c3b44ccb60ba2c562..f958afb4a0c47d7d77f7e540ffe978b4a60f38ea 100644
 --- a/dist/index.cjs
 +++ b/dist/index.cjs
 @@ -1978,6 +1978,58 @@ function parseColour(context, colour) {
@@ -93,7 +93,31 @@ index f62917dd478b60076df29d2c3b44ccb60ba2c562..074e5783815415433ac63ce01d28d94c
  }
  const repaints = /* @__PURE__ */ new Set();
  let unwatch;
-@@ -2070,7 +2123,8 @@ function refitting(element, fit, properties) {
+@@ -2039,9 +2092,22 @@ function onThemeChange(repaint) {
+ 		unwatch = void 0;
+ 	};
+ }
++/**
++* Annarrivé: a rim map takes a frame or more on a phone. It waits for a long idle period, one with no frame due: never
++* while a sheet slides or follows the finger (an idle period inside an animation ends at the next frame, under 17 ms).
++* After 2 s it runs anyway, so an endless animation cannot hold it back.
++*/
++const LONG_IDLE_MS = 20;
++const IDLE_LIMIT_MS = 2e3;
+ function whenIdle(callback) {
+ 	if ("requestIdleCallback" in window) {
+-		const handle = requestIdleCallback(callback, { timeout: 500 });
++		const since = performance.now();
++		let handle;
++		const wait = (deadline) => {
++			if (deadline.timeRemaining() < LONG_IDLE_MS && performance.now() - since < IDLE_LIMIT_MS) handle = requestIdleCallback(wait);
++			else callback();
++		};
++		handle = requestIdleCallback(wait);
+ 		return () => cancelIdleCallback(handle);
+ 	}
+ 	const handle = setTimeout(callback, 50);
+@@ -2070,7 +2136,8 @@ function refitting(element, fit, properties) {
  	};
  }
  /** Only Chromium applies SVG filters to the live backdrop. */
@@ -103,7 +127,7 @@ index f62917dd478b60076df29d2c3b44ccb60ba2c562..074e5783815415433ac63ce01d28d94c
  const MARK = "data-glisse-backdrop";
  function visibleBox(element) {
  	let { left, top, right, bottom } = element.getBoundingClientRect();
-@@ -2149,7 +2203,19 @@ function useRefraction(ref, selection = false, bendsBackdrop = true) {
+@@ -2149,7 +2216,19 @@ function useRefraction(ref, selection = false, bendsBackdrop = true) {
  	(0, react.useEffect)(() => {
  		const element = ref.current;
  		if (!element) return;
@@ -125,7 +149,7 @@ index f62917dd478b60076df29d2c3b44ccb60ba2c562..074e5783815415433ac63ce01d28d94c
  		const fitting = source ? bend(element, source) : refitting(element, () => {
  			paintRim(element);
 diff --git a/dist/index.js b/dist/index.js
-index 28f6a21d345f76bb92e6d0ba7c95013bec7165cd..89c20709baaa6b301923812323aa24332934bcfa 100644
+index 28f6a21d345f76bb92e6d0ba7c95013bec7165cd..9e9b930c2bb0cb6ef273f48132ee62525def0161 100644
 --- a/dist/index.js
 +++ b/dist/index.js
 @@ -1977,6 +1977,58 @@ function parseColour(context, colour) {
@@ -219,7 +243,31 @@ index 28f6a21d345f76bb92e6d0ba7c95013bec7165cd..89c20709baaa6b301923812323aa2433
  }
  const repaints = /* @__PURE__ */ new Set();
  let unwatch;
-@@ -2069,7 +2122,8 @@ function refitting(element, fit, properties) {
+@@ -2038,9 +2091,22 @@ function onThemeChange(repaint) {
+ 		unwatch = void 0;
+ 	};
+ }
++/**
++* Annarrivé: a rim map takes a frame or more on a phone. It waits for a long idle period, one with no frame due: never
++* while a sheet slides or follows the finger (an idle period inside an animation ends at the next frame, under 17 ms).
++* After 2 s it runs anyway, so an endless animation cannot hold it back.
++*/
++const LONG_IDLE_MS = 20;
++const IDLE_LIMIT_MS = 2e3;
+ function whenIdle(callback) {
+ 	if ("requestIdleCallback" in window) {
+-		const handle = requestIdleCallback(callback, { timeout: 500 });
++		const since = performance.now();
++		let handle;
++		const wait = (deadline) => {
++			if (deadline.timeRemaining() < LONG_IDLE_MS && performance.now() - since < IDLE_LIMIT_MS) handle = requestIdleCallback(wait);
++			else callback();
++		};
++		handle = requestIdleCallback(wait);
+ 		return () => cancelIdleCallback(handle);
+ 	}
+ 	const handle = setTimeout(callback, 50);
+@@ -2069,7 +2135,8 @@ function refitting(element, fit, properties) {
  	};
  }
  /** Only Chromium applies SVG filters to the live backdrop. */
@@ -229,7 +277,7 @@ index 28f6a21d345f76bb92e6d0ba7c95013bec7165cd..89c20709baaa6b301923812323aa2433
  const MARK = "data-glisse-backdrop";
  function visibleBox(element) {
  	let { left, top, right, bottom } = element.getBoundingClientRect();
-@@ -2148,7 +2202,19 @@ function useRefraction(ref, selection = false, bendsBackdrop = true) {
+@@ -2148,7 +2215,19 @@ function useRefraction(ref, selection = false, bendsBackdrop = true) {
  	useEffect(() => {
  		const element = ref.current;
  		if (!element) return;

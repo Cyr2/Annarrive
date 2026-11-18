@@ -163,7 +163,7 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
-  glisse@0.6.0: 7d5b0b80fd303e7fb2960fe1e6b3b8ae7bda946fb89fe0e75635d0b71f41b384
+  glisse@0.6.0: c763aab09b59c43e188b166b20653d1216e449cf7aac876e7446f82b3917683c
 
 importers:
 
@@ -247,7 +247,7 @@ importers:
         version: 14.0.0
       glisse:
         specifier: ^0.6.0
-        version: 0.6.0(patch_hash=7d5b0b80fd303e7fb2960fe1e6b3b8ae7bda946fb89fe0e75635d0b71f41b384)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 0.6.0(patch_hash=c763aab09b59c43e188b166b20653d1216e449cf7aac876e7446f82b3917683c)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       lucide-react:
         specifier: ^1.73.0
         version: 1.73.0(@types/react@19.3.0)(react@19.3.1)
@@ -7057,7 +7057,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  glisse@0.6.0(patch_hash=7d5b0b80fd303e7fb2960fe1e6b3b8ae7bda946fb89fe0e75635d0b71f41b384)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+  glisse@0.6.0(patch_hash=c763aab09b59c43e188b166b20653d1216e449cf7aac876e7446f82b3917683c)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
       react: 19.3.1
       react-dom: 19.3.1(react@19.3.1)
