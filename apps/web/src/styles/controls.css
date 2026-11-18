@@ -151,6 +151,37 @@
   background-color: var(--color-action);
   box-shadow: none;
 }
+/* Soft, like the rest of the motion: the card gives under the finger and springs back, the check lands with a
+   small spring instead of appearing. */
+.choice.press {
+  transition:
+    transform var(--duration-settle) var(--ease-spring-bounce),
+    background-color var(--duration-select) var(--ease-out),
+    box-shadow var(--duration-select) var(--ease-out),
+    opacity var(--duration-select) var(--ease-out);
+}
+.choice.press:active:not(:disabled) {
+  transform: scale(0.98);
+  transition-duration: var(--duration-press), var(--duration-select), var(--duration-select), var(--duration-select);
+  transition-timing-function: var(--ease-out);
+}
+.choice-check {
+  opacity: 0;
+  transform: scale(0.4);
+  transition:
+    transform var(--duration-settle) var(--ease-spring-bounce),
+    opacity var(--duration-select) var(--ease-out);
+}
+.choice-mark[data-on="true"] .choice-check {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .choice.press:active:not(:disabled),
+  .choice-check {
+    transform: none;
+  }
+}
 .choice[data-tone="reggie"] .choice-mark[data-on="true"] {
   background-color: var(--color-reggie);
 }

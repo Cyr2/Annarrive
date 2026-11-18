@@ -64,7 +64,7 @@ function Timetable() {
   return (
     <Section footnote="Pas encore relié. Colle le lien ICS de ton emploi du temps, ou fais-le plus tard dans Programme.">
       <Group>
-        <label htmlFor={id} className="row focus-within:rounded-row focus-within:outline-2 focus-within:outline-action">
+        <label htmlFor={id} className="row field-ring">
           <span className="sr-only-label">Lien de l'emploi du temps</span>
           <input
             id={id}
@@ -76,7 +76,7 @@ function Timetable() {
             placeholder="Ex. : https://ent.univ.fr/agenda.ics"
             value={draft.icsUrl}
             onChange={(e) => update({ icsUrl: e.target.value })}
-            className="t-body min-h-11 w-full min-w-0 border-0 bg-transparent text-ink outline-none placeholder:text-ink-3"
+            className="t-body min-h-11 w-full min-w-0 truncate border-0 bg-transparent text-left text-ink outline-none placeholder:text-ink-3"
           />
         </label>
       </Group>

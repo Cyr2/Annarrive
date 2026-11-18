@@ -13,7 +13,13 @@ const PATHS = {
   move: <path d="M7 4L3 8l4 4M3 8h12M17 20l4-4-4-4M21 16H9" />,
   change: <path d="M20 11a8 8 0 0 0-14.9-3M4 13a8 8 0 0 0 14.9 3M4 4v4h4M20 20v-4h-4" />,
   close: <path d="M6 6l12 12M18 6L6 18" />,
-  run: <path d="M13 4.5a1.5 1.5 0 1 0 0-.01M10 9l3-1 3 3 3 1M13 8l-2 5 3 3-1 5M11 13l-4 1-2 4" />,
+  // Tabler's runner (MIT): head, arms in swing, a bent back leg and a front leg landing.
+  run: (
+    <>
+      <circle cx="13" cy="4" r="1.5" />
+      <path d="M4 17l5 1 .75-1.5M15 21v-4l-4-3 1-6M7 12V9l5-1 3 3 3 1" />
+    </>
+  ),
   class: <path d="M4 5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2V5zM4 19a2 2 0 0 1 2-2h12" />,
   revision: <path d="M15 4l5 5-11 11H4v-5L15 4z" />,
   strength: <path d="M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12" />,

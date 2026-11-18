@@ -33,7 +33,10 @@ describe("date", () => {
     expect(dayTitle("2026-11-16")).toBe("Lundi 16");
     expect(longDate("2027-01-17")).toBe("dimanche 17 janvier");
     expect(weekRange("2026-11-16")).toBe("16 au 22 novembre");
-    expect(weekRange("2026-11-30")).toBe("30 novembre au 6 décembre");
+    // Across two months the names shorten, so the range stays on one line between the arrows at 320 px.
+    expect(weekRange("2026-11-30")).toBe("30 nov. au 6 déc.");
+    expect(weekRange("2026-06-29")).toBe("29 juin au 5 juil.");
+    expect(weekRange("2026-09-28")).toBe("28 sept. au 4 oct.");
   });
 
   it("says when, relative to today", () => {

@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useEffect, useRef } from "react";
+import { Suspense, useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { Redirect, Route, Switch, useLocation } from "wouter";
 import { crumb } from "./api/journal.ts";
 import { useSignedOut } from "./api/session.ts";
@@ -98,6 +98,22 @@ function useFreshPlan() {
   }, []);
 }
 
+/** Another screen starts at its top, as a native tab does; Back alone finds a page where the browser left it. */
+function useTopOnNavigate(location: string) {
+  const popped = useRef<string | null>(null);
+  useEffect(() => {
+    const onPop = () => {
+      popped.current = window.location.pathname;
+    };
+    addEventListener("popstate", onPop);
+    return () => removeEventListener("popstate", onPop);
+  }, []);
+  useLayoutEffect(() => {
+    if (popped.current !== location) scrollTo(0, 0);
+    popped.current = null;
+  }, [location]);
+}
+
 /** A screen whose file did not load: the rest of the app stays, with Réessayer. */
 const screenFailed = (retry: () => void) => (
   <Screen>
@@ -140,6 +156,7 @@ export function App() {
       );
   }, []);
   useFreshPlan();
+  useTopOnNavigate(location);
   // The journal's breadcrumbs: which screen, which sheet (api/journal.ts).
   useEffect(() => crumb("route", location), [location]);
   useEffect(
