@@ -31,6 +31,9 @@ jobs:
         run: pnpm typecheck
       - name: Tests with coverage thresholds
         run: pnpm test
+      # Closed-loop bench of the training algorithm (about 4 s): fails when a score drops below eval/baseline.json.
+      - name: Algorithm bench
+        run: pnpm --filter @annarrive/coach eval
       - name: Build
         run: pnpm build
       - name: Lighthouse (mobile, every category at least 95)
