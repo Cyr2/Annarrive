@@ -329,10 +329,11 @@ export function createApp({ services, sessionSecret, webDist }: AppOptions): Hon
     // Only the PWA's files: compressing the API would hold back Reggie's stream.
     app.use("/*", compress());
     // Hashed names change with their content, so a phone never asks for them twice (the HTML fallback excepted).
-    app.use("/assets/*", async (c, next) => {
+    // Everything else (sw.js, the shell, the manifest) must revalidate: Cloudflare otherwise keeps sw.js for hours and the update never reaches the phone.
+    app.use("/*", async (c, next) => {
       await next();
-      if (c.res.ok && !c.res.headers.get("content-type")?.startsWith("text/html"))
-        c.header("Cache-Control", "public, max-age=31536000, immutable");
+      const hashed = c.req.path.startsWith("/assets/") && !c.res.headers.get("content-type")?.startsWith("text/html");
+      c.header("Cache-Control", c.res.ok && hashed ? "public, max-age=31536000, immutable" : "no-cache");
     });
     app.use("/*", serveStatic({ root: webDist }));
     // Client-side routes all land on the app shell.
