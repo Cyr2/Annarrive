@@ -174,6 +174,21 @@ export function moveItem(week: Week, id: string, slot: Slot): Week {
   };
 }
 
+/**
+ * What changed between two versions of the same week, to show it: the items now on another day or hour, cancelled
+ * or back, or new. A first read, or another week, changes nothing.
+ */
+export function changedIds(before: Week, after: Week): string[] {
+  if (before.monday !== after.monday) return [];
+  const old = new Map(before.items.map((item) => [item.id, item]));
+  return after.items
+    .filter((item) => {
+      const was = old.get(item.id);
+      return !was || was.date !== item.date || was.start !== item.start || cancelled(was) !== cancelled(item);
+    })
+    .map((item) => item.id);
+}
+
 /** Under "Emploi du temps" after a refresh: "Relu à l'instant : 1 cours annulé jeudi". */
 export function refreshLine(summary: string | undefined): string {
   return summary ? `Relu à l'instant : ${summary}` : "Relu à l'instant, rien n'a changé";

@@ -137,6 +137,8 @@
   --duration-sheet: 350ms;
   --duration-toast: 400ms;
   --duration-fade: 150ms;
+  /* One pulse of a row that changed in the week: 700 ms of glow, then 150 ms of rest before the second. */
+  --duration-glow: 850ms;
   --delay-widget: 60ms;
   --duration-typing: 1.2s;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);

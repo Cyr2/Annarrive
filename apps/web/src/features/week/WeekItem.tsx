@@ -70,6 +70,7 @@ export function DraggableItem({ item, disabled, past }: { item: Item; disabled: 
     <button
       ref={setNodeRef}
       type="button"
+      data-row={item.id}
       {...attributes}
       {...listeners}
       aria-roledescription={disabled ? undefined : "séance déplaçable"}

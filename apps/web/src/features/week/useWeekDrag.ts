@@ -13,6 +13,7 @@ import { flushSync } from "react-dom";
 import type { Item, MoveOptions, Week } from "../../api/schemas.ts";
 import { usePlan } from "../plan/store.ts";
 import { moveOptions } from "../useLoad.ts";
+import { markDropped } from "./useWeekMotion.ts";
 import { type DropTarget, dropTargets, moveItem } from "./week.ts";
 
 // Long press 0.3 s before the session lifts, so a tap still opens it and a swipe still scrolls.
@@ -59,6 +60,7 @@ export function useWeekDrag(week: Week | undefined, offset: number, today: strin
     if (!item || !week || !target) return;
     const slot = { date: target.date, start: target.start };
     // Moved on screen at once, so the drop animation lands on the new slot; the server confirms after.
+    markDropped(item.id);
     flushSync(() => usePlan.setState((s) => ({ weeks: { ...s.weeks, [offset]: moveItem(week, item.id, slot) } })));
     void usePlan.getState().apply((client) => client.move(item.id, slot, item.kind === "run" ? undefined : item));
   };

@@ -1,0 +1,99 @@
+import {
+  Children,
+  isValidElement,
+  type ReactElement,
+  type ReactNode,
+  useLayoutEffect,
+  useReducer,
+  useRef,
+} from "react";
+import { cx } from "../lib/cx.ts";
+import { reducedMotion, SLIDE_CARD, slideFrom } from "../lib/motion.ts";
+
+const keyOf = (element: ReactElement) => element.key ?? "";
+
+/** Where each card now sits (a leaving one keeps its last place); with `slide`, each one that moved slides there. */
+function place(box: HTMLElement | null, tops: Map<string, number>, out: Set<string>, slide: boolean) {
+  const next = new Map<string, number>();
+  for (const child of box?.children ?? []) {
+    if (!(child instanceof HTMLElement) || child.dataset.leaving) continue;
+    const key = child.dataset.key ?? "";
+    next.set(key, child.offsetTop);
+    const top = tops.get(key);
+    if (slide && top !== undefined) slideFrom(child, 0, top - child.offsetTop, SLIDE_CARD);
+  }
+  for (const key of out) {
+    const top = tops.get(key);
+    if (top !== undefined) next.set(key, top);
+  }
+  return next;
+}
+
+/**
+ * A column of cards that come and go (Aujourd'hui): a new card rises 8 px, a card that goes fades and shrinks to 97 %
+ * where it was, and the cards around it close the gap on a spring. Nothing moves on the first render, nor while
+ * `settled` is false (what the first screen adds in its next frames arrives still). Plain CSS and WAAPI, no Motion:
+ * it sits on the first screen, whose file stays small. Everything it remembers is written at commit only, so a
+ * render React throws away (deferred, interrupted) changes nothing.
+ */
+export function Presence({ children, settled = true }: { children: ReactNode; settled?: boolean }) {
+  const [, rerender] = useReducer((n: number) => n + 1, 0);
+  const box = useRef<HTMLDivElement>(null);
+  const live = useRef(false);
+  const shownBefore = useRef<ReactElement[]>([]);
+  const finished = useRef(new Set<string>());
+  const born = useRef(new Set<string>());
+  const tops = useRef(new Map<string, number>());
+
+  const now = Children.toArray(children).filter(isValidElement);
+  const keys = new Set(now.map(keyOf));
+  const before = new Set(shownBefore.current.map(keyOf));
+  const leaving = shownBefore.current.filter((e) => !keys.has(keyOf(e)) && !finished.current.has(keyOf(e)));
+  const out = new Set(leaving.map(keyOf));
+  const fresh = live.current ? [...keys].filter((key) => !before.has(key)) : [];
+  const rising = new Set([...fresh, ...[...born.current].filter((key) => keys.has(key))]);
+  const shown = [...leaving, ...now];
+
+  // Only when cards come or go: a card whose text rewraps is not a reason to slide its neighbours.
+  const shape = [...keys].join("|");
+  const lastShape = useRef(shape);
+  useLayoutEffect(() => {
+    const slide = live.current && shape !== lastShape.current && !reducedMotion();
+    live.current = settled;
+    lastShape.current = shape;
+    shownBefore.current = shown;
+    born.current = rising;
+    for (const key of keys) finished.current.delete(key);
+    tops.current = place(box.current, tops.current, out, slide);
+  });
+
+  return (
+    <div ref={box} className="relative flex flex-col gap-6">
+      {shown.map((element) => {
+        const key = keyOf(element);
+        const going = out.has(key);
+        return (
+          <div
+            key={key}
+            data-key={key}
+            data-leaving={going || undefined}
+            inert={going}
+            className={cx(
+              "flex flex-col gap-6 empty:hidden",
+              rising.has(key) && "rise",
+              going && "card-out absolute inset-x-0",
+            )}
+            style={going ? { top: tops.current.get(key) } : undefined}
+            onAnimationEnd={(event) => {
+              if (!going || event.target !== event.currentTarget) return;
+              finished.current.add(key);
+              rerender();
+            }}
+          >
+            {element}
+          </div>
+        );
+      })}
+    </div>
+  );
+}

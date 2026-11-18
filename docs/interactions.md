@@ -93,6 +93,7 @@ Garde **le moment**, change **le contenu**. Ne propose jamais une séance plus d
 | Flèches gauche et droite | Tap | Semaine précédente ou suivante. Les semaines passées sont en lecture seule |
 | La page | Glisser à gauche ou à droite | La semaine suit le doigt. Lâchée au-delà d'un quart de la largeur (ou lancée), elle part de ce côté et la suivante (ou la précédente) arrive avec un ressort ; sinon elle revient. Un glissement vertical reste un défilement, un appui long reste le déplacement d'une séance |
 | Actualiser | Tap | Relit l'emploi du temps tout de suite. Si un cours change, une ligne apparaît : « 1 cours annulé jeudi · Footing passé à vendredi 18:00 ». Une relecture automatique qui change quelque chose laisse la même ligne jusqu'au soir |
+| La page, tout en haut | Tirer vers le bas | Même lecture qu'Actualiser, aussi sur Aujourd'hui et Programme. Les flèches d'Actualiser descendent dans une pastille de verre en suivant la moitié du doigt et tournent avec lui ; au-delà de 64 px elles passent au bleu, et lâcher lance la lecture (les flèches tournent seules, la ligne dit « Lecture en cours… »), puis la pastille remonte. En deçà, elle remonte sans rien lire. Jamais sous une feuille ; un glissement de côté ou un appui long n'est pas un tirage. Une seule lecture à la fois |
 | Course, muscu, révision | Appui long (0,3 s) puis glisser | La séance se soulève (petite vibration). Les créneaux possibles s'entourent en pointillés, les jours interdits s'atténuent avec leur raison. Lâcher = déplacement, bandeau Annuler |
 | Course, muscu, révision | Tap | Course : détail. Muscu ou révision : feuille de modification |
 | Cours (emploi du temps) | Tap | Fiche du cours, lecture seule, avec « Ce cours n'a pas lieu ». Les cours ne se glissent pas (cadenas) |
@@ -197,6 +198,9 @@ Toutes respectent « Réduire les animations » d'iOS : dans ce cas, simples fon
 | Déplier les étapes | La hauteur s'ouvre et les lignes apparaissent en fondu, 250 ms |
 | Glisser une séance | Soulèvement (102 %, ombre plus forte) avec vibration légère. Au lâcher, ressort avec un petit rebond vers le nouveau créneau |
 | Séance modifiée | La carte se retourne en fondu vers son nouveau contenu, les chiffres d'allure défilent vers leur nouvelle valeur |
+| Une carte d'Aujourd'hui arrive ou part (« Tu l'as faite ? », ressenti, proposition, repos...) | Celle qui part s'efface en rétrécissant à 97 % (180 ms), celle qui arrive monte de 8 px en fondu (220 ms), les autres referment l'espace avec un ressort sans rebond. Rien au premier affichage |
+| La semaine change (adaptation, cours annulé, déplacement, Annuler) | Les lignes glissent vers leur nouvelle place (ressort sans rebond, 450 ms) ; celles qui ont changé s'éclairent deux fois du bleu pâle des actions. Réduit : un seul éclairage de 300 ms, sans glissement |
+| Frise de la semaine | Les barres passent de l'ancienne charge à la nouvelle (350 ms) ; le jour où une séance arrive fait un petit pouls (108 %, 300 ms). Rien au premier affichage |
 | Bandeau Annuler | Monte de 12 px en fondu, repart seul après 6 s |
 | Message de Reggie | Apparaît en fondu en montant de 8 px. Les widgets suivent 60 ms après le texte. Trois points animés pendant qu'il réfléchit |
 | Choix dans un widget | Le bouton choisi se remplit, les autres s'estompent |

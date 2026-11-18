@@ -8,14 +8,16 @@ import { cx } from "../../lib/cx.ts";
 import { daysBetween, mondayOf } from "../../lib/date.ts";
 import { Button, IconButton } from "../../ui/controls.tsx";
 import { EmptyState, LoadFailed } from "../../ui/EmptyState.tsx";
+import { PullToRefresh } from "../../ui/PullToRefresh.tsx";
 import { Screen } from "../../ui/Screen.tsx";
 import { Skeleton } from "../../ui/Skeleton.tsx";
 import { WeekStrip } from "../../ui/WeekStrip.tsx";
 import { todayOf } from "../plan/selectors.ts";
 import { usePlan } from "../plan/store.ts";
 import { useSheet } from "../sheets/store.ts";
-import { RefreshRow } from "./RefreshRow.tsx";
+import { RefreshRow, refreshTimetable } from "./RefreshRow.tsx";
 import { useWeekDrag } from "./useWeekDrag.ts";
+import { useWeekMotion } from "./useWeekMotion.ts";
 import { useWeekSwipe } from "./useWeekSwipe.ts";
 import { WeekDay } from "./WeekDay.tsx";
 import { ItemRow } from "./WeekItem.tsx";
@@ -65,6 +67,7 @@ export default function WeekScreen() {
   const { week, fresh, failed } = useShownWeek(offset);
   const drag = useWeekDrag(fresh, offset, today);
   const swipe = useWeekSwipe((step) => setOffset((current) => current + step));
+  const rows = useWeekMotion(offset);
   useEffect(() => {
     if (focus && week) document.getElementById(`day-${focus}`)?.scrollIntoView({ block: "start" });
   }, [focus, week]);
@@ -74,6 +77,7 @@ export default function WeekScreen() {
   const add = () => show({ kind: "add", date: fresh?.monday });
   return (
     <Screen>
+      <PullToRefresh onRefresh={refreshTimetable} />
       <div ref={swipe.ref} className="flex touch-pan-y flex-col gap-6">
         <header className="flex flex-col gap-3">
           <h1 className="sr-only-label">Semaine</h1>
@@ -122,6 +126,7 @@ export default function WeekScreen() {
           {week && week.items.length > 0 && (
             <DndContext {...drag.context}>
               <div
+                ref={rows}
                 data-dragging={Boolean(drag.active)}
                 aria-busy={!fresh}
                 className={cx("flex flex-col gap-5", !fresh && "week-stale")}
