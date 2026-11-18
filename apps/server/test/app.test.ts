@@ -57,7 +57,17 @@ describe("server", () => {
     const response = await app.request("/assets/index-abc.js", { headers: { "accept-encoding": "gzip" } });
     expect(response.headers.get("content-encoding")).toBe("gzip");
     expect(response.headers.get("cache-control")).toContain("immutable");
-    expect((await app.request("/semaine")).headers.get("cache-control")).toBeNull();
+    expect((await app.request("/semaine")).headers.get("cache-control")).toBe("no-cache");
+  });
+
+  it("makes the service worker and the shell revalidate, so a proxy never holds an old version", async () => {
+    const webDist = await mkdtemp(join(tmpdir(), "annarrive-web-"));
+    await writeFile(join(webDist, "sw.js"), "self.addEventListener('install', () => {});");
+    await writeFile(join(webDist, "index.html"), "<!doctype html><title>Annarrivé</title>");
+    const { services } = setup();
+    const app = createApp({ services, sessionSecret: SECRET, webDist });
+    expect((await app.request("/sw.js")).headers.get("cache-control")).toBe("no-cache");
+    expect((await app.request("/")).headers.get("cache-control")).toBe("no-cache");
   });
 
   it("draws the login page in the app's font, from the file the built app preloads", async () => {
