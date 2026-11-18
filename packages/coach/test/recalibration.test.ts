@@ -76,6 +76,23 @@ describe("evaluateKeySessions (RC3, RC4, RC8)", () => {
     expect(evaluateKeySessions([key(17, [1.01]), key(20, [1.01])], 40, addDays("2026-11-23", -20), [], NOW)).toBeNull();
   });
 
+  it("proposes the VDOT clearly faster laps prove, without the 28-day wait (RC-13)", () => {
+    const p = evaluateKeySessions([key(17, [1.06]), key(20, [1.08])], 34, addDays("2026-11-23", -10), [], NOW);
+    expect(p?.ruleId).toBe("RC3");
+    // 6 % faster at T from VDOT 34: the T pace of VDOT 36.5.
+    expect(p?.to).toBeCloseTo(36.5, 0);
+  });
+
+  it("waives the wait for +1 when both sessions felt easy (RC-14)", () => {
+    const easyFeel = (day: number) => {
+      const k = key(day, [1]);
+      return { ...k, activity: { ...k.activity, feel: "easy" as const } };
+    };
+    const tenDays = addDays("2026-11-23", -10);
+    expect(evaluateKeySessions([easyFeel(17), easyFeel(20)], 40, tenDays, [], NOW)).toMatchObject({ to: 41 });
+    expect(evaluateKeySessions([key(17, [1]), key(20, [1])], 40, tenDays, [], NOW)).toBeNull();
+  });
+
   it("leaves aberrant fractions out", () => {
     expect(evaluateKeySessions([key(17, [1.2, 0.98]), key(20, [1.01])], 40, thirtyDaysAgo, [], NOW)).toBeNull();
   });

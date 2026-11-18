@@ -91,7 +91,7 @@ describe("softPenalty (S1 to S12)", () => {
   });
 
   it("follows preferences and last week's habits", () => {
-    const prefs = { ...SETTINGS, preferredHour: "18:00", preferredLongDay: 6 };
+    const prefs = { ...SETTINGS, preferredHour: "18:00" };
     const l = long("l", "");
     const w = { ...week([], [], prefs), prev: [long("old", "2026-11-15T09:00")] };
     const p = softPenalty(l, at(l, "2026-11-28T08:00"), w);
@@ -310,10 +310,19 @@ describe("week spread (S8, S10, S13)", () => {
   });
 
   it("follows her long-run day, else the other weekend day when Sunday is taken (PL-14)", () => {
-    const sat = placeWeek(base, classes, { ...evenings, preferredLongDay: 5 }, MONDAY).week.sessions;
+    const sat = placeWeek(base, classes, { ...evenings, preferredLongDays: [5] }, MONDAY).week.sessions;
     expect(longDay(sat)).toBe(5);
     const sundayBusy = [...classes, block("sun", "2026-11-29T06:00", "2026-11-29T23:30")];
     expect(longDay(placeWeek(base, sundayBusy, evenings, MONDAY).week.sessions)).toBe(5);
+  });
+
+  it("puts the long run on whichever accepted day is free (PL-18)", () => {
+    const both = { ...evenings, preferredLongDays: [5, 6] };
+    expect([5, 6]).toContain(longDay(placeWeek(base, classes, both, MONDAY).week.sessions));
+    const sundayBusy = [...classes, block("sun", "2026-11-29T06:00", "2026-11-29T23:30")];
+    expect(longDay(placeWeek(base, sundayBusy, both, MONDAY).week.sessions)).toBe(5);
+    const saturdayBusy = [...classes, block("sat", "2026-11-28T06:00", "2026-11-28T23:30")];
+    expect(longDay(placeWeek(base, saturdayBusy, both, MONDAY).week.sessions)).toBe(6);
   });
 
   it("places four runs without two days in a row when the week has room (PL-15)", () => {

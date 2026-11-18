@@ -8,7 +8,7 @@ import { Sky } from "../../ui/Sky.tsx";
 import { ConnectStep, HealthStep } from "./CareSteps.tsx";
 import { COPY, type Draft, issue, type Step } from "./onboarding.ts";
 import { Progress } from "./parts.tsx";
-import { RaceStep, TargetStep } from "./RaceSteps.tsx";
+import { LastStep, RaceStep, TargetStep } from "./RaceSteps.tsx";
 import { HoursStep, StrengthStep, WeekStep } from "./RoutineSteps.tsx";
 import { SummaryStep, WelcomeStep } from "./Summary.tsx";
 import { useOnboarding } from "./store.ts";
@@ -16,6 +16,7 @@ import { useOnboarding } from "./store.ts";
 const BODIES: Record<Step, () => ReactNode> = {
   welcome: WelcomeStep,
   race: RaceStep,
+  last: LastStep,
   target: TargetStep,
   week: WeekStep,
   hours: HoursStep,
@@ -31,6 +32,7 @@ function primaryLabel(step: Step, draft: Draft, sending: boolean): string {
   if (step === "welcome") return "Commencer";
   if (step === "summary") return "C'est parti";
   if (step === "strength" && draft.strength.length === 0) return "Passer cette étape";
+  if (step === "last" && draft.lastSec <= 0) return "Passer cette étape";
   return "Continuer";
 }
 

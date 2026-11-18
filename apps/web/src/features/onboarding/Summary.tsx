@@ -15,7 +15,9 @@ const list = (items: string[], empty: string) => (items.length ? items.join(", "
 /** Each line of the summary, and the step that changes it. */
 function rows(draft: Draft): [string, string, Step][] {
   const days = [...draft.noRunDays].sort((a, b) => a - b).map((d) => weekdayName(d - 1).toLowerCase());
+  const last = DISTANCES.find((d) => d.value === draft.lastRace);
   return [
+    ["Dernier chrono", draft.lastSec > 0 && last ? `${last.label} en ${clock(draft.lastSec)}` : "Aucun", "last"],
     ["Courses", `${draft.runsPerWeek} par semaine${days.length ? `, sauf ${days.join(", ")}` : ""}`, "week"],
     ["Horaires", `${draft.earliest} à ${draft.latestEnd}, coucher ${draft.bedtime}`, "hours"],
     [

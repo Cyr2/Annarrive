@@ -86,7 +86,7 @@ type Settings = {
   latestEnd: string;
   noRunDays: number[];
   bedtime: string;
-  preferredLongDay?: number;
+  preferredLongDays?: number[];   // jours acceptés pour la sortie longue (S8), 0 = lundi
   preferredHour?: string;
   useSleepHr: boolean;
   travelMin: number;
@@ -110,6 +110,7 @@ type Activity = {
   elevGainM?: number;
   isRace?: boolean;
   isTest?: boolean;
+  laps?: { durMin: number; distM: number; avgHr?: number }[];   // tours Garmin (F18)
   tempC?: number;
   feel?: "easy" | "ok" | "hard";
 };
@@ -138,7 +139,8 @@ speedForVo2(x: number): number                                         // m/min
 paces(vdot: number): { E: [number, number]; M: number; T: number; I: number; R: number }  // s/km
 isEligibleEffort(a: Activity, ctx: { hrMax: number; lthr?: number }): { ok: boolean; reason?: string }
 detrainingFactor(daysOff: number, crossTrainingPerWeek?: number): number
-initialFitness(h: { activities: Activity[]; vo2maxGarmin?: number; declared?: { distM: number; tMin: number } },
+effortReadings(h: FitnessHistory, now: string): { activityId; start; distM; durMin; vdot; kind: 'race'|'threshold'|'training' }[]
+initialFitness(h: { activities: Activity[]; vo2maxGarmin?: number; declared?: { distM: number; tMin: number; date?: string }; hr?: { hrMax: number } },
                now: string): { vdot: number; status: 'measured'|'provisional'; source: string; testWeek?: [2, 4] }
 hrMax(observedMax12m: number|undefined, age: number|undefined): { value: number; estimated: boolean }
 hrZones(hrMax: number, rhr7: number, lthr?: number): Zones
@@ -158,14 +160,15 @@ hrPaceModel(segments: Segment[]): { a: number; b: number } | null     // FC = a 
 | F7  | Allures : E = [v(0,59·VDOT) ; v(0,74·VDOT)] affichée en plage ; M = vitesse prédite F5 pour 42 195 m ; T = v(0,88·VDOT) ; I = v(0,975·VDOT) ; R = allure I - 15 s/km (6 s/400 m)                                                                                                                                                                                                           | 0,88 et 0,975, table 5.2 à ±3 s/km | Daniels 2014 (table 5.2)                                 | CONS   |
 | F8  | Si vitesse critique CS connue (≥ 2 efforts max de 3 à 15 min en 6 sem.) et T > CS : T = CS                                                                                                                                                                                                                                                                                                    |                                   | Jones & Vanhatalo 2017                                   | ECR    |
 | F9  | Effort éligible si : 3 ≤ t ≤ 230 min ET pente moyenne < 1 % (ou corrigée Minetti si ≤ 15 %) ET (course officielle OU test planifié OU FC moyenne 2e moitié ≥ 0,90·FCmax OU ≥ 0,97·LTHR) ET pas de conditions défavorables (temp. > 20 °C, vent > 25 km/h, hors route)                                                                                                                         |                                   | Daniels 2014 ; règle de conception                       | OP     |
-| F10 | État initial (décision : historique Garmin d'abord) : (a) VDOT max des efforts éligibles ≤ 6 sem. ; sinon (b) effort éligible de 6 à 12 sem. × `detrainingFactor(plus longue interruption depuis l'effort)` ; sinon (c) **provisoire** = min(VDOT de la VO2max Garmin, VDOT du chrono déclaré), le seul disponible si un seul ; un test (5 km à fond ou 30 min) est planifié en semaine 2 à 4 | 6 et 12 sem.                      | Daniels 2014 ; Engel 2025 (VO2max Garmin : MAPE 3 à 8 %) | OP     |
+| F10 | État initial, le plus crédible et non le plus lent (décision du 18/11/2026) : (a) meilleure lecture `race` ou `threshold` (F18) des 6 dernières semaines ; sinon (b) meilleure lecture de 6 à 12 sem. × `detrainingFactor(plus longue interruption depuis)` ; (c) chrono déclaré de 6 mois ou moins (ou estimé, sans date). Retenir le **plus haut** de (a ou b) et (c). Sans eux : le plus bas de la VO2max Garmin et d'un chrono déclaré plus ancien. Puis jamais sous le plancher F18 des 6 dernières semaines (le plancher seul ne fait pas un niveau : sans rien d'autre, `NO_FITNESS_DATA`). Statut `measured` si (a ou b) l'emporte, sinon `provisional` et test planifié en semaine 2 à 4 | 6 et 12 sem. ; 6 mois | Daniels 2014 (la meilleure course récente fait foi) ; Engel 2025 (VO2max Garmin sous-estimée de 4 à 5 ml/kg/min en moyenne, LoA jusqu'à -12,8) ; recherche 01 §4.2 et §4.3 | OP |
 | F11 | Détraining : interpolation linéaire entre (5 j ; 1,00), (14 j ; 0,973), (21 j ; 0,95), (70 j ; 0,80) ; constant au-delà. Si cross-training ≥ 3×/sem : point 14 j = 0,986                                                                                                                                                                                                                      | table à vérifier                  | Daniels 2014 (via vdoto2) ; Mujika & Padilla 2000        | CONS   |
 | F12 | FCmax = max observé sur 12 mois (artefact exclu : pic < 10 s ou saut > 20 bpm en 2 s). Si aucune FC ≥ 0,95·(208 - 0,7·âge) : FCmax = max(observé, 208 - 0,7·âge), drapeau `estimated`. Sans âge ni FC : pas de zones FC, pilotage RPE                                                                                                                                                         |                                   | Tanaka 2001                                              | MA     |
 | F13 | Zones : LTHR mesuré ≤ 8 sem. → Friel course (% LTHR : < 85, 85 à 89, 90 à 94, 95 à 99, 100 à 102, 103 à 106, > 106) ; sinon Karvonen avec FC repos moyenne 7 j : E = 59 à 74 % FCR, T = 84 à 88 % FCR                                                                                                                                                                                         | bornes Karvonen défaut à calibrer | Friel 2016 ; Karvonen 1957 ; Mann 2013                   | CONS   |
 | F14 | LTHR : test 30 min → FC moyenne de 10 à 30 min ; course éligible de 50 à 65 min → FC moyenne de 10 min à la fin                                                                                                                                                                                                                                                                               |                                   | Friel 2016                                               | CONS   |
 | F15 | Relation FC-allure : régression robuste `FC = a + b·v` sur segments stables (≥ 5 min, pente < 2 %, après 10 min, temp. < 20 °C) des 28 derniers jours ; exige ≥ 6 segments, sinon garder la précédente                                                                                                                                                                                        |                                   | règle de conception                                      | OP     |
 | F16 | Pilotage : E, RECUP, L → plafond FC (haut de E) ; M, T → allure avec garde FC ; I → allure ; R, côtes, strides → RPE ; chaleur > 20 °C, vent, trail, retour de douleur → FC ou RPE. Reggie peut seulement passer vers plus conservateur                                                                                                                                                       |                                   | Mann 2013 ; Gillinov 2017                                | CONS   |
-| F17 | VO2max Garmin : jamais modifiée en VDOT directement, sauf F10 (c) ; sert de déclencheur en M8                                                                                                                                                                                                                                                                                                 |                                   | Engel 2025                                               | ECR    |
+| F17 | VO2max Garmin : jamais modifiée en VDOT directement, sauf F10 (repli sans effort ni chrono récent) ; sert de déclencheur en M8                                                                                                                                                                                                                                                                                                 |                                   | Engel 2025                                               | ECR    |
+| F18 | Meilleurs efforts de l'entraînement, sur 12 semaines, sorties plates (dénivelé < 1 %) : la sortie entière (F9) et chaque suite de tours Garmin consécutifs jusqu'à 60 min, FC moyenne pondérée par le temps. Un tour hors bornes (allure hors de 2:30 à 12:00 /km) coupe la suite. Lecture : FC ≥ 92 % FCmax, course ou test → `race`, `VDOT = F3(D, t)` ; FC de 88 à 92 % FCmax sur 15 à 60 min → `threshold`, l'allure tenue est l'allure T : `VDOT = max(F3, VO2(v) / 0,88)` ; autre segment ≥ 10 min → `training`, `VDOT = F3(D, t)`, un plancher (tout effort couru prouve au moins ce niveau). Garder la meilleure lecture par sortie (`race`/`threshold` avant `training`), VDOT hors de 20 à 85 écarté | 88 et 92 % FCmax ; 15 à 60 min ; 10 min | Daniels 2014 (T = 88 % du VDOT, 88 à 92 % FCmax) ; recherche 01 §4.2 (un effort non maximal sous-estime toujours la forme) | OP |
 
 ### Tests
 
@@ -189,12 +192,17 @@ Valeurs de référence Daniels : vérifiées le 17/11/2026 contre les tables 5.1
 | F-14 | `detrainingFactor(3)` ; `(10)` ; `(14)` ; `(21)` ; `(45)` ; `(100)`                                 | 1,00 ; 0,985 ; 0,973 ; 0,95 ; 0,8765 ; 0,80                                      |
 | F-15 | `initialFitness` : effort éligible il y a 3 sem. VDOT 41,2 et un autre il y a 5 sem. VDOT 40,1      | 41,2, `measured`                                                                 |
 | F-16 | `initialFitness` : seul effort éligible il y a 8 sem. VDOT 42, plus longue interruption depuis 14 j | 40,87, `measured`                                                                |
-| F-17 | `initialFitness` : aucun effort, VO2max Garmin 44, déclaré semi 110 min                             | 40,38, `provisional`, `testWeek: [2, 4]`                                         |
+| F-17 | `initialFitness` : aucun effort, VO2max Garmin 44, déclaré semi 110 min (sans date) | 40,38, `provisional`, `testWeek: [2, 4]`, source `declared` |
 | F-18 | `initialFitness` : aucun effort, aucune VO2max, rien déclaré                                        | erreur `NO_FITNESS_DATA` (l'app demande un chrono ou lance le test en semaine 1) |
 | F-19 | `hrMax(192, 21)`                                                                                    | 192, `estimated: false` (seuil 0,95·193,3 = 183,6)                               |
 | F-20 | `hrMax(175, 21)`                                                                                    | 193,3, `estimated: true`                                                         |
 | F-21 | `hrZones(195, 55)` sans LTHR                                                                        | E = 138 à 159 bpm ; T = 173 à 178 bpm                                            |
 | F-22 | `hrPaceModel` avec 5 segments                                                                       | `null` (garder le modèle précédent)                                              |
+| F-23 | Profil d'Anna : 18 footings de 50 min à 6:45 /km (FC 150), VO2max Garmin 34, FCmax observée 192 ; deux sorties avec 2 km à 6:40, 4 tours de 1 km à 5:15 (FC 170, 88,5 %), 1 km à 6:48 | `measured`, VDOT ≈ 38,5, T entre 5:10 et 5:20 /km (VO2max seule : T > 5:40) |
+| F-24 | VO2max 34 ; semi déclaré en 1:50, il y a 2 mois | 40,38, source `declared` (le plus haut des deux, plus le plus bas) |
+| F-25 | VO2max 34 ; semi déclaré en 1:50, il y a 10 mois | 34, source `garmin_vo2max` |
+| F-26 | VO2max 34 ; sortie de 10 km en 50 min, FC 150 / 195, il y a 6 j ; puis la même sortie sans VO2max | ≈ 40, source `floor:…`, `provisional` ; puis `NO_FITNESS_DATA` (un plancher seul ne fait pas un niveau) |
+| F-27 | 4 km en 20 min à FC 180 / 192 puis un tour GPS de 1 km en 30 s | lecture `race` = `vdot(4000, 20)` : le tour aberrant n'est jamais lu |
 
 ---
 
@@ -312,6 +320,7 @@ Q = échauffement 15 min E + corps + retour au calme 10 min E (défaut à calibr
 | C2  | Équivalent (Changer) : même famille d'abord. I : fractions de 3 min si la fraction prévue > 3 min, sinon 4 min ; nombre = `floor(temps à I prévu / nouvelle durée)`. T ↔ CRUISE, temps au seuil réduit jusqu'à ce que durée totale et charge soient ≤ prévues (récupérations comprises). SPE : blocs plus courts à temps égal ou inférieur. L : aucun équivalent (option absente). Si aucune forme de même famille : un cran en dessous (I → T, T → FARTLEK) | contrôle `sessionLoad(équiv) ≤ sessionLoad(prévu)` | règle de conception | OP     |
 | C3  | Ressenti (vivoactive 4 sans auto-évaluation) : `easy` = cible - 2, `ok` = cible, `hard` = cible + 2 (borné 1 à 10). Ressenti absent : RPE = cible, charge marquée `estimated`, jamais utilisée pour une règle restrictive                                                                                                                                                                                                                                    |                                                    | Foster 2001         | ECR    |
 | C4  | Allure E affichée en plage, jamais en cible unique                                                                                                                                                                                                                                                                                                                                                                                                           |                                                    | Daniels             | CONS   |
+| C5  | Toute étape courue porte une cible d'allure, comme une séance Garmin : la montre la reçoit en zone d'allure, l'app l'affiche (« 5'15 /km », « 6'37 à 7'53 /km »). Côtes courtes : sprint à l'allure R (ce qu'atteint un sprint de 10 s), descente au trot à l'allure E ; récupérations à l'allure E. Une séance sans étape E (jour de course allégé) prend la plage E du VDOT que donne son étape de course (F3, F7). Plus aucun « Ressenti n/10 » affiché : le RPE reste la mesure de charge (C3) | | décision produit (18/11/2026) ; Daniels 2014 | DEC |
 
 ### Tests
 
@@ -325,7 +334,8 @@ Q = échauffement 15 min E + corps + retour au calme 10 min E (défaut à calibr
 | C-6 | `equivalents` d'un T continu 20 min (140 UA)                                                    | CRUISE 2 × 9 min, récup 2 min (20 min, 130 UA)      |
 | C-7 | `feelToRpe('hard', 3)` ; `('easy', 2)` ; `('hard', 9)`                                          | 5 ; 1 (borné) ; 10 (borné)                          |
 | C-8 | `sessionLoad` : 15 min E (3) + 4 × 5 min T (7) + 3 × 1 min récup (2) + 10 min E (3)             | 45 + 140 + 6 + 30 = 221 UA                          |
-| C-9 | `buildSession('COTES_C', { durMin: 48 }, base, progression 0)`                                   | étapes `warmup`, 6 × 10 s `hills` sans allure, 5 × 1 min 30 `recover`, `cooldown` 10 min ; ≤ 48 min ; non dure |
+| C-9 | `buildSession('COTES_C', { durMin: 48 }, base, progression 0)`                                   | étapes `warmup`, 6 × 10 s `hills` à l'allure R, 5 × 1 min 30 `recover`, `cooldown` 10 min ; ≤ 48 min ; non dure |
+| C-10 | `buildSession` de chaque type (strides compris) ; `toEasy` d'un jour de course | chaque étape a `paceSKm` ; la plage E vient du VDOT de l'étape de course |
 
 ---
 
@@ -370,7 +380,7 @@ proposeMoveSlots(sessionId: string, week: WeekState, now: string): { best: SlotW
 | S5  | Dure la veille d'un examen et finie < 4 h avant `bedtime`                | 50                   | analogie Leota 2025, Craven 2022 | OP     |
 | S6  | Course dans les 3 h avant un examen                                      | 40                   |                                  | OP     |
 | S7  | Écart à `preferredHour`                                                  | 5 par heure, max 20  | préférence                       | OP     |
-| S8  | L hors de son jour (`preferredLongDay`, dimanche s'il n'est pas choisi) ; l'autre jour du week-end quand ce jour est un samedi ou un dimanche | 20 ; 10 l'autre jour du week-end | Runna ; plans experts Garmin (recherche 05) | CONS   |
+| S8  | L hors des jours qu'elle accepte (`preferredLongDays`, plusieurs possibles) ; parmi eux, le plus libre l'emporte par les autres règles, dimanche départage (1 point ailleurs). Sans choix : dimanche, samedi à 10 | 20 ; 1 ; 10 sans choix | Runna ; plans experts Garmin (recherche 05) | CONS   |
 | S9  | Jour ou heure (> 2 h) différents de la même séance la semaine précédente | 5                    | Bruggisser 2023                  | MA     |
 | S10 | > 2 jours consécutifs sans course (si ≥ 3 courses), bords de semaine compris : le dimanche d'avant et le lundi d'après comptent comme des jours de course | 10                   |                                  | OP     |
 | S11 | Muscu non jambes < 3 h avant une dure                                    | 5                    |                                  | OP     |
@@ -408,8 +418,9 @@ Contexte commun : `earliest` 07:00, `latestEnd` 22:30, `bedtime` 23:00, `travelM
 | PL-10 | Replan : solution A bouge 1 séance (pénalité 60), solution B en bouge 2 (pénalité 20)             | A (gain 40 < 50)                                                                                                                                                            |
 | PL-11 | `proposeMoveSlots` Q, aucun créneau valide dans la semaine                                        | `best: []`, et l'action propose « Remplacer par un footing ce soir » ou « Passer cette séance »                                                                             |
 | PL-13 | `placeWeek` L 66 min + 2 E, cours en semaine jusqu'à 16:30, courses dès 17:00, week-end libre | L dimanche ; aucun jour de course consécutif ; jamais plus de 2 jours sans course, bords de semaine compris |
-| PL-14 | Même semaine, `preferredLongDay` samedi ; puis sans préférence, dimanche pris toute la journée | L samedi ; L samedi |
+| PL-14 | Même semaine, `preferredLongDays` [samedi] ; puis sans préférence, dimanche pris toute la journée | L samedi ; L samedi |
 | PL-15 | Même semaine avec une Q en plus, 4 courses | 4 séances placées, aucun jour consécutif |
+| PL-18 | Même semaine, `preferredLongDays` [samedi, dimanche] ; dimanche pris toute la journée ; samedi pris toute la journée | L samedi ou dimanche ; L samedi ; L dimanche |
 | PL-16 | `proposeMoveSlots` d'une Q mardi 08:00, jambes mardi 18:00 | le mercredi est proposé (19:00 au plus tôt) avec « près de ta muscu jambes » ; aucune raison vide |
 | PL-17 | Raison d'un créneau sans coût : Q jeudi 19:00, jambes mardi 18:00 ; E jeudi 17:00 après un cours de 14:00 à 16:00 ; E à 07:00 ; E un jour sans cours | « ta muscu jambes est mardi soir, l'écart est bon » ; « après tes cours » ; « avant tes cours » ; « journée sans cours » |
 | PL-12 | `RACE` dimanche 29 ; `checkHard` Q vendredi 27 18:00, puis E au même créneau, puis Q mercredi 25 ; Anna déplace la Q de mercredi à vendredi | violation H12 ; `[]` ; `[]` ; déplacement accepté en E de même durée, `manual`, avertissement H12 |
@@ -626,7 +637,7 @@ acceptProposal(st: State, p: Proposal, now: string): Result     // allures futur
 | ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ | ----------------------------- | ------ |
 | RC1  | Course ou test éligible (F9) : VDOT calculé > courant + 0,5 → proposer le VDOT calculé (pas de plafond d'un point)                                                                                                                      | 0,5          | Daniels 2014                  | CONS   |
 | RC2  | Course ou test éligible plus lent : écart ≥ 1,5 sans explication (chaleur > 15 °C, dénivelé, maladie dans les 14 j, ressenti `easy`) → proposer le VDOT calculé ; sinon ignorer                                                         | 1,5          | Daniels 2014 ; Ely 2007       | OBS    |
-| RC3  | Hausse sans course : ≥ 28 j depuis le dernier changement ET ≥ 2 séances T ou I (fractions aberrantes exclues : < 90 % ou > 110 % de la cible) à ≥ 100 % de l'allure cible, FC ≤ prédiction F15 + 3 bpm, ressenti ≠ `hard` → proposer +1 | 28 j ; 3 bpm | Daniels 2014 ; Runna          | CONS   |
+| RC3  | Hausse sans course : ≥ 2 séances T, CRUISE ou I (tours aberrants exclus : < 90 % ou > 110 % de la cible) à ≥ 100 % de l'allure cible, FC ≤ prédiction F15 + 3 bpm, ressenti ≠ `hard` → proposer `max(+1, VDOT prouvé)`, VDOT prouvé = le plus bas des deux `VO2(r · v_cible) / f` (f = 0,88 en T, 0,975 en I). Attendre 28 j depuis le dernier changement, sauf preuve forte : VDOT prouvé ≥ +1, ou les deux séances ressenties `easy` | 28 j ; 3 bpm | Daniels 2014 ; Runna          | CONS   |
 | RC4  | Baisse : ≥ 2 séances T ou I consécutives < 97 % de l'allure cible sans facteur externe (chaleur, vent, dénivelé, maladie, nuit courte SG2) → proposer -1                                                                                | 97 %         | règle de conception           | OP     |
 | RC5  | Trois `hard` de suite sur des séances faciles → proposer -1 ou un test (au choix d'Anna)                                                                                                                                                | 3            | interactions.md ; Foster 2001 | OP     |
 | RC6  | FC à allure E de référence (F15) ≥ ligne de base + 5 bpm sur ≥ 3 sorties hors chaleur et persistant 14 j → proposer -1                                                                                                                  | 5 bpm ; 14 j | Buchheit 2014                 | OBS    |
@@ -652,6 +663,8 @@ acceptProposal(st: State, p: Proposal, now: string): Result     // allures futur
 | RC-10 | +1 refusé il y a 10 j ; nouvelles preuves de hausse                                     | `null`                                                                                       |
 | RC-11 | VO2max Garmin 42 → 44,5 pendant 14 j                                                    | proposition `test`                                                                           |
 | RC-12 | `acceptProposal` +1, séance du jour gelée, Q `manual` jeudi                             | ni la séance du jour ni la Q jeudi ne changent ; les autres prennent les allures de VDOT + 1 |
+| RC-13 | VDOT 34, changé il y a 10 j ; 2 séances T à 106 % et 108 % | proposition RC3 vers ≈ 36,5 (le VDOT dont l'allure T est 6 % plus rapide) |
+| RC-14 | VDOT 40, changé il y a 10 j ; 2 séances T à 100 % ressenties `easy` ; puis les mêmes ressenties `ok` | +1 ; `null` |
 
 ---
 
@@ -723,7 +736,7 @@ exitMaintenance(history4w: number[], goal: Goal, now: string): { v0: number; pla
 | Réglages : courses/sem, pas avant, pas après, jours sans course, coucher, trajet                                         | H2, H7, S1, P13          | défauts : 3 courses, 07:00, 21:30, aucun, 23:00, 0 min                 |
 | Objectif : distance, date, chrono facultatif                                                                             | M2                       | M9                                                                     |
 | Douleur ou blessure en cours (onboarding)                                                                                | P9, EV11 à EV12          | non                                                                    |
-| Chrono déclaré (« autour de 1 h 50 »)                                                                                    | F10 (c)                  | test S2 à S4                                                           |
+| « Ton dernier chrono » (distance, temps, il y a moins de 3 mois, 3 à 6 mois, plus, ou estimation), à l'onboarding et dans Programme                                                                                    | F10 (c)                  | test S2 à S4                                                           |
 
 ---
 
@@ -731,7 +744,7 @@ exitMaintenance(history4w: number[], goal: Goal, now: string): { v0: number; pla
 
 | Recherche                                                                              | Décision appliquée                                                                                                      |
 | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| 01 R3 : test dans les 14 jours sans effort éligible                                    | historique Garmin d'abord, test en semaine 2 à 4 seulement en repli (F10)                                               |
+| 01 R3 : test dans les 14 jours sans effort éligible                                    | historique Garmin d'abord (tours compris, F18), test en semaine 2 à 4 seulement en repli (F10)                                               |
 | 01 R11, R12 et 03 étape 8 : allures modifiées automatiquement après les séances        | tout changement d'allure est proposé, accepté en un tap (M8)                                                            |
 | 02 R23 : allures modifiées d'un point VDOT au plus par réévaluation                    | une course ou un test éligible propose le VDOT calculé entier (RC1) ; le point unique reste pour les séances (RC3)      |
 | 03 étape 6 : N = 1 → décaler la séance à J+1                                           | un signal isolé ne fait rien ; la décision du matin ne déplace jamais, elle allège (D2, D9)                             |
@@ -766,7 +779,7 @@ exitMaintenance(history4w: number[], goal: Goal, now: string): { v0: number; pla
 | --- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | Q1  | Table de détraining Daniels complète (lignes 6 j à 10 sem.)                                                         | interpolation sur 4 points (F11)                                                                             |
 | Q2  | Résolue le 17/11/2026 (#17) : les ancrages 60 et 11 min donnaient T trop rapide de 1 à 3 s/km et I, donc R, de 3 à 8 s/km (6 s/km à VDOT 40) ; remplacés par 0,88 et 0,975·VDOT, à ±3 s/km de la table 5.2 de VDOT 30 à 85. Reste ouvert : la plage E (0,59 à 0,74) vient du texte de Daniels ; la valeur E unique de la 3e éd. (≈ 0,70) y tombe, la plage chiffrée de la 4e éd. n'a pas été vérifiée | F7 |
-| Q3  | VO2max Garmin et chrono déclaré divergents pour Anna : lequel croire ?                                              | le plus bas des deux, statut provisoire, test S2 à S4 (F10)                                                  |
+| Q3  | VO2max Garmin et chrono déclaré divergents pour Anna : lequel croire ?                                              | tranché le 18/11/2026 : le chrono récent (la VO2max d'une montre sous-estime une coureuse qui court surtout facile, Engel 2025), statut provisoire, test S2 à S4 (F10)                                                  |
 | Q4  | Seuils personnels (2σ, 28 j, 14 valeurs, planchers d'écart-type) jamais validés pour une coureuse loisir            | valeurs de B1 à B4 et SG1 à SG3, journalisées pour calibrage                                                 |
 | Q5  | Body Battery et stress : aucune validation indépendante                                                             | un seul signal combiné SG3, jamais seul                                                                      |
 | Q6 | Taux d'amélioration `r` par profil (sert seulement à classer la cible) | P19 |

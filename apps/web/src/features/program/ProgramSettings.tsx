@@ -7,7 +7,7 @@ import { usePlan } from "../plan/store.ts";
 import { NotificationsRow } from "../push/NotificationsRow.tsx";
 import { usePush } from "../push/store.ts";
 import { useSheet } from "../sheets/store.ts";
-import { Hours, Runs, Watch } from "./SettingGroups.tsx";
+import { Hours, LastTime, Runs, Watch } from "./SettingGroups.tsx";
 import { SwitchRow } from "./SwitchRow.tsx";
 import { TimetableRows } from "./TimetableRow.tsx";
 
@@ -20,6 +20,7 @@ export function ProgramSettings({ program }: { program: Program }) {
     void usePlan.getState().apply((api) => api.updateSettings(patch), { quiet: true });
   return (
     <>
+      <LastTime last={program.lastTime} />
       <Runs settings={settings} />
       <Hours settings={settings} />
 

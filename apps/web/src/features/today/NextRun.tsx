@@ -29,7 +29,7 @@ export function NextRun({ run, today, label }: { run: Run; today: string; label:
         <SessionShape steps={run.steps} tone={run.intensity} className="h-7 w-full" />
         <span className="flex w-full flex-wrap items-baseline justify-between gap-x-4">
           <PaceValue value={duration(run.durationMin)} />
-          <PaceValue value={run.pace} unit="/km" className="ml-auto" />
+          <PaceValue value={run.pace} className="ml-auto" />
         </span>
       </button>
     </section>

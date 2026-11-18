@@ -14,6 +14,7 @@ import {
   type CoachState,
   coachFeasibility,
   type DailyDecisionResult,
+  fitnessHistory,
 } from "./coach-port.ts";
 import type { Activity } from "./storage/stores.ts";
 import { addDays, dateOf, mondayOf } from "./time.ts";
@@ -56,7 +57,7 @@ export const toSettings = (p: Profile): Settings => ({
   bedtime: p.bedtime,
   useSleepHr: p.useSleepHr,
   travelMin: p.travelMin,
-  ...(p.preferredLongDay === undefined ? {} : { preferredLongDay: toDay(p.preferredLongDay) }),
+  ...(p.preferredLongDays === undefined ? {} : { preferredLongDays: p.preferredLongDays.map(toDay) }),
   ...(p.preferredHour === undefined ? {} : { preferredHour: p.preferredHour }),
 });
 
@@ -156,22 +157,24 @@ const hrMaxOf = (activities: Activity[]): number | undefined => {
 };
 
 function initialFitness(st: CoachState, vo2max: number | undefined, now: string): coach.InitialFitness | null {
-  const declared = st.program.declaredTime;
-  const hrMax = hrMaxOf(st.activities);
   try {
-    return coach.initialFitness(
-      {
-        activities: st.activities,
-        ...(vo2max === undefined ? {} : { vo2maxGarmin: vo2max }),
-        ...(declared ? { declared: { distM: declared.distanceM, tMin: declared.minutes } } : {}),
-        ...(hrMax === undefined ? {} : { hr: { hrMax } }),
-      },
-      now,
-    );
+    return coach.initialFitness(fitnessHistory(st.activities, vo2max, st.program.declaredTime), now);
   } catch (error) {
     if (error instanceof Error && error.message === "NO_FITNESS_DATA") return null;
     throw error;
   }
+}
+
+/**
+ * RC3's input: each lap's speed over the work step's target speed. Warm-up and recovery laps fall under 90 % and
+ * are left out by the coach; her own feel stands in for Garmin's when the watch did not ask.
+ */
+function keySession(session: PlannedSession, activity: Activity): coach.KeySession {
+  const pace = session.steps.find((s) => s.kind === "work")?.target.paceSKm;
+  const target = pace ? 2000 / (pace[0] + pace[1]) : 0;
+  const fractions = target ? (activity.laps ?? []).map((l) => l.distM / (l.durMin * 60) / target) : [];
+  const feel = activity.feel ?? activity.answeredFeel;
+  return { session: toSession(session), activity: { ...activity, ...(feel ? { feel } : {}) }, fractions };
 }
 
 const NO_FITNESS =
@@ -381,6 +384,15 @@ export const coachAdapter: CoachPort = {
       illnessLast14d: st.health.kind === "sick",
     };
     return coach.evaluateRace(run, st.fitness.vdot, ctx);
+  },
+
+  evaluateKeySessions(st, done, past, now) {
+    if (!st.fitness || st.fitness.provisional) return null;
+    const keys = done.map(({ session, activity }) => keySession(session, activity));
+    const history = past.flatMap((p): coach.PastProposal[] =>
+      p.status === "declined" && p.decidedOn ? [{ proposal: p, decision: "refused", on: p.decidedOn }] : [],
+    );
+    return coach.evaluateKeySessions(keys, st.fitness.vdot, st.fitness.date, history, now);
   },
 
   evaluateFeels(st, now) {

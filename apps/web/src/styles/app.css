@@ -169,6 +169,11 @@
     line-height: 13px;
   }
 
+  /* While an explanation bubble is open, the page behind it stays put, as under an iOS alert. */
+  html:has([popover]:popover-open) {
+    overflow: hidden;
+  }
+
   /* A grouped list's row: label left, value right, hairline between rows. */
   .row {
     display: flex;
@@ -181,8 +186,25 @@
     padding-right: var(--spacing-gutter);
     color: var(--color-ink);
   }
-  .row + .row {
+  .row + .row,
+  .step-repeat + .row,
+  .row + .step-repeat {
     border-top: 0.5px solid var(--color-hairline);
+  }
+  /* « Répéter n fois »: a tinted group around the lines it repeats, as a Garmin workout shows it (StepList). */
+  .step-repeat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 0 2px;
+  }
+  .step-repeat > span {
+    margin-left: var(--spacing-gutter);
+  }
+  .step-repeat > ol {
+    margin-inline: 8px;
+    border-radius: var(--radius-row);
+    background: var(--color-fill);
   }
   /* A field's focus ring goes round its whole row or box, for the keyboard only: a tap shows the caret, and
      the browser's ring would sit inside the row's indent. */

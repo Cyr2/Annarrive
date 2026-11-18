@@ -99,7 +99,7 @@ const onPain: Handler = ({ pending, text, session, today, api, memory, say }) =>
     );
     const preview = {
       title: high ? "Footing tranquille · 20 min" : "Footing tranquille · 30 min",
-      detail: `${slotLabel(session, today)} · allure 6:30 à 7:00`,
+      detail: `${slotLabel(session, today)} · 6'30 à 7'00 /km`,
     };
     yield say("", {
       widget: {
@@ -200,7 +200,7 @@ const reply =
 const onWhy: Handler = (t) =>
   t.text.includes("pourquoi") && t.text.includes("allure")
     ? reply(
-        "4:55 au kilomètre, c'est un peu plus vite que ton allure semi de 5:07. Ces fractions rendent ton allure de course plus facile le jour J. Je la calcule à partir de tes dernières sorties Garmin.",
+        "4'55 /km, c'est un peu plus vite que ton allure semi de 5'07 /km. Ces fractions rendent ton allure de course plus facile le jour J. Je la calcule à partir de tes dernières sorties Garmin.",
       )(t)
     : undefined;
 

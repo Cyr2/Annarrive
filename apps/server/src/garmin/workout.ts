@@ -2,6 +2,7 @@ import {
   type PlannedSession,
   plannedSessionSchema,
   sessionNames,
+  stepBlocks,
   type WatchStatus,
   type WorkoutRequest,
   type WorkoutStep,
@@ -35,28 +36,16 @@ function toGarminStep(step: Step): WorkoutStep {
 }
 
 /**
- * The bridge request for a planned session. A repeated step takes the recovery that follows it
- * into its repeat block ("4 × 5 min T, récup 1 min" in algo.md); a session without steps is one
- * open run of its duration.
+ * The bridge request for a planned session, block for block what the app lists (`stepBlocks`): a repeat group
+ * holds its step and the recovery after it ("4 × 5 min T, récup 1 min" in algo.md); a session without steps is
+ * one open run of its duration.
  */
 export function toWorkoutRequest(session: PlannedSession): WorkoutRequest {
-  const steps: RequestStep[] = [];
-  for (let i = 0; i < session.steps.length; i++) {
-    const step = session.steps[i];
-    if (!step) continue;
-    const reps = step.reps ?? 1;
-    if (reps <= 1) {
-      steps.push(toGarminStep(step));
-      continue;
-    }
-    const next = session.steps[i + 1];
-    const block = [toGarminStep(step)];
-    if (next?.kind === "recover") {
-      block.push(toGarminStep(next));
-      i++;
-    }
-    steps.push({ kind: "repeat", iterations: reps, steps: block });
-  }
+  const steps: RequestStep[] = stepBlocks(session.steps).map((b) =>
+    b.kind === "step"
+      ? toGarminStep(b.step)
+      : { kind: "repeat", iterations: b.times, steps: b.steps.map(toGarminStep) },
+  );
   if (steps.length === 0) steps.push({ kind: "interval", durationS: session.durMin * 60 });
   return { name: sessionNames[session.type], date: dateOf(session.start), steps };
 }

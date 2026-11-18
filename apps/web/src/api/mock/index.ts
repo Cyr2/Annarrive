@@ -38,8 +38,8 @@ const ACTIVITY: Activity = {
   distanceKm: 8.3,
   duration: "51:12",
   mainPaceLabel: "Allure 800 m",
-  mainPace: "4:52",
-  verdict: "Cible 4:55 tenue sur les 6 fractions",
+  mainPace: "4'52 /km",
+  verdict: "Cible 4'55 /km tenue sur les 6 fractions",
   askFeel: true,
   intensity: "hard",
 };
@@ -283,6 +283,11 @@ export function createMockApi({
         const tag = goal.targetTime ? targetTag(goal.targetTime, goal.distanceKm) : undefined;
         state.program.goal = { ...goal, targetTag: tag };
         state.program.maintenance = false;
+        return undefined;
+      }),
+    updateLastTime: (time) =>
+      commit("Allures recalculées avec ton chrono", () => {
+        state.program.lastTime = time;
         return undefined;
       }),
     stopProgram: () =>

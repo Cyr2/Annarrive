@@ -91,12 +91,12 @@ export function createOnboardingStore(
     },
 
     async checkTarget() {
-      const input = feasibilityInput(get().draft);
+      const input = feasibilityInput(get().draft, get().today);
       if (!input) return set({ verdict: undefined });
       try {
         const verdict = await (await getApi()).feasibility(input);
         // Only if she has not typed something else meanwhile.
-        if (JSON.stringify(feasibilityInput(get().draft)) === JSON.stringify(input)) set({ verdict });
+        if (JSON.stringify(feasibilityInput(get().draft, get().today)) === JSON.stringify(input)) set({ verdict });
       } catch {
         set({ verdict: null });
       }

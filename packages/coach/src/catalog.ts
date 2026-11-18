@@ -1,4 +1,4 @@
-import { pilotFor } from "./fitness.ts";
+import { paces, pilotFor, vdot } from "./fitness.ts";
 import type { Feel, Paces, PaceZone, Phase, RunType, Session, Step } from "./types.ts";
 
 const WARMUP_MIN = 15;
@@ -186,8 +186,8 @@ const HILL_BACK_MIN = 1.5;
 const HILL_COOLDOWN_MIN = 10;
 
 /**
- * COTES_C inside an easy run: easy warm-up, the hill sprints with their walk back, easy cool-down. The sprints
- * are run on feel (F16), so they carry no pace.
+ * COTES_C inside an easy run: easy warm-up, the hill sprints with their jog back down, easy cool-down. Every
+ * step carries a pace for the watch (C5): R for the 10 s sprint, E for the way down.
  */
 function hillsShort(c: BuildCtx): Step[] {
   const reps = Math.min(6 + 2 * c.progressionStep, 10);
@@ -195,8 +195,8 @@ function hillsShort(c: BuildCtx): Step[] {
   const warmup = Math.max(10, Math.floor((c.durMin ?? 45) - block - HILL_COOLDOWN_MIN));
   return [
     step("warmup", warmup, "E", c.paces, RPE.E),
-    { kind: "hills", durMin: HILL_MIN, reps, target: { rpe: 8 } },
-    { kind: "recover", durMin: HILL_BACK_MIN, reps: reps - 1, target: { rpe: 1 } },
+    step("hills", HILL_MIN, "R", c.paces, 8, { reps }),
+    step("recover", HILL_BACK_MIN, "E", c.paces, 1, { reps: reps - 1 }),
     step("cooldown", HILL_COOLDOWN_MIN, "E", c.paces, RPE.E),
   ];
 }
@@ -343,11 +343,17 @@ export function downgrade(s: Session, p: Paces): Session {
   return withBody(s, "FARTLEK", intervals(Math.max(2, Math.floor(t / 2)), 1, "T", p, 6, 1));
 }
 
+/** C5: a race day has no easy step; its easy range comes from the VDOT its race step implies (F3, F7). */
+function raceEasyPace(s: Session): [number, number] | undefined {
+  const race = s.steps.find((st) => st.zone === "race" && st.distM);
+  return race?.distM ? paces(vdot(race.distM, race.durMin)).E : undefined;
+}
+
 /** Easy continuous run replacing `s` at the same moment, never above its RPE (EV3, EV5, EV10, EV11, A4). */
 export function toEasy(s: Session, durMin: number, pilot?: Session["pilot"], maxRpe = RPE.E): Session {
   const type = s.type === "RECUP" ? "RECUP" : "E";
   const rpe = Math.min(maxRpe, s.rpeTarget);
-  const pace = s.steps.find((st) => st.zone === "E")?.target.paceSKm;
+  const pace = s.steps.find((st) => st.zone === "E")?.target.paceSKm ?? raceEasyPace(s);
   const work: Step = { kind: "work", durMin, zone: "E", target: { ...(pace ? { paceSKm: pace } : {}), rpe } };
   const easy = makeSession(type, [work], { ...s, durMin: 0 });
   return { ...easy, rpeTarget: rpe, pilot: pilot ?? easy.pilot };

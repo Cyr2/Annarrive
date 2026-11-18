@@ -56,18 +56,19 @@ Fait par Anna, une seule fois, écrans courts (une question par écran), puis un
 Ce qu'elle renseigne :
 
 1. Sa course : distance, date et heure de départ (9:00 proposé).
-2. Son chrono visé, facultatif. C'est elle qui le choisit : l'app ne propose pas de chrono, elle indique seulement s'il est atteignable ou ambitieux, sans jamais décourager. Sans chrono, l'objectif est de finir.
-3. Combien de courses par semaine, et le jour de sa sortie longue (dimanche proposé).
-4. Son heure de coucher habituelle.
-5. Ses limites : pas avant, pas après, jours sans course (valeurs proposées par défaut).
-6. Ses séances de muscu habituelles : nom, case « jambes », jour, heure (facultatif, faisable plus tard).
-7. Une douleur ou blessure en cours.
-8. Ses accords : sommeil et fréquence cardiaque, cycle menstruel (oui ou non).
-9. Les notifications.
+2. Son dernier chrono, facultatif : distance, temps et quand (ou son temps estimé). Il règle ses allures dès la première semaine, mieux que la VO2max de la montre.
+3. Son chrono visé, facultatif. C'est elle qui le choisit : l'app ne propose pas de chrono, elle indique seulement s'il est atteignable ou ambitieux, sans jamais décourager. Sans chrono, l'objectif est de finir.
+4. Combien de courses par semaine, et les jours possibles pour sa sortie longue (samedi et dimanche proposés).
+5. Son heure de coucher habituelle.
+6. Ses limites : pas avant, pas après, jours sans course (valeurs proposées par défaut).
+7. Ses séances de muscu habituelles : nom, case « jambes », jour, heure (facultatif, faisable plus tard).
+8. Une douleur ou blessure en cours.
+9. Ses accords : sommeil et fréquence cardiaque, cycle menstruel (oui ou non).
+10. Les notifications.
 
 Le programme commence le lendemain : rien n'est placé le jour de l'onboarding.
 
-Sa forme de départ est déduite de l'historique Garmin. Une séance test entre la semaine 2 et la semaine 4 sert seulement si l'historique ne suffit pas.
+Sa forme de départ est déduite de l'historique Garmin, tours compris (ses passages rapides comptent, pas seulement la VO2max de la montre), et de son dernier chrono. Une séance test entre la semaine 2 et la semaine 4 sert seulement si l'historique ne suffit pas.
 
 ## Hors périmètre
 

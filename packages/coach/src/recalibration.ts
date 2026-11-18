@@ -1,6 +1,6 @@
 import { repace } from "./catalog.ts";
 import { addDays, dateOf, daysBetween } from "./dates.ts";
-import { type InitialFitness, isEligibleEffort, paces, vdot } from "./fitness.ts";
+import { type InitialFitness, isEligibleEffort, paces, speedForVo2, vdot, vo2 } from "./fitness.ts";
 import type { Activity, DailySignal, FeelLog, Proposal, Result, Session, State } from "./types.ts";
 
 const PROPOSAL_DAYS = 14;
@@ -68,7 +68,19 @@ const refusedRecently = (history: PastProposal[], up: boolean, now: string): boo
     (h) => h.decision === "refused" && h.proposal.to > h.proposal.from === up && daysBetween(h.on, now) < PROPOSAL_DAYS,
   );
 
-/** RC3 (+1) and RC4 (-1) from T and I sessions. */
+/** F7's share of VDOT for the pace a key session aims at. */
+const ZONE_FRACTION: Partial<Record<Session["type"], number>> = { T: 0.88, CRUISE: 0.88, I: 0.975 };
+
+/** RC3: the VDOT whose pace for that zone is the one she held (F7 inverted). */
+const impliedVdot = (k: KeySession, current: number): number => {
+  const f = ZONE_FRACTION[k.session.type] ?? 0.88;
+  return vo2((ratio(k) ?? 1) * speedForVo2(f * current)) / f;
+};
+
+/**
+ * RC3 and RC4 from T, CRUISE and I sessions. Up: the paces they prove (at least +1); the 28-day wait is waived
+ * when the proof is strong: both a full point faster, or both felt easy.
+ */
 export function evaluateKeySessions(
   done: KeySession[],
   current: number,
@@ -77,13 +89,15 @@ export function evaluateKeySessions(
   now: string,
 ): Proposal | null {
   const keys = done
-    .filter((k) => k.session.type === "T" || k.session.type === "I")
+    .filter((k) => ZONE_FRACTION[k.session.type] !== undefined)
     .sort((a, b) => a.activity.start.localeCompare(b.activity.start));
   const evidence = (ks: KeySession[]): string[] => ks.map((k) => k.activity.id);
   const up = keys.filter((k) => (ratio(k) ?? 0) >= 1 && (k.hrDelta ?? 0) <= 3 && k.activity.feel !== "hard");
-  const settled = lastChange === undefined || daysBetween(lastChange, now) >= 28;
+  const proven = Math.min(...up.map((k) => impliedVdot(k, current)));
+  const strong = proven >= current + 1 || up.every((k) => k.activity.feel === "easy");
+  const settled = lastChange === undefined || daysBetween(lastChange, now) >= 28 || strong;
   if (settled && up.length >= 2 && !refusedRecently(history, true, now)) {
-    return proposal("vdot", current, current + 1, "RC3", evidence(up), now);
+    return proposal("vdot", current, Math.max(current + 1, proven), "RC3", evidence(up), now);
   }
   const lastTwo = keys.slice(-2);
   const slow = lastTwo.length === 2 && lastTwo.every((k) => (ratio(k) ?? 1) < 0.97 && !k.externalFactor);

@@ -1,12 +1,13 @@
 import {
   type CreateEventInput,
+  type DeclaredTime,
   type FeasibilityInput,
   type Profile,
   type Program,
   painSiteSchema,
   type Unavailable,
 } from "@annarrive/protocol";
-import { addDays, minutesOf, timeOf, weekday } from "../../lib/date.ts";
+import { addDays, daysBetween, minutesOf, timeOf, weekday } from "../../lib/date.ts";
 import { checkIcsUrl } from "../program/program.ts";
 
 /** The onboarding of docs/specs/produit.md as data and pure functions: a few questions per step, grouped. */
@@ -14,6 +15,7 @@ import { checkIcsUrl } from "../program/program.ts";
 export const STEPS = [
   "welcome",
   "race",
+  "last",
   "target",
   "week",
   "hours",
@@ -27,6 +29,10 @@ export type Step = (typeof STEPS)[number];
 export const COPY: Record<Step, { title: string; lead?: string }> = {
   welcome: { title: "Annarrivé", lead: "Ton coach de course à pied." },
   race: { title: "Ton objectif" },
+  last: {
+    title: "Ton dernier chrono",
+    lead: "Facultatif. Un chrono récent, ou ton temps estimé, règle tes allures dès la première semaine.",
+  },
   target: { title: "Ton chrono" },
   week: { title: "Ta semaine" },
   hours: { title: "Tes horaires", lead: "Tes courses se placent dans cette plage, jamais trop près du coucher." },
@@ -45,6 +51,38 @@ export const DISTANCES = [
 type DistanceM = (typeof DISTANCES)[number]["value"];
 export type Race = DistanceM | "other" | "none";
 
+export const LAST_WHEN = [
+  { value: "recent", label: "Il y a moins de 3 mois", daysAgo: 45 },
+  { value: "months", label: "Il y a 3 à 6 mois", daysAgo: 135 },
+  { value: "older", label: "Il y a plus de 6 mois", daysAgo: 270 },
+  { value: "estimate", label: "C'est une estimation", daysAgo: undefined },
+] as const;
+export type LastWhen = (typeof LAST_WHEN)[number]["value"];
+
+/** Her last time as the level estimate reads it (algo.md F10): a date roughly when, none for an estimate. */
+export function declaredTimeOf(draft: Draft, today: string): DeclaredTime | undefined {
+  return lastTimeOf(draft.lastRace, draft.lastSec, draft.lastWhen, today);
+}
+
+/** Shared by onboarding and Programme: the distance, the time in seconds (0: none), and roughly when. */
+export function lastTimeOf(
+  distanceM: number,
+  seconds: number,
+  when: LastWhen,
+  today: string,
+): DeclaredTime | undefined {
+  if (seconds <= 0) return undefined;
+  const daysAgo = LAST_WHEN.find((w) => w.value === when)?.daysAgo;
+  return { distanceM, minutes: seconds / 60, ...(daysAgo === undefined ? {} : { date: addDays(today, -daysAgo) }) };
+}
+
+/** Back from a stored time to the answer she gave: the closest of the four « Quand ». */
+export function whenOf(date: string | undefined, today: string): LastWhen {
+  if (date === undefined) return "estimate";
+  const ago = daysBetween(date, today);
+  return ago < 90 ? "recent" : ago < 182 ? "months" : "older";
+}
+
 export type StrengthDraft = { id: string; name: string; legs: boolean; day: number; start: string };
 export type Draft = {
   race?: Race;
@@ -56,14 +94,18 @@ export type Draft = {
   targetSec: number;
   /** "Juste finir": no target time. */
   finish: boolean;
+  /** « Ton dernier chrono »: its distance, its time in seconds (0: none given), and roughly when. */
+  lastRace: DistanceM;
+  lastSec: number;
+  lastWhen: LastWhen;
   runsPerWeek: Profile["runsPerWeek"];
   bedtime: string;
   earliest: string;
   latestEnd: string;
   /** 1 = Monday to 7 = Sunday, as in the profile. */
   noRunDays: number[];
-  /** Her long-run day, 1 = Monday to 7 = Sunday. */
-  longRunDay: number;
+  /** The days her long run may go on, 1 = Monday to 7 = Sunday. */
+  longRunDays: number[];
   strength: StrengthDraft[];
   pain: boolean;
   zone?: string;
@@ -82,13 +124,16 @@ export const EMPTY: Draft = {
   startTime: "9:00",
   targetSec: 0,
   finish: false,
+  lastRace: 21097.5,
+  lastSec: 0,
+  lastWhen: "recent",
   runsPerWeek: 3,
   bedtime: "23:00",
   earliest: "7:00",
   latestEnd: "21:30",
   noRunDays: [],
   // The weekend is when a student is free for her longest run (algo.md S8).
-  longRunDay: 7,
+  longRunDays: [6, 7],
   strength: [],
   pain: false,
   level: 2,
@@ -111,11 +156,12 @@ export function targetOf(draft: Draft): number | undefined {
   return draft.finish || draft.targetSec <= 0 ? undefined : draft.targetSec / 60;
 }
 
-export function feasibilityInput(draft: Draft): FeasibilityInput | undefined {
+export function feasibilityInput(draft: Draft, today: string): FeasibilityInput | undefined {
   const distanceM = distanceOf(draft);
   const targetMin = targetOf(draft);
   if (!distanceM || !draft.date || targetMin === undefined) return undefined;
-  return { distanceM, date: draft.date, targetMin };
+  const declaredTime = declaredTimeOf(draft, today);
+  return { distanceM, date: draft.date, targetMin, ...(declaredTime ? { declaredTime } : {}) };
 }
 
 function raceIssue(draft: Draft, today: string): string | undefined {
@@ -200,10 +246,12 @@ export function toPayload(draft: Draft, today: string): Payload {
       recurrence: "weekly",
     };
   });
+  const declared = declaredTimeOf(draft, today);
+  const longDays = [...draft.longRunDays].filter((d) => !draft.noRunDays.includes(d)).sort((a, b) => a - b);
   const ics = draft.icsUrl.trim() ? checkIcsUrl(draft.icsUrl).url : undefined;
   const site = painSiteSchema.safeParse(draft.zone?.toLowerCase());
   return {
-    program: { goal },
+    program: { goal, ...(declared ? { declaredTime: declared } : {}) },
     events,
     pain: draft.pain && site.success ? { reason: "pain", where: site.data, walking0to10: draft.level } : undefined,
     profile: {
@@ -211,8 +259,8 @@ export function toPayload(draft: Draft, today: string): Payload {
       earliest: padTime(draft.earliest),
       latestEnd: padTime(draft.latestEnd),
       noRunDays: [...draft.noRunDays].sort((a, b) => a - b),
-      // A long-run day she also keeps free of runs is left to the coach's default (the other weekend day).
-      ...(draft.noRunDays.includes(draft.longRunDay) ? {} : { preferredLongDay: draft.longRunDay }),
+      // A long-run day she also keeps free of runs is dropped; none left: the coach's default (Sunday).
+      ...(longDays.length ? { preferredLongDays: longDays } : {}),
       bedtime: padTime(draft.bedtime),
       useSleepHr: draft.useSleepHr,
       travelMin: 0,

@@ -158,12 +158,15 @@ function examPenalties(hard: boolean, lateEvening: boolean, slot: Slot, cal: Cal
 
 const SATURDAY = 5;
 const SUNDAY = 6;
-const isWeekend = (day: number): boolean => day === SATURDAY || day === SUNDAY;
 
-/** S8: off her long-run day (Sunday unless she chose one), half when it is the other weekend day. */
-function longDayPenalty(day: number, preferred = SUNDAY): number {
-  if (day === preferred) return 0;
-  return isWeekend(day) && isWeekend(preferred) ? 10 : 20;
+/**
+ * S8: off the days she accepts for her long run. Any of them is fine, the freest wins on the other rules, and
+ * Sunday breaks a tie (1 point elsewhere). Without a choice: Sunday, the other weekend day at half.
+ */
+function longDayPenalty(day: number, accepted?: number[]): number {
+  if (!accepted?.length) return day === SUNDAY ? 0 : day === SATURDAY ? 10 : 20;
+  if (accepted.includes(day)) return day === SUNDAY || accepted.length === 1 ? 0 : 1;
+  return 20;
 }
 
 function habitPenalties(session: Session, slot: Slot, week: WeekState): Item[] {
@@ -174,7 +177,7 @@ function habitPenalties(session: Session, slot: Slot, week: WeekState): Item[] {
     if (offH > 0) items.push({ id: "S7", pts: Math.min(20, 5 * offH) });
   }
   if (session.type === "L") {
-    const pts = longDayPenalty(weekday(slot.start), s.preferredLongDay);
+    const pts = longDayPenalty(weekday(slot.start), s.preferredLongDays);
     if (pts > 0) items.push({ id: "S8", pts });
   }
   const last = week.prev?.find((p) => p.type === session.type && p.start !== "");

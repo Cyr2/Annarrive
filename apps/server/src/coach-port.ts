@@ -1,6 +1,8 @@
 import {
   type FeasibilityClass,
+  type FitnessHistory,
   feasibility,
+  hrMax,
   initialFitness,
   type Phase,
   phaseSplit,
@@ -12,6 +14,7 @@ import type {
   ChangeOption,
   ChangeOptions,
   DailySignal,
+  DeclaredTime,
   FeasibilityInput,
   HealthStatus,
   PlannedSession,
@@ -111,6 +114,16 @@ export interface CoachPort {
   estimateFitness(st: CoachState, vo2max: number | undefined, now: string): Omit<FitnessEstimate, "id" | "date"> | null;
   /** M8 after a new run: RC1 and RC2 for a race or test, F10 while the level is provisional. */
   evaluateRun(st: CoachState, run: Activity, now: string): ProposalDraft | null;
+  /**
+   * M8 RC3 and RC4 after a T, CRUISE or I session: its laps against the targets of the key sessions since the last
+   * level change, with the proposals she already answered (RC8).
+   */
+  evaluateKeySessions(
+    st: CoachState,
+    done: { session: PlannedSession; activity: Activity }[],
+    past: Proposal[],
+    now: string,
+  ): ProposalDraft | null;
   /** M8 RC5 after a feel answer: three "hard" in a row on easy sessions propose easier paces. */
   evaluateFeels(st: CoachState, now: string): ProposalDraft | null;
   /** M8 `acceptProposal` (RC9): new paces for future sessions, and the new estimate in `state.fitness`. */
@@ -133,6 +146,30 @@ export function slotFor(session: PlannedSession, start: string): Slot {
   return { start, end: addMinutes(start, session.durMin) };
 }
 
+/** M1 `initialFitness`'s input from what is stored: runs with their laps, the observed HRmax (F12), her last time. */
+export function fitnessHistory(
+  activities: Activity[],
+  vo2maxGarmin: number | undefined,
+  declared: DeclaredTime | undefined,
+): FitnessHistory {
+  const observed = activities.flatMap((a) => (a.maxHr === undefined ? [] : [a.maxHr]));
+  const max = observed.length ? hrMax(Math.max(...observed), undefined)?.value : undefined;
+  return {
+    activities,
+    ...(vo2maxGarmin === undefined ? {} : { vo2maxGarmin }),
+    ...(declared
+      ? {
+          declared: {
+            distM: declared.distanceM,
+            tMin: declared.minutes,
+            ...(declared.date ? { date: declared.date } : {}),
+          },
+        }
+      : {}),
+    ...(max === undefined ? {} : { hr: { hrMax: max } }),
+  };
+}
+
 /** Already the real `@annarrive/coach`: onboarding needs it before the rest of the coach is wired. */
 export function coachFeasibility(
   goal: FeasibilityInput,
@@ -142,7 +179,7 @@ export function coachFeasibility(
 ): FeasibilityClass | null {
   let fitness: { vdot: number; status: string };
   try {
-    fitness = initialFitness({ activities: history, vo2maxGarmin }, now);
+    fitness = initialFitness(fitnessHistory(history, vo2maxGarmin, goal.declaredTime), now);
   } catch (error) {
     if (error instanceof Error && error.message === "NO_FITNESS_DATA") return null;
     throw error;

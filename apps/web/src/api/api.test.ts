@@ -228,14 +228,19 @@ describe("http client, reading", () => {
       date: "2026-11-16",
       start: "18:00",
       mainSet: "6 × 800 m",
-      pace: "4:55",
+      pace: "4'55 /km",
       watch: "failed",
     });
     expect(today.session?.steps).toEqual([
-      { label: "Échauffement 15 min", pace: "", tone: "plain" },
-      { label: "6 × 800 m", pace: "4:55", tone: "hard" },
-      { label: "Récupération 2 min", pace: "", tone: "muted" },
-      { label: "Retour au calme 10 min", pace: "6:15 à 6:45", tone: "plain" },
+      { label: "Échauffement · 15 min", pace: "", tone: "plain", minutes: 15 },
+      {
+        repeat: 6,
+        steps: [
+          { label: "800 m", pace: "4'55 /km", tone: "hard" },
+          { label: "Récupérer · 2 min", pace: "", tone: "muted", minutes: 2 },
+        ],
+      },
+      { label: "Retour au calme · 10 min", pace: "6'15 à 6'45 /km", tone: "plain", minutes: 10 },
     ]);
     expect(today.proposals?.map((p) => p.text.split(" :")[0])).toEqual([
       "Tes dernières séances rapides sont bien passées",
@@ -281,7 +286,7 @@ describe("http client, reading", () => {
       distanceKm: 8.3,
       duration: "51:12",
       mainPaceLabel: "Allure moyenne",
-      mainPace: "6:10",
+      mainPace: "6'10 /km",
       verdict: "Prévu 50 min, fait en 51 min",
       askFeel: true,
       intensity: "hard",
@@ -454,28 +459,35 @@ describe("http client, reading", () => {
     const hills = toRun(
       session("COTES_C", [
         { kind: "warmup", durMin: 29, zone: "E", target: e },
-        { kind: "hills", durMin: 1 / 6, reps: 6, target: { rpe: 8 } },
-        { kind: "recover", durMin: 1.5, reps: 5, target: { rpe: 1 } },
+        { kind: "hills", durMin: 1 / 6, reps: 6, zone: "R", target: { paceSKm: [265, 265], rpe: 8 } },
+        { kind: "recover", durMin: 1.5, reps: 5, zone: "E", target: e },
         { kind: "cooldown", durMin: 10, zone: "E", target: e },
       ]),
     );
     expect(hills.intensity).toBe("easy");
     expect(hills.mainSet).toBe("6 × 10 s en côte");
-    expect(hills.steps.map((s) => s.label)).toEqual([
-      "Échauffement 29 min",
-      "6 × 10 s en côte",
-      "Récupération 5 × 1 min 30",
-      "Retour au calme 10 min",
+    // As the watch runs it: a « Répéter 6 fois » group around the sprint and its jog back, every line with a pace.
+    expect(hills.steps).toEqual([
+      { label: "Échauffement · 29 min", pace: "5'25 à 6'29 /km", tone: "plain", minutes: 29 },
+      {
+        repeat: 6,
+        steps: [
+          { label: "10 s en côte", pace: "4'25 /km", tone: "hard", minutes: 1 / 6 },
+          { label: "Récupérer · 1 min 30", pace: "5'25 à 6'29 /km", tone: "muted", minutes: 1.5 },
+        ],
+      },
+      { label: "Retour au calme · 10 min", pace: "5'25 à 6'29 /km", tone: "plain", minutes: 10 },
     ]);
+    expect(hills.pace).toBe("4'25 /km");
     const strides = toRun(
       session("E", [
         { kind: "work", durMin: 45, zone: "E", target: e },
         { kind: "strides", durMin: 1 / 3, reps: 6, zone: "R", target: { paceSKm: [265, 265], rpe: 3 } },
       ]),
     );
-    expect(strides.steps.map((s) => [s.label, s.tone])).toEqual([
-      ["45 min", "plain"],
-      ["Accélérations 6 × 20 s", "hard"],
+    expect(strides.steps).toEqual([
+      { label: "45 min", pace: "5'25 à 6'29 /km", tone: "plain", minutes: 45 },
+      { repeat: 6, steps: [{ label: "Accélération · 20 s", pace: "4'25 /km", tone: "hard", minutes: 1 / 3 }] },
     ]);
     const race = { paceSKm: [313, 313] as [number, number], rpe: 6 };
     const long = toRun(
@@ -484,7 +496,7 @@ describe("http client, reading", () => {
         { kind: "work", durMin: 16, zone: "race", target: race },
       ]),
     );
-    expect(long.steps.map((s) => s.tone)).toEqual(["plain", "hard"]);
+    expect(long.steps.map((s) => ("tone" in s ? s.tone : "repeat"))).toEqual(["plain", "hard"]);
   });
 
   it("maps move slots, keeping a day open when one of its times is allowed", () => {
@@ -643,8 +655,8 @@ describe("http client, changes", () => {
       warnings: ["Repos ou vélo conseillé"],
     };
     expect(toPreviewRows(preview, "2026-11-16")).toEqual([
-      { day: "Aujourd'hui", label: "Footing · 20 min", tone: "easy", before: "Fractionné · 50 min · 4:55 /km" },
-      { day: "Demain", label: "Repos", tone: "rest", before: "Fractionné · 50 min · 4:55 /km" },
+      { day: "Aujourd'hui", label: "Footing · 20 min", tone: "easy", before: "Fractionné · 50 min · 4'55 /km" },
+      { day: "Demain", label: "Repos", tone: "rest", before: "Fractionné · 50 min · 4'55 /km" },
       { day: "Conseil", label: "Repos ou vélo conseillé", tone: "other" },
     ]);
   });

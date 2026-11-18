@@ -6,6 +6,7 @@ import type { SettingKey } from "../sheets/store.ts";
 export const SETTING_LABELS: Record<SettingKey, string> = {
   runsPerWeek: "Courses par semaine",
   noRunDays: "Jours sans course",
+  longRunDays: "Sortie longue",
   notBefore: "Pas avant",
   notAfter: "Pas après",
   bedtime: "Heure de coucher",
@@ -13,9 +14,10 @@ export const SETTING_LABELS: Record<SettingKey, string> = {
 
 export function settingValue(key: SettingKey, settings: Settings): string {
   if (key === "runsPerWeek") return String(settings.runsPerWeek);
-  if (key === "noRunDays") {
+  if (key === "noRunDays" || key === "longRunDays") {
     // Three days or more fit the row only shortened ("Lun, Mer, Sam"), even at 320 px.
-    const names = settings.noRunDays.map((d) => weekdayName(d).slice(0, settings.noRunDays.length > 2 ? 3 : undefined));
+    const days = settings[key];
+    const names = days.map((d) => weekdayName(d).slice(0, days.length > 2 ? 3 : undefined));
     return names.length ? names.join(", ") : "Aucun";
   }
   return settings[key];
