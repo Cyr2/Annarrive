@@ -8,18 +8,20 @@ import { cx } from "../../lib/cx.ts";
 import { daysBetween, mondayOf } from "../../lib/date.ts";
 import { Button, IconButton } from "../../ui/controls.tsx";
 import { EmptyState, LoadFailed } from "../../ui/EmptyState.tsx";
+import { PullToRefresh } from "../../ui/PullToRefresh.tsx";
 import { Screen } from "../../ui/Screen.tsx";
 import { Skeleton } from "../../ui/Skeleton.tsx";
 import { WeekStrip } from "../../ui/WeekStrip.tsx";
 import { todayOf } from "../plan/selectors.ts";
 import { usePlan } from "../plan/store.ts";
 import { useSheet } from "../sheets/store.ts";
-import { RefreshRow } from "./RefreshRow.tsx";
+import { RefreshRow, refreshTimetable } from "./RefreshRow.tsx";
 import { useWeekDrag } from "./useWeekDrag.ts";
+import { useWeekMotion } from "./useWeekMotion.ts";
 import { useWeekSwipe } from "./useWeekSwipe.ts";
 import { WeekDay } from "./WeekDay.tsx";
 import { ItemRow } from "./WeekItem.tsx";
-import { stripOf, weekDays, weekHeading } from "./week.ts";
+import { type Day, stripOf, weekDays, weekHeading } from "./week.ts";
 
 /**
  * The week to draw: the one asked for, or, while it is read, the one already on screen (`fresh` false), so
@@ -31,13 +33,60 @@ function useShownWeek(offset: number) {
   const shown = useRef<Week | undefined>(undefined);
   if (fresh) shown.current = fresh;
   useEffect(() => {
-    // The next week too, so the arrow lands on it at once.
-    void usePlan
-      .getState()
-      .loadWeek(offset)
-      .then(() => usePlan.getState().loadWeek(offset + 1));
+    // The weeks on each side too, so an arrow or a swipe lands on one already read.
+    const { loadWeek, weeks } = usePlan.getState();
+    void loadWeek(offset).then(() =>
+      Promise.all([offset + 1, offset - 1].filter((o) => !weeks[o]).map((o) => loadWeek(o))),
+    );
   }, [offset]);
   return { week: fresh ?? (failed ? undefined : shown.current), fresh, failed };
+}
+
+/** The strip with the week's load and where it stands in the plan. */
+function StripCard({ week, today, days }: { week: Week; today: string; days: Day[] }) {
+  const heading = weekHeading(week, today);
+  return (
+    <WeekStrip
+      days={stripOf(days, (day) => `#day-${day.date}`)}
+      label="Jours de la semaine"
+      footer={
+        <p className="t-sub m-0 flex flex-wrap justify-between gap-x-3 px-4">
+          <span className="t-label font-semibold text-ink">
+            {heading.load}
+            {heading.time && <span className="font-normal text-ink-2"> · {heading.time}</span>}
+          </span>
+          <span>{week.readOnly ? "Semaine passée" : heading.position}</span>
+        </p>
+      }
+    />
+  );
+}
+
+/**
+ * The week before or after, beside the one on screen while a finger swipes, so the page it pulls in is already
+ * there. Only to look at: VoiceOver and the keyboard never reach it. Its place, at the right height, if not read yet.
+ */
+function Neighbour({ side, offset, today }: { side: -1 | 1; offset: number; today: string }) {
+  const week = usePlan((s) => s.weeks[offset + side]);
+  const days = week ? weekDays(week, today) : [];
+  return (
+    <div
+      inert
+      aria-hidden="true"
+      data-neighbour={side}
+      className="absolute inset-y-0 flex w-full flex-col gap-6 overflow-hidden"
+      style={{ left: `calc(${side} * (100% + var(--spacing-gutter)))` }}
+    >
+      {week ? <StripCard week={week} today={today} days={days} /> : <Skeleton className="h-full" />}
+      {week && (
+        <div className="flex flex-col gap-5">
+          {days.map((day) => (
+            <WeekDay key={day.date} day={day} readOnly dragging={false} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 /** Before the first week arrives: its place, or what failed and Réessayer. */
@@ -65,6 +114,7 @@ export default function WeekScreen() {
   const { week, fresh, failed } = useShownWeek(offset);
   const drag = useWeekDrag(fresh, offset, today);
   const swipe = useWeekSwipe((step) => setOffset((current) => current + step));
+  const rows = useWeekMotion(offset);
   useEffect(() => {
     if (focus && week) document.getElementById(`day-${focus}`)?.scrollIntoView({ block: "start" });
   }, [focus, week]);
@@ -74,8 +124,9 @@ export default function WeekScreen() {
   const add = () => show({ kind: "add", date: fresh?.monday });
   return (
     <Screen>
-      <div ref={swipe.ref} className="flex touch-pan-y flex-col gap-6">
-        <header className="flex flex-col gap-3">
+      <PullToRefresh onRefresh={refreshTimetable} />
+      <div ref={swipe.ref} className="flex touch-pan-y flex-col gap-3">
+        <header>
           <h1 className="sr-only-label">Semaine</h1>
           <div className="flex items-center gap-0.5">
             <IconButton icon="chevronLeft" label="Semaine précédente" onClick={() => setOffset(offset - 1)} />
@@ -87,26 +138,13 @@ export default function WeekScreen() {
               <IconButton icon="plus" label="Ajouter" variant="tinted" tone="action" className="ml-2" onClick={add} />
             )}
           </div>
-          {heading && (
-            <motion.div style={{ x: swipe.x }}>
-              <WeekStrip
-                days={stripOf(days, (day) => `#day-${day.date}`)}
-                label="Jours de la semaine"
-                footer={
-                  <p className="t-sub m-0 flex flex-wrap justify-between gap-x-3 px-4">
-                    <span className="t-label font-semibold text-ink">
-                      {heading.load}
-                      {heading.time && <span className="font-normal text-ink-2"> · {heading.time}</span>}
-                    </span>
-                    <span>{week?.readOnly ? "Semaine passée" : heading.position}</span>
-                  </p>
-                }
-              />
-            </motion.div>
-          )}
         </header>
 
-        <motion.div style={{ x: swipe.x }} className="flex flex-col gap-6">
+        {/* The week and, while a finger swipes, the ones on each side: they move together, nothing blank. */}
+        <motion.div style={{ x: swipe.x }} className="relative flex flex-col gap-6">
+          {swipe.active && <Neighbour side={-1} offset={offset} today={today} />}
+          {swipe.active && <Neighbour side={1} offset={offset} today={today} />}
+          {week && <StripCard week={week} today={today} days={days} />}
           {!week && <WeekWaiting failed={failed} offset={offset} />}
 
           {week && week.items.length === 0 && (
@@ -122,6 +160,7 @@ export default function WeekScreen() {
           {week && week.items.length > 0 && (
             <DndContext {...drag.context}>
               <div
+                ref={rows}
                 data-dragging={Boolean(drag.active)}
                 aria-busy={!fresh}
                 className={cx("flex flex-col gap-5", !fresh && "week-stale")}

@@ -65,13 +65,30 @@
   opacity: 0.45;
 }
 
-@keyframes week-spin {
-  to {
-    transform: rotate(360deg);
+/* A row that changed without her (adapted, a class cancelled, Annuler) or that she moved: the action wash
+   pulses twice over it, then it is a row like the others. Opacity only, over the row (multiply keeps the text). */
+@keyframes week-glow {
+  41% {
+    opacity: 1;
+  }
+  82%,
+  100% {
+    opacity: 0;
   }
 }
-.week-spin svg {
-  animation: week-spin 0.9s linear infinite;
+.week-changed {
+  position: relative;
+}
+.week-changed::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--color-action-wash);
+  mix-blend-mode: multiply;
+  opacity: 0;
+  pointer-events: none;
+  animation: week-glow var(--duration-glow) var(--ease-in-out) 2;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -83,7 +100,7 @@
   .week-lift {
     animation: fade-in var(--duration-fade) linear both;
   }
-  .week-spin svg {
-    animation: none;
+  .week-changed::after {
+    animation: week-glow calc(var(--duration-fade) * 2) linear 1;
   }
 }

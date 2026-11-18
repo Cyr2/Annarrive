@@ -19,6 +19,7 @@ import { checkIcsUrl, phaseBar, raceLine, settingValue } from "./program/program
 import { agenda, contentKey, itemTime, sessionContext, sheetFor, toneOf } from "./today/today.ts";
 import { canContinue, EMPTY, nextStep, painAdvice, progressOf, toInput } from "./unavailable/unavailable.ts";
 import {
+  changedIds,
   classesSpan,
   type Day,
   dayLabel,
@@ -74,6 +75,18 @@ describe("today", () => {
 });
 
 describe("week", () => {
+  it("names the rows that moved, were cancelled or are new, and nothing for another week", () => {
+    const [first, second] = week.items;
+    if (!first || !second) throw new Error("seed");
+    const moved = moveItem(week, first.id, { date: "2026-11-19", start: "18:00" });
+    expect(changedIds(week, moved)).toEqual([first.id]);
+    expect(changedIds(week, week)).toEqual([]);
+    const cancelled = { ...week, items: week.items.map((i) => (i.id === second.id ? { ...i, cancelled: true } : i)) };
+    expect(changedIds(week, cancelled)).toEqual([second.id]);
+    expect(changedIds({ ...week, items: [second] }, week)).toEqual([first.id, ...week.items.slice(2).map((i) => i.id)]);
+    expect(changedIds({ ...week, monday: "2026-11-09" }, moved)).toEqual([]);
+  });
+
   it("lists days with their notes and the heading of the mockup", () => {
     const days = weekDays(week, MONDAY);
     expect(days).toHaveLength(7);

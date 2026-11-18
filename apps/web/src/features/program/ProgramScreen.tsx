@@ -1,8 +1,10 @@
 import { useEffect } from "react";
 import { LoadFailed } from "../../ui/EmptyState.tsx";
+import { PullToRefresh } from "../../ui/PullToRefresh.tsx";
 import { Screen } from "../../ui/Screen.tsx";
 import { Skeleton } from "../../ui/Skeleton.tsx";
 import { usePlan } from "../plan/store.ts";
+import { refreshTimetable } from "../week/RefreshRow.tsx";
 import { GoalCard } from "./GoalCard.tsx";
 import { PlanPhases } from "./PlanPhases.tsx";
 import { ProgramSettings } from "./ProgramSettings.tsx";
@@ -19,6 +21,7 @@ export default function ProgramScreen() {
   return (
     <Screen>
       <h1 className="sr-only-label">Programme</h1>
+      <PullToRefresh onRefresh={refreshTimetable} />
       {!program && status === "error" && (
         <LoadFailed
           title="Programme indisponible"

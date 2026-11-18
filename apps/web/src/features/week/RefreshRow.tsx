@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect } from "react";
+import { create } from "zustand";
 import { cx } from "../../lib/cx.ts";
 import { ago } from "../../lib/date.ts";
 import { Icon } from "../../ui/Icon.tsx";
@@ -13,27 +14,35 @@ export function checkedLine(checkedAt: string | undefined, never: string): strin
   return checkedAt ? `À jour ${ago(checkedAt, new Date())}` : never;
 }
 
+/** One read at a time, whether it came from Actualiser or from pulling the page down. */
+const useTimetableRead = create<{ reading?: boolean; result?: string }>(() => ({}));
+
+/** Reads the timetable again, then the whole plan on screen. A second call while one runs waits for nothing. */
+export async function refreshTimetable() {
+  if (useTimetableRead.getState().reading) return;
+  useTimetableRead.setState({ reading: true, result: undefined });
+  let summary: string | undefined;
+  const ok = await usePlan.getState().run(async (client) => {
+    summary = (await client.refreshTimetable()).summary;
+  });
+  useTimetableRead.setState({ reading: false, result: ok ? refreshLine(summary) : undefined });
+}
+
 /**
  * Actualiser, the same everywhere (Aujourd'hui, Semaine, Programme): the button turns and waits while the
  * timetable is read, then the result stays written until she leaves the screen.
  */
 export function useTimetableRefresh() {
-  const [state, setState] = useState<{ reading?: boolean; result?: string }>({});
-  const refresh = async () => {
-    setState({ reading: true });
-    let summary: string | undefined;
-    const ok = await usePlan.getState().run(async (client) => {
-      summary = (await client.refreshTimetable()).summary;
-    });
-    setState({ result: ok ? refreshLine(summary) : undefined });
-  };
+  const state = useTimetableRead();
+  // Leaving the screen forgets the result; a read still on its way finishes.
+  useEffect(() => () => useTimetableRead.setState((s) => (s.reading ? s : {})), []);
   const button = (
     <TextButton
       icon="change"
       className={cx("t-label flex-none px-2", state.reading && "week-spin")}
       disabled={state.reading}
       aria-busy={state.reading}
-      onClick={() => void refresh()}
+      onClick={() => void refreshTimetable()}
     >
       Actualiser
     </TextButton>
