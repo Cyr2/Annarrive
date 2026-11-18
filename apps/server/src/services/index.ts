@@ -11,6 +11,7 @@ import { ChangeService } from "./changes.ts";
 import { ChatService } from "./chat.ts";
 import { FitnessService } from "./fitness.ts";
 import { GarminService } from "./garmin.ts";
+import { IncidentService } from "./incidents.ts";
 import { NotificationService, type PushSender } from "./notifications.ts";
 import { PlanService } from "./plan.ts";
 import { TimetableService } from "./timetable.ts";
@@ -25,6 +26,7 @@ export type Services = {
   garmin: GarminService | null;
   chat: ChatService;
   fitness: FitnessService;
+  incidents: IncidentService;
 };
 
 export function createServices(deps: {
@@ -65,5 +67,6 @@ export function createServices(deps: {
     notifications,
     garmin,
     fitness,
+    incidents: new IncidentService(stores, deps.clock),
   };
 }

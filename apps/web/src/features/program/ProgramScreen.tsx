@@ -6,6 +6,7 @@ import { usePlan } from "../plan/store.ts";
 import { GoalCard } from "./GoalCard.tsx";
 import { PlanPhases } from "./PlanPhases.tsx";
 import { ProgramSettings } from "./ProgramSettings.tsx";
+import { ReportIssue } from "./ReportIssue.tsx";
 
 /** Programme et réglages (design/Programme). */
 export default function ProgramScreen() {
@@ -29,6 +30,7 @@ export default function ProgramScreen() {
       {program && today && <GoalCard program={program} today={today} />}
       {program && <PlanPhases program={program} />}
       {program && <ProgramSettings program={program} />}
+      {program && <ReportIssue />}
     </Screen>
   );
 }

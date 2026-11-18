@@ -5,6 +5,7 @@ import { join } from "node:path";
 import {
   authenticationResponseSchema,
   type Health,
+  incidentBatchSchema,
   passwordLoginSchema,
   registrationResponseSchema,
 } from "@annarrive/protocol";
@@ -19,7 +20,7 @@ import { ZodError, z } from "zod";
 import { AppError, ReadOnlyError, UnauthorizedError } from "./errors.ts";
 import { chatRoutes } from "./routes/chat.ts";
 import { fitnessRoutes } from "./routes/fitness.ts";
-import { planRoutes } from "./routes/plan.ts";
+import { body, planRoutes } from "./routes/plan.ts";
 import { pushRoutes } from "./routes/push.ts";
 import { SESSION_SECONDS } from "./services/auth.ts";
 import type { Services } from "./services/index.ts";
@@ -208,6 +209,11 @@ export function createApp({ services, sessionSecret, webDist }: AppOptions): Hon
       return c.json({ error: ours ? issue.message : "Une valeur ne va pas : vérifie ce que tu as saisi." }, 400);
     }
     console.error(`Erreur inattendue : ${error.name}`);
+    try {
+      services.incidents.recordServerError(`${c.req.method} ${c.req.path}`, error);
+    } catch {
+      // The journal must never turn one failure into two.
+    }
     return c.json({ error: "Ça n'a pas marché : réessaie dans un instant." }, 500);
   });
 
@@ -303,6 +309,16 @@ export function createApp({ services, sessionSecret, webDist }: AppOptions): Hon
   // Each message runs Reggie (paid model calls); each refresh downloads the ICS.
   app.post("/api/chat", rateLimit(30, 10 * 60_000));
   app.on(["POST", "PUT"], ["/api/timetable/refresh", "/api/timetable/url"], rateLimit(10, 60_000));
+  // The phone's incident journal, counted per session (a hash of its cookie) so a looping client stops itself.
+  const sessionKey = (c: Context) =>
+    createHash("sha256")
+      .update(c.req.header("cookie") ?? "")
+      .digest("base64url");
+  app.post("/api/incidents", rateLimit(30, 10 * 60_000, Date.now, sessionKey), async (c) => {
+    const { incidents } = await body(c, incidentBatchSchema);
+    services.incidents.record(incidents, (await currentSession(c))?.userId);
+    return c.body(null, 204);
+  });
   app.route("/api", planRoutes(services));
   app.route("/api", pushRoutes(services));
   app.route("/api", chatRoutes(services));

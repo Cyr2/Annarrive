@@ -1,4 +1,5 @@
 import type { registerSW } from "virtual:pwa-register";
+import { crumb } from "../api/journal.ts";
 import { notify } from "../ui/toast.ts";
 import { usePlan } from "./plan/store.ts";
 import { useSheet } from "./sheets/store.ts";
@@ -23,10 +24,12 @@ function whenCalm(task: () => void) {
  */
 export function watchForUpdates(register: typeof registerSW) {
   const update = register({
-    onNeedRefresh: () =>
+    onNeedRefresh: () => {
+      crumb("app", "nouvelle version prête");
       whenCalm(
         () => void notify("Nouvelle version prête", { label: "Recharger", onClick: () => void update(true) }, Infinity),
-      ),
+      );
+    },
     onRegisteredSW(_url, registration) {
       document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible") void registration?.update().catch(() => undefined);

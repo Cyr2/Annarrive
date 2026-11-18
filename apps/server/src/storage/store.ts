@@ -52,6 +52,11 @@ export class DocumentStore<T extends { id: string }> {
     return valid;
   }
 
+  /** Drops the documents whose span starts before `cutoff`: retention. */
+  deleteBefore(cutoff: string): void {
+    this.#db.prepare(`DELETE FROM ${this.table} WHERE start_at < ?`).run(cutoff);
+  }
+
   delete(id: string): void {
     this.#db.prepare(`DELETE FROM ${this.table} WHERE id = ?`).run(id);
   }
