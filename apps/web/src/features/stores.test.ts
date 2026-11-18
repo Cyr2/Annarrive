@@ -4,7 +4,7 @@ import { ApiError } from "../api/errors.ts";
 import { createMockApi } from "../api/mock/index.ts";
 import { createPlanStore, isStale, STALE_MS } from "./plan/store.ts";
 import { createChatStore } from "./reggie/store.ts";
-import { SHEET_CLOSE_MS, useSheet } from "./sheets/store.ts";
+import { onHistoryBack, SHEET_CLOSE_MS, useSheet } from "./sheets/store.ts";
 
 const MONDAY = "2026-11-16";
 const RUN = `${MONDAY}-2`;
@@ -305,17 +305,41 @@ describe("plan store with the server's answers", () => {
 });
 
 describe("sheet store", () => {
-  it("shows one sheet at a time and queues the next until the first has slid away", () => {
+  it("stacks a sheet opened from another: Retour brings the first back, closing closes them all", () => {
     vi.useFakeTimers();
+    useSheet.getState().show({ kind: "session", id: RUN });
+    expect(useSheet.getState()).toMatchObject({ open: true, current: { kind: "session" }, below: [] });
     useSheet.getState().show({ kind: "move", id: RUN });
-    expect(useSheet.getState()).toMatchObject({ open: true, current: { kind: "move" } });
+    expect(useSheet.getState()).toMatchObject({ open: true, current: { kind: "move" }, below: [{ kind: "session" }] });
+    useSheet.getState().back();
+    expect(useSheet.getState()).toMatchObject({ open: true, current: { kind: "session" }, below: [] });
     useSheet.getState().show({ kind: "change", id: RUN });
-    expect(useSheet.getState()).toMatchObject({ open: false, queued: { kind: "change" } });
-    vi.advanceTimersByTime(SHEET_CLOSE_MS);
-    expect(useSheet.getState()).toMatchObject({ open: true, current: { kind: "change" } });
     useSheet.getState().close();
+    expect(useSheet.getState().open).toBe(false);
+    vi.advanceTimersByTime(SHEET_CLOSE_MS);
+    expect(useSheet.getState()).toMatchObject({ current: undefined, below: [] });
+    vi.useRealTimers();
+  });
+
+  it("Android's Back steps down the stack, then closes the last sheet", () => {
+    vi.useFakeTimers();
+    useSheet.getState().show({ kind: "add" });
+    useSheet.getState().show({ kind: "strength" });
+    onHistoryBack({ sheet: true, depth: 1 });
+    expect(useSheet.getState()).toMatchObject({ open: true, current: { kind: "add" }, below: [] });
+    onHistoryBack(null);
+    expect(useSheet.getState().open).toBe(false);
     vi.advanceTimersByTime(SHEET_CLOSE_MS);
     expect(useSheet.getState().current).toBeUndefined();
+    vi.useRealTimers();
+  });
+
+  it("Retour on the first sheet closes it", () => {
+    vi.useFakeTimers();
+    useSheet.getState().show({ kind: "goal" });
+    useSheet.getState().back();
+    expect(useSheet.getState().open).toBe(false);
+    vi.advanceTimersByTime(SHEET_CLOSE_MS);
     vi.useRealTimers();
   });
 

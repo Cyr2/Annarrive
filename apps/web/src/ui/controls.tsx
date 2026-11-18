@@ -16,6 +16,7 @@ import {
   lazy,
   type ReactNode,
   type Ref,
+  type RefObject,
   Suspense,
   useEffect,
   useRef,
@@ -24,7 +25,13 @@ import {
 import { cx } from "../lib/cx.ts";
 import { Icon, type IconName } from "./Icon.tsx";
 
-const loadGlisse = () => import("glisse");
+/** glisse once its file is in: a control shown for the first time renders at once instead of suspending. */
+let ready: typeof import("glisse") | undefined;
+const loadGlisse = () =>
+  import("glisse").then((module) => {
+    ready = module;
+    return module;
+  });
 let glisse: typeof import("glisse") | undefined;
 const waiting = new Set<() => void>();
 const GESTURE_END = ["pointerup", "pointercancel"] as const;
@@ -89,6 +96,8 @@ function GlassButton({ icon, variant = "glass", className, children, type = "but
   );
 }
 
+// A lazy component suspends on its first render even when its file is in: a sheet then grew under the finger
+// as it rose (Modifier l'objectif). Once glisse is in, its components are used directly.
 const LazySegmented = lazy(() => loadGlisse().then((module) => ({ default: module.SegmentedControl })));
 const LazySwitch = lazy(() => loadGlisse().then((module) => ({ default: module.Switch })));
 const LazySlider = lazy(() => loadGlisse().then((module) => ({ default: module.Slider })));
@@ -168,10 +177,11 @@ type SegmentedProps<T extends string> = {
 
 /** iOS segmented control, 2 to 4 short exclusive values. It fills the width of its container. */
 export function SegmentedControl<T extends string>({ items, value, onChange, label }: SegmentedProps<T>) {
+  const Segmented = ready?.SegmentedControl ?? LazySegmented;
   return (
     <div className="ui-segmented-box">
       <Suspense fallback={null}>
-        <LazySegmented
+        <Segmented
           aria-label={label}
           items={items}
           value={value ?? null}
@@ -190,9 +200,10 @@ type SwitchProps = { checked: boolean; onChange: (checked: boolean) => void; lab
 
 /** iOS switch: its thumb lifts into a lens while held. */
 export function Switch({ checked, onChange, labelledBy, disabled }: SwitchProps) {
+  const GlassSwitch = ready?.Switch ?? LazySwitch;
   return (
     <Suspense fallback={null}>
-      <LazySwitch
+      <GlassSwitch
         checked={checked}
         onCheckedChange={onChange}
         aria-labelledby={labelledBy}
@@ -214,9 +225,10 @@ type SliderProps = {
 
 /** Slider on a native range input, so the keyboard and VoiceOver work. Its fill is ink: a level, not an action. */
 export function Slider({ id, value, onChange, min, max, valueText }: SliderProps) {
+  const GlassSlider = ready?.Slider ?? LazySlider;
   return (
     <Suspense fallback={null}>
-      <LazySlider
+      <GlassSlider
         id={id}
         value={value}
         onValueChange={onChange}
@@ -242,10 +254,11 @@ type InputProps = {
 
 /** A free text field in glass (Reggie's composer, "Dis-le à Reggie"). Rows of a form use `RowInput` instead. */
 export function Input({ id, value, onChange, placeholder, className, action }: InputProps) {
+  const GlassInput = ready?.Input ?? LazyInput;
   return (
     <Suspense fallback={null}>
       <div className={cx("ui-field", className)}>
-        <LazyInput
+        <GlassInput
           id={id}
           type="text"
           enterKeyHint="send"
@@ -265,12 +278,40 @@ export type Tab = { href: string; label: string; icon: IconName; preload?: () =>
 
 type TabBarProps = { tabs: Tab[]; active: string | null; onNavigate: (href: string) => void };
 
+/** Taller than a browser toolbar: a gap this size between the page's bottom and what is visible is the keyboard. */
+const TOOLBAR_MAX = 120;
+
+/**
+ * Android Chrome lets a fixed bar sink under the visible bottom while its toolbar comes back over a scroll up:
+ * the bar is lifted onto the visible bottom. Not over the keyboard (the bar stays under it) nor while zoomed.
+ */
+function useOnVisibleBottom(box: RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    const element = box.current;
+    if (!viewport || !element) return;
+    const place = () => {
+      const sunk = Math.round(innerHeight - viewport.height - viewport.offsetTop);
+      const lift = sunk > 0 && sunk < TOOLBAR_MAX && viewport.scale === 1;
+      element.style.transform = lift ? `translateY(${-sunk}px)` : "";
+    };
+    place();
+    viewport.addEventListener("resize", place);
+    viewport.addEventListener("scroll", place);
+    return () => {
+      viewport.removeEventListener("resize", place);
+      viewport.removeEventListener("scroll", place);
+    };
+  }, [box]);
+}
+
 /** iOS 26's floating tab bar. Real links (long-press, VoiceOver); a plain click is handed to the router. */
 export function TabBar({ tabs, active, onNavigate }: TabBarProps) {
   const loaded = useGlisse();
   const box = useRef<HTMLDivElement>(null);
   const latest = useRef({ tabs, onNavigate });
   latest.current = { tabs, onNavigate };
+  useOnVisibleBottom(box);
 
   // The links' clicks are caught here, on the way up, whoever renders them.
   useEffect(() => {

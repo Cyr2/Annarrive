@@ -56,7 +56,7 @@ function LinkSheet({
       }
     >
       <Group>
-        <label htmlFor={id} className="row focus-within:rounded-row focus-within:outline-2 focus-within:outline-action">
+        <label htmlFor={id} className="row field-ring">
           <span className="sr-only-label">Lien ICS</span>
           <input
             id={id}
@@ -70,7 +70,7 @@ function LinkSheet({
             aria-invalid={Boolean(error)}
             aria-describedby={`${id}-help`}
             onChange={(e) => setUrl(e.target.value)}
-            className="t-body min-h-11 w-full min-w-0 border-0 bg-transparent text-ink outline-none placeholder:text-ink-3"
+            className="t-body min-h-11 w-full min-w-0 truncate border-0 bg-transparent text-left text-ink outline-none placeholder:text-ink-3"
           />
         </label>
       </Group>
@@ -104,7 +104,12 @@ export function TimetableRows({ program }: { program: Program }) {
         </span>
         {button}
       </div>
-      <RowButton label="Lien ICS" value={saved ? host(saved) : "Ajouter"} onClick={() => setOpen(true)} />
+      <RowButton
+        label="Lien ICS"
+        // A link it cannot read stays on one line, cut short: never a long string across the row.
+        value={saved ? <span className="block truncate">{host(saved)}</span> : "Ajouter"}
+        onClick={() => setOpen(true)}
+      />
       <LinkSheet key={saved} saved={saved} open={open} onOpenChange={setOpen} />
     </>
   );

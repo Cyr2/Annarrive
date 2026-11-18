@@ -34,7 +34,7 @@ All values live there and become Tailwind classes (`text-ink`, `bg-intense-wash`
 | `danger` | `text-danger` | destroys | the label of a destructive action only (never a fill, never an alert) |
 | `on-color` | `text-on-color` | white | text on a filled action or Reggie button |
 | `ok` (`-wash`, `-deep`) | `bg-ok`, `bg-ok-wash text-ok-deep` | a status is fine (connected, up to date, reachable) | status dots and tags. Never the easy-run green |
-| `scrim` | `bg-scrim` | behind a sheet | ink at 13 %; the page behind steps back to 0.94 (`html[data-sheet]`, motion.css) |
+| `scrim` | `bg-scrim` | behind a sheet | ink at 13 %; the page behind steps back to 0.94 with the sheet (`RECEDE`, ui/Sheet.tsx) |
 
 ### Session tones: wash, mid, deep
 

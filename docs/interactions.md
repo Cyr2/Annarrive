@@ -91,6 +91,7 @@ Garde **le moment**, change **le contenu**. Ne propose jamais une séance plus d
 | Élément | Geste | Ce qui se passe |
 |---|---|---|
 | Flèches gauche et droite | Tap | Semaine précédente ou suivante. Les semaines passées sont en lecture seule |
+| La page | Glisser à gauche ou à droite | La semaine suit le doigt. Lâchée au-delà d'un quart de la largeur (ou lancée), elle part de ce côté et la suivante (ou la précédente) arrive avec un ressort ; sinon elle revient. Un glissement vertical reste un défilement, un appui long reste le déplacement d'une séance |
 | Actualiser | Tap | Relit l'emploi du temps tout de suite. Si un cours change, une ligne apparaît : « 1 cours annulé jeudi · Footing passé à vendredi 18:00 ». Une relecture automatique qui change quelque chose laisse la même ligne jusqu'au soir |
 | Course, muscu, révision | Appui long (0,3 s) puis glisser | La séance se soulève (petite vibration). Les créneaux possibles s'entourent en pointillés, les jours interdits s'atténuent avec leur raison. Lâcher = déplacement, bandeau Annuler |
 | Course, muscu, révision | Tap | Course : détail. Muscu ou révision : feuille de modification |
@@ -190,11 +191,14 @@ Toutes respectent « Réduire les animations » d'iOS : dans ce cas, simples fon
 | Moment | Animation |
 |---|---|
 | Appui sur un bouton | Réduction à 96 % pendant l'appui, retour en 120 ms |
-| Ouverture d'une feuille | Monte du bas avec un ressort sans rebond (environ 350 ms). L'écran derrière recule légèrement et s'assombrit. La feuille se ferme en la tirant vers le bas, elle suit le doigt |
+| Ouverture d'une feuille | Monte du bas avec un ressort sans rebond (environ 350 ms). L'écran derrière recule légèrement et s'assombrit, en suivant la feuille image par image : à l'ouverture, pendant qu'on la tire, à la fermeture (bouton, glissement, tap à côté, retour Android), sans à-coup. La feuille se ferme en la tirant vers le bas, par sa poignée ou depuis n'importe où dans son contenu quand celui-ci est en haut (un contenu défilé remonte d'abord) |
+| Feuille ouverte depuis une autre | Elle prend la place de la première. En haut à gauche, « Retour » ramène la première telle qu'on l'a laissée ; tirer vers le bas, toucher à côté ou Échap ferment tout. Le retour Android revient d'une feuille à la fois |
+| Changement d'onglet | Le nouvel écran s'ouvre en haut de page ; seul le retour du navigateur retrouve la position laissée |
 | Déplier les étapes | La hauteur s'ouvre et les lignes apparaissent en fondu, 250 ms |
 | Glisser une séance | Soulèvement (102 %, ombre plus forte) avec vibration légère. Au lâcher, ressort avec un petit rebond vers le nouveau créneau |
 | Séance modifiée | La carte se retourne en fondu vers son nouveau contenu, les chiffres d'allure défilent vers leur nouvelle valeur |
 | Bandeau Annuler | Monte de 12 px en fondu, repart seul après 6 s |
 | Message de Reggie | Apparaît en fondu en montant de 8 px. Les widgets suivent 60 ms après le texte. Trois points animés pendant qu'il réfléchit |
 | Choix dans un widget | Le bouton choisi se remplit, les autres s'estompent |
+| Choix dans une liste (carte de choix) | La carte cède légèrement sous le doigt et revient avec un ressort, la coche arrive avec un petit ressort |
 | Changement d'onglet | Fondu croisé de 200 ms, la pastille de l'onglet actif glisse vers le nouvel onglet |

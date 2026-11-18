@@ -5,7 +5,7 @@ function TimeBox({ label, unit, value, max, onChange }: BoxProps) {
   return (
     <label
       data-variant="inset"
-      className="surface flex min-w-0 flex-1 items-baseline justify-center gap-1 px-4 py-3 focus-within:outline-2 focus-within:outline-action"
+      className="surface flex min-w-0 flex-1 items-baseline justify-center gap-1 px-4 py-3 field-ring"
     >
       <input
         aria-label={label}

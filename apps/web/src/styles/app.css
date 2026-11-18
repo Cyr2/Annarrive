@@ -184,6 +184,26 @@
   .row + .row {
     border-top: 0.5px solid var(--color-hairline);
   }
+  /* A field's focus ring goes round its whole row or box, for the keyboard only: a tap shows the caret, and
+     the browser's ring would sit inside the row's indent. */
+  .field-ring {
+    position: relative;
+  }
+  @media (pointer: fine) {
+    .field-ring:has(:focus-visible)::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      outline: 2px solid var(--color-action);
+      outline-offset: -2px;
+      pointer-events: none;
+    }
+    .row.field-ring:has(:focus-visible)::after {
+      left: calc(-1 * var(--spacing-gutter));
+      border-radius: var(--radius-row);
+    }
+  }
   .hairline-top {
     border-top: 0.5px solid var(--color-hairline-strong);
   }
