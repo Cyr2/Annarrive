@@ -97,6 +97,8 @@ export type Activity = {
   feel?: Feel;
   /** Garmin laps (auto-lap 1 km by default), in order: where the best sustained efforts are found (F18). */
   laps?: Lap[];
+  /** Type of the planned session the run was matched to: interval laps are never read as one effort (F18). */
+  plannedType?: RunType;
 };
 
 export type Lap = { durMin: number; distM: number; avgHr?: number };
@@ -136,8 +138,11 @@ export type Health =
   | { kind: "sick"; since: string }
   | { kind: "cold"; since: string }
   | { kind: "pain"; since: string; level: number; where: PainSite; until?: string; orientationSent: boolean }
-  /** After feeling better from a fever (EV9): easy runs only before `easyUntil`, Q one notch easier before `qEasierUntil`. */
-  | { kind: "recovering"; easyUntil: string; qEasierUntil: string };
+  /**
+   * After feeling better from a fever (EV9): short easy runs before `easyUntil`, then longer ones, Q one notch easier
+   * before `qEasierUntil`. `since`: first day of the fever (B1).
+   */
+  | { kind: "recovering"; easyUntil: string; qEasierUntil: string; since?: string };
 
 export type State = WeekState & {
   health: Health;

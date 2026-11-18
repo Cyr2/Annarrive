@@ -131,12 +131,61 @@ describe("planWeek (cycle 0.1 buildWeek)", () => {
     expect(sessions.filter(isHard)).toHaveLength(1);
   });
 
-  it("shortens the easy runs when the last week run was much smaller (G2)", () => {
-    const total = (history: Activity[]) =>
-      planWeek(request({ history, goal: null })).sessions.reduce((sum, s) => sum + s.durMin, 0);
-    const steady = runs(4, 4, 45);
-    const dropped = [...runs(3, 4, 45, addDays(MONDAY, -14)), ...runs(1, 2, 30)];
-    expect(total(dropped)).toBeLessThan(total(steady));
+  const total = (r: WeekRequest): number => planWeek(r).sessions.reduce((sum, s) => sum + s.durMin, 0);
+  const planStart = addDays(MONDAY, -35);
+
+  it("returns to the plan after one short week, and caps it on a lower chronic load (G2, W-1)", () => {
+    const steady = runs(8, 4, 45);
+    const oneShort = [...runs(7, 4, 45, addDays(MONDAY, -14)), ...runs(1, 2, 30)];
+    const lowered = [...runs(4, 4, 45, addDays(MONDAY, -35)), ...runs(4, 2, 45)];
+    expect(total(request({ planStart, history: oneShort }))).toBe(total(request({ planStart, history: steady })));
+    expect(total(request({ planStart, history: lowered }))).toBeLessThanOrEqual(1.1 * 90 + 1);
+  });
+
+  it("places a test in programme weeks 2 to 4 while the level is provisional (F10, W-2)", () => {
+    const types = (monday: string, provisional: boolean) =>
+      planWeek(
+        request({
+          monday,
+          now: `${addDays(monday, -1)}T18:00`,
+          planStart: addDays(MONDAY, -1),
+          fitness: { vdot: 40, provisional },
+        }),
+      ).sessions.map((s) => s.type);
+    expect(types(addDays(MONDAY, 7), true)).toContain("TEST");
+    expect(types(addDays(MONDAY, 7), false)).not.toContain("TEST");
+    expect(types(MONDAY, true)).not.toContain("TEST");
+    expect(types(addDays(MONDAY, 28), true)).not.toContain("TEST");
+  });
+
+  it("turns the week after three days of confirmed fatigue into a deload (P9, W-3)", () => {
+    const day = (k: number, tired: boolean) => ({
+      date: addDays(MONDAY, k),
+      rhr: tired ? 60 : 52 + (k % 2),
+      sleepMin: tired ? 330 : 450 + 10 * (k % 3),
+      bodyBatteryWake: 70,
+      stressAvg: 30,
+    });
+    const signals = (tired: boolean) => [...Array(35).keys()].map((k) => day(k - 35, tired && k >= 28 && k <= 32));
+    const plain = total(request({ planStart }));
+    expect(total(request({ planStart, signals: signals(true) }))).toBeLessThan(0.85 * plain);
+    expect(total(request({ planStart, signals: signals(false) }))).toBe(plain);
+  });
+
+  it("builds a return week while she recovers from a fever: G7 at 85 % at least (EV9, W-4)", () => {
+    const plain = total(request({ planStart }));
+    const health = { kind: "recovering" as const, easyUntil: MONDAY, qEasierUntil: addDays(MONDAY, 7) };
+    expect(total(request({ planStart, health }))).toBeLessThanOrEqual(Math.ceil(0.85 * plain));
+    const over = { ...health, easyUntil: addDays(MONDAY, -7) };
+    expect(total(request({ planStart, health: over }))).toBe(plain);
+  });
+
+  it("keeps one short race-pace Q in the race week (P18, W-5)", () => {
+    const goal = { distanceM: 10000 as const, date: addDays(MONDAY, 6), targetMin: 50 };
+    const { sessions } = planWeek(request({ goal, planStart: addDays(MONDAY, -60) }));
+    const qs = sessions.filter((s) => isHard(s) && s.type !== "RACE");
+    expect(qs).toHaveLength(1);
+    expect(qs[0]?.steps.find((st) => st.kind === "work")).toMatchObject({ reps: 2, distM: 1000 });
   });
 
   it("aims SPE at the target race pace and plans from the declared start without history", () => {

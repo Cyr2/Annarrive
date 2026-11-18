@@ -23,7 +23,9 @@ import {
   evaluateKeySessions,
   evaluateRace,
   type FeelLog,
+  fatigueDays,
   feelBetter,
+  fractionF,
   type Health,
   type InitialFitness,
   initialFitness,
@@ -33,6 +35,7 @@ import {
   logFeel,
   onTimetableChange,
   type PaceZone,
+  type PastProposal,
   type PlanWeek,
   type Proposal,
   paces,
@@ -46,7 +49,9 @@ import {
   type SignalId,
   type State,
   type Step,
+  sickDays,
   skipSession,
+  speedForVo2,
   weekDates,
 } from "../src/index.ts";
 import { calendar, type Persona, PLAN_START, rng, START_MONDAY } from "./personas.ts";
@@ -101,11 +106,15 @@ type Sim = {
   vdot: number;
   provisional: boolean;
   vdotChangedOn?: string;
+  /** Proposals she answered, for RC8 (services/fitness.ts passes the decided ones). */
+  answered: PastProposal[];
   signals: DailySignal[];
   next: () => number;
 };
 
 const HR_SHARE: Record<PaceZone, number> = { E: 0.72, M: 0.84, T: 0.89, I: 0.935, R: 0.9, race: 0.88 };
+/** Heart rate of a 20 min all-out effort: above Daniels' T band. */
+const ALL_OUT_HR = 0.94;
 const KEY_DAYS = 28;
 
 const state = (sim: Sim, monday: string): State => ({
@@ -226,15 +235,17 @@ function trueSpeed(p: Persona, zone: PaceZone, eff: number): number {
 }
 
 /** One lap per repetition, as a structured Garmin workout records it. Slower than the target when she cannot hold it. */
-function stepLaps(sim: Sim, st: Step, day: string): { laps: Lap[]; ratio: number } {
+function stepLaps(sim: Sim, st: Step, day: string, allOut: boolean): { laps: Lap[]; ratio: number } {
   const p = sim.p;
   const appE = paces(sim.vdot).E;
   const zone: PaceZone = st.kind === "strides" || st.kind === "hills" ? "R" : (st.zone ?? "E");
   const target = speed(mid(st.target.paceSKm, (appE[0] + appE[1]) / 2));
-  const can = trueSpeed(p, zone, effectiveVdot(p, day));
-  const eager = p.script.eagerness ?? 0.2;
+  // A test is run all out for its duration, whatever its target pace (F10, catalogue TEST): F2 at her level.
+  const eff = effectiveVdot(p, day);
+  const can = allOut ? speedForVo2(eff * fractionF(st.durMin)) : trueSpeed(p, zone, eff);
+  const eager = allOut ? 1 : (p.script.eagerness ?? 0.2);
   const v = (can < target ? can : target + eager * (can - target)) * (1 + (sim.next() - 0.5) * 0.02);
-  const hr = (HR_SHARE[zone] + (overreaching(p, day) ? 0.02 : 0)) * p.hrMax;
+  const hr = (allOut ? ALL_OUT_HR : HR_SHARE[zone] + (overreaching(p, day) ? 0.02 : 0)) * p.hrMax;
   const laps = [...Array(st.reps ?? 1).keys()].map(() => ({ durMin: st.durMin, distM: v * st.durMin, avgHr: hr }));
   return { laps, ratio: can / target };
 }
@@ -243,7 +254,7 @@ function runSession(sim: Sim, s: Session): Activity {
   const laps: Lap[] = [];
   let hardest = { ratio: 1, rpe: 0 };
   for (const st of s.steps) {
-    const out = stepLaps(sim, st, dateOf(s.start));
+    const out = stepLaps(sim, st, dateOf(s.start), s.type === "TEST" && st.kind === "work");
     laps.push(...out.laps);
     if (st.target.rpe > hardest.rpe && st.kind === "work") hardest = { ratio: out.ratio, rpe: st.target.rpe };
   }
@@ -255,7 +266,10 @@ function runSession(sim: Sim, s: Session): Activity {
     distM: laps.reduce((a, l) => a + l.distM, 0),
     avgHr: laps.reduce((a, l) => a + (l.avgHr ?? 0) * l.durMin, 0) / dur,
     laps,
+    // Like services/fitness.ts: the run carries the planned type, and a planned test is a test.
+    plannedType: s.type,
     ...(s.type === "RACE" ? { isRace: true, tempC: 8 } : {}),
+    ...(s.type === "TEST" ? { isTest: true, tempC: 8 } : {}),
     feel: feelOf(sim, s, hardest.ratio),
   };
 }
@@ -303,11 +317,23 @@ function proposalAfterRun(sim: Sim, run: Activity, now: string): Proposal | null
     const a = sim.activities.find((x) => x.id === `run-${s.id}`);
     return a && daysBetween(a.start, now) <= KEY_DAYS ? [keySession(s, a)] : [];
   });
-  return evaluateKeySessions(done, sim.vdot, sim.vdotChangedOn, [], now);
+  return evaluateKeySessions(done, sim.vdot, sim.vdotChangedOn, sim.answered, now);
+}
+
+/** RC5 as services/fitness.ts calls it: feels after the last change, fatigue confirmed by the mornings left out. */
+function proposalAfterFeel(sim: Sim, now: string): Proposal | null {
+  const ctx = { lastFeels: sim.feels, cal: sim.cal, sick: sickDays(sim.health, dateOf(now)), settings: sim.p.settings };
+  const dates = sim.feels.map((f) => f.date);
+  return evaluateFeels(sim.feels, sim.vdot, now, {
+    ...(sim.vdotChangedOn ? { lastChange: sim.vdotChangedOn } : {}),
+    history: sim.answered,
+    fatigueDays: fatigueDays(sim.signals, ctx, dates),
+  });
 }
 
 /** She accepts every proposal in one tap (RC9). */
 function accept(sim: Sim, prop: Proposal, now: string, log: WeekLog): void {
+  sim.answered.push({ proposal: prop, decision: "accepted", on: dateOf(now) });
   log.proposals.push({
     on: dateOf(now),
     ruleId: prop.ruleId,
@@ -336,7 +362,7 @@ function morning(sim: Sim, date: string, log: WeekLog): void {
   if (sick?.better === date) apply(sim, feelBetter(state(sim, log.monday), now));
   sim.signals.push(signalFor(date, dayShift(p, date), sim.next));
   const session = sim.sessions.find((s) => s.status === "planned" && dateOf(s.start) === date) ?? null;
-  const ctx = { lastFeels: sim.feels, cal: sim.cal, sick: [], settings: p.settings };
+  const ctx = { lastFeels: sim.feels, cal: sim.cal, sick: sickDays(sim.health, date), settings: p.settings };
   const signalsOf = (d: string): SignalId[] =>
     dailySignals(
       sim.signals.find((h) => h.date === d) ?? { date: d },
@@ -390,7 +416,7 @@ function sessionTime(sim: Sim, date: string, log: WeekLog, counter: { n: number 
   // Like services/garmin.ts: a run is matched to the planned session of the same day, which becomes done.
   apply(sim, confirmDone(state(sim, log.monday), s.id, end));
   apply(sim, logFeel(state(sim, log.monday), s.id, run.feel ?? "ok"));
-  const prop = proposalAfterRun(sim, run, end) ?? evaluateFeels(sim.feels, sim.vdot, end);
+  const prop = proposalAfterRun(sim, run, end) ?? proposalAfterFeel(sim, end);
   if (prop) accept(sim, prop, end, log);
 }
 
@@ -410,6 +436,10 @@ function build(sim: Sim, monday: string, log: WeekLog): void {
     fitness: { vdot: sim.vdot, provisional: sim.provisional },
     cal: sim.cal,
     kept,
+    prev: sim.sessions.filter(inWeek(addDays(monday, -7))),
+    health: sim.health,
+    signals: sim.signals,
+    feels: sim.feels,
   });
   sim.sessions = [...sim.sessions.filter((s) => !week(s)), ...plan.sessions];
   log.built = plan.sessions.map((s) => ({ ...s }));
@@ -461,6 +491,7 @@ export function simulate(p: Persona): RunLog {
     feels: [],
     vdot: initial.vdot,
     provisional: initial.status === "provisional",
+    answered: [],
     signals: pre,
     next,
   };

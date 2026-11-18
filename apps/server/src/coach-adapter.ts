@@ -5,6 +5,7 @@ import {
   type DailySignal,
   type PlannedSession,
   type Profile,
+  type Proposal,
   sessionNames,
 } from "@annarrive/protocol";
 import {
@@ -82,6 +83,31 @@ function toState(st: CoachState, monday: string, all = false): State {
 
 const placed = (sessions: Session[]): PlannedSession[] => sessions.filter((s) => s.start !== "").map(fromSession);
 
+/** The stored morning signals in the coach's shape, oldest first. */
+const signalsOf = (st: CoachState): coach.DailySignal[] =>
+  (st.signals ?? []).map(({ id, ...rest }: DailySignal) => ({ ...rest, date: id }));
+
+/** The proposals she answered, for RC8: one proposal per rule per 14 days, accepted or declined. */
+const answered = (past: Proposal[]): coach.PastProposal[] =>
+  past.flatMap((p) =>
+    p.status !== "pending" && p.decidedOn
+      ? [
+          {
+            proposal: p,
+            decision: p.status === "accepted" ? ("accepted" as const) : ("refused" as const),
+            on: p.decidedOn,
+          },
+        ]
+      : [],
+  );
+
+/** Each run with the type of the session it was matched to: interval laps are never read as one effort (F18). */
+const withPlannedType = (st: CoachState): (Activity & Pick<coach.Activity, "plannedType">)[] =>
+  st.activities.map((a) => {
+    const type = st.sessions.find((s) => s.id === a.sessionId)?.type;
+    return type ? { ...a, plannedType: type } : a;
+  });
+
 const mondays = (now: string): string[] => {
   const monday = mondayOf(dateOf(now));
   return [monday, addDays(monday, 7)];
@@ -158,7 +184,7 @@ const hrMaxOf = (activities: Activity[]): number | undefined => {
 
 function initialFitness(st: CoachState, vo2max: number | undefined, now: string): coach.InitialFitness | null {
   try {
-    return coach.initialFitness(fitnessHistory(st.activities, vo2max, st.program.declaredTime), now);
+    return coach.initialFitness(fitnessHistory(withPlannedType(st), vo2max, st.program.declaredTime), now);
   } catch (error) {
     if (error instanceof Error && error.message === "NO_FITNESS_DATA") return null;
     throw error;
@@ -250,6 +276,11 @@ export const coachAdapter: CoachPort = {
       fitness: { vdot: st.fitness.vdot, provisional: st.fitness.provisional === true },
       cal: st.events.map(toCalEvent),
       kept: kept.map(toSession),
+      // S9: the week before keeps each run on its day; P9, EV9: fatigue and illness shape the new week.
+      prev: st.sessions.filter(inWeek(addDays(weekStart, -7))).map(toSession),
+      health: st.health,
+      signals: signalsOf(st),
+      feels: st.feels,
     });
     const sessions = [...st.sessions.filter((s) => !week(s)), ...placed(plan.sessions)];
     return validated({ state: { ...st, sessions }, changes: [], warnings: plan.warnings }, now);
@@ -295,7 +326,7 @@ export const coachAdapter: CoachPort = {
     const week = toState(st, mondayOf(today), true);
     const session = week.sessions.find((s) => s.status === "planned" && dateOf(s.start) === today) ?? null;
     const history = signals.map(({ id, ...rest }: DailySignal) => ({ ...rest, date: id }));
-    const ctx = { lastFeels: st.feels, cal: week.cal, sick: [], settings: week.settings };
+    const ctx = { lastFeels: st.feels, cal: week.cal, sick: coach.sickDays(st.health, today), settings: week.settings };
     const signalsOf = (date: string) =>
       coach.dailySignals(
         history.find((h) => h.date === date) ?? { date },
@@ -389,14 +420,32 @@ export const coachAdapter: CoachPort = {
   evaluateKeySessions(st, done, past, now) {
     if (!st.fitness || st.fitness.provisional) return null;
     const keys = done.map(({ session, activity }) => keySession(session, activity));
-    const history = past.flatMap((p): coach.PastProposal[] =>
-      p.status === "declined" && p.decidedOn ? [{ proposal: p, decision: "refused", on: p.decidedOn }] : [],
-    );
-    return coach.evaluateKeySessions(keys, st.fitness.vdot, st.fitness.date, history, now);
+    return coach.evaluateKeySessions(keys, st.fitness.vdot, st.fitness.date, answered(past), now);
   },
 
-  evaluateFeels(st, now) {
-    return st.fitness ? coach.evaluateFeels(st.feels, st.fitness.vdot, now) : null;
+  evaluateFeels(st, past, now) {
+    if (!st.fitness) return null;
+    const today = dateOf(now);
+    const ctx = {
+      lastFeels: st.feels,
+      cal: st.events.map(toCalEvent),
+      sick: coach.sickDays(st.health, today),
+      settings: toSettings(st.settings),
+    };
+    const fatigueDays = coach.fatigueDays(
+      signalsOf(st),
+      ctx,
+      st.feels.map((f) => f.date),
+    );
+    return coach.evaluateFeels(st.feels, st.fitness.vdot, now, {
+      lastChange: st.fitness.date,
+      history: answered(past),
+      fatigueDays,
+    });
+  },
+
+  evaluateTrends(st, past, now) {
+    return st.fitness ? coach.evaluateTrends(signalsOf(st), now, answered(past)) : null;
   },
 
   acceptProposal(st, proposal, now) {

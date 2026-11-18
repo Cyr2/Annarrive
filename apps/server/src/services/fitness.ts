@@ -38,16 +38,16 @@ export class FitnessService {
     }
     const session = run.sessionId ? this.#stores.plannedSession.get(run.sessionId) : undefined;
     const state = this.#plan.coachState();
+    const past = this.#stores.proposal.list();
     const draft =
       this.#coach.evaluateRun(state, { ...run, isTest: session?.type === "TEST" }, this.#now()) ??
-      (session
-        ? this.#coach.evaluateKeySessions(state, this.#doneSessions(), this.#stores.proposal.list(), this.#now())
-        : null);
+      (session ? this.#coach.evaluateKeySessions(state, this.#doneSessions(), past, this.#now()) : null) ??
+      this.#coach.evaluateTrends(state, past, this.#now());
     const known = this.pending().some((p) => p.ruleId === draft?.ruleId);
     return draft && !known ? this.#stores.proposal.put({ ...draft, id: randomUUID(), status: "pending" }) : null;
   }
 
-  /** Runs of the last 4 weeks matched to a planned session (RC3 counts from the last level change, at most 28 days). */
+  /** Runs of the last 4 weeks matched to a planned session (the coach keeps those after the last level change). */
   #doneSessions(): { session: PlannedSession; activity: Activity }[] {
     const now = this.#now();
     return this.#stores.activity.overlapping(`${addDays(dateOf(now), -KEY_DAYS)}T00:00`, now).flatMap((activity) => {
@@ -58,7 +58,7 @@ export class FitnessService {
 
   /**
    * C3: Anna's "Comment c'était ?" when the watch did not ask. Garmin's own answer wins, so the app never
-   * overwrites it; RC5 may then propose easier paces.
+   * overwrites it; RC5 may then propose a test.
    */
   logFeel(activityId: string, feel: Feel): void {
     const activity = this.#stores.activity.get(activityId);
@@ -68,7 +68,7 @@ export class FitnessService {
     else if (!activity) throw new NotFoundError("Cette course est introuvable : recharge l'écran.");
     else if (activity.feel) throw new ReadOnlyError("Ta montre a déjà noté ton ressenti pour cette course.");
     else this.#stores.activity.put({ ...activity, answeredFeel: feel });
-    const draft = this.#coach.evaluateFeels(this.#plan.coachState(), this.#now());
+    const draft = this.#coach.evaluateFeels(this.#plan.coachState(), this.#stores.proposal.list(), this.#now());
     const known = this.pending().some((p) => p.ruleId === draft?.ruleId);
     if (draft && !known) this.#stores.proposal.put({ ...draft, id: randomUUID(), status: "pending" });
   }
@@ -78,7 +78,8 @@ export class FitnessService {
     const before = this.#plan.coachState();
     const result = this.#coach.acceptProposal(before, proposal, this.#now());
     const write = { table: "proposal" as const, id, after: this.#decided(proposal, "accepted") };
-    return this.#plan.commitResult("Allures mises à jour", [write], before, result);
+    const summary = proposal.kind === "vdot" ? "Allures mises à jour" : "Proposition acceptée";
+    return this.#plan.commitResult(summary, [write], before, result);
   }
 
   decline(id: string): ChangeResponse {

@@ -142,32 +142,47 @@ const T_FRACTION = 0.88;
 const SPEED_MPM: [number, number] = [1000 / 12, 400];
 const VDOT_RANGE: [number, number] = [20, 85];
 
-type Stretch = { distM: number; durMin: number; hr?: number };
+/** Laps within 3 % of each other's speed make one continuous effort; reps with their recoveries never do. */
+const STEADY = 1.03;
+/** A maximal reading from laps needs a sustained effort: a 3 min rep is not an all-out 3 min (Daniels). */
+const RACE_LAPS_MIN = 10;
+/** Planned interval work: its laps are reps and recoveries, never one effort (F18). */
+const INTERVALS = new Set<RunType>(["I", "R", "CRUISE", "COTES_C", "COTES_L", "FARTLEK"]);
+
+type Stretch = { distM: number; durMin: number; hr?: number; laps?: true };
+
+const lapSpeed = (lap: Lap): number => (lap.durMin > 0 ? lap.distM / lap.durMin : 0);
 
 /** A lap out of the sanity bounds (GPS jump, pause): nothing is read across it. */
-const saneLap = (lap: Lap): boolean => {
-  const v = lap.durMin > 0 ? lap.distM / lap.durMin : 0;
-  return v >= SPEED_MPM[0] && v <= SPEED_MPM[1];
-};
+const saneLap = (lap: Lap): boolean => lapSpeed(lap) >= SPEED_MPM[0] && lapSpeed(lap) <= SPEED_MPM[1];
 
-/** The stretches that start at the first lap given, longer and longer, up to 60 min. */
+/** The steady stretches that start at the first lap given, longer and longer, up to 60 min. */
 function stretchesFrom(laps: Lap[]): Stretch[] {
   const out: Stretch[] = [];
   const acc = { distM: 0, durMin: 0, beats: 0, timed: 0 };
+  const first = laps[0] ? lapSpeed(laps[0]) : 0;
+  let [lo, hi] = [first, first];
   for (const lap of laps) {
-    if (!saneLap(lap) || acc.durMin + lap.durMin > 60) break;
+    [lo, hi] = [Math.min(lo, lapSpeed(lap)), Math.max(hi, lapSpeed(lap))];
+    if (!saneLap(lap) || acc.durMin + lap.durMin > 60 || hi > STEADY * lo) break;
     acc.distM += lap.distM;
     acc.durMin += lap.durMin;
     acc.beats += (lap.avgHr ?? 0) * lap.durMin;
     acc.timed += lap.avgHr === undefined ? 0 : lap.durMin;
     const hr = acc.timed === acc.durMin ? { hr: acc.beats / acc.timed } : {};
-    out.push({ distM: acc.distM, durMin: acc.durMin, ...hr });
+    out.push({ distM: acc.distM, durMin: acc.durMin, ...hr, laps: true });
   }
   return out;
 }
 
-/** Every run of consecutive laps up to 60 min, with its time-weighted heart rate when every lap has one. */
-const lapWindows = (laps: Lap[]): Stretch[] => laps.flatMap((_, i) => stretchesFrom(laps.slice(i)));
+/**
+ * Every steady run of consecutive laps up to 60 min, with its time-weighted heart rate when every lap has one.
+ * None for a planned interval session.
+ */
+const lapWindows = (a: Activity): Stretch[] => {
+  const laps = a.plannedType && INTERVALS.has(a.plannedType) ? [] : (a.laps ?? []);
+  return laps.flatMap((_, i) => stretchesFrom(laps.slice(i)));
+};
 
 type Read = Pick<EffortReading, "vdot" | "kind">;
 
@@ -175,7 +190,8 @@ function readStretch(s: Stretch, hrMax: number | undefined): Read | null {
   const v = s.distM / s.durMin;
   if (s.durMin < 3 || v < SPEED_MPM[0] || v > SPEED_MPM[1]) return null;
   const ratio = hrMax !== undefined && s.hr !== undefined ? s.hr / hrMax : 0;
-  if (ratio >= T_HR[1]) return { vdot: vdot(s.distM, s.durMin), kind: "race" };
+  if (ratio >= T_HR[1] && (!s.laps || s.durMin >= RACE_LAPS_MIN))
+    return { vdot: vdot(s.distM, s.durMin), kind: "race" };
   if (ratio >= T_HR[0] && s.durMin >= 15)
     return { vdot: Math.max(vdot(s.distM, s.durMin), vo2(v) / T_FRACTION), kind: "threshold" };
   return s.durMin >= 10 ? { vdot: vdot(s.distM, s.durMin), kind: "training" } : null;
@@ -194,7 +210,7 @@ export function effortReadings(h: FitnessHistory, now: string): EffortReading[] 
     const whole: Read | null = isEligibleEffort(a, h.hr ?? { hrMax: Number.POSITIVE_INFINITY }).ok
       ? { vdot: vdot(a.distM, a.durMin), kind: "race" }
       : readStretch({ distM: a.distM, durMin: a.durMin, ...(a.avgHr === undefined ? {} : { hr: a.avgHr }) }, hrMax);
-    const best = [whole, ...lapWindows(a.laps ?? []).map((w) => readStretch(w, hrMax))]
+    const best = [whole, ...lapWindows(a).map((w) => readStretch(w, hrMax))]
       .filter((r): r is Read => r !== null && r.vdot >= VDOT_RANGE[0] && r.vdot <= VDOT_RANGE[1])
       .sort(better)[0];
     return best ? [{ activityId: a.id, start: a.start, distM: a.distM, durMin: a.durMin, ...best }] : [];

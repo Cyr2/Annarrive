@@ -107,11 +107,11 @@ describe("her level from laps and her own time (F10, F18, RC3)", () => {
     expect(programViewSchema.parse((await t.call("GET", "/api/program")).json).goal).toEqual(goal);
   });
 
-  it("proposes what clearly faster T laps prove, without waiting 28 days (RC3)", async () => {
+  it("proposes one point of what clearly faster, easy T laps prove, 14 days after the last change (RC3)", async () => {
     const t = await ready();
     t.stores.fitnessEstimate.put({
-      id: "2026-11-06",
-      date: "2026-11-06",
+      id: "2026-11-01",
+      date: "2026-11-01",
       vdot: 34,
       source: "test",
       provisional: false,
@@ -121,10 +121,21 @@ describe("her level from laps and her own time (F10, F18, RC3)", () => {
     const done = ["2026-11-10", "2026-11-13"].map((day, i) => {
       const s = buildSession("T", { weeklyMin: 200, paces: paces(34), phase: "dev", progressionStep: 0, distM: 10000 });
       const session: PlannedSession = { ...s, id: `t${i}`, start: `${day}T18:00` };
-      return { session, activity: { id: `a${i}`, start: `${day}T18:00`, durMin: 40, distM: 7000, laps: fast } };
+      const activity = {
+        id: `a${i}`,
+        start: `${day}T18:00`,
+        durMin: 40,
+        distM: 7000,
+        laps: fast,
+        feel: "easy" as const,
+      };
+      return { session, activity };
     });
     const p = coachAdapter.evaluateKeySessions(t.services.plan.coachState(), done, [], NOW);
-    expect(p?.ruleId).toBe("RC3");
-    expect(p?.to).toBeGreaterThan(35);
+    expect(p).toMatchObject({ ruleId: "RC3", to: 35 });
+    if (!p) throw new Error("no proposal");
+    // Accepted yesterday: the same laps never prove it again (RC8, no ratchet).
+    const accepted = { ...p, id: "p", status: "accepted" as const, decidedOn: "2026-11-15" };
+    expect(coachAdapter.evaluateKeySessions(t.services.plan.coachState(), done, [accepted], NOW)).toBeNull();
   });
 });

@@ -65,8 +65,11 @@ function volume(r: RunLog): Criterion {
     const prev = r.weeks[i - 1];
     if (!prev || isRaceWeek(r, w) || afterRace(r, w)) return;
     const built = minutes(runs(w));
-    // Frandsen 2025 finds no link between week-to-week ratios and injury: the rise is read against the chronic load.
-    const chronic = Math.max(...r.weeks.slice(Math.max(0, i - 3), i).map(done));
+    // Frandsen 2025 finds no link between week-to-week ratios and injury: the rise is read against the chronic load,
+    // the 3 weeks she ran before, those before the programme included.
+    const ranIn = (monday: string): number =>
+      sum(acts.filter((a) => a.start >= monday && a.start < addDays(monday, 7)).map((a) => a.durMin));
+    const chronic = Math.max(...[1, 2, 3].map((k) => ranIn(addDays(w.monday, -7 * k))));
     j.check(built <= 1.1 * chronic + 1, () => ({
       week: w.week,
       rule: "G2",

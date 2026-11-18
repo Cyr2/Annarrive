@@ -1,86 +1,86 @@
 {
   "anna": {
-    "volume": 9.7,
-    "intensite": 7.7,
-    "sortie-longue": 4,
+    "volume": 10,
+    "intensite": 10,
+    "sortie-longue": 9.8,
     "espacement": 10,
-    "allures": 9.3,
+    "allures": 10,
     "sante": 9.4,
     "sautees": 10,
-    "affutage": 5,
+    "affutage": 10,
     "stabilite": 10,
-    "structure": 9.5
+    "structure": 9.7
   },
   "debutant-10k": {
     "volume": 10,
-    "intensite": 8.9,
-    "sortie-longue": 9.3,
+    "intensite": 10,
+    "sortie-longue": 10,
     "espacement": 10,
-    "allures": 0,
+    "allures": 4,
     "sante": null,
     "sautees": 10,
     "affutage": 7.5,
     "stabilite": 10,
-    "structure": 8.9
+    "structure": 9.2
   },
   "marathon": {
-    "volume": 9.8,
+    "volume": 10,
     "intensite": 10,
-    "sortie-longue": 9.8,
+    "sortie-longue": 9.6,
     "espacement": 10,
-    "allures": 0,
+    "allures": 8.8,
     "sante": null,
     "sautees": 10,
     "affutage": null,
     "stabilite": 10,
-    "structure": 9.7
+    "structure": 10
   },
   "malade": {
-    "volume": 9.1,
+    "volume": 9.7,
     "intensite": 10,
-    "sortie-longue": 4,
+    "sortie-longue": 10,
     "espacement": 10,
     "allures": 10,
-    "sante": 3.3,
+    "sante": 10,
     "sautees": 8.8,
     "affutage": null,
     "stabilite": 10,
-    "structure": 9.3
+    "structure": 10
   },
   "sauteuse": {
     "volume": 9.7,
     "intensite": 10,
-    "sortie-longue": 4,
+    "sortie-longue": 9.5,
     "espacement": 10,
     "allures": 10,
     "sante": 10,
-    "sautees": 6.9,
+    "sautees": 8.8,
     "affutage": null,
     "stabilite": 10,
-    "structure": 8.9
+    "structure": 10
   },
   "plus-forte": {
-    "volume": 9.7,
+    "volume": 10,
     "intensite": 10,
-    "sortie-longue": 9.4,
+    "sortie-longue": 10,
     "espacement": 10,
-    "allures": 0,
+    "allures": 4,
     "sante": 10,
     "sautees": 10,
     "affutage": null,
     "stabilite": 10,
-    "structure": 9.8
+    "structure": 10
   },
   "surmenage": {
     "volume": 9.7,
     "intensite": 10,
-    "sortie-longue": 9.9,
+    "sortie-longue": 10,
     "espacement": 10,
-    "allures": 0,
-    "sante": 4,
+    "allures": 10,
+    "sante": 10,
     "sautees": 10,
     "affutage": null,
-    "stabilite": 9.7,
-    "structure": 9.8
+    "stabilite": 10,
+    "structure": 10
   }
 }

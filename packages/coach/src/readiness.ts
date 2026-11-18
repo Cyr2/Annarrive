@@ -151,6 +151,22 @@ export function dailySignals(
 export const isConfirmed = (today: SignalId[], yesterday: SignalId[] | null): boolean =>
   today.length >= 2 || today.some((s) => yesterday?.includes(s) === true);
 
+const BODY: SignalId[] = ["SG1", "SG2", "SG3"];
+
+/**
+ * The days among `dates` whose body signals (SG1 to SG3: heart rate, sleep, Garmin) were confirmed under D2: the
+ * fatigue P9 and RC5 read. An exam or a hard feel alone is not fatigue of the body.
+ */
+export function fatigueDays(history: DailySignal[], ctx: ReadinessCtx, dates: string[]): string[] {
+  const body = (date: string): SignalId[] =>
+    dailySignals(
+      history.find((h) => h.date === date) ?? { date },
+      history.filter((h) => h.date < date),
+      ctx,
+    ).signals.filter((s) => BODY.includes(s));
+  return dates.filter((d) => isConfirmed(body(d), body(addDays(d, -1))));
+}
+
 /** D1: decide at the first sync with the night, or at min(10:00, session - 2 h) without one. */
 export function decisionDue(now: string, sessionStart: string | null, nightSynced: boolean): boolean {
   if (nightSynced) return true;

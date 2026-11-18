@@ -143,7 +143,9 @@ export function adaptForHealth(s: Session, health: Health, date: string, p: Pace
       if (date > (health.until ?? health.since)) return s;
       return toEasy(s, Math.min(s.durMin, health.level >= 4 ? 20 : 40), "rpe");
     case "recovering":
-      if (date < health.easyUntil) return toEasy(s, s.durMin);
+      // Graduated return (Elliott 2020; research 03 §11.2): light runs, then moderate ones, each for 48 h or more.
+      if (date < health.easyUntil) return toEasy(s, Math.floor(Math.min(0.5 * s.durMin, 30)));
+      if (date < addDays(health.easyUntil, MODERATE_DAYS)) return toEasy(s, Math.floor(0.75 * s.durMin));
       return date < health.qEasierUntil && isHard(s) && s.type !== "L" ? downgrade(s, p) : s;
     default:
       return s;
@@ -244,12 +246,30 @@ export function reportUnavailable(st: State, r: Unavailable, now: string): Resul
   return healthReport(st, r, now);
 }
 
+/** EV9: light runs for 3 days after the fever, moderate ones for 2 more, Q one notch easier up to day 10. */
+const LIGHT_DAYS = 3;
+export const MODERATE_DAYS = 2;
+const Q_EASIER_DAYS = 10;
+
+/** B1: the days of the current or last fever, left out of the morning baselines. */
+export function sickDays(health: Health, today: string): string[] {
+  const since = health.kind === "sick" || health.kind === "recovering" ? health.since : undefined;
+  if (!since) return [];
+  const end = health.kind === "recovering" ? addDays(health.easyUntil, -LIGHT_DAYS) : today;
+  return [...Array(Math.max(0, daysBetween(since, end) + 1)).keys()].map((k) => addDays(since, k));
+}
+
 /** EV13: only the button (or an explicit yes) lifts a sick, cold or pain status and starts the return. */
 export function feelBetter(st: State, now: string): Result {
   const today = dateOf(now);
   const h = st.health;
   if (h.kind === "sick") {
-    const health: Health = { kind: "recovering", easyUntil: addDays(today, 3), qEasierUntil: addDays(today, 10) };
+    const health: Health = {
+      kind: "recovering",
+      easyUntil: addDays(today, LIGHT_DAYS),
+      qEasierUntil: addDays(today, Q_EASIER_DAYS),
+      since: h.since,
+    };
     return finish(st, { ...st, health }, [{ ruleId: "EV9", detail: "return" }], []);
   }
   if (h.kind === "cold")

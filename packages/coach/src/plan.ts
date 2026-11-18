@@ -1,7 +1,7 @@
-import { buildSession, scaleSession } from "./catalog.ts";
+import { buildSession, MAX_E, scaleSession } from "./catalog.ts";
 import { addDays, daysBetween, mondayOf, nextMonday } from "./dates.ts";
 import { predictTime } from "./fitness.ts";
-import { enforceDistribution } from "./guards.ts";
+import { enforceDistribution, longShare, trimTo } from "./guards.ts";
 import type { Activity, GoalDistance, Paces, Phase, RunType, Session, Warning } from "./types.ts";
 
 export type Profile = {
@@ -10,11 +10,7 @@ export type Profile = {
   age?: number;
   /** Injury in the last 6 months, from onboarding (P9). */
   recentInjury?: boolean;
-  /** Days of confirmed fatigue (M5) in the previous week (P9). */
-  fatigueDaysLastWeek?: number;
   declaredWeeklyMin?: number;
-  /** Mondays of weeks lost to illness, left out of V0 (P2). */
-  sickWeeks?: string[];
   /** VDOT still provisional (P20): the class is shown as uncertain. */
   provisional?: boolean;
 };
@@ -105,9 +101,8 @@ export function peakVolume(
 
 export type Cycle = "3:1" | "2:1";
 
-/** P9. */
-export const cycleFor = (p: Profile): Cycle =>
-  (p.age ?? 0) >= 40 || p.recentInjury === true || (p.fatigueDaysLastWeek ?? 0) >= 3 ? "2:1" : "3:1";
+/** P9 for the whole plan; confirmed fatigue turns one built week into a deload instead (week.ts). */
+export const cycleFor = (p: Profile): Cycle => ((p.age ?? 0) >= 40 || p.recentInjury === true ? "2:1" : "3:1");
 
 const cycleLength = (c: Cycle): number => (c === "3:1" ? 4 : 3);
 const isDeload = (i: number, c: Cycle): boolean => (i + 1) % cycleLength(c) === 0;
@@ -186,7 +181,7 @@ export function longRunMin(
   distM: GoalDistance,
   longest30dMin: number,
 ): number {
-  const pct = { 3: 0.4, 4: 0.35, 5: 0.3 }[runsPerWeek];
+  const pct = longShare(runsPerWeek);
   const lMax = distM === 42195 && weeklyMin >= 300 ? 180 : L_MAX[distM];
   return Math.min(pct * weeklyMin, lMax, 1.1 * longest30dMin);
 }
@@ -238,7 +233,7 @@ export function startingVolume(
     .at(-1);
   const stopped = last !== undefined && daysBetween(last, now) >= 28;
   const anchor = stopped && last ? mondayOf(last) : mondayOf(now);
-  const mondays = [1, 2, 3, 4].map((k) => addDays(anchor, -7 * k)).filter((m) => !profile.sickWeeks?.includes(m));
+  const mondays = [1, 2, 3, 4].map((k) => addDays(anchor, -7 * k));
   if (stopped) mondays.unshift(anchor);
   const data = mondays.map((m) => weeks.get(m) ?? { min: 0, runs: 0 });
   const runsPerWeek = mean(data.map((d) => d.runs));
@@ -316,18 +311,6 @@ export function generatePlan(
   };
 }
 
-/** P22: two weeks under 80 % of plan → no rise next week, and the rest of the build shifts by one week (Dev compressed). */
-export function replanFromActual(plan: Plan, actualWeeks: number[]): Plan {
-  const k = actualWeeks.length;
-  const under = (i: number): boolean => (actualWeeks[i] ?? 0) < 0.8 * (plan.weeks[i]?.volumeMin ?? 0);
-  if (k < 2 || !under(k - 1) || !under(k - 2)) return plan;
-  const taperStart = plan.weeks.length - plan.split.taper;
-  const weeks = plan.weeks.map((w, i) =>
-    i >= k && i < taperStart ? { ...w, volumeMin: plan.weeks[i - 1]?.volumeMin ?? w.volumeMin } : w,
-  );
-  return { ...plan, weeks };
-}
-
 export type WeekCtx = { paces: Paces; distM: GoalDistance; longest30dMin: number; racePaceSKm?: number };
 
 /**
@@ -345,9 +328,12 @@ export function buildWeek(week: PlanWeek, ctx: WeekCtx): Session[] {
     progressionStep: week.progressionStep,
     distM: ctx.distM,
   };
-  const qFactor = week.phase === "taper" ? 0.55 : week.deload ? 2 / 3 : 1;
+  // A test keeps its length whatever the week (F10).
+  const qFactor = (slot: TemplateSlot): number =>
+    slot === "TEST" ? 1 : week.phase === "taper" ? 0.55 : week.deload ? 2 / 3 : 1;
   // shortcut: P18 "last L at D-14/21" is not enforced; the taper volume already shrinks it. Last Q at D-4 is H12.
-  const lMin = longRunMin(runsPerWeek, week.volumeMin, ctx.distM, ctx.longest30dMin) * (week.deload ? 0.75 : 1);
+  // P9's L × 0.75 is already in a deload week's volume (× 0.75): applying it again would halve the long run.
+  const lMin = longRunMin(runsPerWeek, week.volumeMin, ctx.distM, ctx.longest30dMin);
   let qCount = 0;
   const fixed = week.template.map((slot, i): Session | null => {
     const id = `${week.monday}-${i}`;
@@ -358,20 +344,23 @@ export function buildWeek(week: PlanWeek, ctx: WeekCtx): Session[] {
     qCount++;
     const priority: Session["priority"] = qCount === 1 ? (shortRace ? 1 : 2) : 3;
     const q = buildSession(slot, { ...base, ...withRace(ctx) });
-    return { ...(qFactor < 1 ? scaleSession(q, qFactor) : q), id, priority };
+    return { ...(qFactor(slot) < 1 ? scaleSession(q, qFactor(slot)) : q), id, priority };
   });
   const easySlots = week.template.filter((s) => s === "E" || s === "RECUP" || s === "E+strides" || s === "E+COTES_C");
   const left = Math.max(0, week.volumeMin - fixed.reduce((sum, s) => sum + (s?.durMin ?? 0), 0));
   const share = easySlots.length ? left / easySlots.length : 0;
   const recup = Math.min(40, Math.max(20, Math.min(share, 0.6 * Math.max(30, share))));
-  const eMin = Math.max(
-    30,
-    easySlots.includes("RECUP") && easySlots.length > 1 ? (left - recup) / (easySlots.length - 1) : share,
+  // P15: E between 30 and 75 min; what is beyond is not run (no medium-long run in the catalogue).
+  const eMin = Math.min(
+    MAX_E,
+    Math.max(30, easySlots.includes("RECUP") && easySlots.length > 1 ? (left - recup) / (easySlots.length - 1) : share),
   );
   const sessions = week.template.map(
     (slot, i) => fixed[i] ?? easyFor(slot, { ...base, recup, eMin }, `${week.monday}-${i}`),
   );
-  return enforceDistribution(sessions, week.phase).week;
+  const spread = enforceDistribution(sessions, week.phase).week;
+  // P18: the taper's share of the peak is a ceiling (Bosquet 2007), Q included, not a floor the easy runs top up.
+  return week.phase === "taper" ? trimTo(spread, week.volumeMin, "P18").week : spread;
 }
 
 const withRace = (ctx: WeekCtx): { racePaceSKm?: number } => (ctx.racePaceSKm ? { racePaceSKm: ctx.racePaceSKm } : {});
@@ -389,7 +378,11 @@ function easyFor(
   },
   id: string,
 ): Session {
-  const ctx = { ...c, durMin: slot === "RECUP" ? c.recup : c.eMin };
+  // The strides (6 × 20 s) fit inside the catalogue's 75 min.
+  const ctx = {
+    ...c,
+    durMin: slot === "RECUP" ? c.recup : slot === "E+strides" ? Math.min(c.eMin, MAX_E - 2) : c.eMin,
+  };
   if (slot === "RECUP") return { ...buildSession("RECUP", ctx), id };
   if (slot === "E+COTES_C") return { ...buildSession("COTES_C", ctx), id };
   return { ...buildSession("E", { ...ctx, strides: slot === "E+strides" }), id };
