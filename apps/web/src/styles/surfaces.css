@@ -102,6 +102,18 @@
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
+  /* A sheet on the move (ui/Sheet.tsx) is plain frost, denser for want of its blur (see below). Its glass comes
+     back in a fade once it stands still. */
+  .surface[data-variant="sheet"] {
+    transition:
+      background-color var(--duration-fade) var(--ease-out),
+      backdrop-filter var(--duration-fade) var(--ease-out),
+      -webkit-backdrop-filter var(--duration-fade) var(--ease-out);
+  }
+  .surface[data-variant="sheet"][data-moving] {
+    background-color: var(--surface-sheet-moving);
+    transition: none;
+  }
 
   /* ---- Control glass outside glisse (toasts): the same recipe as glisse's, in CSS ---- */
 
@@ -129,6 +141,14 @@
   }
 }
 
+/* While a sheet moves nothing blurs: neither the sheet and its controls, nor the page behind. Under the sheet and
+   the scrim, which change at every frame, each glass card of the page was blurred again at every frame too, more
+   than a phone's GPU draws in time. Unlayered, to beat glisse's own stylesheet. */
+body:has([data-moving]) :is(.surface, .ui-glass, .lg-glass, .lg-switch-thumb, .lg-slider-thumb) {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
 /* Sonner (ui/Toast.tsx) stretches a toast across the screen and its list one gutter too far right: the pill keeps
    its own width, centered. Unlayered and as specific as Sonner's own sheet plus one class, so it wins. */
 @media (max-width: 600px) {
@@ -147,6 +167,7 @@
     --surface-card: var(--surface-solid);
     --surface-inset: var(--surface-solid);
     --surface-sheet: var(--surface-solid);
+    --surface-sheet-moving: var(--surface-solid);
     --surface-on-sheet: var(--color-on-color);
     --lg-glass: var(--surface-solid);
     --glass-float: var(--surface-solid);

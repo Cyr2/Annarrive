@@ -75,6 +75,9 @@
   /* A sheet is thick frost: dense enough that the page behind never reads as words, even without a blur. */
   --surface-sheet: rgb(248 244 245 / 0.84);
   --surface-sheet-blur: blur(40px) saturate(180%);
+  /* The same sheet while it moves, without its blur: opaque (through 95 % the page still read as ghost words), the
+     color the resting glass shows on average over the page and the scrim (measured on screenshots). */
+  --surface-sheet-moving: rgb(240 239 241);
   /* A group on a sheet: brighter glass, without a blur of its own (never glass blurring glass). */
   --surface-on-sheet: rgb(255 255 255 / 0.5);
   /* The 1 px luminous edge of every surface (surfaces.css): bright at the top left, a faint cool return at the bottom right. */
