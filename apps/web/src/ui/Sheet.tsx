@@ -2,7 +2,6 @@ import {
   AnimatePresence,
   type DragControls,
   MotionConfig,
-  type MotionValue,
   motion,
   useDragControls,
   useMotionValue,
@@ -11,7 +10,7 @@ import {
 } from "motion/react";
 import { type ReactNode, type RefObject, useEffect, useId, useRef } from "react";
 import { createPortal } from "react-dom";
-import { EXIT_SHEET, FADE_REDUCED, RECEDE, SPRING_SHEET } from "../lib/motion.ts";
+import { EXIT_SHEET, FADE_REDUCED, SPRING_SHEET } from "../lib/motion.ts";
 import { Icon } from "./Icon.tsx";
 import { TextButton } from "./TextButton.tsx";
 import { useVisibleArea } from "./useVisibleArea.ts";
@@ -42,7 +41,7 @@ type Props = {
 };
 
 /**
- * Bottom sheet: rises with a spring over an ink scrim while the page steps back, follows the finger when pulled
+ * Bottom sheet: rises with a spring over a light ink scrim (the page stays still), follows the finger when pulled
  * down (by its top, or anywhere once its content is scrolled to the top), closes on Escape or a tap outside,
  * keeps focus inside (the app behind is inert) and gives it back on close. It sits above the keyboard when one
  * is up. One main action per sheet: in `footer`, or `action` for a long form.
@@ -84,27 +83,6 @@ function standing(y: number | string, panel: HTMLElement | null): number {
   const height = panel?.offsetHeight || window.innerHeight;
   const offset = typeof y === "number" ? y : (Number.parseFloat(y) || 0) * (y.endsWith("%") ? height / 100 : 1);
   return Math.min(1, Math.max(0, 1 - offset / height));
-}
-
-/**
- * The page steps back as the sheet stands up, frame by frame from the sheet's own position: opening, a drag,
- * a close by button, by pull or by Back are one motion, caught wherever it is. Not under reduced motion.
- */
-function useRecede(progress: MotionValue<number>, active: boolean) {
-  useEffect(() => {
-    if (!active) return;
-    // Live: a screen that changes under the sheet is followed.
-    const pages = document.getElementById("root")?.getElementsByTagName("main");
-    const apply = (amount: number) => {
-      for (const page of pages ?? []) page.style.transform = amount > 0 ? `scale(${1 - (1 - RECEDE) * amount})` : "";
-    };
-    apply(progress.get());
-    const stop = progress.on("change", apply);
-    return () => {
-      stop();
-      apply(0);
-    };
-  }, [progress, active]);
 }
 
 /**
@@ -173,9 +151,9 @@ function useModal(panel: RefObject<HTMLElement | null>, close: RefObject<() => v
     if (covered) return;
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const root = document.getElementById("root");
-    root?.setAttribute("inert", "");
-    // The page steps back on the middle of what is on screen (motion.css).
-    document.documentElement.style.setProperty("--recede-origin", `50% ${scrollY + innerHeight / 2}px`);
+    // Once risen: making the whole app inert restyles every element of it, a frame lost on a phone if done as it
+    // starts to rise. Until then the scrim takes the taps and focus is held inside (keepFocusIn).
+    const inert = setTimeout(() => root?.setAttribute("inert", ""), SPRING_SHEET.duration * 1000);
     (panel.current?.querySelector<HTMLElement>("[data-autofocus]") ?? panel.current)?.focus({ preventScroll: true });
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") close.current();
@@ -184,6 +162,7 @@ function useModal(panel: RefObject<HTMLElement | null>, close: RefObject<() => v
     document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("keydown", onKey);
+      clearTimeout(inert);
       root?.removeAttribute("inert");
       opener?.focus({ preventScroll: true });
     };
@@ -260,7 +239,6 @@ function Panel({
   const y = useMotionValue<number | string>(0);
   const progress = useTransform(y, (value) => standing(value, panel.current));
   const back = onBack ?? previous;
-  useRecede(progress, !still && !covered);
   usePullToClose(panel, drag, !still && !covered);
 
   useModal(panel, close, covered);

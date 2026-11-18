@@ -194,7 +194,7 @@ Toutes respectent « Réduire les animations » d'iOS : dans ce cas, simples fon
 | Moment | Animation |
 |---|---|
 | Appui sur un bouton | Réduction à 96 % pendant l'appui, retour en 120 ms |
-| Ouverture d'une feuille | Monte du bas avec un ressort sans rebond (environ 350 ms). L'écran derrière recule légèrement et s'assombrit, en suivant la feuille image par image : à l'ouverture, pendant qu'on la tire, à la fermeture (bouton, glissement, tap à côté, retour Android), sans à-coup. La feuille se ferme en la tirant vers le bas, par sa poignée ou depuis n'importe où dans son contenu quand celui-ci est en haut (un contenu défilé remonte d'abord) |
+| Ouverture d'une feuille | Monte du bas avec un ressort sans rebond (environ 350 ms). L'écran derrière ne bouge pas : il s'assombrit légèrement, en suivant la feuille image par image : à l'ouverture, pendant qu'on la tire, à la fermeture (bouton, glissement, tap à côté, retour Android), sans à-coup. La feuille se ferme en la tirant vers le bas, par sa poignée ou depuis n'importe où dans son contenu quand celui-ci est en haut (un contenu défilé remonte d'abord) |
 | Feuille ouverte depuis une autre | Elle prend la place de la première. En haut à gauche, « Retour » ramène la première telle qu'on l'a laissée ; tirer vers le bas, toucher à côté ou Échap ferment tout. Le retour Android revient d'une feuille à la fois |
 | Changement d'onglet | Le nouvel écran s'ouvre en haut de page ; seul le retour du navigateur retrouve la position laissée |
 | Déplier les étapes | La hauteur s'ouvre et les lignes apparaissent en fondu, 250 ms |

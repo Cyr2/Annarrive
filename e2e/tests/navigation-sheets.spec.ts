@@ -52,6 +52,22 @@ test("une feuille se ferme en la tirant vers le bas depuis son contenu, pas seul
   await expect(again).toBeVisible();
 });
 
+test("la page derrière une feuille reste immobile, feuille ouverte comme tirée", async ({ page }) => {
+  // The page used to step back with the sheet: rescaling it redrew every glass card of the page at each frame.
+  const detail = await openRunDetail(page);
+  const main = page.locator("main");
+  await expect(main).toHaveCSS("transform", "none");
+  // Once risen, the app behind is out of reach.
+  await expect(page.locator("#root")).toHaveAttribute("inert", "");
+  const box = await detail.getByRole("heading", { name: "Côtes courtes" }).boundingBox();
+  if (!box) throw new Error("Titre invisible");
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2, box.y + 80, { steps: 6 });
+  await expect(main).toHaveCSS("transform", "none");
+  await page.mouse.up();
+});
+
 test("une feuille ouverte depuis une autre offre Retour, et tirer vers le bas ferme tout", async ({ page }) => {
   const detail = await openRunDetail(page);
   await detail.getByRole("button", { name: "Déplacer" }).click();

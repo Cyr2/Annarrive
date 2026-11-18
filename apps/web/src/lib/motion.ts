@@ -16,8 +16,6 @@ export const FADE = { duration: 0.2, ease: [0.23, 1, 0.32, 1] } as const;
 export const FADE_REDUCED = { duration: 0.15, ease: "linear" } as const;
 /** Glass bubbles of the guided tour: a small bounce as they land on their target. */
 export const SPRING_BUBBLE = { type: "spring", bounce: 0.2, duration: 0.4 } as const;
-/** The page behind a sheet steps back to this scale, as on iOS. */
-export const RECEDE = 0.94;
 /** A week swiped to the next one: it leaves quickly, the next one springs in following the finger's speed. */
 export const SPRING_SWIPE = { type: "spring", bounce: 0, duration: 0.35 } as const;
 
