@@ -32,7 +32,7 @@ describe("motion", () => {
     expect(stripChanges(before, longer)).toEqual({ bars: [["r1", 0.5]], landed: [] });
     expect(stripChanges(before, before)).toEqual({ bars: [], landed: [] });
     const nextWeek = drawnOf([day("c", [{ id: "r2", tone: "easy", minutes: 40 }])], 0.5);
-    expect(stripChanges(before, nextWeek)).toEqual({ bars: [["r2", 0]], landed: [] });
+    expect(stripChanges(before, nextWeek)).toEqual({ bars: [], landed: [] });
   });
 
   it("tells a pull from a swipe, a scroll, a long press and a page already scrolled", () => {

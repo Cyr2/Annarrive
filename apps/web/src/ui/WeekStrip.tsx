@@ -113,11 +113,13 @@ export function drawnOf(days: StripDay[], scale: number): Drawn {
 export function stripChanges(before: Drawn, after: Drawn) {
   const bars: [id: string, from: number][] = [];
   const landed = new Set<string>();
+  // Another week arrives already drawn (it slid in beside this one): nothing grows.
+  if (before.week !== after.week) return { bars, landed: [] };
   for (const [id, mark] of after.marks) {
     const was = before.marks.get(id);
     if (!was || was.day !== mark.day) {
       bars.push([id, 0]);
-      if (before.week === after.week) landed.add(mark.day);
+      landed.add(mark.day);
     } else if (was.height !== mark.height) bars.push([id, was.height / mark.height]);
   }
   return { bars, landed: [...landed] };
@@ -126,7 +128,7 @@ export function stripChanges(before: Drawn, after: Drawn) {
 /**
  * The strip answers a change: each bar grows or shrinks from its old load to the new one (drawn at its new height,
  * then scaled from the old: transform only, its round ends intact once it settles), a new bar grows from its base,
- * and the day a session landed on pulses once. Nothing moves on the first paint.
+ * and the day a session landed on pulses once. Nothing moves on the first paint, nor for another week.
  */
 function useStripMotion(days: StripDay[], scale: number) {
   const nav = useRef<HTMLElement>(null);
