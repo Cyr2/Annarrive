@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { lookup as dnsLookup, type LookupAddress } from "node:dns";
 import type { ClientRequest, IncomingMessage } from "node:http";
 import { request as httpsRequest } from "node:https";
@@ -19,12 +20,15 @@ const LAST_CHANGE_AT = "timetable.lastChangeAt";
 const textSchema = z.union([z.string(), z.object({ val: z.string() }).transform((v) => v.val)]);
 const vevent = z.object({
   type: z.literal("VEVENT"),
-  uid: z.string().min(1),
+  uid: z.string().min(1).optional(),
   start: z.date(),
   end: z.date(),
   summary: textSchema.optional(),
   location: textSchema.optional(),
 });
+
+/** What makes two classes one, whatever their UID: ADE can hand new UIDs on each export (same key as the unique index of db.ts). */
+const classKey = (e: Pick<CalendarEvent, "title" | "start" | "end">) => `${e.title}\u0000${e.start}\u0000${e.end}`;
 
 /** Keeps the VEVENTs of an ICS feed as classes, in Paris time. Throws rather than drop a class silently. */
 export function parseTimetable(ics: string): CalendarEvent[] {
@@ -34,12 +38,15 @@ export function parseTimetable(ics: string): CalendarEvent[] {
     if (!parsed.success)
       throw new TimetableError("L'emploi du temps reçu est illisible : rien n'a changé, réessaie plus tard.");
     const e = parsed.data;
+    const title = e.summary?.trim() || "Cours";
+    const start = toParisLocal(e.start);
+    const end = toParisLocal(e.end);
     return {
-      id: `ics:${e.uid}`,
+      id: `ics:${e.uid ?? createHash("sha256").update(classKey({ title, start, end })).digest("hex").slice(0, 32)}`,
       kind: "class",
-      title: e.summary?.trim() || "Cours",
-      start: toParisLocal(e.start),
-      end: toParisLocal(e.end),
+      title,
+      start,
+      end,
       location: e.location?.trim() || undefined,
       manual: false,
       cancelled: false,
@@ -279,26 +286,30 @@ export class TimetableService {
     };
   }
 
-  /** Upserts upcoming classes by UID and deletes the ones gone from the feed; past classes stay as they were. */
+  /**
+   * Upserts upcoming classes and deletes the ones gone from the feed; past classes stay as they were. A class is
+   * found by its UID, else by title and times, and keeps its stored id: her « n'a pas lieu » and Annuler hold on to it.
+   */
   #apply(feed: CalendarEvent[], now: string): { verb: Verb; date: string }[] {
     const store = this.#stores.calendarEvent;
-    const stored = new Map(
-      store
-        .overlapping(now, "9999-12-31T23:59")
-        .filter((e) => e.kind === "class")
-        .map((e) => [e.id, e]),
-    );
+    const stored = store.list().filter((e) => e.kind === "class" && !e.manual);
+    const byId = new Map(stored.map((e) => [e.id, e]));
+    const byKey = new Map(stored.map((e) => [classKey(e), e]));
+    const unread = new Map(stored.filter((e) => e.end > now).map((e) => [e.id, e]));
+    const find = (e: CalendarEvent) => byId.get(e.id) ?? byKey.get(classKey(e));
+    // A class listed twice in the feed is one class.
+    const classes = [...new Map(feed.map((e) => [classKey(e), e])).values()];
     const lines: { verb: Verb; date: string }[] = [];
     // Past classes only fill an empty history, so the week view of a past week still shows them.
-    for (const event of feed.filter((e) => e.end <= now && !store.get(e.id))) store.put(event);
-    for (const event of feed.filter((e) => e.end > now)) {
-      const old = stored.get(event.id);
-      stored.delete(event.id);
+    for (const event of classes.filter((e) => e.end <= now && !find(e))) store.put(event);
+    for (const event of classes.filter((e) => e.end > now)) {
+      const old = find(event);
+      if (old) unread.delete(old.id);
       if (old && sameClass(old, event)) continue;
       lines.push({ verb: old ? "modifié" : "ajouté", date: dateOf(event.start) });
-      store.put({ ...event, cancelled: old?.cancelled ?? false });
+      store.put({ ...event, id: old?.id ?? event.id, cancelled: old?.cancelled ?? false });
     }
-    for (const gone of stored.values()) {
+    for (const gone of unread.values()) {
       lines.push({ verb: "annulé", date: dateOf(gone.start) });
       store.delete(gone.id);
     }

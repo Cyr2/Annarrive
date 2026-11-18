@@ -35,6 +35,30 @@ const documentTable = (name: string) =>
   `CREATE TABLE ${name} (id TEXT PRIMARY KEY, start_at TEXT, end_at TEXT, data TEXT NOT NULL);
    CREATE INDEX ${name}_start ON ${name} (start_at);`;
 
+const importedClass = `json_extract(data, '$.kind') = 'class' AND json_extract(data, '$.manual') = 0`;
+/**
+ * Each timetable read used to store the past classes again under ADE's new UIDs. One row per class is kept: the one
+ * she marked « n'a pas lieu », else the one the change log points to (Annuler), else the oldest. The unique index
+ * then makes a second row for the same class replace the first (`INSERT OR REPLACE`) instead of piling up.
+ */
+const dedupeClasses = `
+  DELETE FROM calendar_event WHERE rowid IN (
+    SELECT rowid FROM (
+      SELECT rowid, ROW_NUMBER() OVER (
+        PARTITION BY json_extract(data, '$.title'), start_at, end_at
+        ORDER BY json_extract(data, '$.cancelled') DESC,
+          id IN (
+            SELECT json_extract(m.value, '$.id') FROM change_log, json_each(change_log.data, '$.mutations') m
+            WHERE json_extract(m.value, '$.table') = 'calendar_event'
+          ) DESC,
+          rowid
+      ) AS rank
+      FROM calendar_event WHERE ${importedClass}
+    ) WHERE rank > 1
+  );
+  CREATE UNIQUE INDEX calendar_event_class ON calendar_event (json_extract(data, '$.title'), start_at, end_at)
+    WHERE ${importedClass};`;
+
 /** Append only: a migration that shipped is never edited. */
 const migrations: string[] = [
   initialTables.map(documentTable).join("\n"),
@@ -44,6 +68,7 @@ const migrations: string[] = [
   documentTable("app_user") + documentTable("passkey"),
   documentTable("session_feel"),
   documentTable("incident"),
+  dedupeClasses,
 ];
 
 /** `:memory:` for tests, otherwise `annarrive.db` inside `dataDir`. */

@@ -119,6 +119,55 @@ describe("timetable sync", () => {
     expect(t.stores.calendarEvent.get("ics:ADE-tue")).toMatchObject({ cancelled: true, start: "2026-11-17T16:00" });
   });
 
+  // ADE hands new UIDs on each export: every read stored the semester's past classes again (21 copies in 7 h).
+  it("keeps one class per occurrence across reads that change every UID", async () => {
+    const feed = switchableFeed();
+    const t = setup({ ics: feed.fetch });
+    await t.services.timetable.refresh();
+    t.services.plan.cancelClass("ics:ADE-mon");
+    const classes = () =>
+      t.stores.calendarEvent
+        .list()
+        .map((e) => `${e.start} ${e.title}${e.cancelled ? " (annulé)" : ""}`)
+        .sort();
+    const first = classes();
+
+    for (const n of [1, 2, 3]) {
+      feed.set(v1.replaceAll("UID:ADE-", `UID:ADE${n}-`));
+      expect(await t.services.timetable.refresh()).toMatchObject({ added: 0, changed: 0, removed: 0, summary: "" });
+    }
+    // Actualiser while the scheduler reads: two reads at once.
+    feed.set(v1.replaceAll("UID:ADE-", "UID:ADE4-"));
+    await Promise.all([t.services.timetable.refresh(), t.services.timetable.refresh()]);
+    expect(classes()).toEqual(first);
+    expect(first).toContain("2026-11-16T10:00 (M1M2E PE NL) UE2 PHYS (annulé)");
+
+    // Then v2, renamed again: Thursday goes, Friday comes, Tuesday moves; still one class each.
+    feed.set(v2.replaceAll("UID:ADE-", "UID:ADE9-"));
+    await t.services.timetable.refresh();
+    expect(classes()).toEqual([
+      "2026-11-09T10:00 (M1M2E PE NL) UE1 MATHS",
+      "2026-11-16T10:00 (M1M2E PE NL) UE2 PHYS (annulé)",
+      "2026-11-17T16:00 (M1M2E PE NL) UE3 CHIMIE",
+      "2026-11-20T08:00 (M1M2E PE NL) UE5 TP",
+      "2027-04-06T10:00 (M1M2E PE NL) UE2 PHYS",
+    ]);
+  });
+
+  it("reads a class listed twice as one, and gives a class without UID a stable id", async () => {
+    const mon = v1.split("BEGIN:VEVENT")[2] ?? "";
+    const twice = v1.replace("END:VCALENDAR", `BEGIN:VEVENT${mon.replace("UID:ADE-mon", "UID:ADE-copy")}END:VCALENDAR`);
+    const t = setup({ ics: twice });
+    await t.services.timetable.refresh();
+    await t.services.timetable.refresh();
+    expect(t.stores.calendarEvent.list()).toHaveLength(5);
+
+    const noUid = v1.replaceAll(/UID:ADE-.*\n/g, "");
+    const ids = parseTimetable(noUid).map((e) => e.id);
+    expect(parseTimetable(noUid).map((e) => e.id)).toEqual(ids);
+    expect(new Set(ids).size).toBe(5);
+  });
+
   it("leaves the stored timetable alone when the feed comes back empty", async () => {
     const feed = switchableFeed();
     const t = setup({ ics: feed.fetch });
