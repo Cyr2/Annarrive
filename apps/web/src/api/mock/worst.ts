@@ -55,7 +55,13 @@ function longest(items: Item[]): Item[] {
 export function worstProgram(program: Program): Program {
   return {
     ...program,
-    goal: { ...program.goal, race: "Marathon de La Rochelle", targetTime: "3:59:59", targetTag: "ambitious" },
+    goal: {
+      ...program.goal,
+      race: "Marathon de La Rochelle",
+      targetTime: "3:59:59",
+      targetTag: "ambitious",
+      targetWhy: { currentMin: 268, weeks: 14, gain: 0.105, gainMax: 0.049 },
+    },
     settings: { ...program.settings, noRunDays: [0, 2, 5, 6] },
     strength: program.strength.map((t) =>
       t.id === "s-upper" ? { ...t, name: "Renforcement haut du corps et gainage" } : t,

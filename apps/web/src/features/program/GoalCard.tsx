@@ -77,7 +77,14 @@ export function GoalCard({ program, today }: { program: Program; today: string }
           <PaceValue value={goal.targetTime ?? "Finir"} size="figure" />
         </div>
       </div>
-      {goal.targetTag && <TargetTag kind={goal.targetTag} className="-mt-2" />}
+      {goal.targetTag && (
+        <TargetTag
+          kind={goal.targetTag}
+          why={goal.targetWhy}
+          goal={goal.targetTime ? `${goal.race}, ${goal.targetTime}` : goal.race}
+          className="-mt-2"
+        />
+      )}
       {program.phases.length > 0 && (
         <div className="hairline-top flex flex-col gap-3 pt-4">
           <WeekBar program={program} />

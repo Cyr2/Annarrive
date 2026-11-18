@@ -63,7 +63,6 @@ export function SlotPicker({ open, onOpen, monday, options, today, value, onChan
       )}
       {blocked && (
         <p className="t-cap m-0 flex items-start gap-1.5 rounded-row bg-warn-wash px-3 py-2 text-warn-deep">
-          <Icon name="info" size={16} className="mt-px flex-none" />
           {blocked}. Reggie adaptera le contenu de la séance.
         </p>
       )}

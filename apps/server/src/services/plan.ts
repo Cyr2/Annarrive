@@ -199,7 +199,7 @@ export class PlanService {
     const verdict = verdictOf(plan.feasibility);
     return {
       ...program,
-      plan: { firstMonday: plan.firstMonday, phases: plan.phases, ...(verdict ? { verdict } : {}) },
+      plan: { firstMonday: plan.firstMonday, phases: plan.phases, ...(verdict ? { verdict, odds: plan.odds } : {}) },
     };
   }
 

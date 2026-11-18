@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { changeOptionSchema, plannedSessionSchema, slotSchema } from "./api.ts";
+import { changeOptionSchema, localDateSchema, plannedSessionSchema, slotSchema } from "./api.ts";
 
 /** Where the conversation was opened from, so Reggie knows what "cette séance" means. */
 export const chatContextSchema = z.object({
@@ -58,8 +58,15 @@ export const chatRequestSchema = z.object({
 });
 export type ChatRequest = z.infer<typeof chatRequestSchema>;
 
-export const chatHistorySchema = z.object({ messages: z.array(chatMessageSchema) });
+/** GET /api/chat?day=: one Paris day of the conversation (today without `day`), oldest message first. */
+export const chatHistorySchema = z.object({
+  day: localDateSchema,
+  messages: z.array(chatMessageSchema),
+  /** The latest earlier day with messages, the next one to load; absent when there is none. */
+  earlier: localDateSchema.optional(),
+});
 export type ChatHistory = z.infer<typeof chatHistorySchema>;
+export const chatHistoryQuerySchema = z.object({ day: localDateSchema.optional() });
 
 /**
  * One server-sent event of `POST /api/chat`; the SSE `event` field repeats `type`.

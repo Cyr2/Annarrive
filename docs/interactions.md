@@ -118,6 +118,7 @@ Après ajout, si une course entre en conflit, Reggie la déplace, même si elle 
 
 | Élément | Au tap | Ce qui se passe |
 |---|---|---|
+| Pastille « Ambitieux » ou « Atteignable » (carte de l'objectif) | Une petite bulle explique le verdict en mots simples : son niveau aujourd'hui (temps prédit sur la course), le gain que sa cible demande sur les semaines d'entraînement du plan, et le gain habituel sur cette durée. Jamais un chrono proposé (algo.md P20). « OK » ou un tap à côté la ferme | « En parler avec Reggie » ouvre Reggie, à propos de l'objectif, et envoie « Pourquoi mon objectif est ambitieux ? Qu'est-ce que je peux faire ? » (ou « Mon objectif est atteignable : comment je m'y prends ? »). Pendant l'onboarding, la pastille informe seulement : elle n'a pas de chevron |
 | Modifier l'objectif | Reprend les écrans de création du programme, pré-remplis, avec l'heure de départ de la course | Avant validation, un résumé montre ce qui change (« 2 semaines de plus, chrono visé atteignable »). Les semaines à venir sont recalculées, la semaine en cours garde ce qu'Anna a déjà déplacé. Une course dans les 7 jours, nouvelle ou retirée, refait aussi ce qui reste de la semaine en cours (algo.md EV20) ; le résumé le dit : « Ta semaine devient une semaine de course : rien de dur dans les 3 jours avant. » |
 | Courses par semaine, jours sans course, pas avant, pas après, heure de coucher | Choix en feuille (roue ou boutons) | La semaine en cours et les suivantes sont réorganisées. Bandeau « Reggie a réorganisé ta semaine · Voir » |
 | Sortie longue le | Liste des jours (dimanche par défaut) | Les séances automatiques à venir sont refaites, la sortie longue passe à ce jour quand il est libre. Bandeau Annuler |
@@ -134,6 +135,14 @@ Après ajout, si une course entre en conflit, Reggie la déplace, même si elle 
 ### Ce qu'il peut faire
 
 Répondre à une question, expliquer une séance, et modifier le plan, mais seulement par les mêmes actions que les boutons : Déplacer, Changer, Pas dispo, réglages. Il ne crée jamais une séance hors des règles de l'algo.
+
+### L'historique
+
+L'écran montre la discussion du jour. Au-dessus, un lien discret « Voir la discussion d'hier » (puis « Voir la discussion du 13 novembre » pour un jour plus ancien) charge un seul jour à la fois, le plus récent d'abord, et le place au-dessus sans faire sauter la lecture. Dès qu'un jour plus ancien est affiché, chaque jour a son intertitre (« Vendredi 13 novembre », « Hier », « Aujourd'hui »). Le lien disparaît quand il n'y a plus rien avant. Reggie, lui, garde en mémoire les 20 derniers messages, quel que soit le jour.
+
+### Le clavier
+
+Pendant la saisie, la barre d'onglets s'efface et le champ se pose juste au-dessus du clavier, comme dans Messages ; les messages restent visibles au-dessus. Le dernier message repose toujours au-dessus des raccourcis et du champ : la conversation le ramène en vue à chaque nouveau message, sauf quand Anna lit plus haut.
 
 ### Les widgets dans la conversation
 

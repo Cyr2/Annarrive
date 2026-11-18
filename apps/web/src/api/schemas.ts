@@ -169,6 +169,10 @@ export const programSchema = z.object({
     startTime: clock.optional(),
     /** How her own target looks, never discouraging. The app never proposes a time. */
     targetTag: z.enum(["reachable", "ambitious"]).optional(),
+    /** What the tag rests on, for its explanation: as the server's `plan.odds` (minutes, weeks, fractions). */
+    targetWhy: z
+      .object({ currentMin: z.number(), weeks: z.number().int(), gain: z.number(), gainMax: z.number() })
+      .optional(),
   }),
   phases: z.array(z.object({ name: z.string(), weeks: z.number().int().positive() })),
   weekIndex: z.number().int(),

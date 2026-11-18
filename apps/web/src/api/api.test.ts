@@ -402,6 +402,7 @@ describe("http client, reading", () => {
         { phase: "taper", weeks: 2 },
       ],
       verdict: "ambitieux",
+      odds: { currentMin: 120, weeks: 8, gain: 0.08, gainMax: 0.028 },
     };
     const reading = { ...reads, "GET /api/program": { ...reads["GET /api/program"], plan } };
     const program = await server(reading).api.program();
@@ -412,6 +413,7 @@ describe("http client, reading", () => {
     ]);
     expect([program.weekIndex, program.weekTotal]).toEqual([2, 10]);
     expect(program.goal.targetTag).toBe("ambitious");
+    expect(program.goal.targetWhy).toEqual({ currentMin: 120, weeks: 8, gain: 0.08, gainMax: 0.028 });
     const week = await server(reading).api.week(0);
     expect([week.index, week.total]).toEqual([2, 10]);
     expect((await server(reads).api.program()).goal.targetTag).toBeUndefined();
@@ -775,6 +777,8 @@ describe("Reggie over the server", () => {
     const session = { ...SESSION, type: "E" } as const;
     const { api } = server({
       "GET /api/chat": {
+        day: "2026-11-16",
+        earlier: "2026-11-13",
         messages: [
           { id: "m1", at: "x", role: "anna", text: "J'ai mal", widgets: [] },
           {
@@ -795,7 +799,8 @@ describe("Reggie over the server", () => {
         ],
       },
     });
-    const history = await api.chatHistory();
+    const { day, earlier, messages: history } = await api.chatHistory();
+    expect([day, earlier]).toEqual(["2026-11-16", "2026-11-13"]);
     expect(history.map((m) => [m.id, m.role, m.widget?.type])).toEqual([
       ["m1", "user", undefined],
       ["m2", "reggie", "scale"],
@@ -804,6 +809,11 @@ describe("Reggie over the server", () => {
     ]);
     expect(history[2]?.widget).toMatchObject({ slots: [{ date: "2026-11-18", start: "18:00", why: "Mercredi" }] });
     expect(history[3]?.widget).toMatchObject({ optionId: "jog", session: { title: "Footing", intensity: "easy" } });
+  });
+
+  it("asks for an earlier day by its date", async () => {
+    const { api } = server({ "GET /api/chat?day=2026-11-13": { day: "2026-11-13", messages: [] } });
+    expect(await api.chatHistory("2026-11-13")).toEqual({ day: "2026-11-13", earlier: undefined, messages: [] });
   });
 
   it("splits server-sent events whatever the chunks", async () => {

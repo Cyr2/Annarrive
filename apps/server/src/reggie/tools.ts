@@ -57,8 +57,11 @@ export function reggieTools(plan: PlanService, widgets: ChatWidget[]) {
       { week: isoWeekSchema.optional().describe("Semaine ISO, par exemple 2026-W47") },
       ({ week }) => run(() => plan.week(week ?? isoWeekOf(plan.today().date))),
     ),
-    tool("get_program", "Objectif, réglages (jours sans course, horaires, coucher) et santé.", {}, () =>
-      run(() => ({ program: plan.program(), settings: plan.profile(), health: plan.health() })),
+    tool(
+      "get_program",
+      "Objectif et plan (phases ; verdict sur sa cible et ses raisons : temps prédit aujourd'hui, semaines, gain demandé et gain habituel), réglages (jours sans course, horaires, coucher) et santé.",
+      {},
+      () => run(() => ({ program: plan.programView(), settings: plan.profile(), health: plan.health() })),
     ),
     tool("get_recent", "Statut santé, sommeil, FC de repos et courses des 14 derniers jours.", {}, () =>
       run(() => plan.recent()),

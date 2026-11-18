@@ -4,11 +4,14 @@ import type { Api } from "../../api/client.ts";
 import { ApiError } from "../../api/errors.ts";
 import { api as defaultApi } from "../../api/index.ts";
 import type { ChatEvent, ChatMessage } from "../../api/schemas.ts";
+import { notify } from "../../ui/toast.ts";
 import { usePlan } from "../plan/store.ts";
 
 /** A message as shown: widgets remember the answer picked, which fills that button and fades the others. */
 export type Entry = ChatMessage & {
   answer?: string;
+  /** The day of a stored message ("2026-11-16"); absent on what was said since the screen opened (today). */
+  day?: string;
   /** On a failed reply: the message to send again, and the bubble it came from (replaced by the retry). */
   retry?: { text: string; from: string };
 };
@@ -21,9 +24,16 @@ export type ChatState = {
   /** The same, for Reggie: the screen and the session. Sent with every message. */
   about?: ChatContext;
   historyLoaded: boolean;
+  /** Today as the server counts it, once the history is read. */
+  today?: string;
+  /** The latest earlier day with messages: « Voir la discussion d'hier » loads it. */
+  earlier?: string;
+  loadingEarlier: boolean;
   setContext: (context: string | undefined, about?: ChatContext) => void;
-  /** Reads the stored conversation once, under the welcome line. */
+  /** Reads today's stored conversation once, under the welcome line. */
   loadHistory: () => Promise<void>;
+  /** Puts the day before the oldest one shown above it, one day per call. */
+  loadEarlier: () => Promise<void>;
   send: (text: string) => Promise<void>;
   /** Answers a widget: records the choice on it, then sends it as a message. */
   answer: (messageId: string, answer: string) => Promise<void>;
@@ -70,16 +80,36 @@ export function createChatStore(getApi: () => Promise<Api>, onChange: (changeId:
       messages: [WELCOME],
       status: "idle",
       historyLoaded: false,
+      loadingEarlier: false,
       setContext: (context, about) => set({ context, about }),
       async loadHistory() {
         if (get().historyLoaded) return;
         set({ historyLoaded: true });
         try {
-          const history = await (await getApi()).chatHistory();
-          set((s) => ({ messages: [WELCOME, ...history, ...s.messages.filter((m) => m.id !== WELCOME.id)] }));
+          const page = await (await getApi()).chatHistory();
+          const history = page.messages.map((m) => ({ ...m, day: page.day }));
+          set((s) => ({
+            today: page.day,
+            earlier: page.earlier,
+            messages: [WELCOME, ...history, ...s.messages.filter((m) => m.id !== WELCOME.id)],
+          }));
         } catch {
           // The conversation still works without its past: a later visit tries again.
           set({ historyLoaded: false });
+        }
+      },
+      async loadEarlier() {
+        const day = get().earlier;
+        if (!day || get().loadingEarlier) return;
+        set({ loadingEarlier: true });
+        try {
+          const page = await (await getApi()).chatHistory(day);
+          const older = page.messages.map((m) => ({ ...m, day: page.day }));
+          set((s) => ({ earlier: page.earlier, messages: [...older, ...s.messages] }));
+        } catch {
+          void notify("Cette discussion n'a pas pu s'afficher. Réessaie dans un instant.");
+        } finally {
+          set({ loadingEarlier: false });
         }
       },
       async send(text) {

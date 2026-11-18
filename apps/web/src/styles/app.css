@@ -232,6 +232,11 @@
     white-space: nowrap;
   }
 
+  /* Reggie's field is on the keyboard (Composer.tsx): the tab bar steps aside, as in Messages. */
+  :root[data-typing] .ui-tab-bar {
+    visibility: hidden;
+  }
+
   /* A scroller's edges fade instead of cutting a row in half (sheet bodies, the chip rows). */
   .fade-x {
     mask-image: linear-gradient(90deg, transparent, #fff 16px, #fff calc(100% - 16px), transparent);
