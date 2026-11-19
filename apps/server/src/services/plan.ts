@@ -113,6 +113,8 @@ const MORNING_DECISION = "morning.decidedOn";
 const MORNING_NOTE = "morning.note";
 /** « change id|last day|line »: what M10 changed after her last run, said on Aujourd'hui. */
 const ADAPT_NOTE = "adapt.note";
+/** The timetable link pasted at onboarding, until the profile is stored. */
+const ONBOARDING_ICS = "onboarding.icsUrl";
 const morningNotes: Partial<Record<DailyDecisionResult["action"], string>> = {
   easier: "Allégée",
   shorter: "Raccourcie",
@@ -189,7 +191,10 @@ export class PlanService {
   }
 
   profile(): Profile {
-    return this.#stores.profile.get(CURRENT)?.value ?? defaultProfile;
+    const stored = this.#stores.profile.get(CURRENT)?.value;
+    if (stored) return stored;
+    const icsUrl = this.#stores.meta.get(ONBOARDING_ICS)?.value;
+    return icsUrl ? { ...defaultProfile, icsUrl } : defaultProfile;
   }
 
   program(): Program {
@@ -414,6 +419,11 @@ export class PlanService {
 
   /** The timetable link moves no session by itself: the refresh that follows does. */
   saveIcsUrl(icsUrl: string): void {
+    // During onboarding a stored profile would end it: the link waits here, and the profile that follows keeps it.
+    if (!this.#stores.profile.get(CURRENT)) {
+      this.#stores.meta.put({ id: ONBOARDING_ICS, value: icsUrl });
+      return;
+    }
     this.#changes.record("Lien de l'emploi du temps enregistré", [
       { table: "profile", id: CURRENT, after: { id: CURRENT, value: { ...this.profile(), icsUrl } } },
     ]);

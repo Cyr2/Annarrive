@@ -1,3 +1,4 @@
+import { icsUrl } from "../support/server.ts";
 import { expect, onFresh, test } from "../support/test.ts";
 
 onFresh();
@@ -39,14 +40,20 @@ test("onboarding d'une base vide jusqu'à la première semaine, puis visite guid
   await expect(page.getByRole("heading", { name: "Ta santé" })).toBeVisible();
   await next.click();
   await expect(page.getByText("Pas encore relié.", { exact: false })).toBeVisible();
+  // The link pasted here was dropped by the profile patch (audit onboarding 1).
+  await page.getByLabel("Lien de l'emploi du temps").fill(icsUrl("timetable.ics"));
   await next.click();
   await expect(page.getByRole("heading", { name: "Tout est bon ?" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Récapitulatif" })).toContainText("4 par semaine");
-  await expect(page.getByRole("region", { name: "Récapitulatif" })).toContainText("10 km en 52:00");
+  await expect(page.getByRole("region", { name: "Récapitulatif" })).toContainText("10 km en 52 min");
+  await expect(page.getByRole("region", { name: "Récapitulatif" })).toContainText("Lien ajouté");
   await page.getByRole("button", { name: "C'est parti" }).click();
 
   const tour = page.getByRole("dialog", { name: "Visite guidée" });
   await expect(tour).toBeVisible();
+  // Day one is a rest day: the tour points at the next session, and the rest day speaks of the plan to come.
+  await expect(tour).toContainText("Ta prochaine séance");
+  await expect(page.getByText("Ton plan commence avec la séance juste en dessous.")).toBeVisible();
   await tour.getByRole("button", { name: "Passer" }).click();
   await expect(tour).toBeHidden();
 
@@ -55,6 +62,10 @@ test("onboarding d'une base vide jusqu'à la première semaine, puis visite guid
   await expect(day).toBeVisible();
   await page.getByRole("link", { name: "Semaine" }).click();
   await expect(page.locator("[aria-roledescription='séance déplaçable']").first()).toBeVisible();
+  // Her classes are in the first week, and Programme shows the link she pasted.
+  await expect(page.locator("#day-2026-11-19")).toContainText("Biochimie");
+  await page.getByRole("link", { name: "Programme" }).click();
+  await expect(page.getByRole("button", { name: /^Lien ICS/ })).toContainText("ics.e2e.test");
 
   // Neither on the next launch, nor once Safari has dropped its storage: the server knows it is done.
   for (const forget of [false, true]) {

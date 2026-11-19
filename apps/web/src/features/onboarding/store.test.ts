@@ -17,6 +17,7 @@ function setup(over: Partial<OnboardingApi> = {}, search = "?onboarding") {
     });
   const api = {
     ...base,
+    linkTimetable: spy("linkTimetable", base.linkTimetable),
     saveProgram: spy("saveProgram", base.saveProgram),
     addEvent: spy("addEvent", base.addEvent),
     reportPain: spy("reportPain", base.reportPain),
@@ -108,7 +109,7 @@ describe("onboarding store", () => {
     expect(s().verdict).toBeUndefined();
   });
 
-  it("sends program, muscu, pain, then the profile, and starts the tour", async () => {
+  it("sends the timetable link, program, muscu, pain, then the profile, and starts the tour", async () => {
     const { api, calls, store } = setup();
     const s = () => store.getState();
     s().update({
@@ -124,9 +125,12 @@ describe("onboarding store", () => {
       pain: true,
       zone: "Genou",
       level: 3,
+      icsUrl: " https://edt.univ.fr/anna.ics ",
     });
     expect(await s().submit()).toBe(true);
-    expect(calls).toEqual(["saveProgram", "addEvent", "reportPain", "saveProfile"]);
+    // The classes are read first so they shape the first week (audit onboarding 1).
+    expect(calls).toEqual(["linkTimetable", "saveProgram", "addEvent", "reportPain", "saveProfile"]);
+    expect(api.linkTimetable).toHaveBeenCalledWith("https://edt.univ.fr/anna.ics");
     expect(api.saveProgram).toHaveBeenCalledWith({
       goal: { distanceM: 21097.5, date: "2027-04-11", startTime: "09:00", targetMin: 120 },
     });

@@ -12,7 +12,7 @@ export function WatchStatus({ run, className }: { run: Run; className?: string }
   if (!run.watch) return null;
   if (run.watch !== "failed") {
     return (
-      <span className={cx("t-cap flex min-h-11 items-center gap-1.5", className)}>
+      <span data-tour="watch" className={cx("t-cap flex min-h-11 items-center gap-1.5", className)}>
         <Icon name="watch" size={16} className={run.watch === "sending" ? "motion-safe:animate-pulse" : undefined} />
         {WATCH_LABEL[run.watch]}
       </span>
@@ -21,6 +21,7 @@ export function WatchStatus({ run, className }: { run: Run; className?: string }
   return (
     <button
       type="button"
+      data-tour="watch"
       aria-label="Pas envoyée sur ta montre. Réessayer"
       onClick={() => void usePlan.getState().run((api) => api.resendToWatch(run.id))}
       className={cx(

@@ -22,7 +22,7 @@ import { ReggieNote } from "./ReggieNote.tsx";
 import { RestCard } from "./RestCard.tsx";
 import { RunCard } from "./RunCard.tsx";
 import { ThisWeek } from "./ThisWeek.tsx";
-import { sessionContext } from "./today.ts";
+import { beforeFirstRun, sessionContext } from "./today.ts";
 import { Unwell } from "./Unwell.tsx";
 
 let firstDayDrawn = false;
@@ -158,7 +158,9 @@ export function TodayScreen() {
             </div>
           </Fragment>
         )}
-        {!activity && !session && !toConfirm && <RestCard next={next} today={date} />}
+        {!activity && !session && !toConfirm && (
+          <RestCard next={next} today={date} first={beforeFirstRun(week, date)} />
+        )}
         {today.proposals?.map((p) => (
           <ProposalCard key={p.id} proposal={p} />
         ))}

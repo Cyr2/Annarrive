@@ -25,7 +25,7 @@ type ChoiceProps = {
 export function BigChoice({ on, onClick, label, detail, className, tile }: ChoiceProps) {
   return (
     <ChoiceCard on={on} onClick={onClick} layout={tile ? "tile" : "row"} className={cx("w-full", className)}>
-      <span className="flex min-w-0 flex-1 flex-col [overflow-wrap:anywhere]">
+      <span className="flex min-w-0 flex-1 flex-col">
         <span className="t-strong">{label}</span>
         {detail && <span className="t-cap">{detail}</span>}
       </span>

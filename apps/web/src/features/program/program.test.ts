@@ -58,10 +58,10 @@ describe("run window", () => {
 });
 
 describe("onboarding timetable link", () => {
-  it("sends a pasted link with the profile, and holds an unreadable one", () => {
+  it("sends a pasted link apart from the profile, and holds an unreadable one", () => {
     const draft = { ...EMPTY, race: "none" as const, icsUrl: "webcal://ent.example.fr/agenda.ics" };
-    expect(toPayload(draft, "2026-11-16").profile.icsUrl).toBe("https://ent.example.fr/agenda.ics");
-    expect(toPayload(EMPTY, "2026-11-16").profile.icsUrl).toBeUndefined();
+    expect(toPayload(draft, "2026-11-16").icsUrl).toBe("https://ent.example.fr/agenda.ics");
+    expect(toPayload(EMPTY, "2026-11-16").icsUrl).toBeUndefined();
     expect(issue("connect", { ...EMPTY, icsUrl: "pas un lien" }, "2026-11-16")).toBeDefined();
   });
 });

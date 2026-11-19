@@ -112,9 +112,11 @@ export function createOnboardingStore(
 
     async submit() {
       const client = await getApi();
-      const { program, events, pain, profile } = toPayload(get().draft, get().today);
+      const { icsUrl, program, events, pain, profile } = toPayload(get().draft, get().today);
       // shortcut: editing the muscu after a failed send can shift these indexes; fine for a one-time flow.
       const calls = [
+        // Classes first, so the plan built from the program already goes around them.
+        ...(icsUrl ? [() => client.linkTimetable(icsUrl)] : []),
         () => client.saveProgram(program),
         ...events.map((event) => () => client.addEvent(event)),
         ...(pain ? [() => client.reportPain(pain)] : []),

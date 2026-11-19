@@ -405,7 +405,7 @@ proposeMoveSlots(sessionId: string, week: WeekState, now: string): { best: SlotW
 | S10 | > 2 jours consécutifs sans course (si ≥ 3 courses), bords de semaine compris : le dimanche d'avant et le lundi d'après comptent comme des jours de course | 10                   |                                  | OP     |
 | S11 | Muscu non jambes < 3 h avant une dure                                    | 5                    |                                  | OP     |
 | S12 | Deux dures à moins de 48 h (H4 respectée)                                | 10                   |                                  | CONS   |
-| S13 | Course la veille ou le lendemain d'une autre course (des jours de repos entre les courses quand la semaine le permet) | 5                    | dur/facile, recherche 02 §4.1 ; Runna répartit les séances | OP     |
+| S13 | Course la veille ou le lendemain d'une autre course (des jours de repos entre les courses quand la semaine le permet) | 5 par course voisine | dur/facile, recherche 02 §4.1 ; Runna répartit les séances | OP     |
 
 Toutes les pénalités : défaut à calibrer.
 
@@ -441,6 +441,7 @@ Contexte commun : `earliest` 07:00, `latestEnd` 22:30, `bedtime` 23:00, `travelM
 | PL-14 | Même semaine, `preferredLongDays` [samedi] ; puis sans préférence, dimanche pris toute la journée | L samedi ; L samedi |
 | PL-15 | Même semaine avec une Q en plus, 4 courses | 4 séances placées, aucun jour consécutif |
 | PL-18 | Même semaine, `preferredLongDays` [samedi, dimanche] ; dimanche pris toute la journée ; samedi pris toute la journée | L samedi ou dimanche ; L samedi ; L dimanche |
+| PL-19 | 4 courses (L, 3 E), muscu lundi, jambes mercredi et gainage vendredi à 18:00, cours mardi 10:15 et jeudi 13:30, `earliest` 07:00, `preferredLongDays` [samedi, dimanche], semaine d'avant mer, jeu, ven, sam | au plus deux jours de course d'affilée, une seule fois ; jamais plus de 2 jours sans course |
 | PL-16 | `proposeMoveSlots` d'une Q mardi 08:00, jambes mardi 18:00 | le mercredi est proposé (19:00 au plus tôt) avec « près de ta muscu jambes » ; aucune raison vide |
 | PL-17 | Raison d'un créneau sans coût : Q jeudi 19:00, jambes mardi 18:00 ; E jeudi 17:00 après un cours de 14:00 à 16:00 ; E à 07:00 ; E un jour sans cours | « ta muscu jambes est mardi soir, l'écart est bon » ; « après tes cours » ; « avant tes cours » ; « journée sans cours » |
 | PL-12 | `RACE` dimanche 29 ; `checkHard` Q vendredi 27 18:00, puis E au même créneau, puis Q mercredi 25 ; Anna déplace la Q de mercredi à vendredi | violation H12 ; `[]` ; `[]` ; déplacement accepté en E de même durée, `manual`, avertissement H12 |

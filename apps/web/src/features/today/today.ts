@@ -68,8 +68,14 @@ const REST_LINES = [
 ];
 
 /** The rest day's sentence: one per date, so it stays the same all day and changes the next rest day. */
-export function restLine(date: string): string {
+export function restLine(date: string, first = false): string {
+  if (first) return "Rien à courir aujourd'hui. Ton plan commence avec la séance juste en dessous.";
   return REST_LINES[Number(date.slice(8)) % REST_LINES.length] ?? "";
+}
+
+/** The plan's first week with no run before today: she has not trained with it yet. */
+export function beforeFirstRun(week: { index?: number | undefined; items: Item[] }, today: string): boolean {
+  return week.index === 1 && !week.items.some((item) => item.kind === "run" && item.date < today);
 }
 
 /** Changes when what the card shows changes, so the card can turn over to its new content. */

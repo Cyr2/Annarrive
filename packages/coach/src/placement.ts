@@ -198,7 +198,9 @@ function spreadPenalties(hard: boolean, slot: Slot, week: WeekState, runs: Sessi
   ].sort();
   const longGap = days.some((d, i) => i > 0 && daysBetween(days[i - 1] ?? d, d) > 3);
   if (week.settings.runsPerWeek >= 3 && longGap) items.push({ id: "S10", pts: 10 });
-  if (runs.some((r) => Math.abs(daysBetween(r.start, day)) === 1)) items.push({ id: "S13", pts: 5 });
+  // Per neighbouring run: a run between two others costs twice, so the week spreads instead of bunching.
+  const neighbours = runs.filter((r) => Math.abs(daysBetween(r.start, day)) === 1).length;
+  if (neighbours > 0) items.push({ id: "S13", pts: 5 * neighbours });
   const start = toMin(slot.start);
   const otherStrength = week.cal.filter((e) => e.kind === "strength" && e.legs === false);
   if (hard && otherStrength.some((e) => start - toMin(e.end) >= 0 && start - toMin(e.end) < 180)) {

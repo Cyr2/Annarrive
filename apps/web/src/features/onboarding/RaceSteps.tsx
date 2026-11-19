@@ -11,6 +11,8 @@ import { BigChoice, Card, update, useDraft } from "./parts.tsx";
 import { useOnboarding } from "./store.ts";
 
 const CHOICES: { value: Race; label: string }[] = [...DISTANCES, { value: "other", label: "Autre" }];
+/** Two columns where « Semi-marathon » still fits, one on a narrow phone: a word is never cut. */
+const DISTANCE_GRID = "grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-2";
 
 export function RaceStep() {
   const draft = useDraft();
@@ -18,7 +20,7 @@ export function RaceStep() {
   const closest = draft.race === "other" ? DISTANCES.find((d) => d.value === distanceOf(draft)) : undefined;
   return (
     <>
-      <ChoiceGroup label="Distance" className="grid grid-cols-2 gap-2">
+      <ChoiceGroup label="Distance" className={DISTANCE_GRID}>
         {CHOICES.map((c) => (
           <BigChoice
             key={c.label}
@@ -28,7 +30,7 @@ export function RaceStep() {
           />
         ))}
         <BigChoice
-          className="col-span-2"
+          className="col-span-full"
           label="Pas d'objectif"
           detail="Juste entretenir ma forme"
           on={draft.race === "none"}
@@ -71,7 +73,7 @@ export function LastStep() {
   const draft = useDraft();
   return (
     <>
-      <ChoiceGroup label="Distance" className="grid grid-cols-2 gap-2">
+      <ChoiceGroup label="Distance" className={DISTANCE_GRID}>
         {DISTANCES.map((d) => (
           <BigChoice
             key={d.label}

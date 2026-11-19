@@ -1,12 +1,26 @@
 import { describe, expect, it } from "vitest";
 import type { Run } from "../../api/schemas.ts";
 import { frenchSpaces } from "../reggie/Message.tsx";
-import { restLine, sessionDetail, whyQuestion } from "./today.ts";
+import { beforeFirstRun, restLine, sessionDetail, whyQuestion } from "./today.ts";
 
 describe("today, details", () => {
   it("says the same rest line all day and another one the next rest day", () => {
     expect(restLine("2026-11-17")).toBe(restLine("2026-11-17"));
     expect(restLine("2026-11-17")).not.toBe(restLine("2026-11-18"));
+  });
+
+  // Day one said « Ton corps assimile le travail des derniers jours » (audit onboarding 2).
+  it("speaks of the plan to come before her first run, never of past work", () => {
+    const run = { kind: "run", date: "2026-11-16" } as Run;
+    const week = (index: number | undefined, items: Run[]) => ({ index, items });
+    expect(beforeFirstRun(week(1, []), "2026-11-17")).toBe(true);
+    expect(beforeFirstRun(week(1, [{ ...run, date: "2026-11-18" }]), "2026-11-17")).toBe(true);
+    expect(beforeFirstRun(week(1, [run]), "2026-11-17")).toBe(false);
+    expect(beforeFirstRun(week(2, []), "2026-11-17")).toBe(false);
+    expect(beforeFirstRun(week(undefined, []), "2026-11-17")).toBe(false);
+    expect(restLine("2026-11-17", true)).toBe(
+      "Rien à courir aujourd'hui. Ton plan commence avec la séance juste en dessous.",
+    );
   });
 
   it("keeps French punctuation with its word", () => {
