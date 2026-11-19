@@ -108,6 +108,20 @@ describe("week", () => {
     expect(weekDays({ ...week, items: [] }, "2026-11-18")[0]).toMatchObject({ note: "Rien de prévu", past: true });
   });
 
+  it("keeps one kind when a filter is on, and says calmly what a day lacks", () => {
+    const runs = weekDays(week, "2026-11-15", "run");
+    expect(runs.flatMap((day) => day.items).every((item) => item.kind === "run")).toBe(true);
+    expect(runs[0]?.runMinutes).toBe(50);
+    expect(runs[1]).toMatchObject({ note: "Pas de course", items: [] });
+    const classes = weekDays(week, "2026-11-15", "class");
+    expect(classes[0]).toMatchObject({ note: "", runMinutes: 0 });
+    expect(classes[0]?.items.map((item) => item.kind)).toEqual(["class"]);
+    expect(classes[2]?.note).toBe("Pas de cours");
+    expect(weekDays(week, "2026-11-15", "strength")[2]?.note).toBe("Pas de muscu");
+    expect(weekDays(week, "2026-11-15", "revision")[1]?.note).toBe("Pas de révision");
+    expect(weekDays(week, MONDAY, "class")[0]?.note).toBe("Aujourd'hui");
+  });
+
   it("folds a day crowded with classes into one row", () => {
     const cls = (i: number) => ({
       id: `c${i}`,

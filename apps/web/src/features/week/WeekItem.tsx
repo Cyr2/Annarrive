@@ -6,7 +6,7 @@ import { Icon } from "../../ui/Icon.tsx";
 import { TONES } from "../../ui/tones.ts";
 import { LegsTag } from "../add/StrengthList.tsx";
 import { useSheet } from "../sheets/store.ts";
-import { sheetFor, toneOf } from "../today/today.ts";
+import { nameOf, sheetFor, toneOf } from "../today/today.ts";
 import { moveOptions } from "../useLoad.ts";
 
 const cancelledOf = (item: Item) => "cancelled" in item && Boolean(item.cancelled);
@@ -14,7 +14,7 @@ const cancelledOf = (item: Item) => "cancelled" in item && Boolean(item.cancelle
 function meta(item: Item): string {
   if (cancelledOf(item)) return "N'a pas lieu";
   if (item.kind === "run") return [duration(item.durationMin), item.mainSet].filter(Boolean).join(" · ");
-  if (item.kind === "class") return `Jusqu'à ${item.end}`;
+  if (item.kind === "class") return [`Jusqu'à ${item.end}`, nameOf(item).detail].filter(Boolean).join(" · ");
   return `${duration(minutesOf(item.end) - minutesOf(item.start))}, jusqu'à ${item.end}`;
 }
 
@@ -52,7 +52,7 @@ export function ItemRow({ item, lifted = false }: { item: Item; lifted?: boolean
             cancelled && "text-ink-2 line-through",
           )}
         >
-          {item.title}
+          {nameOf(item).title}
         </span>
         <span className="t-cap">{meta(item)}</span>
       </span>

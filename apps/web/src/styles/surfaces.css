@@ -141,12 +141,27 @@
   }
 }
 
-/* While a sheet moves nothing blurs: neither the sheet and its controls, nor the page behind. Under the sheet and
-   the scrim, which change at every frame, each glass card of the page was blurred again at every frame too, more
-   than a phone's GPU draws in time. Unlayered, to beat glisse's own stylesheet. */
-body:has([data-moving]) :is(.surface, .ui-glass, .lg-glass, .lg-switch-thumb, .lg-slider-thumb) {
+/* While a sheet moves, neither it nor its controls blur (ui/Sheet.tsx). The page behind keeps its glass as it was:
+   switching its blur off and on as a sheet started and stopped made its cards and the tab bar flash. Unlayered, to
+   beat glisse's own stylesheet. */
+:is([data-moving], [data-moving] :is(.surface, .ui-glass, .lg-glass, .lg-switch-thumb, .lg-slider-thumb)) {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
+}
+
+/* On a touch screen the content glass keeps its tint, rim and light but drops the live blur, as the sheets do. The
+   sky behind is still, so the blur added little, but a phone's GPU rebuilt it whenever a scrim or a sheet moved over
+   a card, and Android showed the card see-through for a frame as a sheet opened. A sheet is opaque there: without
+   its blur, the page's words would show through the last few percent. The floating glass (tab bar, toasts, Reggie's
+   field) keeps its blur: what scrolls under it must turn to soft color. */
+@media (pointer: coarse) {
+  :root {
+    --surface-sheet: var(--surface-sheet-moving);
+  }
+  .surface {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
 }
 
 /* Sonner (ui/Toast.tsx) stretches a toast across the screen and its list one gutter too far right: the pill keeps

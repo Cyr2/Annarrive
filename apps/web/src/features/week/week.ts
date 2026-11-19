@@ -35,21 +35,40 @@ export function rowsOf(items: Item[]): Row[] {
   });
 }
 
-function noteOf(date: string, today: string, items: Item[]): string {
+/** Semaine shows one kind at a time if she wants: her runs alone, or her classes. Busy slots only show in Tout. */
+export const FILTERS = [
+  { value: "all", label: "Tout" },
+  { value: "run", label: "Courses" },
+  { value: "strength", label: "Muscu" },
+  { value: "class", label: "Cours" },
+  { value: "revision", label: "Révisions" },
+] as const;
+export type Filter = (typeof FILTERS)[number]["value"];
+
+/** A day with nothing of the kind shown says so in its own words, as quietly as "Rien de prévu". */
+const NONE: Record<Exclude<Filter, "all">, string> = {
+  run: "Pas de course",
+  strength: "Pas de muscu",
+  class: "Pas de cours",
+  revision: "Pas de révision",
+};
+
+function noteOf(date: string, today: string, items: Item[], filter: Filter): string {
   if (date === today) return "Aujourd'hui";
-  if (items.length === 0) return "Rien de prévu";
-  return items.some(isRun) ? "" : "Pas de course";
+  if (items.length === 0) return filter === "all" ? "Rien de prévu" : NONE[filter];
+  return filter !== "all" || items.some(isRun) ? "" : "Pas de course";
 }
 
-/** The seven days of the week, empty ones included, each with its note and its running load. */
-export function weekDays(week: Week, today: string): Day[] {
+/** The seven days of the week, empty ones included, each with its note and its running load; `filter` keeps one kind. */
+export function weekDays(week: Week, today: string, filter: Filter = "all"): Day[] {
+  const shown = filter === "all" ? week.items : week.items.filter((item) => item.kind === filter);
   return Array.from({ length: 7 }, (_, i) => addDays(week.monday, i)).map((date) => {
-    const items = agenda(week.items, date);
+    const items = agenda(shown, date);
     const runMinutes = items.filter(isRun).reduce((sum, run) => sum + run.durationMin, 0);
     return {
       date,
       title: dayTitle(date),
-      note: noteOf(date, today, items),
+      note: noteOf(date, today, items, filter),
       today: date === today,
       past: date < today,
       runMinutes,

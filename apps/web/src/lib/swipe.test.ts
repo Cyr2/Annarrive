@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { gestureOf, turnOf } from "./useWeekSwipe.ts";
+import { gestureOf, turnOf } from "./swipe.ts";
 
-describe("week swipe", () => {
+describe("sideways swipe", () => {
   const width = 360;
   it("turns to the next week past a quarter of the width to the left, the previous one to the right", () => {
     expect(turnOf(-100, 0, width)).toBe(1);

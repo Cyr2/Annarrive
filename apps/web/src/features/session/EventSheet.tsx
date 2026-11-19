@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { CalendarEvent } from "../../api/schemas.ts";
 import { cx } from "../../lib/cx.ts";
 import { dayTitle, minutesOf, span } from "../../lib/date.ts";
+import { classTitle } from "../../lib/text.ts";
 import { IconTile } from "../../ui/bits.tsx";
 import { Button } from "../../ui/controls.tsx";
 import { Group, RowInput, Section } from "../../ui/List.tsx";
@@ -35,8 +36,19 @@ function ClassCard({ event, ...sheet }: Props) {
     const done = await apply((api) => api.updateEvent(event.id, { cancelled: !event.cancelled }));
     if (done) sheet.onOpenChange(false);
   };
+  const { title, detail } = classTitle(event.title);
   return (
-    <Sheet {...sheet} title={event.title} cancelLabel="Fermer">
+    <Sheet
+      {...sheet}
+      title={title}
+      subtitle={detail}
+      cancelLabel="Fermer"
+      footer={
+        <Button variant="tinted" size="large" onClick={() => void toggle()}>
+          {event.cancelled ? "Le cours a lieu finalement" : "Ce cours n'a pas lieu"}
+        </Button>
+      }
+    >
       <Surface variant="inset" className="flex items-center gap-3 px-4 py-3">
         <IconTile tone="class" />
         <span className="flex min-w-0 flex-1 flex-col">
@@ -45,13 +57,11 @@ function ClassCard({ event, ...sheet }: Props) {
         </span>
         {event.cancelled && <span className="t-cap flex-none rounded-full bg-fill px-2 py-0.5">N'a pas lieu</span>}
       </Surface>
+      {detail && <p className="t-sub m-0 px-4 break-words">Nom complet : {event.title.trim()}</p>}
       <p className="t-cap m-0 px-4">
         Vient de ton emploi du temps, qui se relit tout seul. Un cours ne se déplace pas. S'il n'a pas lieu, dis-le : le
         créneau se libère et Reggie peut adapter ta semaine.
       </p>
-      <Button variant="tinted" size="large" onClick={() => void toggle()}>
-        {event.cancelled ? "Le cours a lieu finalement" : "Ce cours n'a pas lieu"}
-      </Button>
     </Sheet>
   );
 }

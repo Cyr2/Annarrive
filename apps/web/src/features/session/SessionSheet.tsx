@@ -29,7 +29,21 @@ export default function SessionSheet({ spec, ...sheet }: SheetProps<"session">) 
   const close = () => sheet.onOpenChange(false);
   const goal = plan.program && !plan.program.maintenance ? plan.program.goal.race : undefined;
   return (
-    <Sheet {...sheet} title={run.title} cancelLabel="Fermer">
+    <Sheet
+      {...sheet}
+      title={run.title}
+      cancelLabel="Fermer"
+      footer={
+        upcoming && (
+          // Pinned under the body: the ways to adjust it stay in reach however far the steps scroll.
+          <div className="grid grid-cols-3 gap-2">
+            <RoundAction label="Déplacer" icon="move" onClick={() => show({ kind: "move", id: run.id })} />
+            <RoundAction label="Changer" icon="change" onClick={() => show({ kind: "change", id: run.id })} />
+            <RoundAction label="Pas dispo" icon="close" onClick={() => show({ kind: "unavailable", id: run.id })} />
+          </div>
+        )
+      }
+    >
       <Surface variant="inset" className="flex flex-col gap-3 overflow-hidden px-4 pt-2 pb-4">
         <ToneWash tone={run.intensity} />
         <div className="relative flex flex-wrap items-center justify-between gap-x-2">
@@ -62,13 +76,6 @@ export default function SessionSheet({ spec, ...sheet }: SheetProps<"session">) 
           <TalkLink context={context} about={about} onGo={close} question={whyQuestion(run, today, goal)} />
         </div>
       </Surface>
-      {upcoming && (
-        <div className="grid grid-cols-3 gap-2">
-          <RoundAction label="Déplacer" icon="move" onClick={() => show({ kind: "move", id: run.id })} />
-          <RoundAction label="Changer" icon="change" onClick={() => show({ kind: "change", id: run.id })} />
-          <RoundAction label="Pas dispo" icon="close" onClick={() => show({ kind: "unavailable", id: run.id })} />
-        </div>
-      )}
     </Sheet>
   );
 }

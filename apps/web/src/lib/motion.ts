@@ -29,6 +29,9 @@ export const SLIDE_CARD = { duration: 400, easing: SPRING_CURVE } as const;
 export const SLIDE_ROW = { duration: 450, easing: SPRING_CURVE } as const;
 /** A bar of the week strip growing or shrinking to its new load. */
 export const BAR_CHANGE = { duration: 350, easing: EASE_OUT } as const;
+/** A tab swiped away leaves quickly; the one beside comes in from the other side, a touch slower. */
+export const TAB_LEAVE = { duration: 200, easing: EASE_OUT } as const;
+export const TAB_ENTER = { duration: 260, easing: EASE_OUT } as const;
 /** The day a session landed on: its bars pulse once. */
 export const LAND_PULSE = { duration: 300, easing: EASE_OUT } as const;
 

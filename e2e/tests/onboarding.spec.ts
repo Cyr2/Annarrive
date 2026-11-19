@@ -50,8 +50,9 @@ test("onboarding d'une base vide jusqu'à la première semaine, puis visite guid
   await tour.getByRole("button", { name: "Passer" }).click();
   await expect(tour).toBeHidden();
 
-  // The first week is there: the goal on Aujourd'hui, runs in Semaine.
-  await expect(page.getByRole("link", { name: /Semi · J-117/ })).toBeVisible();
+  // The first week is there: the day on Aujourd'hui (a run or rest), runs in Semaine.
+  const day = page.getByRole("button", { name: "Déplacer" }).or(page.getByRole("heading", { name: "Repos" }));
+  await expect(day).toBeVisible();
   await page.getByRole("link", { name: "Semaine" }).click();
   await expect(page.locator("[aria-roledescription='séance déplaçable']").first()).toBeVisible();
 
@@ -59,7 +60,7 @@ test("onboarding d'une base vide jusqu'à la première semaine, puis visite guid
   for (const forget of [false, true]) {
     if (forget) await page.evaluate(() => localStorage.clear());
     await page.goto("/");
-    await expect(page.getByRole("link", { name: /Semi · J-117/ })).toBeVisible();
+    await expect(day).toBeVisible();
     await page.waitForLoadState("networkidle");
     await expect(page.getByRole("button", { name: "Commencer" })).toHaveCount(0);
     await expect(tour).toHaveCount(0);

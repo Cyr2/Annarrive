@@ -2,27 +2,7 @@ import { animate, useMotionValue, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { SPRING_SWIPE } from "../../lib/motion.ts";
-
-/** A finger has to travel this far (px) before a swipe is told from a tap or a scroll. */
-const SLOP = 10;
-/** Past this share of the width, or flicked this fast (px/s), the swipe turns the week. */
-const TURN_SHARE = 0.25;
-const TURN_SPEED = 500;
-/** A finger held still this long before it moves is a long press (the drag of a session), never a swipe. */
-const HOLD_MS = 250;
-
-/** -1 for the previous week, 1 for the next, 0 to stay. */
-export function turnOf(dx: number, velocity: number, width: number): -1 | 0 | 1 {
-  if (dx < -width * TURN_SHARE || velocity < -TURN_SPEED) return 1;
-  if (dx > width * TURN_SHARE || velocity > TURN_SPEED) return -1;
-  return 0;
-}
-
-/** A swipe moves sideways soon after the press; a scroll moves up or down, a long press waits first. */
-export function gestureOf(dx: number, dy: number, heldMs: number): "unsure" | "swipe" | "other" {
-  if (Math.hypot(dx, dy) < SLOP) return "unsure";
-  return heldMs <= HOLD_MS && Math.abs(dx) >= Math.abs(dy) * 1.2 ? "swipe" : "other";
-}
+import { gestureOf, keepsSideways, turnOf } from "../../lib/swipe.ts";
 
 /**
  * Semaine, a carousel of weeks: as soon as a sideways swipe is told apart, the weeks on each side are drawn beside
@@ -65,7 +45,7 @@ export function useWeekSwipe(turn: (step: -1 | 1) => void) {
     const down = (event: PointerEvent) => {
       swiping = false;
       from =
-        event.isPrimary && event.button === 0
+        event.isPrimary && event.button === 0 && !keepsSideways(event.target, element)
           ? { x: event.clientX, y: event.clientY, time: event.timeStamp, id: event.pointerId }
           : undefined;
     };
