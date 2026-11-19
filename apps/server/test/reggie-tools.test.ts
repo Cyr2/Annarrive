@@ -55,6 +55,15 @@ describe("Reggie's tools", () => {
     expect((await t.call("get_today")).json.session.steps[0].target).toEqual({ paceSKm: "6'00 /km" });
   });
 
+  it("gives every dated thing its day in words, so Reggie never counts days", async () => {
+    const t = prepare();
+    t.stores.plannedSession.put(session("tue", "2026-11-17T18:00"));
+    const week = (await t.call("get_week")).json;
+    expect(week.days[0]).toMatchObject({ date: "2026-11-16", day: "aujourd'hui, lundi 16" });
+    expect(week.days[1].sessions[0]).toMatchObject({ id: "tue", day: "demain, mardi 17" });
+    expect(week.days[3].day).toBe("jeudi 19");
+  });
+
   it("reads today, the week, the program and recent data through the plan service", async () => {
     const t = prepare();
     t.stores.activity.put({ id: "a1", start: "2026-11-14T10:00", durMin: 40, distM: 7000, hrSeries: [120, 130] });
@@ -65,7 +74,9 @@ describe("Reggie's tools", () => {
     expect((await t.call("get_week", { week: "2026-W48" })).json.days[0].date).toBe("2026-11-23");
     expect((await t.call("get_program")).json).toMatchObject({ program: { goal: null }, health: { kind: "ok" } });
     const recent = (await t.call("get_recent")).json;
-    expect(recent.activities).toEqual([{ id: "a1", start: "2026-11-14T10:00", durMin: 40, distM: 7000 }]);
+    expect(recent.activities).toEqual([
+      { id: "a1", start: "2026-11-14T10:00", durMin: 40, distM: 7000, day: "samedi 14" },
+    ]);
     expect(recent.signals).toEqual([{ id: "2026-11-15", rhr: 50 }]);
     expect(t.widgets).toEqual([]);
   });

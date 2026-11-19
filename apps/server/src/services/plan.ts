@@ -761,6 +761,11 @@ export class PlanService {
     return toParisLocal(this.#clock());
   }
 
+  /** Today in Paris, « 2026-11-16 ». */
+  todayDate(): string {
+    return dateOf(this.#now());
+  }
+
   #windowStart(): string {
     return mondayOf(dateOf(this.#now()));
   }

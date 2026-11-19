@@ -76,6 +76,13 @@ export function frenchClock(localDateTime: string): string {
   return localDateTime.slice(11, 16).replace(/^0/, "");
 }
 
+const nearDays: Record<number, string> = { [-1]: "hier, ", 0: "aujourd'hui, ", 1: "demain, " };
+
+/** « demain, mardi 17 », « jeudi 19 »: a day as Anna says it, seen from `today`. */
+export function frenchDay(localDate: string, today: string): string {
+  return `${nearDays[daysBetween(today, localDate)] ?? ""}${frenchWeekday(localDate)} ${Number(localDate.slice(8, 10))}`;
+}
+
 /** "mercredi 18:00", "mardi 7:30" */
 export function frenchMoment(localDateTime: string): string {
   return `${frenchWeekday(dateOf(localDateTime))} ${frenchClock(localDateTime)}`;

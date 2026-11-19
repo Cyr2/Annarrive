@@ -275,6 +275,9 @@ export const scenarios: Scenario[] = [
       calls: [{ name: "propose_move_slots", input: { sessionId: "tue-easy" } }],
       forbidden: ["move_session", "change_session", "update_setting"],
       widgets: ["slots"],
+      // The run and the exam are both tomorrow, Tuesday 17: the reply names that day and never says « la veille ».
+      textMatches: [/demain|mardi/i],
+      textForbids: [/veille/i],
     },
   },
   {

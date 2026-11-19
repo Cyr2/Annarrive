@@ -99,12 +99,22 @@ describe("grade", () => {
       "style : typographie : espace avant « ? », « ! », « ; » ou « : »",
       "style : allure mal notée (« 5'18 /km »)",
       "style : fourchette d'allure au lieu d'une cible",
-      "style : heure mal notée (« 18 h 30 »)",
+      "style : heure mal notée (« 18 h 30 », « 7 h »)",
       "style : culpabilisation",
       "style : jargon",
     ]);
     expect(reasons("Garde le RPE autour de 7 sur 10.").reasons).toEqual(["style : jargon"]);
     expect(reasons("Reste en zone 2.").reasons).toEqual(["style : jargon"]);
+    expect(reasons("Vendredi à 7 h 00.").reasons).toEqual(["style : heure mal notée (« 18 h 30 », « 7 h »)"]);
+    expect(reasons("Vendredi à 7 h ou 1 h 06 de course.").pass).toBe(true);
+    const slots = [{ name: "propose_move_slots", input: { sessionId: "tue-easy" } }];
+    const eve = reply("Ton footing tombe la veille de ton examen.", slots, [
+      { type: "slots", sessionId: "tue-easy", slots: [] },
+    ]);
+    expect(grade(scenario("examen-demain"), eve).reasons).toEqual([
+      "texte attendu : /demain|mardi/i",
+      "texte interdit : /veille/i",
+    ]);
     const longSource = reply(`Des pâtes. ${"a".repeat(500)} https://nhs.uk`, [{ name: "WebSearch", input: {} }]);
     expect(grade(scenario("nutrition-source"), longSource).pass).toBe(true);
   });
