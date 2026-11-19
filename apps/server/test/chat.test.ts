@@ -97,6 +97,22 @@ describe("POST /api/chat", () => {
     expect(events.at(-1)).toMatchObject({ type: "done", message: { text: "Jeudi 18 h." } });
   });
 
+  it("keeps the words written before a question's buttons", async () => {
+    const reggie: ReggieRun = async function* () {
+      yield { type: "text", delta: "Je garde mes règles." };
+      yield { type: "tool_call", name: "ask_choice", input: { options: ["Oui", "Non"] } };
+      yield { type: "text", delta: "\n\n" };
+      yield { type: "text", delta: "Tu veux en parler ?" };
+    };
+    const t = await ready(reggie);
+    const events = parseSse(await (await t.request("POST", "/api/chat", { text: "Ajoute 3 h" })).text());
+    expect(events.at(-1)).toMatchObject({
+      type: "done",
+      message: { text: "Je garde mes règles.\n\nTu veux en parler ?" },
+    });
+    expect(events.some((e) => e.type === "retract")).toBe(false);
+  });
+
   it("ends with an error event and keeps Anna's message when Reggie fails", async () => {
     const failing: ReggieRun = async function* () {
       yield { type: "text", delta: "Je" };

@@ -39,6 +39,8 @@ function errorEvent(error: unknown): ChatStreamEvent {
     : { type: "error", error: error.message };
 }
 
+const QUESTION_TOOLS = ["ask_choice", "ask_level"];
+
 /**
  * What Anna sees of a Reggie turn as it is written. Only the words after the last tool call are the answer; what
  * comes before narrates his steps. `text` is the answer so far.
@@ -70,7 +72,8 @@ class Screen {
   }
 
   see(event: ReggieEvent): ChatStreamEvent[] {
-    if (event.type === "tool_call") return this.tool();
+    // A question's buttons or slider read nothing: the words before them are the answer, not narration.
+    if (event.type === "tool_call") return QUESTION_TOOLS.includes(event.name) ? [] : this.tool();
     if (event.type === "checking") return [{ type: "widget", widget: { type: "checking" } }];
     return this.write(event.delta);
   }
