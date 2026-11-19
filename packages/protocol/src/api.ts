@@ -311,6 +311,8 @@ export const todaySchema = z.object({
   session: sessionViewSchema.nullable(),
   /** Why the morning check changed today's session (« Allégée : nuit courte »), only on the day it did. */
   note: z.string().optional(),
+  /** What the app changed because of a run she did (algo.md M10), until the last session it changed. */
+  adapted: z.string().optional(),
   events: z.array(calendarEventSchema),
   /** The latest run of the day, null before she runs. */
   activity: activityViewSchema.nullable(),

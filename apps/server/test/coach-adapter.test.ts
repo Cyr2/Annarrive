@@ -692,6 +692,115 @@ describe("coach adapter: fitness and recalibration", () => {
   });
 });
 
+describe("coach adapter: what she actually ran (M10)", () => {
+  /** A Garmin lap of `min` minutes at `paceSKm`. */
+  const lap = (min: number, paceSKm: number) => ({
+    durationS: min * 60,
+    distanceM: (min * 60_000) / paceSKm,
+    avgSpeedMps: null,
+    avgHr: null,
+  });
+  const laps = [lap(15, P40.E), lap(20, P40.T), lap(10, P40.E)];
+  const tempo: GarminActivity = {
+    id: 7,
+    type: "running",
+    startTimeLocal: "2026-11-17 18:00:00",
+    startTimeGmt: null,
+    durationS: 45 * 60,
+    distanceM: laps.reduce((s, l) => s + l.distanceM, 0),
+    avgSpeedMps: null,
+    avgPaceSPerKm: null,
+    avgHr: 160,
+    maxHr: 185,
+    elevationGainM: 0,
+    feel: null,
+    rpe: null,
+  };
+
+  it("moves the next hard session after a footing run as a tempo, says so on Aujourd'hui, and Annuler takes both back", async () => {
+    const bridge = fakeBridge();
+    const t = await ready({ bridge });
+    const garmin = t.services.garmin;
+    if (!garmin) throw new Error("garmin service missing");
+    // Tuesday 19:00, just after the run.
+    t.setNow(new Date("2026-11-17T18:00:00Z"));
+    t.stores.fitnessEstimate.put({ id: "2026-11-01", date: "2026-11-01", vdot: 40, source: "test" });
+    t.stores.plannedSession.put(built("footing", "E", "2026-11-17T18:00"));
+    t.stores.plannedSession.put(built("seuil", "T", "2026-11-18T18:00"));
+    bridge.recentActivities.mockResolvedValue([tempo]);
+    bridge.activityLaps.mockResolvedValue(laps);
+
+    await garmin.syncActivities();
+
+    // Never the day after the tempo (H4); Thursday morning is still under 48 h (S12), Friday morning is not.
+    expect(t.stores.plannedSession.get("seuil")?.start).toBe("2026-11-20T07:00");
+    const today = todaySchema.parse((await t.call("GET", "/api/today")).json);
+    expect(today.adapted).toBe("Ton footing de mardi ressemblait plutôt à un tempo : je décale ton seuil à vendredi.");
+
+    const adapted = t.stores.changeLog.list().find((c) => c.summary === today.adapted);
+    expect((await t.call("POST", `/api/changes/${adapted?.id}/undo`)).status).toBe(200);
+    expect(t.stores.plannedSession.get("seuil")?.start).toBe("2026-11-18T18:00");
+    expect(todaySchema.parse((await t.call("GET", "/api/today")).json).adapted).toBeUndefined();
+  });
+
+  it("counts a run she added: the footing ahead shrinks under G2, and Aujourd'hui says so (AD4)", async () => {
+    const t = await ready();
+    t.setNow(new Date("2026-11-18T12:00:00Z"));
+    t.stores.fitnessEstimate.put({ id: "2026-11-01", date: "2026-11-01", vdot: 40, source: "test" });
+    for (const k of [1, 2, 3, 4])
+      t.stores.activity.put({
+        id: `w${k}`,
+        start: `${addDays("2026-11-16", -7 * k)}T08:00`,
+        durMin: 160,
+        distM: 26000,
+      });
+    t.stores.plannedSession.put({ ...built("lundi", "E", "2026-11-16T18:00"), status: "done" });
+    t.stores.activity.put({ id: "lundi-run", start: "2026-11-16T18:00", durMin: 45, distM: 7300, sessionId: "lundi" });
+    t.stores.plannedSession.put(built("vendredi", "E", "2026-11-20T18:00"));
+    t.stores.plannedSession.put(built("dimanche", "L", "2026-11-22T10:00", 60));
+    const extra = { id: "garmin:9", start: "2026-11-18T11:00", durMin: 40, distM: 6500 };
+    t.stores.activity.put(extra);
+
+    t.services.plan.adaptToRun(extra);
+
+    expect(t.stores.plannedSession.get("vendredi")?.durMin).toBe(31);
+    expect(todaySchema.parse((await t.call("GET", "/api/today")).json).adapted).toBe(
+      "Ta course en plus de mercredi compte dans ta semaine : je raccourcis ton footing de vendredi.",
+    );
+  });
+
+  it("changes nothing after a footing run as planned", async () => {
+    const t = await ready();
+    t.setNow(new Date("2026-11-17T18:00:00Z"));
+    t.stores.fitnessEstimate.put({ id: "2026-11-01", date: "2026-11-01", vdot: 40, source: "test" });
+    t.stores.plannedSession.put(built("footing", "E", "2026-11-17T18:00"));
+    t.stores.plannedSession.put(built("seuil", "T", "2026-11-18T18:00"));
+    const run = {
+      id: "garmin:8",
+      start: "2026-11-17T18:00",
+      durMin: 45,
+      distM: (45 * 60_000) / P40.E,
+      sessionId: "footing",
+    };
+    expect(t.services.plan.adaptToRun(run)).toBeNull();
+    expect(t.stores.plannedSession.get("seuil")?.start).toBe("2026-11-18T18:00");
+  });
+
+  it("reads a feel with the run she did: a tempo felt hard is not an easy run felt hard (SG4)", () => {
+    const e = built("footing", "E", "2026-11-17T18:00");
+    const run = {
+      id: "r",
+      start: e.start,
+      durMin: 45,
+      distM: 9000,
+      laps: laps.map((l) => ({ durMin: l.durationS / 60, distM: l.distanceM })),
+    };
+    const feel = coachAdapter.readFeel(e, run, 40);
+    expect(feel.rpeDone).toBeGreaterThan(4);
+    expect(feel.paceRatio).toBeGreaterThan(1);
+  });
+});
+
 describe("watch latency", () => {
   it("sends a moved session to the watch right away, and marks it failed when Garmin refuses", async () => {
     const bridge = fakeBridge();

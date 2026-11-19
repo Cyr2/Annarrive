@@ -360,7 +360,9 @@ export function buildWeek(week: PlanWeek, ctx: WeekCtx): Session[] {
   );
   const spread = enforceDistribution(sessions, week.phase).week;
   // P18: the taper's share of the peak is a ceiling (Bosquet 2007), Q included, not a floor the easy runs top up.
-  return week.phase === "taper" ? trimTo(spread, week.volumeMin, "P18").week : spread;
+  if (week.phase === "taper") return trimTo(spread, week.volumeMin, "P18").week;
+  // P9: so is a deload's volume; a race-pace block sized on distance must not make it a load week in disguise.
+  return week.deload ? trimTo(spread, week.volumeMin, "P9").week : spread;
 }
 
 const withRace = (ctx: WeekCtx): { racePaceSKm?: number } => (ctx.racePaceSKm ? { racePaceSKm: ctx.racePaceSKm } : {});

@@ -91,6 +91,8 @@ export const todaySchema = z.object({
   unwellText: z.string().optional(),
   /** A session that is over with no run matched: « Tu l'as faite ? ». */
   toConfirm: runSchema.optional(),
+  /** Reggie's line when he adapted the week to what she ran: « Ton footing de mardi ressemblait plutôt à un tempo… ». */
+  adapted: z.string().optional(),
 });
 
 export const weekSchema = z.object({

@@ -127,7 +127,16 @@ export type WeekState = {
   prev?: Session[];
 };
 
-export type FeelLog = { sessionId: string; date: string; feel: Feel; rpeTarget: number };
+export type FeelLog = {
+  sessionId: string;
+  date: string;
+  feel: Feel;
+  rpeTarget: number;
+  /** RPE of the run as she ran it (AD1): a tempo run on an easy day is not an easy run felt hard (SG4, RC5). */
+  rpeDone?: number;
+  /** Her speed over the session's target speed (RC13). */
+  paceRatio?: number;
+};
 
 export type PainSite = "mollet" | "genou" | "cheville" | "hanche" | "pied" | "autre";
 export type Health =

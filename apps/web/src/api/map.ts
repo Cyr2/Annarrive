@@ -350,6 +350,7 @@ export function toToday(
     unwell: ["sick", "cold", "pain"].includes(today.health.kind),
     unwellText: UNWELL[today.health.kind],
     toConfirm: today.toConfirm ? toRun(today.toConfirm) : undefined,
+    adapted: today.adapted,
   };
 }
 

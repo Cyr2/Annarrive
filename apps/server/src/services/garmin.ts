@@ -103,11 +103,13 @@ export class GarminService {
       const laps = stored?.laps ?? (await this.#laps(run.id));
       this.#stores.activity.put({ ...run, answeredFeel: stored?.answeredFeel, sessionId, laps });
       if (sessionId && !stored?.sessionId) this.#plan.markDone(sessionId);
-      if (!stored) fresh.push({ ...run, sessionId });
+      if (!stored) fresh.push({ ...run, sessionId, laps });
     }
     // Only once every run is stored: a first level read mid-sync took the runs not stored yet for a break (F11).
     for (const run of fresh) {
       this.#fitness.afterRun(run);
+      // M10: the week follows what she ran (a tempo on an easy day, a run she added).
+      this.#plan.adaptToRun(run);
       if (dateOf(run.start) === today) await this.#notifications.runSynced();
     }
   }

@@ -4,6 +4,7 @@
  * `--update` rewrites the baseline; `--weeks` also prints each persona's weeks (for the coach review).
  */
 import { readFileSync, writeFileSync } from "node:fs";
+import { predictTime } from "../src/index.ts";
 import { CRITERIA, type Criterion, score } from "./checks.ts";
 import { PERSONAS } from "./personas.ts";
 import { type RunLog, simulate } from "./sim.ts";
@@ -45,6 +46,11 @@ function failures(): string {
 }
 
 const r0 = (x: number): number => Math.round(x);
+/** 108.9 min → "1:48:54". */
+const clock = (min: number): string => {
+  const s = Math.round(min * 60);
+  return `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+};
 
 /** One line per week: what was built, run, decided and proposed (the raw material of the coach review). */
 function weeks(r: RunLog): string {
@@ -59,7 +65,10 @@ function weeks(r: RunLog): string {
         .map((d) => `${d.date.slice(5)} ${d.action} (${d.signals.join("+")})`);
       const props = w.proposals.map((p) => `${p.ruleId} ${p.from}→${p.to}`);
       const ran = r0(w.activities.reduce((a, x) => a + x.durMin, 0));
-      return `S${w.week} ${w.phase} · plan ${r0(w.planMin)} · construit ${r0(w.built.reduce((a, s) => a + s.durMin, 0))} · couru ${ran} · VDOT ${w.vdotEnd.toFixed(1)} · ${built}${decided.length ? ` · matin : ${decided.join(", ")}` : ""}${props.length ? ` · propositions : ${props.join(", ")}` : ""}`;
+      const d = r.persona.goal.distanceM;
+      const race = `prédit ${clock(predictTime(w.vdotEnd, d))} (réel ${clock(predictTime(w.trueVdot, d))})`;
+      const adapted = w.adaptations.length ? ` · adapté : ${w.adaptations.join(", ")}` : "";
+      return `S${w.week} ${w.phase} · plan ${r0(w.planMin)} · construit ${r0(w.built.reduce((a, s) => a + s.durMin, 0))} · couru ${ran} · VDOT ${w.vdotEnd.toFixed(1)} (réel ${w.trueVdot.toFixed(1)}) · ${race} · ${built}${decided.length ? ` · matin : ${decided.join(", ")}` : ""}${props.length ? ` · propositions : ${props.join(", ")}` : ""}${adapted}`;
     })
     .join("\n");
 }

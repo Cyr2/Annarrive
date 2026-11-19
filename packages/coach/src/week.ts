@@ -39,7 +39,8 @@ export type WeekRequest = {
   planStart?: string;
   settings: Settings;
   history: Activity[];
-  fitness: { vdot: number; provisional?: boolean };
+  /** `measuredOn`: day the level in service was set (accepted or estimated), for P26. */
+  fitness: { vdot: number; provisional?: boolean; measuredOn?: string };
   cal: CalEvent[];
   /** Sessions of the week that stay as they are (manual, frozen, done, missed, past). */
   kept: Session[];
@@ -61,6 +62,8 @@ const LOOKBACK_WEEKS = 8;
 const FATIGUE_DAYS = 3;
 /** F10: programme weeks 2 to 4 (index 1 to 3) carry a test while the level is provisional. */
 const TEST_WEEKS: [number, number] = [1, 3];
+/** P26: research 02 R23 re-estimates the level at each race or test, or every 4 weeks. */
+const RETEST_DAYS = 28;
 
 const mean = (xs: number[]): number => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
 
@@ -113,10 +116,28 @@ function withTest(w: PlanWeek): PlanWeek {
   return i < 0 ? w : { ...w, template: w.template.map((slot, k) => (k === i ? "TEST" : slot)) };
 }
 
-/** The plan week to build: P9 on confirmed fatigue, F10's test while the level is provisional. */
+/** Last time her level was measured: a level change, or a test or race she ran (R23). */
+function lastMeasure(r: WeekRequest): string | undefined {
+  const runs = r.history
+    .filter((a) => a.isTest || a.isRace || a.plannedType === "TEST" || a.plannedType === "RACE")
+    .map((a) => dateOf(a.start));
+  return [r.fitness.measuredOn, ...runs]
+    .filter((d) => d !== undefined)
+    .sort()
+    .at(-1);
+}
+
+/** P26 (research 02 R23): a level that turns 4 weeks old within the week is measured again, by a test, outside the taper. */
+function retestDue(w: PlanWeek, r: WeekRequest): boolean {
+  const last = lastMeasure(r);
+  return w.phase !== "taper" && last !== undefined && daysBetween(last, addDays(r.monday, 6)) >= RETEST_DAYS;
+}
+
+/** The plan week to build: P9 on confirmed fatigue, F10's test while the level is provisional, P26's every 4 weeks. */
 function adjusted(w: PlanWeek, r: WeekRequest): PlanWeek {
   const tired = tiredLastWeek(r) >= FATIGUE_DAYS ? deloaded(w) : w;
-  const testWeek = r.fitness.provisional === true && w.index >= TEST_WEEKS[0] && w.index <= TEST_WEEKS[1];
+  const provisional = r.fitness.provisional === true;
+  const testWeek = provisional ? w.index >= TEST_WEEKS[0] && w.index <= TEST_WEEKS[1] : retestDue(w, r);
   return testWeek ? withTest(tired) : tired;
 }
 

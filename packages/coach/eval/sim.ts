@@ -8,6 +8,7 @@ import {
   type Activity,
   acceptProposal,
   adaptForHealth,
+  adaptToRun,
   addDays,
   addMin,
   at,
@@ -27,6 +28,7 @@ import {
   feelBetter,
   fractionF,
   type Health,
+  hoursBetween,
   type InitialFitness,
   initialFitness,
   isHard,
@@ -44,6 +46,7 @@ import {
   programPlan,
   proposeMeasured,
   type Result,
+  readRun,
   reportUnavailable,
   type Session,
   type SignalId,
@@ -52,6 +55,7 @@ import {
   sickDays,
   skipSession,
   speedForVo2,
+  vdot,
   weekDates,
 } from "../src/index.ts";
 import { calendar, type Persona, PLAN_START, rng, START_MONDAY } from "./personas.ts";
@@ -83,6 +87,8 @@ export type WeekLog = {
   proposals: ProposalLog[];
   /** Changes the app made on its own during the week (morning decisions, timetable replans). */
   autoChanges: number;
+  /** Changes made because of what she ran (M10): spacing after a hard day (AD3), volume absorbed (AD4). */
+  adaptations: string[];
   warnings: string[];
   health: string[];
 };
@@ -94,6 +100,8 @@ export type RunLog = {
   history: Activity[];
   vPeak: number;
   planWeeks: number;
+  /** P19's class of her target at the start (P21 reads it). */
+  feasibility: string;
 };
 
 type Sim = {
@@ -110,6 +118,10 @@ type Sim = {
   answered: PastProposal[];
   signals: DailySignal[];
   next: () => number;
+  /** Her real level today: it rises with the training she does (`progress`). */
+  truth: number;
+  /** Script deviations already done, by "kind-week": one tempo and one extra run a week at most. */
+  deviated: Set<string>;
 };
 
 const HR_SHARE: Record<PaceZone, number> = { E: 0.72, M: 0.84, T: 0.89, I: 0.935, R: 0.9, race: 0.88 };
@@ -216,10 +228,11 @@ function dayShift(p: Persona, date: string): Partial<Day> {
 }
 
 /** Her level on that day: overreaching costs 1.5 VDOT, the 10 days after a fever 1. */
-function effectiveVdot(p: Persona, date: string): number {
+function effectiveVdot(sim: Sim, date: string): number {
+  const p = sim.p;
   const sick = sickWindow(p);
   const afterSick = sick !== null && date >= sick.from && daysBetween(sick.from, date) <= 14 ? 1 : 0;
-  return p.trueVdot - (overreaching(p, date) ? 1.5 : 0) - afterSick;
+  return sim.truth - (overreaching(p, date) ? 1.5 : 0) - afterSick;
 }
 
 const speed = (paceSKm: number): number => 60000 / paceSKm;
@@ -233,30 +246,66 @@ function trueSpeed(p: Persona, zone: PaceZone, eff: number): number {
   return speed(tp[zone]);
 }
 
-/** One lap per repetition, as a structured Garmin workout records it. Slower than the target when she cannot hold it. */
-function stepLaps(sim: Sim, st: Step, day: string, allOut: boolean): { laps: Lap[]; ratio: number } {
+/**
+ * One lap per repetition, as a structured Garmin workout records it. Slower than the target when she cannot hold it.
+ * `own`: the zone she runs on her own whatever the target (easy runs too fast, a tempo instead of a footing).
+ */
+function stepLaps(sim: Sim, st: Step, day: string, allOut: boolean, own?: PaceZone): { laps: Lap[]; ratio: number } {
   const p = sim.p;
   const appE = paces(sim.vdot).E;
-  const zone: PaceZone = st.kind === "strides" ? "R" : (st.zone ?? "E");
+  const zone: PaceZone = own ?? (st.kind === "strides" ? "R" : (st.zone ?? "E"));
   const target = speed(mid(st.target.paceSKm, appE));
   // A test is run all out for its duration, whatever its target pace (F10, catalogue TEST): F2 at her level.
-  const eff = effectiveVdot(p, day);
+  const eff = effectiveVdot(sim, day);
   const can = allOut ? speedForVo2(eff * fractionF(st.durMin)) : trueSpeed(p, zone, eff);
-  const eager = allOut ? 1 : (p.script.eagerness ?? 0.2);
+  const eager = allOut || own ? 1 : (p.script.eagerness ?? 0.2);
   const v = (can < target ? can : target + eager * (can - target)) * (1 + (sim.next() - 0.5) * 0.02);
   const hr = (allOut ? ALL_OUT_HR : HR_SHARE[zone] + (overreaching(p, day) ? 0.02 : 0)) * p.hrMax;
   const laps = [...Array(st.reps ?? 1).keys()].map(() => ({ durMin: st.durMin, distM: v * st.durMin, avgHr: hr }));
   return { laps, ratio: can / target };
 }
 
+const isEasyRun = (s: Session): boolean => s.type === "E" || s.type === "RECUP" || s.type === "L";
+
+/** A footing run as 15 min easy, 20 min at threshold, the rest easy (a tempo instead of the footing). */
+function asTempo(s: Session): { steps: Step[]; own: (PaceZone | undefined)[] } {
+  const t = Math.min(20, Math.max(0, s.durMin - 20));
+  const e = s.steps.find((st) => st.zone === "E") ?? s.steps[0];
+  const easy = (durMin: number): Step => ({ kind: "work", durMin, zone: "E", target: e?.target ?? { rpe: 3 } });
+  return { steps: [easy(15), easy(t), easy(s.durMin - 15 - t)], own: [undefined, "T", undefined] };
+}
+
+/** What the script makes of the session: her own zones, a tempo, a long run cut short. */
+function deviation(sim: Sim, s: Session): { steps: Step[]; own: (PaceZone | undefined)[]; cut: number } {
+  const sc = sim.p.script;
+  const key = `tempo-${weekNumber(s.start)}`;
+  // The footing she turns into a tempo is one a hard session follows within 48 h: the case spacing must handle.
+  const hardSoon = sim.sessions.some(
+    (x) => x.status === "planned" && isHard(x) && x.start > s.start && hoursBetween(s.start, x.start) < 48,
+  );
+  if (sc.tempoForEasy && s.type === "E" && hardSoon && !sim.deviated.has(key)) {
+    sim.deviated.add(key);
+    return { ...asTempo(s), cut: 1 };
+  }
+  const own = sc.easyAs && isEasyRun(s) ? sc.easyAs : undefined;
+  return {
+    steps: s.steps,
+    own: s.steps.map((st) => (st.kind === "strides" ? undefined : own)),
+    cut: s.type === "L" ? (sc.cutLong ?? 1) : 1,
+  };
+}
+
 function runSession(sim: Sim, s: Session): Activity {
   const laps: Lap[] = [];
   let hardest = { ratio: 1, rpe: 0 };
-  for (const st of s.steps) {
-    const out = stepLaps(sim, st, dateOf(s.start), s.type === "TEST" && st.kind === "work");
-    laps.push(...out.laps);
+  const d = deviation(sim, s);
+  d.steps.forEach((st, i) => {
+    // A race is run all out at the pace her level holds over the distance, whatever its target.
+    const own = d.own[i] ?? (s.type === "RACE" && st.kind === "work" ? "race" : undefined);
+    const out = stepLaps(sim, st, dateOf(s.start), s.type === "TEST" && st.kind === "work", own);
+    laps.push(...out.laps.map((l) => ({ ...l, durMin: l.durMin * d.cut, distM: l.distM * d.cut })));
     if (st.target.rpe > hardest.rpe && st.kind === "work") hardest = { ratio: out.ratio, rpe: st.target.rpe };
-  }
+  });
   const dur = laps.reduce((a, l) => a + l.durMin, 0);
   return {
     id: `run-${s.id}`,
@@ -269,7 +318,7 @@ function runSession(sim: Sim, s: Session): Activity {
     plannedType: s.type,
     ...(s.type === "RACE" ? { isRace: true, tempC: 8 } : {}),
     ...(s.type === "TEST" ? { isTest: true, tempC: 8 } : {}),
-    feel: feelOf(sim, s, hardest.ratio),
+    feel: d.own.some((z) => z !== undefined && z !== "race") ? "ok" : feelOf(sim, s, hardest.ratio),
   };
 }
 
@@ -277,6 +326,24 @@ function feelOf(sim: Sim, s: Session, ratio: number): Activity["feel"] {
   if (overreaching(sim.p, dateOf(s.start))) return "hard";
   if (!isHard(s) || s.type === "L") return (sim.p.script.eagerness ?? 0) >= 1 ? "easy" : "ok";
   return ratio >= 1.04 ? "easy" : ratio < 0.98 ? "hard" : "ok";
+}
+
+/** A run she adds on a day without a session, once a week from Wednesday: 40 min easy. */
+function extraRun(sim: Sim, date: string): Activity | null {
+  const min = sim.p.script.extraRun;
+  const key = `extra-${weekNumber(date)}`;
+  if (!min || dayIndex(date) < 2 || sim.deviated.has(key)) return null;
+  sim.deviated.add(key);
+  const v = trueSpeed(sim.p, "E", effectiveVdot(sim, date));
+  return {
+    id: `extra-${date}`,
+    start: at(date, "12:00"),
+    durMin: min,
+    distM: v * min,
+    avgHr: HR_SHARE.E * sim.p.hrMax,
+    laps: [{ durMin: min, distM: v * min, avgHr: HR_SHARE.E * sim.p.hrMax }],
+    feel: "ok",
+  };
 }
 
 function skips(sim: Sim, s: Session, n: number): "explicit" | "silent" | null {
@@ -403,9 +470,29 @@ function timetableChange(sim: Sim, date: string, log: WeekLog): void {
   log.autoChanges += r.changes.filter((c) => c.before?.start !== c.after?.start).length;
 }
 
+/** M10 as services/garmin.ts calls it after the sync: the week follows what she ran. */
+function adapt(sim: Sim, run: Activity, now: string, log: WeekLog, sessionId?: string): void {
+  const r = adaptToRun(state(sim, log.monday), run, now, {
+    ...(sessionId ? { sessionId } : {}),
+    history: sim.activities,
+    hrMax: sim.p.hrMax,
+  });
+  apply(sim, r);
+  log.adaptations.push(
+    ...r.changes.map((c) => `${c.ruleId} ${c.before?.type ?? ""} ${c.before?.start.slice(5) ?? ""}`),
+  );
+}
+
 function sessionTime(sim: Sim, date: string, log: WeekLog, counter: { n: number }): void {
   const s = sim.sessions.find((x) => x.status === "planned" && dateOf(x.start) === date);
-  if (!s) return;
+  if (!s) {
+    const extra = extraRun(sim, date);
+    if (!extra) return;
+    sim.activities.push(extra);
+    log.activities.push(extra);
+    adapt(sim, extra, addMin(extra.start, extra.durMin), log);
+    return;
+  }
   const skip = skips(sim, s, counter.n++);
   if (skip === "explicit") {
     apply(sim, skipSession(state(sim, log.monday), s.id));
@@ -415,12 +502,34 @@ function sessionTime(sim: Sim, date: string, log: WeekLog, counter: { n: number 
   const run = runSession(sim, s);
   sim.activities.push(run);
   log.activities.push(run);
-  const end = addMin(s.start, s.durMin);
+  const end = addMin(s.start, run.durMin);
   // Like services/garmin.ts: a run is matched to the planned session of the same day, which becomes done.
   apply(sim, confirmDone(state(sim, log.monday), s.id, end));
-  apply(sim, logFeel(state(sim, log.monday), s.id, run.feel ?? "ok"));
+  apply(sim, logFeel(state(sim, log.monday), s.id, run.feel ?? "ok", run));
+  adapt(sim, run, end, log, s.id);
   const prop = proposalAfterRun(sim, run, end) ?? proposalAfterFeel(sim, end);
   if (prop) accept(sim, prop, end, log);
+}
+
+/**
+ * Her real level rises with the training she does: research 02 §7.1 (Muñoz 2014: +3.6 to 5 % on 10 km in 10 weeks
+ * for recreational runners, ≈ 0.4 % a week), within P19's 7 % ceiling. The stimulus is the share of the plan's volume
+ * she ran (capped at 1: more is not better), halved in a build week without a quality run, nil in a week of fever
+ * or overreaching. The model is a hypothesis: research 02 notes no study validates a weekly rate by level.
+ */
+const WEEKLY_GAIN = 0.004;
+const GAIN_CEILING = 0.07;
+
+function progress(sim: Sim, log: WeekLog): void {
+  const d = sim.p.goal.distanceM;
+  if (log.planMin === 0 || log.health.includes("sick") || overreaching(sim.p, log.monday)) return;
+  const ran = log.activities.reduce((a, x) => a + x.durMin, 0);
+  const build = log.phase.startsWith("dev") || log.phase.startsWith("spe");
+  const quality = log.activities.some((a) => readRun(a, paces(sim.truth), sim.p.hrMax).fastMin > 6);
+  const stimulus = Math.min(1, ran / log.planMin) * (build && !quality ? 0.5 : 1);
+  const best = predictTime(sim.p.trueVdot, d) * (1 - GAIN_CEILING);
+  const next = Math.max(best, predictTime(sim.truth, d) * (1 - WEEKLY_GAIN * stimulus));
+  sim.truth = vdot(d, next);
 }
 
 // ---------- The loop ----------
@@ -436,7 +545,7 @@ function build(sim: Sim, monday: string, log: WeekLog): void {
     planStart: PLAN_START,
     settings: sim.p.settings,
     history: sim.activities,
-    fitness: { vdot: sim.vdot, provisional: sim.provisional },
+    fitness: { vdot: sim.vdot, provisional: sim.provisional, measuredOn: sim.vdotChangedOn ?? PLAN_START },
     cal: sim.cal,
     kept,
     prev: sim.sessions.filter(inWeek(addDays(monday, -7))),
@@ -462,10 +571,11 @@ function emptyLog(sim: Sim, w: number, pw: PlanWeek | undefined): WeekLog {
     cal: sim.cal.filter(inWeek(monday)),
     vdotStart: sim.vdot,
     vdotEnd: sim.vdot,
-    trueVdot: sim.p.trueVdot,
+    trueVdot: sim.truth,
     decisions: [],
     proposals: [],
     autoChanges: 0,
+    adaptations: [],
     warnings: [],
     health: [],
   };
@@ -497,6 +607,8 @@ export function simulate(p: Persona): RunLog {
     answered: [],
     signals: pre,
     next,
+    truth: p.trueVdot,
+    deviated: new Set(),
   };
   const plan = programPlan({
     now: startNow,
@@ -523,8 +635,19 @@ export function simulate(p: Persona): RunLog {
       log.health.push(sim.health.kind);
     }
     log.vdotEnd = sim.vdot;
+    // The level she had during the week: the paces were judged against it; training raises the next one.
+    log.trueVdot = sim.truth;
+    progress(sim, log);
     weeks.push(log);
   }
   for (const log of weeks) log.final = sim.sessions.filter(inWeek(log.monday));
-  return { persona: p, weeks, initial, history, vPeak: plan.vPeak, planWeeks: plan.weeks.length };
+  return {
+    persona: p,
+    weeks,
+    initial,
+    history,
+    vPeak: plan.vPeak,
+    planWeeks: plan.weeks.length,
+    feasibility: plan.feasibility.class,
+  };
 }

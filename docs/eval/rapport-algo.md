@@ -214,7 +214,44 @@ Ce qui reste :
 
 Deux changements du banc lui-même, notés ici : le contrôle G2 lit la charge chronique sur les 3 semaines courues avant, celles d'avant le programme comprises (il ne lisait que les semaines du banc) ; la coureuse court un `TEST` à fond (F2 à son niveau, FC 94 %) et chaque course porte le type de la séance prévue, comme le serveur les envoie.
 
-## 7. Fichiers
+## 7. Ce qu'elle court vraiment, et la trajectoire vers l'objectif (19/11/2026)
+
+Deux questions d'Anna : « Si mon footing devient un tempo, l'app adapte la suite ? » et « Le programme mène-t-il vraiment à mon objectif ? ». Le banc ne savait répondre à aucune des deux : la coureuse suivait toujours le plan et ne progressait jamais.
+
+### Ce que le banc ajoute
+
+- **Elle progresse avec ce qu'elle court** (`sim.ts`, `progress`) : chaque semaine, son temps prédit sur l'objectif baisse de 0,4 % × la part du volume du plan courue (plafonnée à 1 : courir plus ne fait pas progresser plus), moitié moins en semaine de développement ou spécifique sans séance de qualité, rien en semaine de fièvre ou de surmenage, 7 % au plus (P19). Taux : recherche 02 §7.1 (Muñoz 2014, +3,6 à 5 % sur 10 km en 10 semaines chez le coureur loisir). C'est une hypothèse : aucune étude ne valide un taux par semaine et par niveau. Le critère « Allures » juge désormais l'app contre ce niveau de la semaine, pas celui du départ. La course se court à fond.
+- **Quatre coureuses qui ne suivent pas le plan** (6 semaines chacune) : `trop-vite` (footings et sorties longues à l'allure marathon, l'erreur la plus courante), `en-plus` (une course de 40 min en plus chaque semaine), `tempo` (chaque semaine, le footing qui précède une séance dure de moins de 48 h devient 15 min E, 20 min au seuil, le reste E), `longue-coupee` (sorties longues arrêtées aux deux tiers).
+- **Critère « Trajectoire vers l'objectif »** : le niveau est réévalué au moins toutes les 4 semaines (recherche 02 R23) ; une semaine de développement ou spécifique suivie porte une séance de qualité (P11, sans stimulus pas de progression : plan trop facile) ; une semaine de décharge n'est pas au-dessus de son volume (P9 : plan trop agressif) ; chaque allure de séance vient du niveau de la semaine (F7) et l'allure de course de la cible seulement si elle est au plus ambitieuse (P21).
+- **Critère « Adaptation au réalisé »** : jamais une séance dure prévue courue le lendemain d'une course rapide non prévue (AD3) ; aucune séance ne s'allonge dans la semaine (AD5, EV16) ; une semaine avec une course en plus reste sous 1,10 × la charge chronique (AD4, G2, mineur).
+- `--weeks` affiche le temps prédit par l'app et le vrai, chaque semaine, et ce qui a été adapté.
+
+### Avant, après
+
+Le même banc (11 personas, 12 critères) sur `main` puis sur cette branche :
+
+| Critère | Avant | Après |
+|---|---|---|
+| Allures et recalibrage | 8,5 (anna 6,7) | 8,8 (anna 10,0) |
+| Trajectoire vers l'objectif | 8,7 | 10,0 |
+| Adaptation au réalisé | 9,9 (tempo 8,9) | 10,0 (en-plus 9,9) |
+| Sortie longue | 9,9 (anna 9,8) | 9,9 (anna 10,0) |
+| **Note** | **9,7** | **9,8** |
+
+Aucun critère ne baisse ; `eval/baseline.json` est mis à jour.
+
+### Ce que le banc a trouvé, et ce qui change
+
+1. **Le niveau ne suivait pas la progression.** Sans course ni test, Anna restait à 41,0 de la semaine 1 à la course, alors que son niveau montait à 43,2 : des allures trop lentes pour la faire progresser. RC3 ne voit la hausse que si elle court ses fractions plus vite que la cible, et une coureuse sage court la cible. **P26** : un niveau qui a 4 semaines est mesuré par un test à la place de la première séance de qualité (recherche 02 R23). Anna est maintenant à moins d'un point de son niveau chaque semaine.
+2. **Une semaine de décharge à 184 min pour 149 au plan** (Anna, semaine 8, problème déjà visible en §6 : la sortie longue plus courte que la séance spécifique). Le bloc à allure semi est dimensionné sur la distance, pas sur la semaine. **P9** : le volume d'une décharge est un plafond, Q comprises, comme celui de l'affûtage.
+3. **Un tempo à la place d'un footing laissait la séance dure du lendemain en place** : deux jours durs de suite trois semaines sur trois. **AD3** : la séance dure qui suit dans les 48 h va au meilleur créneau à partir du surlendemain, sinon passe en footing.
+4. **Une course en plus n'entrait dans la semaine qu'au dimanche suivant.** **AD4** : les footings à venir raccourcissent jusqu'à leur plancher. Il reste un échec mineur (`en-plus` S1, 214 min pour 183) : les deux footings restants ne suffisent pas et la sortie longue est gardée (recherche 02 §4.2).
+5. **Un tempo choisi et noté « Dur » comptait comme une fatigue** (SG4 le lendemain, RC5). Le ressenti garde le RPE réellement couru (AD6).
+6. **Trop facile, plusieurs fois** : trois footings notés « Facile » et courus 3 % plus vite que la cible proposent un test (**RC13**). `plus-forte` le reçoit dès la fin de la semaine 1.
+
+Ce que le banc ne juge pas : le modèle de progression est le même pour toutes et ne pénalise ni les footings trop rapides (`trop-vite` progresse comme Anna), ni la fatigue d'un tempo de plus ; un modèle de charge et de fatigue (Banister) serait instable sur une seule coureuse (recherche 03 §2.1, Hellard 2006). Une sortie longue coupée n'est jamais rattrapée : la suivante reste sous 1,10 × la plus longue des 30 jours (G1), le contrôle de longueur minimale l'excuse dans ce cas.
+
+## 8. Fichiers
 
 - `packages/coach/eval/personas.ts` : personas, scripts, emplois du temps.
 - `packages/coach/eval/sim.ts` : la boucle fermée et le modèle de résultat.

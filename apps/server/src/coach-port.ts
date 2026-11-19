@@ -41,10 +41,24 @@ export type CoachState = {
   activities: Activity[];
   /** Latest estimate, null until the first one. */
   fitness: FitnessEstimate | null;
-  /** Feel answers of the last two weeks, with the RPE the session aimed for (SG4). */
-  feels: { sessionId: string; date: string; feel: "easy" | "ok" | "hard"; rpeTarget: number }[];
+  /**
+   * Feel answers of the last two weeks, with the RPE the session aimed for (SG4), and what she ran when a run was
+   * synced: its RPE as done and her speed over the target (`readFeel`).
+   */
+  feels: ({ sessionId: string; date: string; feel: "easy" | "ok" | "hard"; rpeTarget: number } & RunFeel)[];
   /** Morning signals of the last five weeks, oldest first: confirmed fatigue (P9, RC5) and Garmin VO2max (RC7). */
   signals?: DailySignal[];
+};
+
+/** What a synced run adds to her feel: the RPE of the run as done (AD1) and her speed over its target (RC13). */
+export type RunFeel = { rpeDone?: number; paceRatio?: number };
+
+/** M10's answer to a synced run: the adapted weeks, and the line Aujourd'hui shows while it matters. */
+export type RunAdaptation = CoachResult & {
+  /** « Ton footing de mardi ressemblait plutôt à un tempo : je décale ton seuil à jeudi. » */
+  note?: string;
+  /** Last day the note concerns: the day of the last session it changed. */
+  until?: string;
 };
 
 /** A level change as the coach proposes it, before the server stores it. */
@@ -136,6 +150,13 @@ export interface CoachPort {
   evaluateFeels(st: CoachState, past: Proposal[], now: string): ProposalDraft | null;
   /** M8 RC7 after a run: Garmin VO2max shifted by 2 for 14 days proposes a test, once per 14 days. */
   evaluateTrends(st: CoachState, past: Proposal[], now: string): ProposalDraft | null;
+  /**
+   * M10 `adaptToRun` after a synced run: a hard day where the plan had an easy one moves or lightens the next hard
+   * session (AD3), more volume than planned shortens the easy runs ahead (AD4); nothing is ever made up (AD5).
+   */
+  adaptToRun(st: CoachState, run: Activity, now: string): RunAdaptation;
+  /** AD1 and RC13 on one synced run: its RPE as done and her speed over the session's target. */
+  readFeel(session: PlannedSession, run: Activity, vdot: number): RunFeel;
   /** RC9 without a proposal: the sessions still ahead take the paces of `st.fitness`, nothing moves, nothing is added. */
   repace(st: CoachState, now: string): CoachResult;
   /** M8 `acceptProposal` (RC9): new paces for future sessions, and the new estimate in `state.fitness`. */
