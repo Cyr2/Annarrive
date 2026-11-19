@@ -539,6 +539,11 @@ export const coachAdapter: CoachPort = {
     return fromResult(st, coach.acceptProposal(toState(st, mondayOf(dateOf(now)), true), same, now), now);
   },
 
+  repaceRanges(st, now) {
+    if (!st.fitness) return { state: st, changes: [], warnings: [] };
+    return fromResult(st, coach.repaceRanges(toState(st, mondayOf(dateOf(now)), true), now), now);
+  },
+
   acceptProposal(st, proposal, now) {
     const r = coach.acceptProposal(toState(st, mondayOf(dateOf(now)), true), proposal, now);
     const today = dateOf(now);

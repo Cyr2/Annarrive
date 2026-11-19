@@ -879,6 +879,36 @@ describe("watch latency", () => {
     await vi.waitFor(() => expect(t.stores.watchSync.get("easy")?.status).toBe("failed"));
   });
 
+  it("gives one pace to sessions stored with a range at start, and sends them again to the watch (C4)", async () => {
+    const bridge = fakeBridge();
+    const t = await ready({ bridge });
+    t.stores.fitnessEstimate.put({ id: "2026-11-01", date: "2026-11-01", vdot: 40, source: "test" });
+    // Stored before one pace per step: « 6'05 à 7'16 /km ».
+    const ranged = (id: string, start: string, over: Partial<PlannedSession> = {}): PlannedSession => {
+      const s = built(id, "L", start, 90);
+      const steps = s.steps.map((st) => ({ ...st, target: { ...st.target, paceSKm: [365, 436] as [number, number] } }));
+      return { ...s, steps, ...over };
+    };
+    const kept = [
+      ranged("past", "2026-11-16T07:00"),
+      ranged("soon", "2026-11-16T18:00"),
+      ranged("frozen", "2026-11-18T18:00", { frozen: true }),
+    ];
+    for (const s of [...kept, ranged("long", "2026-11-21T09:00")]) {
+      t.stores.plannedSession.put(s);
+      t.stores.watchSync.put({ id: s.id, status: "sent", hash: workoutHash(s) });
+    }
+
+    expect(t.services.plan.repairPaceRanges().change).not.toBeNull();
+
+    for (const s of kept) expect(t.stores.plannedSession.get(s.id)).toEqual(s);
+    const long = t.stores.plannedSession.get("long");
+    expect(long?.steps.map((st) => st.target.paceSKm)).toEqual(long?.steps.map(() => [P40.E, P40.E]));
+    await vi.waitFor(() => expect(bridge.createWorkout).toHaveBeenCalledTimes(1));
+    expect(t.stores.watchSync.get("long")?.hash).toBe(long && workoutHash(long));
+    expect(t.services.plan.repairPaceRanges().change).toBeNull();
+  });
+
   it("leaves the watch alone for a change beyond the next 7 days", async () => {
     const bridge = fakeBridge();
     const t = await ready({ bridge });

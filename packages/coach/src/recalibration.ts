@@ -2,7 +2,7 @@ import { FAST_RATIO } from "./adaptation.ts";
 import { buildSession, isHard, repace } from "./catalog.ts";
 import { addDays, dateOf, daysBetween } from "./dates.ts";
 import { effortReadings, type InitialFitness, isEligibleEffort, paces, speedForVo2, vdot, vo2 } from "./fitness.ts";
-import { checkHard, slotOf } from "./placement.ts";
+import { checkHard, isFrozen, slotOf } from "./placement.ts";
 import { ranEasy } from "./readiness.ts";
 import type { Activity, DailySignal, FeelLog, Proposal, Result, Session, State } from "./types.ts";
 
@@ -213,6 +213,25 @@ function scheduleTest(st: State, now: string): { state: State; changes: Result["
     state: { ...st, sessions },
     changes: [{ ruleId: "RC9", sessionId: candidate.id, before: candidate, after }],
   };
+}
+
+/** C4: a step still holding a [fast, slow] range, as sessions stored before one pace per step did. */
+const hasRange = (s: Session): boolean =>
+  s.steps.some(
+    (st) => st.zone && st.zone !== "race" && st.target.paceSKm && st.target.paceSKm[0] !== st.target.paceSKm[1],
+  );
+
+/** C4 repair: sessions ahead that still hold a range take one pace each; frozen (12 h) and past ones stay as they are. */
+export function repaceRanges(st: State, now: string): Result {
+  const p = paces(st.vdot);
+  const changes: Result["changes"] = [];
+  const sessions = st.sessions.map((s) => {
+    if (s.status !== "planned" || isFrozen(s, now) || !hasRange(s)) return s;
+    const after = repace(s, p);
+    changes.push({ ruleId: "C4", sessionId: s.id, before: s, after });
+    return after;
+  });
+  return { ok: true, state: { ...st, sessions }, previous: st, changes, warnings: [] };
 }
 
 /**

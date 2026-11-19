@@ -159,6 +159,8 @@ export interface CoachPort {
   readFeel(session: PlannedSession, run: Activity, vdot: number): RunFeel;
   /** RC9 without a proposal: the sessions still ahead take the paces of `st.fitness`, nothing moves, nothing is added. */
   repace(st: CoachState, now: string): CoachResult;
+  /** C4 repair: the sessions ahead stored with a [fast, slow] range take one pace each, except the frozen ones. */
+  repaceRanges(st: CoachState, now: string): CoachResult;
   /** M8 `acceptProposal` (RC9): new paces for future sessions, and the new estimate in `state.fitness`. */
   acceptProposal(st: CoachState, proposal: ProposalDraft, now: string): CoachResult;
   /**

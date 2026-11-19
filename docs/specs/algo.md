@@ -356,6 +356,7 @@ Q = échauffement 15 min E + corps + retour au calme 10 min E (défaut à calibr
 | C-8 | `sessionLoad` : 15 min E (3) + 4 × 5 min T (7) + 3 × 1 min récup (2) + 10 min E (3)             | 45 + 140 + 6 + 30 = 221 UA                          |
 | C-9 | `buildSession('E', { durMin: 48, sprints: true }, base, progression 0)`                                   | type `E` ; étapes `warmup`, 6 × 10 s `strides` à l'allure R, 5 × 1 min 30 `recover`, `cooldown` 10 min ; ≤ 48 min ; non dure |
 | C-10 | `buildSession` de chaque type (strides compris) ; `toEasy` d'un jour de course | chaque étape a `paceSKm` ; la plage E vient du VDOT de l'étape de course |
+| C-11 | `repaceRanges` au démarrage du serveur : séances enregistrées avant C4 avec une plage (« 6'05 à 7'16 /km »), une passée, une à moins de 12 h, une gelée, une sortie longue samedi | seule la sortie longue prend une allure unique (E) ; un second passage ne change rien |
 
 ---
 
@@ -663,6 +664,7 @@ evaluateKeySessions(done: KeySession[], current: number, lastChange: string | un
 evaluateFeels(feels: FeelLog[], current: number, now: string, ctx?: { lastChange?; history?; fatigueDays? }): Proposal | null
 evaluateTrends(signals: DailySignal[], now: string, history?: PastProposal[]): Proposal | null
 acceptProposal(st: State, p: Proposal, now: string): Result     // allures futures, hors séances gelées et manual ; un test prend la place de la prochaine Q
+repaceRanges(st: State, now: string): Result   // C4 : une allure unique aux séances à venir encore enregistrées avec une plage, hors séances gelées (12 h)
 ```
 
 ### Règles
