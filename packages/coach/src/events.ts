@@ -130,6 +130,9 @@ export function applyChange(st: State, id: string, option: ChangeOption, now: st
 /** EV10: half the planned time, rounded down to 5 min, at least 15 min (research 03 §9, "neck check"). */
 const coldMin = (durMin: number): number => Math.max(15, Math.floor((0.5 * durMin) / 5) * 5);
 
+/** EV13: a Q becomes an E of the same length; the long run and the race stay. */
+const withoutQ = (s: Session): Session => (isHard(s) && s.type !== "L" && s.type !== "RACE" ? toEasy(s, s.durMin) : s);
+
 /**
  * EV9 to EV12: what a session becomes if Anna runs despite a health status. Health rules advise, never block.
  * Pain applies only up to its `until` date (today when absent).
@@ -148,6 +151,8 @@ export function adaptForHealth(s: Session, health: Health, date: string, p: Pace
       if (date < health.easyUntil) return toEasy(s, Math.floor(Math.min(0.5 * s.durMin, 30)));
       if (date < addDays(health.easyUntil, MODERATE_DAYS)) return toEasy(s, Math.floor(0.75 * s.durMin));
       return date < health.qEasierUntil && isHard(s) && s.type !== "L" ? downgrade(s, p) : s;
+    case "easy":
+      return date < health.easyUntil ? withoutQ(s) : s;
     default:
       return s;
   }
@@ -196,13 +201,31 @@ function healthOf(st: State, r: HealthReport, today: string): { health: Health; 
   return { health, warnings };
 }
 
+/**
+ * EV10: a cold lasts until « Ça va mieux », so every automatic session ahead is shortened at once, not each morning:
+ * the week and the watch show the run she may do. The morning decision leaves them as they are.
+ */
+function coldWeek(st: State, health: Health, today: string): Change[] {
+  // Said again while it lasts: the sessions are already shortened.
+  if (health.kind !== "cold" || st.health.kind === "cold") return [];
+  const p = paces(st.vdot);
+  return plannedFrom(st, today)
+    .filter((s) => !s.manual)
+    .map((s) => change("EV10", s, adaptForHealth(s, health, dateOf(s.start), p)));
+}
+
 function healthReport(st: State, r: HealthReport, now: string): Result {
   const today = dateOf(now);
   const session = todayOf(st, now);
   const { health, warnings } = healthOf(st, r, today);
   const jog = session ? adaptForHealth(session, health, today, paces(st.vdot)) : undefined;
   const options = { ...(jog ? { jog } : {}), ...(session && r.reason === "pain" ? { bikeMin: session.durMin } : {}) };
-  return finish(st, { ...st, health }, [], warnings, { options });
+  const changes = coldWeek(st, health, today);
+  const state = putAll(
+    { ...st, health },
+    changes.flatMap((c) => (c.after ? [c.after] : [])),
+  );
+  return finish(st, state, changes, warnings, { options });
 }
 
 function noTime(st: State, now: string): Result {
@@ -251,6 +274,8 @@ export function reportUnavailable(st: State, r: Unavailable, now: string): Resul
 const LIGHT_DAYS = 3;
 export const MODERATE_DAYS = 2;
 const Q_EASIER_DAYS = 10;
+/** EV13: after a cold, 3 more days of easy running (interactions.md, Pas dispo, Malade, Non). */
+const COLD_EASY_DAYS = 3;
 
 /** B1: the days of the current or last fever, left out of the morning baselines. */
 export function sickDays(health: Health, today: string): string[] {
@@ -273,8 +298,22 @@ export function feelBetter(st: State, now: string): Result {
     };
     return finish(st, { ...st, health }, [{ ruleId: "EV9", detail: "return" }], []);
   }
-  if (h.kind === "cold")
-    return finish(st, { ...st, health: { kind: "ok" } }, [{ ruleId: "EV13", detail: "return" }], []);
+  if (h.kind === "cold") {
+    // The sessions shortened for the cold are the caller's to rebuild; here, no Q in the next 3 days.
+    const health: Health = { kind: "easy", easyUntil: addDays(today, COLD_EASY_DAYS) };
+    const p = paces(st.vdot);
+    const easier = plannedFrom(st, today)
+      .filter((s) => !s.manual)
+      .flatMap((s) => {
+        const after = adaptForHealth(s, health, dateOf(s.start), p);
+        return after === s ? [] : [change("EV13", s, after)];
+      });
+    const state = putAll(
+      { ...st, health },
+      easier.flatMap((c) => (c.after ? [c.after] : [])),
+    );
+    return finish(st, state, [{ ruleId: "EV13", detail: "return" }, ...easier], []);
+  }
   if (h.kind === "pain") {
     const resumed = resumeWeek(plannedFrom(st, addDays(today, 1)), daysBetween(h.since, today));
     return finish(st, putAll({ ...st, health: { kind: "ok" } }, resumed.week), resumed.changes, []);

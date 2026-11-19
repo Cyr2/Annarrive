@@ -6,7 +6,6 @@ import { Group, RowInput, Section } from "../../ui/List.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
 import { usePlan } from "../plan/store.ts";
 import type { SheetProps } from "../sheets/SheetHost.tsx";
-import { useGo } from "../useGo.ts";
 import { SETTING_LABELS } from "./program.ts";
 
 // The plan holds 3 to 5 runs a week (algo.md 4.2).
@@ -16,15 +15,12 @@ const COUNTS = ["3", "4", "5"].map((value) => ({ value, label: value }));
 export default function SettingSheet({ spec, ...sheet }: SheetProps<"setting">) {
   const settings = usePlan((s) => s.program?.settings);
   const apply = usePlan((s) => s.apply);
-  const go = useGo();
   const [draft, setDraft] = useState<Settings | undefined>(settings);
   if (!draft) return null;
   const key = spec.key;
   const save = async () => {
     const patch = { [key]: draft[key] };
-    const done = await apply((api) => api.updateSettings(patch), {
-      action: { label: "Voir", onClick: () => go("/semaine") },
-    });
+    const done = await apply((api) => api.updateSettings(patch));
     if (done) sheet.onOpenChange(false);
   };
   return (

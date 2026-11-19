@@ -512,6 +512,69 @@ describe("coach adapter: Anna's actions", () => {
   });
 });
 
+describe("coach adapter: Anna's three weeks (parcours final)", () => {
+  /** A semi started on Sunday 18:00 for a runner of the evening: her Garmin runs all start at 18:30. */
+  async function eveningRunner() {
+    const t = await ready();
+    t.setNow(SUNDAY_6PM);
+    for (let w = 1; w <= 8; w++)
+      for (const d of [0, 2, 4, 6])
+        t.stores.activity.put({
+          id: `h${w}-${d}`,
+          start: `${addDays("2026-11-16", d - 7 * w)}T18:30`,
+          durMin: 45,
+          distM: 7300,
+        });
+    t.stores.fitnessEstimate.put({ id: "2026-11-01", date: "2026-11-01", vdot: 40, source: "test" });
+    await t.call("PUT", "/api/program", { goal: { distanceM: 21097.5, date: "2027-03-14" } });
+    const week = () => t.stores.plannedSession.overlapping("2026-11-16T00:00", "2026-11-23T00:00");
+    return { t, week };
+  }
+
+  it("places her runs at the hour she usually runs when she stated none (F1, S7)", async () => {
+    const { week } = await eveningRunner();
+    expect(week().length).toBeGreaterThan(0);
+    expect(week().every((s) => s.start.slice(11) >= "17:00")).toBe(true);
+  });
+
+  it("says a new number of runs without a false count of moved runs, and Annuler gives the week back (F2)", async () => {
+    const { t, week } = await eveningRunner();
+    t.setNow(new Date("2026-11-17T07:00:00Z"));
+    const before = JSON.stringify(week());
+    const saved = await change(t, "PATCH", "/api/profile", { runsPerWeek: 5 });
+    expect(saved.change?.summary).toBe("Reggie a réorganisé ta semaine");
+    expect(JSON.stringify(week())).not.toBe(before);
+    await t.call("POST", `/api/changes/${saved.change?.id}/undo`);
+    expect(JSON.stringify(week())).toBe(before);
+  });
+
+  it("shortens the sessions ahead as soon as a cold is said, and gives them back on « Ça va mieux » (F3, F4)", async () => {
+    const { t, week } = await eveningRunner();
+    t.setNow(new Date("2026-11-16T07:00:00Z"));
+    const full = week().map((s) => s.durMin);
+    const cold = await change(t, "POST", "/api/unavailable", { reason: "sick", feverOrChest: false });
+    expect(week().every((s, i) => s.type !== "L" && s.durMin <= Math.max(15, (full[i] ?? 0) / 2))).toBe(true);
+    // The morning decision leaves them as they are: never halved twice.
+    t.setNow(new Date("2026-11-17T09:00:00Z"));
+    const shortened = JSON.stringify(week());
+    t.services.plan.morningDecision();
+    expect(week().map((s) => s.durMin)).toEqual(JSON.parse(shortened).map((s: PlannedSession) => s.durMin));
+
+    const better = await change(t, "POST", "/api/feel-better");
+    expect(better.change?.summary).toBe("Ça va mieux : 3 jours sans fractionné, puis tes séances reprennent");
+    expect(t.services.plan.health()).toEqual({ kind: "easy", easyUntil: "2026-11-20" });
+    const ahead = week().filter((s) => s.start >= "2026-11-18");
+    expect(ahead.reduce((sum, s) => sum + s.durMin, 0)).toBeGreaterThan(
+      JSON.parse(shortened)
+        .filter((s: PlannedSession) => s.start >= "2026-11-18")
+        .reduce((sum: number, s: PlannedSession) => sum + s.durMin, 0),
+    );
+    await t.call("POST", `/api/changes/${better.change?.id}/undo`);
+    await t.call("POST", `/api/changes/${cold.change?.id}/undo`);
+    expect(week().map((s) => s.durMin)).toEqual(full);
+  });
+});
+
 describe("coach adapter: morning decision", () => {
   function signals(t: ReturnType<typeof setup>, today: { rhr: number; sleepMin?: number }) {
     for (let d = 1; d <= 20; d++) t.stores.dailySignal.put({ id: addDays("2026-11-16", -d), rhr: 50, sleepMin: 480 });
@@ -548,9 +611,9 @@ describe("coach adapter: morning decision", () => {
     expect(t.services.plan.morningDecision()).not.toBeNull();
   });
 
-  it("adapts today's run to a cold, and advises rest when four signals fire", async () => {
+  it("adapts today's run to a fever, and advises rest when four signals fire", async () => {
     const t = await ready();
-    t.stores.health.put({ id: "current", value: { kind: "cold", since: "2026-11-15" } });
+    t.stores.health.put({ id: "current", value: { kind: "sick", since: "2026-11-15" } });
     t.stores.plannedSession.put(built("tonight", "I", "2026-11-16T18:00", 60));
     t.stores.calendarEvent.put({
       id: "exam",
@@ -732,8 +795,8 @@ describe("coach adapter: what she actually ran (M10)", () => {
 
     await garmin.syncActivities();
 
-    // Never the day after the tempo (H4); Thursday morning is still under 48 h (S12), Friday morning is not.
-    expect(t.stores.plannedSession.get("seuil")?.start).toBe("2026-11-20T07:00");
+    // Never the day after the tempo (H4); Thursday morning is still under 48 h (S12), Friday is not, at the hour she runs.
+    expect(t.stores.plannedSession.get("seuil")?.start).toBe("2026-11-20T18:00");
     const today = todaySchema.parse((await t.call("GET", "/api/today")).json);
     expect(today.adapted).toBe("Ton footing de mardi ressemblait plutôt à un tempo : je décale ton seuil à vendredi.");
 

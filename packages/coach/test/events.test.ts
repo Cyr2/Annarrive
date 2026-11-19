@@ -177,7 +177,46 @@ describe("health: advise, never block (EV9 to EV13)", () => {
     const r = reportUnavailable(state([q]), { reason: "sick", feverOrChest: false }, MON_8);
     expect(r.state.health.kind).toBe("cold");
     expect(r.options?.jog).toMatchObject({ type: "E", durMin: 25, rpeTarget: 3 });
-    expect(feelBetter(r.state, "2026-11-25T08:00").state.health).toEqual({ kind: "ok" });
+    expect(feelBetter(r.state, "2026-11-25T08:00").state.health).toEqual({ kind: "easy", easyUntil: "2026-11-28" });
+  });
+
+  it("shortens every automatic session ahead as soon as the cold is said, not the next morning (EV-30)", () => {
+    // Parcours F3: on Tuesday evening the week and the watch still had Wednesday's full 51 min.
+    const sessions = [
+      easy("today", "2026-11-23T18:00", 45),
+      hard("q", "2026-11-25T18:00", 50),
+      { ...easy("mine", "2026-11-26T18:00", 40), manual: true },
+      long("l", "2026-11-29T09:00", 70),
+    ];
+    const r = reportUnavailable(state(sessions), { reason: "sick", feverOrChest: false }, MON_8);
+    expect(r.ok).toBe(true);
+    expect(r.state.sessions.map((s) => [s.id, s.type, s.durMin])).toEqual([
+      ["today", "E", 20],
+      ["q", "E", 25],
+      ["mine", "E", 40],
+      ["l", "E", 35],
+    ]);
+    expect(r.changes.map((c) => [c.ruleId, c.sessionId])).toEqual([
+      ["EV10", "today"],
+      ["EV10", "q"],
+      ["EV10", "l"],
+    ]);
+    // Said again while it lasts: nothing is halved twice.
+    expect(reportUnavailable(r.state, { reason: "sick", feverOrChest: false }, MON_8).changes).toEqual([]);
+  });
+
+  it("keeps 3 more days without Q after a cold, then the usual plan (EV-31)", () => {
+    // Parcours F4: « Ça va mieux » lifted everything at once.
+    const cold: Health = { kind: "cold", since: "2026-11-23" };
+    const st = state([hard("q1", "2026-11-26T18:00", 50), hard("q2", "2026-11-28T18:00", 50)], [], { health: cold });
+    const r = feelBetter(st, "2026-11-25T08:00");
+    const h = r.state.health;
+    expect(h).toEqual({ kind: "easy", easyUntil: "2026-11-28" });
+    expect(byId(r.state.sessions, "q1")).toMatchObject({ type: "E", durMin: 50 });
+    expect(byId(r.state.sessions, "q2")?.type).toBe("T");
+    expect(r.changes.map((c) => c.ruleId)).toEqual(["EV13", "EV13"]);
+    expect(adaptForHealth(long("l", "", 70), h, "2026-11-26", P40)).toMatchObject({ type: "L", durMin: 70 });
+    expect(adaptForHealth(easy("e", "", 40), h, "2026-11-26", P40).durMin).toBe(40);
   });
 
   it("never keeps a long run of 1 h 06 with a cold: 30 min of E (EV-10)", () => {

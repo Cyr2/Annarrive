@@ -1,6 +1,6 @@
 import { buildSession, isHard, raceReminder, toEasy } from "./catalog.ts";
 import { addDays, at, dateOf, daysBetween, weekDates } from "./dates.ts";
-import { MODERATE_DAYS, sickDays } from "./events.ts";
+import { adaptForHealth, MODERATE_DAYS, sickDays } from "./events.ts";
 import { paces, predictTime } from "./fitness.ts";
 import { capWeekSpikes, enforceDistribution, resumeWeek, weeklyCaps } from "./guards.ts";
 import { maintenanceWeek, postRaceWeek } from "./maintenance.ts";
@@ -233,7 +233,8 @@ const staleRace = (s: Session, r: WeekRequest): boolean =>
   s.type === "RACE" && s.status === "planned" && s.start >= r.now && dateOf(s.start) !== r.goal?.date;
 
 /**
- * Drops one built session per kept session: what Anna moved replaces its planned twin. After a new goal the
+ * Drops one built session per kept session: what Anna moved replaces its planned twin, of the same type and steps
+ * if there is one. After a new goal the
  * week may have no twin of that type: it then replaces one as hard, else any, never the long run nor the
  * race, so the week keeps its number of runs.
  */
@@ -244,7 +245,11 @@ function withoutKept(built: Session[], kept: Session[]): Session[] {
     if (i >= 0) left.splice(i, 1);
     return i >= 0;
   };
-  const unmatched = kept.filter((k) => !drop((s) => s.type === k.type));
+  // The exact twin first: a kept footing with sprints drops the planned one, not the one with strides (P12).
+  const shape = (s: Session): string => `${s.type}:${s.steps.map((st) => st.kind).join()}`;
+  const unmatched = kept
+    .filter((k) => !drop((s) => shape(s) === shape(k)))
+    .filter((k) => !drop((s) => s.type === k.type));
   const spare = (s: Session): boolean => s.type !== "L" && s.type !== "RACE";
   for (const k of unmatched) if (!drop((s) => spare(s) && isHard(s) === isHard(k))) drop(spare);
   return left;
@@ -269,6 +274,10 @@ function returning(sessions: Session[], r: WeekRequest): Session[] {
   const back = h?.kind === "sick" || (h?.kind === "recovering" && r.monday < addDays(h.easyUntil, MODERATE_DAYS));
   return back ? resumeWeek(sessions, Math.max(3, daysOff(r.history, r.monday))).week : sessions;
 }
+
+/** EV10, EV13: a session built during a cold, or in the 3 days after it, is already the one she may run. */
+const whileUnwell = (s: Session, r: WeekRequest, p: Paces): Session =>
+  r.health?.kind === "cold" || r.health?.kind === "easy" ? adaptForHealth(s, r.health, dateOf(s.start), p) : s;
 
 /** G1 and G2 to G4 on the new sessions against the weeks actually run, then P16 on what is left. */
 function capped(sessions: Session[], r: WeekRequest, phase: Phase): Session[] {
@@ -319,5 +328,8 @@ export function planWeek(r: WeekRequest): WeekPlan {
   const placement = placeWeek([...fixed, ...nextWeekRace, ...withIds], cal, r.settings, r.monday, r.prev);
   const builtIds = new Set(withIds.map((b) => b.id));
   const placed = placement.week.sessions.filter((s) => builtIds.has(s.id) && s.start !== "");
-  return { sessions: [...kept, ...placed], warnings: [...warnings, ...placement.warnings] };
+  return {
+    sessions: [...kept, ...placed.map((s) => whileUnwell(s, r, p))],
+    warnings: [...warnings, ...placement.warnings],
+  };
 }

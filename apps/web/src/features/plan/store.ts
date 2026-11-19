@@ -8,8 +8,8 @@ import { toIso } from "../../lib/date.ts";
 import { whenIdle } from "../../lib/idle.ts";
 import { notify as defaultNotify } from "../../ui/toast.ts";
 
-/** `quiet`: no banner. `action`: replaces Annuler (settings show "Voir", docs/interactions.md). */
-type ApplyOptions = { quiet?: boolean; action?: { label: string; onClick: () => void } };
+/** `quiet`: no banner. */
+type ApplyOptions = { quiet?: boolean };
 
 type Notify = (message: string, action?: { label: string; onClick: () => void }) => void;
 
@@ -98,11 +98,11 @@ export function createPlanStore(getApi: () => Promise<Api>, notify: Notify) {
       // Réessayer shows the wait again instead of the same error.
       else if (get().status === "error") set({ status: "loading" });
     };
-    /** The banner of a change that landed: Annuler, or the caller's action; none when nothing changed. */
+    /** The banner of a change that landed, with Annuler; none when nothing changed. */
     const banner = (result: ChangeResult, options?: ApplyOptions) => {
       if (options?.quiet) return;
       const undo = { label: "Annuler", onClick: () => void get().undo(result.changeId) };
-      notify(result.message, result.changeId ? (options?.action ?? undo) : undefined);
+      notify(result.message, result.changeId ? undo : undefined);
     };
 
     return {

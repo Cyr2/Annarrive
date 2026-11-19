@@ -303,6 +303,8 @@ export const healthStatusSchema = z.discriminatedUnion("kind", [
     /** First day of the fever: those days stay out of the morning baselines (B1). */
     since: localDateSchema.optional(),
   }),
+  /** After a cold: easy running only before `easyUntil` (EV13). */
+  z.object({ kind: z.literal("easy"), easyUntil: localDateSchema }),
 ]);
 export type HealthStatus = z.infer<typeof healthStatusSchema>;
 

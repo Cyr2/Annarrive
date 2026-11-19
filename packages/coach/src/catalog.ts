@@ -398,8 +398,11 @@ export function scaleSession(s: Session, f: number, roundTo = 1): Session {
   const reps = s.steps.find((st) => st.kind === "work" && (st.reps ?? 1) > 1)?.reps;
   if (reps !== undefined) return withReps(s, Math.floor(reps * f));
   const main = s.steps.reduce((m, st, i) => (st.kind === "work" && st.durMin > (s.steps[m]?.durMin ?? 0) ? i : m), 0);
+  // A footing with sprints has no work step: all of it is easy running, so its warm-up takes the whole cut.
+  const hasWork = s.steps.some((st) => st.kind === "work");
   const sized = (st: Step): Step => {
-    const durMin = Math.max(1, Math.min(st.durMin, Math.round((st.durMin * f) / roundTo) * roundTo));
+    const target = hasWork ? st.durMin * f : st.durMin - (1 - f) * s.durMin;
+    const durMin = Math.max(1, Math.min(st.durMin, Math.round(target / roundTo) * roundTo));
     // A distance step ends on the watch at its distance: it shrinks with its time, at the same pace.
     return st.distM
       ? { ...st, durMin, distM: Math.round((st.distM * durMin) / st.durMin / 100) * 100 }

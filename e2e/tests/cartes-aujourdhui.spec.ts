@@ -11,6 +11,14 @@ test("Aujourd'hui demande « Tu l'as faite ? » pour la course d'hier", async ({
   await expect(card).toBeHidden();
 });
 
+test("L'explication d'une séance allégée, sur la carte du jour, mène à Reggie", async ({ page }) => {
+  await page.goto("/?mock=light");
+  const card = page.getByRole("article").filter({ hasText: "Allégée" });
+  await card.getByRole("button", { name: "En parler avec Reggie" }).click();
+  await expect(page).toHaveURL(/\/reggie/);
+  await expect(page.getByText("Pourquoi ma séance est allégée ?")).toHaveCount(1);
+});
+
 test("Aujourd'hui montre la proposition de niveau de Reggie", async ({ page }) => {
   await page.goto("/?mock=proposal");
   const card = page.getByRole("region", { name: "Proposition de Reggie" });

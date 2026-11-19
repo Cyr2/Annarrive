@@ -180,6 +180,16 @@ describe("session transforms", () => {
     expect(scaleSession(buildSession("E", ctx), 0.75, 5).durMin).toBe(35);
   });
 
+  it("takes a quarter off a footing with sprints, from its warm-up, sprints kept (EV-32)", () => {
+    // Parcours F7: 8 sprints in 50 min, « Plus court » took only 8 min off its warm-up (-16 %).
+    const run = buildSession("E", { ...ctx, phase: "base", progressionStep: 1, durMin: 50, sprints: true });
+    const short = scaleSession(run, 0.75, 5);
+    expect(run.durMin).toBeCloseTo(49.8, 1);
+    expect(short.steps[0]?.durMin).toBe(15);
+    expect(short.steps.slice(1)).toEqual(run.steps.slice(1));
+    expect(1 - short.durMin / run.durMin).toBeGreaterThanOrEqual(0.25);
+  });
+
   it("makes an easy run of the same moment, never above the original RPE", () => {
     const recup = buildSession("RECUP", { ...ctx, durMin: 25 });
     const jog = toEasy(recup, 20, "rpe");

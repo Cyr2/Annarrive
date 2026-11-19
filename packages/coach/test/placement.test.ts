@@ -12,6 +12,7 @@ import {
   slotAt,
   slotReason,
   softPenalty,
+  usualHour,
   weekDates,
 } from "../src/index.ts";
 import { block, blockDays, easy, hard, LEGS, long, MONDAY, SETTINGS, week } from "./fixtures.ts";
@@ -149,6 +150,33 @@ describe("placeWeek (A1 to A4)", () => {
       block("pm", "2026-11-24T12:45", "2026-11-24T23:30"),
     ];
     expect(placeWeek([easy("e", "")], cal, SETTINGS, MONDAY).week.sessions[0]?.start).toBe("2026-11-24T07:00");
+  });
+
+  it("places her runs at the hour she usually runs when she stated none (PL-20)", () => {
+    // Parcours F1: every run went to 7:00, the earliest slot, while her Garmin runs all start between 17:00 and 18:30.
+    const history = [
+      "17:00",
+      "18:30",
+      "18:30",
+      "17:30",
+      "18:00",
+      "18:30",
+      "07:00",
+      "18:30",
+      "18:30",
+      "18:00",
+      "18:30",
+    ].map((clock, i) => ({ start: `2026-11-${String(10 + i).padStart(2, "0")}T${clock}` }));
+    expect(usualHour(history)).toBe("18:30");
+    expect(usualHour(history.slice(0, 2))).toBe("18:00");
+    expect(usualHour([{ start: "2026-11-10T18:10" }])).toBe("18:00");
+    expect(usualHour([])).toBeUndefined();
+    const settings = { ...SETTINGS, preferredHour: usualHour(history) };
+    const r = placeWeek([long("l", ""), easy("e1", ""), easy("e2", "")], [LEGS], settings, MONDAY);
+    // The long run ends before the evening (S1): an hour earlier.
+    expect(r.week.sessions.map((s) => s.start.slice(11))).toEqual(["17:30", "18:30", "18:30"]);
+    // Without a stated hour or a run: the earliest free slot, as before (PL-6).
+    expect(placeWeek([easy("e", "")], [], SETTINGS, MONDAY).week.sessions[0]?.start.slice(11)).toBe("07:00");
   });
 
   it("keeps fixed sessions and places the rest by priority", () => {

@@ -122,6 +122,31 @@ describe("planWeek (cycle 0.1 buildWeek)", () => {
     expect(types(request({ kept: fourQ }))).toEqual(["L", "T", "T", "T", "T"]);
   });
 
+  it("keeps one footing with sprints when the one she ran is kept in a rebuilt week (EV-33, P12)", () => {
+    // Parcours F6: Monday's sprints, run, then 5 runs and back to 4 on Tuesday: Wednesday had sprints too.
+    const kinds = (s: { steps: { kind: string }[] }) => s.steps.map((st) => st.kind).join();
+    const sprintRun = planWeek(request()).sessions.find((s) => kinds(s).includes("recover"));
+    if (!sprintRun) throw new Error("a footing with sprints expected (P-14)");
+    const done = { ...sprintRun, start: `${MONDAY}T07:00`, status: "done" as const };
+    const now = `${addDays(MONDAY, 1)}T08:00`;
+    const { sessions } = planWeek(request({ now, planStart: addDays(MONDAY, -21), kept: [done] }));
+    expect(sessions.filter((s) => kinds(s).includes("recover"))).toHaveLength(1);
+    expect(sessions.some((s) => kinds(s) === "work,strides")).toBe(true);
+  });
+
+  it("builds a week during a cold already shortened, and one after it without Q for 3 days (EV-10, EV-31)", () => {
+    const spe = (health: WeekRequest["health"]) =>
+      planWeek(request({ monday: "2027-02-08", now: "2027-02-07T18:00", planStart: addDays(MONDAY, -1), health }));
+    const usual = spe(undefined).sessions;
+    const cold = spe({ kind: "cold", since: "2027-02-06" }).sessions;
+    const minutes = (xs: { durMin: number }[]) => xs.reduce((sum, s) => sum + s.durMin, 0);
+    expect(cold.filter((s) => s.type !== "E" && s.type !== "RECUP")).toEqual([]);
+    expect(minutes(cold)).toBeLessThanOrEqual(0.6 * minutes(usual));
+    const after = spe({ kind: "easy", easyUntil: "2027-02-11" }).sessions;
+    expect(after.filter((s) => s.start < "2027-02-11" && isHard(s) && s.type !== "L")).toEqual([]);
+    expect(after.some((s) => s.start >= "2027-02-11" && isHard(s) && s.type !== "L")).toBe(true);
+  });
+
   it("plans maintenance without a goal: one Q, at most three runs (M9)", () => {
     const { sessions } = planWeek(request({ goal: null }));
     expect(sessions).toHaveLength(3);

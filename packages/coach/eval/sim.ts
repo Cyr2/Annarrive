@@ -446,7 +446,8 @@ function morning(sim: Sim, date: string, log: WeekLog): void {
   let after = session;
   if (decision.action === "easier" || decision.action === "shorter")
     after = changeOptions(state(sim, log.monday), session.id)[decision.action];
-  if (!session.manual && sim.health.kind !== "ok") after = adaptForHealth(after, sim.health, date, paces(sim.vdot));
+  if (!session.manual && sim.health.kind !== "ok" && sim.health.kind !== "cold")
+    after = adaptForHealth(after, sim.health, date, paces(sim.vdot));
   const changed = after.durMin !== session.durMin || after.type !== session.type;
   log.decisions.push({ date, type: session.type, action: decision.action, signals: today, yesterday, changed });
   if (changed && sim.health.kind === "ok") log.autoChanges++;
