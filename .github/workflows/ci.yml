@@ -50,14 +50,14 @@ jobs:
           TBT ${Math.round(a["total-blocking-time"].numericValue)} ms  LCP ${Math.round(a["largest-contentful-paint"].numericValue)} ms`) }'
 
   e2e:
-    name: e2e ${{ matrix.shard }}/3
+    name: e2e ${{ matrix.shard }}/4
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Three machines, each with its own server and plan: the suite took 5 min on one.
+    # Four machines, each with its own server and plan: the suite took 5 min on one.
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
@@ -76,7 +76,7 @@ jobs:
       - name: Install WebKit (Safari on iPhone)
         run: pnpm --filter @annarrive/e2e exec playwright install --with-deps webkit
       - name: Playwright (iPhone 15, WebKit)
-        run: pnpm --filter @annarrive/e2e e2e --shard=${{ matrix.shard }}/3
+        run: pnpm --filter @annarrive/e2e e2e --shard=${{ matrix.shard }}/4
       - name: Traces of the failed tests
         if: failure()
         uses: actions/upload-artifact@v4
