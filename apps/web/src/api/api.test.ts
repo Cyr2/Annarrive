@@ -155,6 +155,17 @@ const reads = {
       expiresOn: "2026-11-20",
       status: "pending",
     },
+    {
+      id: "p5",
+      kind: "vdot",
+      from: 34.24,
+      to: 38.06,
+      ruleId: "F10",
+      evidence: ["effort:garmin:25045694091"],
+      proof: { date: "2026-11-11", distanceM: 11010, thresholdSKm: 318 },
+      expiresOn: "2026-11-20",
+      status: "pending",
+    },
   ],
 };
 
@@ -247,6 +258,7 @@ describe("http client, reading", () => {
       "Tes dernières séances rapides ont été dures",
       "Je te propose un test de forme pour régler tes allures.",
       "Tes dernières courses donnent un autre chrono pour ton objectif. Je te propose de l'ajuster, ou tu gardes le tien.",
+      "Ton 11 km du mercredi 11 novembre montre que tu vas plus vite que tes allures",
     ]);
     expect(today.next).toMatchObject({
       id: "s2",
@@ -434,7 +446,7 @@ describe("http client, reading", () => {
     expect(planWeek(undefined, "2026-11-09")).toBeUndefined();
   });
 
-  it("shows short steps in seconds, hills as hills in the easy color, and the long run's shape", () => {
+  it("shows short steps in seconds, sprints in the easy color, and the long run's shape", () => {
     expect([stepDuration(1 / 3), stepDuration(1.5), stepDuration(45), stepDuration(66)]).toEqual([
       "20 s",
       "1 min 30",
@@ -456,29 +468,29 @@ describe("http client, reading", () => {
       watch: null,
     });
     const e = { paceSKm: [325, 389] as [number, number], rpe: 3 };
-    const hills = toRun(
-      session("COTES_C", [
+    const sprints = toRun(
+      session("E", [
         { kind: "warmup", durMin: 29, zone: "E", target: e },
-        { kind: "hills", durMin: 1 / 6, reps: 6, zone: "R", target: { paceSKm: [265, 265], rpe: 8 } },
+        { kind: "strides", durMin: 1 / 6, reps: 6, zone: "R", target: { paceSKm: [265, 265], rpe: 8 } },
         { kind: "recover", durMin: 1.5, reps: 5, zone: "E", target: e },
         { kind: "cooldown", durMin: 10, zone: "E", target: e },
       ]),
     );
-    expect(hills.intensity).toBe("easy");
-    expect(hills.mainSet).toBe("6 × 10 s en côte");
+    expect(sprints.intensity).toBe("easy");
+    expect(sprints.mainSet).toBe("6 × 10 s");
     // As the watch runs it: a « Répéter 6 fois » group around the sprint and its jog back, every line with a pace.
-    expect(hills.steps).toEqual([
+    expect(sprints.steps).toEqual([
       { label: "Échauffement · 29 min", pace: "5'25 à 6'29 /km", tone: "plain", minutes: 29 },
       {
         repeat: 6,
         steps: [
-          { label: "10 s en côte", pace: "4'25 /km", tone: "hard", minutes: 1 / 6 },
+          { label: "Accélération · 10 s", pace: "4'25 /km", tone: "hard", minutes: 1 / 6 },
           { label: "Récupérer · 1 min 30", pace: "5'25 à 6'29 /km", tone: "muted", minutes: 1.5 },
         ],
       },
       { label: "Retour au calme · 10 min", pace: "5'25 à 6'29 /km", tone: "plain", minutes: 10 },
     ]);
-    expect(hills.pace).toBe("4'25 /km");
+    expect(sprints.pace).toBe("5'25 à 6'29 /km");
     const strides = toRun(
       session("E", [
         { kind: "work", durMin: 45, zone: "E", target: e },

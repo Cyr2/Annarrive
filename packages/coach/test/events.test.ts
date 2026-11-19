@@ -65,10 +65,14 @@ describe("changeOptions and applyChange (EV2 to EV6)", () => {
   });
 
   it("caps the jog at the planned duration and offers no equivalent for RECUP (EV-4)", () => {
-    const recup = makeSession("RECUP", [{ kind: "work", durMin: 25, zone: "E", target: { paceSKm: P40.E, rpe: 2 } }], {
-      id: "r",
-      start: "2026-11-26T18:00",
-    });
+    const recup = makeSession(
+      "RECUP",
+      [{ kind: "work", durMin: 25, zone: "E", target: { paceSKm: [P40.E, P40.E], rpe: 2 } }],
+      {
+        id: "r",
+        start: "2026-11-26T18:00",
+      },
+    );
     const o = changeOptions(state([recup]), "r");
     expect(o.jog30.durMin).toBe(25);
     expect(o.equivalent).toBeUndefined();
@@ -258,6 +262,19 @@ describe("onTimetableChange and updateSettings (EV14, EV15)", () => {
     expect(r.warnings).toContainEqual(expect.objectContaining({ ruleId: "H7", sessionId: "m" }));
     expect(byId(r.state.sessions, "o")?.start).not.toBe("2026-11-28T20:30");
     expect(r.state.settings.bedtime).toBe("22:00");
+  });
+
+  it("never moves a run from another day onto today (P25, EV-23)", () => {
+    // Tuesday 8:00: Wednesday's late run breaks the new bedtime, Wednesday and Thursday are full of classes.
+    const run = easy("w", "2026-11-25T20:30");
+    const classes = [
+      block("c1", "2026-11-25T07:00", "2026-11-25T20:00", "class"),
+      block("c2", "2026-11-26T07:00", "2026-11-26T22:30", "class"),
+    ];
+    const r = updateSettings(state([run], [LEGS, ...classes]), { bedtime: "22:00" }, "2026-11-24T08:00");
+    const moved = byId(r.state.sessions, "w")?.start ?? "";
+    expect(moved).not.toBe("2026-11-25T20:30");
+    expect(moved.startsWith("2026-11-24")).toBe(false);
   });
 });
 

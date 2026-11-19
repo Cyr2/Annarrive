@@ -501,7 +501,7 @@ function structure(r: RunLog): Criterion {
       detail: `${w.built.length} séances pour ${n} prévues`,
       severity: "majeure",
     }));
-    for (const s of w.built.filter((x) => x.type === "E" || x.type === "COTES_C"))
+    for (const s of w.built.filter((x) => x.type === "E"))
       j.check(Math.round(s.durMin) >= 30 && Math.round(s.durMin) <= 75, () => ({
         week: w.week,
         rule: "P15 / catalogue E",

@@ -39,11 +39,19 @@ export function evaluateRace(a: Activity, current: number, ctx: RaceCtx): Propos
 }
 
 /**
- * F10 then RC11: once a provisional level meets its first measured effort, the measured VDOT is proposed,
- * never applied, under the same 0.5 threshold as RC1.
+ * F10 then RC11: a level F10 set on its own meets a better reading, never applied, under the same 0.5 threshold as
+ * RC1. A provisional level takes the measured one either way; a measured one only rises (`riseOnly`): lowering it
+ * takes a performance (RC2, RC4). One proposal per 14 days (RC8).
  */
-export function proposeMeasured(current: number, measured: InitialFitness, now: string): Proposal | null {
-  if (measured.status !== "measured" || Math.abs(measured.vdot - current) <= 0.5) return null;
+export function proposeMeasured(
+  current: number,
+  measured: InitialFitness,
+  now: string,
+  opts: { riseOnly?: boolean; history?: PastProposal[] } = {},
+): Proposal | null {
+  const gap = opts.riseOnly ? measured.vdot - current : Math.abs(measured.vdot - current);
+  if (measured.status !== "measured" || gap <= 0.5) return null;
+  if (proposedRecently(opts.history ?? [], "F10", now)) return null;
   return proposal("vdot", current, measured.vdot, "F10", [measured.source], now);
 }
 
@@ -190,7 +198,7 @@ function scheduleTest(st: State, now: string): { state: State; changes: Result["
   };
   const candidate = st.sessions
     .filter((s) => s.status === "planned" && !s.frozen && !s.manual && s.start > now)
-    .filter((s) => (isHard(s) && s.type !== "L" && s.type !== "RACE") || s.type === "COTES_C" || s.type === "FARTLEK")
+    .filter((s) => (isHard(s) && s.type !== "L" && s.type !== "RACE") || s.type === "FARTLEK" || withStrides(s))
     .sort((a, b) => a.start.localeCompare(b.start))
     .find(fits);
   if (!candidate) return { state: st, changes: [] };
@@ -206,6 +214,8 @@ function scheduleTest(st: State, now: string): { state: State; changes: Result["
  * RC9: new paces for future sessions that are neither frozen nor manual. A test proposal changes no pace: the test
  * takes the place of the next Q. A goal proposal changes nothing here.
  */
+const withStrides = (s: Session): boolean => s.steps.some((st) => st.kind === "strides");
+
 export function acceptProposal(st: State, p: Proposal, now: string): Result {
   if (p.kind === "test") {
     const t = scheduleTest(st, now);

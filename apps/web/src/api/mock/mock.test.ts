@@ -35,7 +35,7 @@ describe("mock api", () => {
 
   it("has a worst case with the longest realistic values", async () => {
     const api = make({ scenario: "worst" });
-    expect((await api.today()).session?.title).toBe("Fractionné en côte, retour en descente");
+    expect((await api.today()).session?.title).toBe("Fractionné long, récupération en trottinant");
     expect((await api.program()).goal.targetTag).toBe("ambitious");
   });
 

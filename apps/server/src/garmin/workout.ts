@@ -16,10 +16,15 @@ const garminKinds: Record<Step["kind"], WorkoutStep["kind"]> = {
   warmup: "warmup",
   work: "interval",
   strides: "interval",
-  hills: "interval",
   recover: "recovery",
   cooldown: "cooldown",
 };
+
+/**
+ * C4: the watch holds a narrow zone around the one target, like Garmin Coach: ±10 s/km on easy steps, ±5 s/km on
+ * the others (decision of 19/11/2026).
+ */
+const zoneHalfWidth = (step: Step): number => (step.zone === "E" ? 10 : 5);
 
 function toGarminStep(step: Step): WorkoutStep {
   // Distance wins when both are given: the watch then ends the step at the right place.
@@ -28,10 +33,11 @@ function toGarminStep(step: Step): WorkoutStep {
   const pace = step.target.paceSKm;
   if (!pace) return { kind: garminKinds[step.kind], ...end };
   const [a, b] = pace;
+  const w = zoneHalfWidth(step);
   return {
     kind: garminKinds[step.kind],
     ...end,
-    pace: { slowMps: 1000 / Math.max(a, b), fastMps: 1000 / Math.min(a, b) },
+    pace: { slowMps: 1000 / (Math.max(a, b) + w), fastMps: 1000 / (Math.min(a, b) - w) },
   };
 }
 

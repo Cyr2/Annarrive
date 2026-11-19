@@ -138,7 +138,7 @@ export function movedRunsText(count: number): string {
   return count === 1 ? "1 course déplacée" : `${count} courses déplacées`;
 }
 
-/** « Footing passé », « Sortie longue passée », « Côtes courtes passées ». */
+/** « Footing passé », « Sortie longue passée ». */
 const movedWord = (type: PlannedSession["type"]): string => agreeWith(type, "passé");
 
 /** One run: which, where to and why (« Sortie longue passée à mercredi 17:00 : moins de 24 h après… »). */
@@ -446,6 +446,14 @@ export class PlanService {
     const emptyWeek = !before.sessions.some((s) => dateOf(s.start) < this.#nextMonday());
     const raceSoon = (goal: Program["goal"]): boolean =>
       goal !== null && goal.date >= today && goal.date <= addDays(today, RACE_CONFLICT_DAYS);
+    // A new time changes her paces, not her weeks: the sessions ahead take the new paces (RC9), none moves or is
+    // added; the Sunday job builds the next weeks with the new level. Her first level builds the weeks it was missing.
+    if (input.goal === undefined && before.fitness) {
+      const state = { ...before, program, fitness: declaredChanged ? null : before.fitness };
+      const fitness = this.#estimate(state) ?? before.fitness;
+      const summary = "Allures recalculées avec ton chrono";
+      return this.#commit(summary, [write], before, this.#coach.repace({ ...state, fitness }, this.#now()));
+    }
     return this.#rebuild(
       input.goal === undefined ? "Allures recalculées avec ton chrono" : "Objectif modifié",
       [write],
@@ -481,7 +489,7 @@ export class PlanService {
     const fitness = state.fitness?.provisional === false ? state.fitness : (this.#estimate(state) ?? state.fitness);
     const current = thisWeek
       ? this.#coach.buildWeek({ ...state, fitness }, this.#windowStart(), now)
-      : { state: { ...state, fitness }, warnings: [] };
+      : this.#coach.repace({ ...state, fitness }, now);
     const next = this.#coach.buildWeek(current.state, this.#nextMonday(), now);
     const warnings = [...current.warnings, ...next.warnings].filter(
       (w, i, all) => all.findIndex((x) => x.message === w.message) === i,

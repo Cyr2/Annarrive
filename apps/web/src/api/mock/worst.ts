@@ -8,7 +8,7 @@ import type { CalendarEvent, Item, Program, Step } from "../schemas.ts";
 const TITLES: Record<string, string> = {
   Physique: "Méthodologie de la recherche en sciences humaines et sociales",
   Révision: "Révision partiel de thermodynamique",
-  Fractionné: "Fractionné en côte, retour en descente",
+  Fractionné: "Fractionné long, récupération en trottinant",
   "Haut du corps": "Renforcement haut du corps et gainage",
   "(M1M2E G3 NL) UE1 Français": "(M1M2E G3 NL) UE1 Français langue étrangère, expression écrite",
   "Footing facile": "Footing facile et tranquille",
@@ -41,7 +41,7 @@ function longest(items: Item[]): Item[] {
       ...item,
       title,
       mainSet: "10 × 400 m + 5 × 200 m",
-      pace: "4'35 à 4'50 /km",
+      pace: "4'40 /km",
       distanceKm: 12.5,
       durationMin: 105,
       lightened: "Allégée : nuit courte, fréquence cardiaque au repos plus haute que d'habitude et Body Battery bas",
@@ -49,12 +49,12 @@ function longest(items: Item[]): Item[] {
       steps: item.steps.flatMap((s): Step[] =>
         "repeat" in s
           ? [
-              { repeat: 10, steps: [{ label: "400 m", pace: "4'35 à 4'50 /km", tone: "hard" as const }] },
+              { repeat: 10, steps: [{ label: "400 m", pace: "4'40 /km", tone: "hard" as const }] },
               {
                 repeat: 5,
                 steps: [
-                  { label: "200 m", pace: "4'20 à 4'35 /km", tone: "hard" as const },
-                  { label: "Récupérer · 1 min 30", pace: "6'37 à 7'53 /km", tone: "muted" as const },
+                  { label: "200 m", pace: "4'25 /km", tone: "hard" as const },
+                  { label: "Récupérer · 1 min 30", pace: "6'50 /km", tone: "muted" as const },
                 ],
               },
             ]

@@ -96,14 +96,19 @@ export class GarminService {
       .filter((a) => a !== null)
       .sort((a, b) => a.start.localeCompare(b.start));
     this.#synced();
+    const fresh: Activity[] = [];
     for (const run of runs) {
       const stored = this.#stores.activity.get(run.id);
       const sessionId = stored?.sessionId ?? this.#matchingSession(run)?.id;
       const laps = stored?.laps ?? (await this.#laps(run.id));
       this.#stores.activity.put({ ...run, answeredFeel: stored?.answeredFeel, sessionId, laps });
       if (sessionId && !stored?.sessionId) this.#plan.markDone(sessionId);
-      if (!stored) this.#fitness.afterRun({ ...run, sessionId });
-      if (!stored && dateOf(run.start) === today) await this.#notifications.runSynced();
+      if (!stored) fresh.push({ ...run, sessionId });
+    }
+    // Only once every run is stored: a first level read mid-sync took the runs not stored yet for a break (F11).
+    for (const run of fresh) {
+      this.#fitness.afterRun(run);
+      if (dateOf(run.start) === today) await this.#notifications.runSynced();
     }
   }
 

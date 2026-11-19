@@ -40,7 +40,7 @@ export class FitnessService {
     const state = this.#plan.coachState();
     const past = this.#stores.proposal.list();
     const draft =
-      this.#coach.evaluateRun(state, { ...run, isTest: session?.type === "TEST" }, this.#now()) ??
+      this.#coach.evaluateRun(state, { ...run, isTest: session?.type === "TEST" }, past, this.#now()) ??
       (session ? this.#coach.evaluateKeySessions(state, this.#doneSessions(), past, this.#now()) : null) ??
       this.#coach.evaluateTrends(state, past, this.#now());
     const known = this.pending().some((p) => p.ruleId === draft?.ruleId);

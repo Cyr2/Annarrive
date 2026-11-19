@@ -147,7 +147,7 @@ export function volumeCurve(split: Split, v0: number, vPeak: number, cycle: Cycl
   return out;
 }
 
-export type TemplateSlot = RunType | "E+strides" | "E+COTES_C";
+export type TemplateSlot = RunType | "E+strides" | "E+sprints";
 
 function qualities(phase: Phase, distM: GoalDistance, weekIdx: number): [RunType, RunType] {
   const alternate: [RunType, RunType] = weekIdx % 2 === 0 ? ["I", "T"] : ["T", "I"];
@@ -156,7 +156,7 @@ function qualities(phase: Phase, distM: GoalDistance, weekIdx: number): [RunType
   return ["SPE", "T"];
 }
 
-/** P11 to P13. In base, Q become E + strides and E + short hills, and a fartlek closes the phase. */
+/** P11 to P13. In base, Q become E + strides and E + sprints on the flat, and a fartlek closes the phase. */
 export function weekTemplate(
   phase: Phase,
   runsPerWeek: 3 | 4 | 5,
@@ -165,9 +165,9 @@ export function weekTemplate(
   lastOfPhase = false,
 ): TemplateSlot[] {
   if (phase === "base") {
-    const first: TemplateSlot = lastOfPhase ? "FARTLEK" : runsPerWeek === 3 ? "E+COTES_C" : "E+strides";
+    const first: TemplateSlot = lastOfPhase ? "FARTLEK" : runsPerWeek === 3 ? "E+sprints" : "E+strides";
     if (runsPerWeek === 3) return [first, "E+strides", "L"];
-    return runsPerWeek === 4 ? [first, "E", "E+COTES_C", "L"] : [first, "E", "E+COTES_C", "RECUP", "L"];
+    return runsPerWeek === 4 ? [first, "E", "E+sprints", "L"] : [first, "E", "E+sprints", "RECUP", "L"];
   }
   const [q1, q2] = qualities(phase, distM, weekIdx);
   if (runsPerWeek === 3) return [q1, "E+strides", "L"];
@@ -340,13 +340,13 @@ export function buildWeek(week: PlanWeek, ctx: WeekCtx): Session[] {
     // A1: for 5 and 10 km, Q1 is placed before L.
     if (slot === "L")
       return { ...buildSession("L", { ...base, durMin: lMin, ...withRace(ctx) }), id, priority: shortRace ? 2 : 1 };
-    if (slot === "E" || slot === "RECUP" || slot === "E+strides" || slot === "E+COTES_C") return null;
+    if (slot === "E" || slot === "RECUP" || slot === "E+strides" || slot === "E+sprints") return null;
     qCount++;
     const priority: Session["priority"] = qCount === 1 ? (shortRace ? 1 : 2) : 3;
     const q = buildSession(slot, { ...base, ...withRace(ctx) });
     return { ...(qFactor(slot) < 1 ? scaleSession(q, qFactor(slot)) : q), id, priority };
   });
-  const easySlots = week.template.filter((s) => s === "E" || s === "RECUP" || s === "E+strides" || s === "E+COTES_C");
+  const easySlots = week.template.filter((s) => s === "E" || s === "RECUP" || s === "E+strides" || s === "E+sprints");
   const left = Math.max(0, week.volumeMin - fixed.reduce((sum, s) => sum + (s?.durMin ?? 0), 0));
   const share = easySlots.length ? left / easySlots.length : 0;
   const recup = Math.min(40, Math.max(20, Math.min(share, 0.6 * Math.max(30, share))));
@@ -384,6 +384,6 @@ function easyFor(
     durMin: slot === "RECUP" ? c.recup : slot === "E+strides" ? Math.min(c.eMin, MAX_E - 2) : c.eMin,
   };
   if (slot === "RECUP") return { ...buildSession("RECUP", ctx), id };
-  if (slot === "E+COTES_C") return { ...buildSession("COTES_C", ctx), id };
+  if (slot === "E+sprints") return { ...buildSession("E", { ...ctx, sprints: true }), id };
   return { ...buildSession("E", { ...ctx, strides: slot === "E+strides" }), id };
 }

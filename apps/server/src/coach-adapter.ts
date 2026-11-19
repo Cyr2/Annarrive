@@ -16,6 +16,7 @@ import {
   coachFeasibility,
   type DailyDecisionResult,
   fitnessHistory,
+  type ProposalDraft,
 } from "./coach-port.ts";
 import type { Activity } from "./storage/stores.ts";
 import { addDays, dateOf, mondayOf } from "./time.ts";
@@ -191,6 +192,14 @@ function initialFitness(st: CoachState, vo2max: number | undefined, now: string)
   }
 }
 
+/** The run behind an F10 proposal, so the card can name it: « ton 11 km du 11 novembre ». */
+function withProof(p: coach.Proposal, activities: Activity[]): ProposalDraft {
+  const id = /^effort:([^:]+:[^:]+)/.exec(p.evidence[0] ?? "")?.[1];
+  const run = activities.find((a) => a.id === id);
+  const proof = run && { date: dateOf(run.start), distanceM: run.distM, thresholdSKm: coach.paces(p.to).T };
+  return proof ? { ...p, proof } : p;
+}
+
 /**
  * RC3's input: each lap's speed over the work step's target speed. Warm-up and recovery laps fall under 90 % and
  * are left out by the coach; her own feel stands in for Garmin's when the watch did not ask.
@@ -262,9 +271,9 @@ export const coachAdapter: CoachPort = {
   buildWeek(st, weekStart, now) {
     if (!st.fitness) return { state: st, changes: [], warnings: [{ ruleId: "F10", message: NO_FITNESS }] };
     const week = inWeek(weekStart);
-    // Only automatic sessions still ahead are rebuilt: what Anna touched, ran or missed stays.
+    // Only automatic sessions after today are rebuilt: what Anna touched, ran or missed stays, and today too (P25).
     const kept = st.sessions.filter(
-      (s) => week(s) && (s.manual || s.frozen || s.status !== "planned" || s.start < now),
+      (s) => week(s) && (s.manual || s.frozen || s.status !== "planned" || dateOf(s.start) <= dateOf(now)),
     );
     const plan = coach.planWeek({
       monday: weekStart,
@@ -403,18 +412,24 @@ export const coachAdapter: CoachPort = {
     return f && { vdot: f.vdot, source: f.source, provisional: f.status === "provisional" };
   },
 
-  evaluateRun(st, run, now) {
-    if (!st.fitness) return null;
-    if (st.fitness.provisional) {
+  evaluateRun(st, run, past, now) {
+    const fitness = st.fitness;
+    if (!fitness) return null;
+    const history = answered(past);
+    const reread = () => {
       const measured = initialFitness(st, undefined, now);
-      return measured && coach.proposeMeasured(st.fitness.vdot, measured, now);
-    }
+      const riseOnly = !fitness.provisional;
+      const p = measured && coach.proposeMeasured(fitness.vdot, measured, now, { riseOnly, history });
+      return p && withProof(p, st.activities);
+    };
+    if (fitness.provisional) return reread();
     const ctx = {
       hrMax: hrMaxOf(st.activities) ?? Number.POSITIVE_INFINITY,
       now,
       illnessLast14d: st.health.kind === "sick",
     };
-    return coach.evaluateRace(run, st.fitness.vdot, ctx);
+    // A level F10 measured on its own (not one she accepted) rises with a better reading (F10, RC11).
+    return coach.evaluateRace(run, fitness.vdot, ctx) ?? (fitness.source.startsWith("effort:") ? reread() : null);
   },
 
   evaluateKeySessions(st, done, past, now) {
@@ -446,6 +461,13 @@ export const coachAdapter: CoachPort = {
 
   evaluateTrends(st, past, now) {
     return st.fitness ? coach.evaluateTrends(signalsOf(st), now, answered(past)) : null;
+  },
+
+  repace(st, now) {
+    if (!st.fitness) return { state: st, changes: [], warnings: [] };
+    const v = st.fitness.vdot;
+    const same: coach.Proposal = { kind: "vdot", from: v, to: v, ruleId: "F10", evidence: [], expiresOn: dateOf(now) };
+    return fromResult(st, coach.acceptProposal(toState(st, mondayOf(dateOf(now)), true), same, now), now);
   },
 
   acceptProposal(st, proposal, now) {

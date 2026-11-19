@@ -44,15 +44,16 @@ export function predictTime(
 const paceOf = (vMpm: number): number => 60_000 / vMpm;
 
 /**
- * F7, s/km. E is a range [fast, slow] (C4). F8: T never faster than critical speed when known.
- * T and I at 88 % and 97.5 % of VDOT: the fractions that reproduce Daniels' table 5.2 within 3 s/km from VDOT 30 to 85.
+ * F7, s/km, one target pace per zone (C4). F8: T never faster than critical speed when known.
+ * E, T and I at 69.65 %, 88 % and 97.5 % of VDOT: the fractions that reproduce Daniels' table 5.2 (3rd ed., one E
+ * value) within 1 s/km for E and 3 s/km for T and I, from VDOT 30 to 85.
  */
 export function paces(v: number, criticalSpeedMpm?: number): Paces {
   const I = paceOf(speedForVo2(0.975 * v));
   const tSpeed = speedForVo2(0.88 * v);
   const capped = criticalSpeedMpm !== undefined && tSpeed > criticalSpeedMpm ? criticalSpeedMpm : tSpeed;
   return {
-    E: [paceOf(speedForVo2(0.74 * v)), paceOf(speedForVo2(0.59 * v))],
+    E: paceOf(speedForVo2(0.6965 * v)),
     M: (predictTime(v, MARATHON_M) * 60) / (MARATHON_M / 1000),
     T: paceOf(capped),
     I,
@@ -138,6 +139,8 @@ const DECLARED_DAYS = 182;
 /** Daniels' T band: 88 to 92 % of HRmax. */
 const T_HR: [number, number] = [0.88, 0.92];
 const T_FRACTION = 0.88;
+/** Daniels: T is the pace held for about an hour in a race; held longer at T heart rate, it is a race (a half). */
+const T_MAX_MIN = 60;
 /** Sanity bounds: GPS glitches and walks left out (2:30 to 12:00 /km), VDOT outside any runner's range. */
 const SPEED_MPM: [number, number] = [1000 / 12, 400];
 const VDOT_RANGE: [number, number] = [20, 85];
@@ -147,7 +150,7 @@ const STEADY = 1.03;
 /** A maximal reading from laps needs a sustained effort: a 3 min rep is not an all-out 3 min (Daniels). */
 const RACE_LAPS_MIN = 10;
 /** Planned interval work: its laps are reps and recoveries, never one effort (F18). */
-const INTERVALS = new Set<RunType>(["I", "R", "CRUISE", "COTES_C", "COTES_L", "FARTLEK"]);
+const INTERVALS = new Set<RunType>(["I", "R", "CRUISE", "FARTLEK"]);
 
 type Stretch = { distM: number; durMin: number; hr?: number; laps?: true };
 
@@ -190,8 +193,8 @@ function readStretch(s: Stretch, hrMax: number | undefined): Read | null {
   const v = s.distM / s.durMin;
   if (s.durMin < 3 || v < SPEED_MPM[0] || v > SPEED_MPM[1]) return null;
   const ratio = hrMax !== undefined && s.hr !== undefined ? s.hr / hrMax : 0;
-  if (ratio >= T_HR[1] && (!s.laps || s.durMin >= RACE_LAPS_MIN))
-    return { vdot: vdot(s.distM, s.durMin), kind: "race" };
+  const raced = ratio >= T_HR[1] || (ratio >= T_HR[0] && s.durMin > T_MAX_MIN);
+  if (raced && (!s.laps || s.durMin >= RACE_LAPS_MIN)) return { vdot: vdot(s.distM, s.durMin), kind: "race" };
   if (ratio >= T_HR[0] && s.durMin >= 15)
     return { vdot: Math.max(vdot(s.distM, s.durMin), vo2(v) / T_FRACTION), kind: "threshold" };
   return s.durMin >= 10 ? { vdot: vdot(s.distM, s.durMin), kind: "training" } : null;

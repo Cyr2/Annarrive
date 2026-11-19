@@ -5,28 +5,33 @@ import { toWorkoutRequest, WATCH_GIVE_UP_MS, watchLink, watchStatus, workoutHash
 import { session } from "./helpers.ts";
 
 describe("toWorkoutRequest", () => {
-  it("sends a pace target on every step of every session the coach builds, hills included (C5)", () => {
+  it("sends a pace target on every step of every session the coach builds, sprints included (C5)", () => {
     const paces = coach.paces(38.5);
     const ctx = { weeklyMin: 200, paces, phase: "dev" as const, progressionStep: 0, distM: 21097.5, strides: true };
-    for (const type of [
-      "E",
-      "L",
-      "T",
-      "CRUISE",
-      "I",
-      "R",
-      "SPE",
-      "COTES_C",
-      "COTES_L",
-      "FARTLEK",
-      "TEST",
-      "RACE",
-    ] as const) {
+    for (const type of ["E", "L", "T", "CRUISE", "I", "R", "SPE", "FARTLEK", "TEST", "RACE"] as const) {
       const built = coach.buildSession(type, ctx);
+      const sprints = coach.buildSession("E", { ...ctx, strides: false, sprints: true });
+      if (type === "E") built.steps.push(...sprints.steps);
       const request = toWorkoutRequest(session("x", "2026-11-18T18:00", { type, steps: built.steps }));
       const leaves = request.steps.flatMap((s) => (s.kind === "repeat" ? s.steps : [s]));
       for (const step of leaves) expect(step, type).toHaveProperty("pace");
     }
+  });
+
+  it("gives the watch a narrow zone around the one target: ±10 s/km easy, ±5 s/km faster (C4)", () => {
+    const request = toWorkoutRequest(
+      session("e", "2026-11-18T18:00", {
+        type: "E",
+        steps: [
+          { kind: "work", durMin: 40, zone: "E", target: { paceSKm: [385, 385] } },
+          { kind: "work", durMin: 10, zone: "T", target: { paceSKm: [318, 318] } },
+        ],
+      }),
+    );
+    expect(request.steps).toEqual([
+      { kind: "interval", durationS: 2400, pace: { slowMps: 1000 / 395, fastMps: 1000 / 375 } },
+      { kind: "interval", durationS: 600, pace: { slowMps: 1000 / 323, fastMps: 1000 / 313 } },
+    ]);
   });
 
   it("turns an interval session into warmup, a repeat block with its recovery, and cooldown", () => {
@@ -51,7 +56,7 @@ describe("toWorkoutRequest", () => {
           kind: "repeat",
           iterations: 5,
           steps: [
-            { kind: "interval", durationS: 180, pace: { slowMps: 1000 / 280, fastMps: 1000 / 270 } },
+            { kind: "interval", durationS: 180, pace: { slowMps: 1000 / 285, fastMps: 1000 / 265 } },
             { kind: "recovery", durationS: 180 },
           ],
         },
@@ -72,7 +77,7 @@ describe("toWorkoutRequest", () => {
       }),
     );
     expect(request.steps).toEqual([
-      { kind: "interval", distanceM: 400, pace: { slowMps: 1000 / 230, fastMps: 1000 / 220 } },
+      { kind: "interval", distanceM: 400, pace: { slowMps: 1000 / 235, fastMps: 1000 / 215 } },
       { kind: "repeat", iterations: 6, steps: [{ kind: "interval", durationS: 15 }] },
     ]);
   });

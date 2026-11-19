@@ -13,8 +13,6 @@ export const RPE: Record<RunType, number> = {
   I: 8,
   R: 8,
   SPE: 6,
-  COTES_C: 3,
-  COTES_L: 8,
   FARTLEK: 5,
   TEST: 9,
   RACE: 9,
@@ -27,12 +25,10 @@ const PRIORITY: Record<RunType, Session["priority"]> = {
   I: 2,
   R: 2,
   SPE: 2,
-  COTES_L: 2,
   TEST: 2,
   RACE: 1,
   FARTLEK: 3,
   E: 4,
-  COTES_C: 4,
   RECUP: 5,
 };
 
@@ -42,9 +38,11 @@ export type BuildCtx = {
   phase: Phase;
   progressionStep: number;
   distM: number;
-  /** Length of continuous runs (E, RECUP, L, COTES_C, FARTLEK). */
+  /** Length of continuous runs (E, RECUP, L, FARTLEK). */
   durMin?: number;
   strides?: boolean;
+  /** E + short sprints on the flat with full recoveries (P12), in place of hill sprints. */
+  sprints?: boolean;
   /** Race-pace target for SPE (P21); defaults to M. */
   racePaceSKm?: number;
 };
@@ -52,11 +50,25 @@ export type BuildCtx = {
 export const stepTotal = (s: Step): number => s.durMin * (s.reps ?? 1);
 const total = (steps: Step[]): number => steps.reduce((sum, s) => sum + stepTotal(s), 0);
 
+/** C4: a recovery run sits a little under E (Daniels: the slow end of E). */
+const RECOVERY_SLOWER_S = 15;
+
+/** One target pace, as a [fast, slow] pair the watch widens into its zone (C4). */
 export function paceFor(zone: PaceZone, p: Paces, race?: number): [number, number] {
-  if (zone === "E") return p.E;
   const v = zone === "race" ? (race ?? p.M) : p[zone];
   return [v, v];
 }
+
+const recovery = (st: Step): Step =>
+  st.zone === "E" && st.target.paceSKm
+    ? {
+        ...st,
+        target: {
+          ...st.target,
+          paceSKm: [st.target.paceSKm[0] + RECOVERY_SLOWER_S, st.target.paceSKm[1] + RECOVERY_SLOWER_S],
+        },
+      }
+    : st;
 
 const step = (
   kind: Step["kind"],
@@ -108,13 +120,15 @@ function intervals(
   return reps > 1 && recMin > 0 ? [work, step("recover", recMin, "E", p, 2, { reps: reps - 1 })] : [work];
 }
 
-const weeklyKm = (c: BuildCtx): number => (c.weeklyMin * 60) / ((c.paces.E[0] + c.paces.E[1]) / 2);
+const weeklyKm = (c: BuildCtx): number => (c.weeklyMin * 60) / c.paces.E;
 const minutesAt = (km: number, paceSKm: number): number => (km * paceSKm) / 60;
 /** C1: number of fractions = floor(cap / fraction), at least 2. */
 const repsFor = (capMin: number, fracMin: number): number => Math.max(2, Math.floor(capMin / fracMin));
 
 function easyRun(type: "E" | "RECUP" | "L", durMin: number, c: BuildCtx): Step[] {
-  const steps = [step("work", Math.floor(durMin), "E", c.paces, RPE[type])];
+  if (c.sprints) return sprints(durMin, c);
+  const work = step("work", Math.floor(durMin), "E", c.paces, RPE[type]);
+  const steps = [type === "RECUP" ? recovery(work) : work];
   if (c.strides) steps.push(step("strides", 1 / 3, "R", c.paces, 3, { reps: 6 }));
   return steps;
 }
@@ -180,30 +194,24 @@ function specific(c: BuildCtx): Step[] {
   return block(km, reps);
 }
 
-/** Hill sprint (Hudson 2008): 10 s uphill, walked back down for full recovery. */
-const HILL_MIN = 10 / 60;
-const HILL_BACK_MIN = 1.5;
-const HILL_COOLDOWN_MIN = 10;
-
 /**
- * COTES_C inside an easy run: easy warm-up, the hill sprints with their jog back down, easy cool-down. Every
- * step carries a pace for the watch (C5): R for the 10 s sprint, E for the way down.
+ * Sprint of 10 s with a full recovery (Hudson 2008), on the flat: the neuromuscular stimulus of hill sprints without
+ * a hill (Paavolainen 1999). R pace on the watch (C5), the recovery jogged at E.
  */
-function hillsShort(c: BuildCtx): Step[] {
+const SPRINT_MIN = 10 / 60;
+const SPRINT_BACK_MIN = 1.5;
+const SPRINT_COOLDOWN_MIN = 10;
+
+function sprints(durMin: number, c: BuildCtx): Step[] {
   const reps = Math.min(6 + 2 * c.progressionStep, 10);
-  const block = reps * HILL_MIN + (reps - 1) * HILL_BACK_MIN;
-  const warmup = Math.max(10, Math.floor((c.durMin ?? 45) - block - HILL_COOLDOWN_MIN));
+  const block = reps * SPRINT_MIN + (reps - 1) * SPRINT_BACK_MIN;
+  const warmup = Math.max(10, Math.floor(durMin - block - SPRINT_COOLDOWN_MIN));
   return [
     step("warmup", warmup, "E", c.paces, RPE.E),
-    step("hills", HILL_MIN, "R", c.paces, 8, { reps }),
-    step("recover", HILL_BACK_MIN, "E", c.paces, 1, { reps: reps - 1 }),
-    step("cooldown", HILL_COOLDOWN_MIN, "E", c.paces, RPE.E),
+    step("strides", SPRINT_MIN, "R", c.paces, 8, { reps }),
+    step("recover", SPRINT_BACK_MIN, "E", c.paces, 1, { reps: reps - 1 }),
+    step("cooldown", SPRINT_COOLDOWN_MIN, "E", c.paces, RPE.E),
   ];
-}
-
-function hillsLong(c: BuildCtx): Step[] {
-  const capMin = minutesAt(Math.min(0.08 * weeklyKm(c), 10), c.paces.I);
-  return intervals(Math.min(6 + c.progressionStep, 10, repsFor(capMin, 1.5)), 1.5, "I", c.paces, RPE.COTES_L, 1.5);
 }
 
 function fartlek(c: BuildCtx): Step[] {
@@ -254,14 +262,12 @@ const BODIES: Record<RunType, (c: BuildCtx) => Step[]> = {
   I: interval,
   R: repetition,
   SPE: specific,
-  COTES_C: hillsShort,
-  COTES_L: hillsLong,
   FARTLEK: fartlek,
   TEST: test,
   RACE: raceRun,
 };
 
-const WRAPPED = new Set<RunType>(["T", "CRUISE", "I", "R", "SPE", "COTES_L"]);
+const WRAPPED = new Set<RunType>(["T", "CRUISE", "I", "R", "SPE"]);
 
 /** Catalogue E: 75 min at most (P15). */
 export const MAX_E = 75;
@@ -293,7 +299,7 @@ export function isHard(s: Session): boolean {
         .filter((st) => st.zone !== "E")
         .reduce((m, st) => m + stepTotal(st), 0) > 6
     );
-  return ["L", "T", "CRUISE", "I", "SPE", "COTES_L", "TEST", "RACE"].includes(s.type);
+  return ["L", "T", "CRUISE", "I", "SPE", "TEST", "RACE"].includes(s.type);
 }
 
 /** C3, bounded to 1..10. */
@@ -364,17 +370,17 @@ export function equivalents(s: Session, p: Paces): Session[] {
   return fits(down, s) ? [down] : [];
 }
 
-/** One notch down at equal work time: I, R, COTES_L → T ; T, CRUISE, SPE, TEST → FARTLEK. */
+/** One notch down at equal work time: I, R → T ; T, CRUISE, SPE, TEST → FARTLEK. */
 export function downgrade(s: Session, p: Paces): Session {
   const t = Math.max(1, Math.floor(workMin(s)));
-  if (["I", "R", "COTES_L"].includes(s.type)) return withBody(s, "T", [step("work", t, "T", p, RPE.T)]);
+  if (["I", "R"].includes(s.type)) return withBody(s, "T", [step("work", t, "T", p, RPE.T)]);
   return withBody(s, "FARTLEK", intervals(Math.max(2, Math.floor(t / 2)), 1, "T", p, 6, 1));
 }
 
 /** C5: a race day has no easy step; its easy range comes from the VDOT its race step implies (F3, F7). */
 function raceEasyPace(s: Session): [number, number] | undefined {
   const race = s.steps.find((st) => st.zone === "race" && st.distM);
-  return race?.distM ? paces(vdot(race.distM, race.durMin)).E : undefined;
+  return race?.distM ? paceFor("E", paces(vdot(race.distM, race.durMin))) : undefined;
 }
 
 /** Easy continuous run replacing `s` at the same moment, never above its RPE (EV3, EV5, EV10, EV11, A4). */
@@ -407,9 +413,7 @@ export function scaleSession(s: Session, f: number, roundTo = 1): Session {
 export function withReps(s: Session, reps: number): Session {
   const n = Math.max(2, reps);
   const steps = s.steps.map((st) =>
-    st.reps === undefined || st.kind === "strides" || st.kind === "hills"
-      ? st
-      : { ...st, reps: st.kind === "work" ? n : n - 1 },
+    st.reps === undefined || st.kind === "strides" ? st : { ...st, reps: st.kind === "work" ? n : n - 1 },
   );
   return { ...s, steps, durMin: total(steps) };
 }
@@ -420,7 +424,8 @@ export function repace(s: Session, p: Paces): Session {
     if (!st.zone || st.zone === "race") return st;
     const pace = paceFor(st.zone, p);
     const durMin = st.distM ? minutesAt(st.distM / 1000, pace[0]) : st.durMin;
-    return { ...st, durMin, target: { ...st.target, paceSKm: pace } };
+    const paced = { ...st, durMin, target: { ...st.target, paceSKm: pace } };
+    return s.type === "RECUP" ? recovery(paced) : paced;
   });
   return { ...s, steps, durMin: total(steps) };
 }

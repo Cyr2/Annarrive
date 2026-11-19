@@ -143,8 +143,7 @@ const inWeek = (monday: string) => (s: { start: string }) =>
 const RUN_DAYS: Record<number, number[]> = { 2: [2, 6], 3: [1, 3, 6], 4: [1, 3, 4, 6], 5: [0, 1, 3, 5, 6] };
 
 function preHistory(p: Persona): Activity[] {
-  const easy = paces(p.trueVdot).E;
-  const eMid = (easy[0] + easy[1]) / 2;
+  const eMid = paces(p.trueVdot).E;
   const days = RUN_DAYS[p.history.runsPerWeek] ?? [1, 3, 6];
   return [...Array(8).keys()].flatMap((k) => {
     const monday = addDays(START_MONDAY, -7 * (8 - k));
@@ -231,15 +230,15 @@ const mid = (pace: [number, number] | undefined, fallback: number): number =>
 function trueSpeed(p: Persona, zone: PaceZone, eff: number): number {
   if (zone === "race") return p.goal.distanceM / predictTime(eff, p.goal.distanceM);
   const tp = paces(eff);
-  return speed(zone === "E" ? (tp.E[0] + tp.E[1]) / 2 : tp[zone]);
+  return speed(tp[zone]);
 }
 
 /** One lap per repetition, as a structured Garmin workout records it. Slower than the target when she cannot hold it. */
 function stepLaps(sim: Sim, st: Step, day: string, allOut: boolean): { laps: Lap[]; ratio: number } {
   const p = sim.p;
   const appE = paces(sim.vdot).E;
-  const zone: PaceZone = st.kind === "strides" || st.kind === "hills" ? "R" : (st.zone ?? "E");
-  const target = speed(mid(st.target.paceSKm, (appE[0] + appE[1]) / 2));
+  const zone: PaceZone = st.kind === "strides" ? "R" : (st.zone ?? "E");
+  const target = speed(mid(st.target.paceSKm, appE));
   // A test is run all out for its duration, whatever its target pace (F10, catalogue TEST): F2 at her level.
   const eff = effectiveVdot(p, day);
   const can = allOut ? speedForVo2(eff * fractionF(st.durMin)) : trueSpeed(p, zone, eff);
@@ -309,10 +308,14 @@ function measuredNow(sim: Sim, now: string): InitialFitness | null {
 function proposalAfterRun(sim: Sim, run: Activity, now: string): Proposal | null {
   if (sim.provisional) {
     const m = measuredNow(sim, now);
-    return m && proposeMeasured(sim.vdot, m, now);
+    return m && proposeMeasured(sim.vdot, m, now, { history: sim.answered });
   }
   const race = evaluateRace(run, sim.vdot, { hrMax: sim.p.hrMax, now, illnessLast14d: sim.health.kind === "sick" });
   if (race) return race;
+  // A level F10 measured on its own, never confirmed by her, rises with a better reading (F10, RC11).
+  const m = sim.vdotChangedOn === undefined ? measuredNow(sim, now) : null;
+  const reread = m && proposeMeasured(sim.vdot, m, now, { riseOnly: true, history: sim.answered });
+  if (reread) return reread;
   const done = sim.sessions.flatMap((s) => {
     const a = sim.activities.find((x) => x.id === `run-${s.id}`);
     return a && daysBetween(a.start, now) <= KEY_DAYS ? [keySession(s, a)] : [];

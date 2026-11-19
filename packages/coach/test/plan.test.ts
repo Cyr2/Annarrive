@@ -101,12 +101,12 @@ describe("longRunMin (P14)", () => {
 describe("weekTemplate (P11 to P13)", () => {
   it("gives a base week of 4 runs without Q (P-14)", () => {
     const t = weekTemplate("base", 4, 21097.5, 0);
-    expect(t).toEqual(["E+strides", "E", "E+COTES_C", "L"]);
+    expect(t).toEqual(["E+strides", "E", "E+sprints", "L"]);
   });
 
   it("closes the base with a fartlek and alternates I and T in development", () => {
     expect(weekTemplate("base", 3, 10000, 4, true)).toEqual(["FARTLEK", "E+strides", "L"]);
-    expect(weekTemplate("base", 5, 10000, 0)).toEqual(["E+strides", "E", "E+COTES_C", "RECUP", "L"]);
+    expect(weekTemplate("base", 5, 10000, 0)).toEqual(["E+strides", "E", "E+sprints", "RECUP", "L"]);
     expect(weekTemplate("dev", 4, 21097.5, 0)).toEqual(["I", "E", "T", "L"]);
     expect(weekTemplate("dev", 5, 21097.5, 1)).toEqual(["T", "E", "I", "RECUP", "L"]);
   });
@@ -209,7 +209,7 @@ describe("buildWeek", () => {
     const w = plan.weeks[0];
     if (!w) throw new Error("no week");
     const s = buildWeek(w, ctx);
-    expect(s.map((x) => x.type)).toEqual(["E", "E", "COTES_C", "L"]);
+    expect(s.map((x) => x.type)).toEqual(["E", "E", "E", "L"]);
     expect(s.filter((x) => isHard(x) && x.type !== "L")).toEqual([]);
     expect(s.find((x) => x.type === "L")?.priority).toBe(1);
     expect(s.map((x) => x.id)).toEqual(["2026-11-23-0", "2026-11-23-1", "2026-11-23-2", "2026-11-23-3"]);

@@ -99,7 +99,7 @@ const onPain: Handler = ({ pending, text, session, today, api, memory, say }) =>
     );
     const preview = {
       title: high ? "Footing tranquille · 20 min" : "Footing tranquille · 30 min",
-      detail: `${slotLabel(session, today)} · 6'30 à 7'00 /km`,
+      detail: `${slotLabel(session, today)} · 6'45 /km`,
     };
     yield say("", {
       widget: {

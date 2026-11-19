@@ -210,7 +210,7 @@ describe("acceptProposal (RC9)", () => {
     );
     expect(r.state.sessions[0]).toEqual(st.sessions[0]);
     expect(r.state.sessions[1]).toEqual(st.sessions[1]);
-    expect(r.state.sessions[2]?.steps[0]?.target.paceSKm).toEqual(paces(41).E);
+    expect(r.state.sessions[2]?.steps[0]?.target.paceSKm).toEqual([paces(41).E, paces(41).E]);
     expect(r.state).toMatchObject({ vdot: 41, vdotChangedOn: "2026-11-23" });
   });
 
@@ -223,6 +223,16 @@ describe("acceptProposal (RC9)", () => {
     expect(r.state.sessions[0]).toMatchObject({ id: "q", type: "TEST", start: "2026-11-26T18:00" });
     expect(r.state.sessions[1]).toEqual(withQ.sessions[1]);
     expect(r.state.vdot).toBe(40);
+    // A base week: the test takes the easy run with strides, never the plain one (EV-20).
+    const strides = {
+      ...easy("s", "2026-11-27T18:00"),
+      steps: [
+        ...easy("s", "").steps,
+        { kind: "strides" as const, durMin: 1 / 3, reps: 6, zone: "R" as const, target: { rpe: 3 } },
+      ],
+    };
+    const base = acceptProposal(state([easy("e", "2026-11-25T18:00"), strides]), test, NOW);
+    expect(base.state.sessions.map((s) => s.type)).toEqual(["E", "TEST"]);
   });
 });
 
@@ -235,5 +245,25 @@ describe("proposeMeasured (F10, RC11)", () => {
   it("stays silent for another provisional guess or a level within half a point", () => {
     expect(proposeMeasured(40, { vdot: 45, status: "provisional", source: "declared" }, NOW)).toBeNull();
     expect(proposeMeasured(40, { vdot: 40.4, status: "measured", source: "effort:a1" }, NOW)).toBeNull();
+  });
+
+  it("raises a level F10 measured alone (34.2 detrained) to a better reading, never lowers it (RC-21)", () => {
+    const tempo = { vdot: 38.06, status: "measured" as const, source: "effort:garmin:25045694091" };
+    expect(proposeMeasured(34.24, tempo, NOW, { riseOnly: true })).toMatchObject({
+      from: 34.24,
+      to: 38.06,
+      ruleId: "F10",
+      evidence: ["effort:garmin:25045694091"],
+    });
+    expect(proposeMeasured(40, tempo, NOW, { riseOnly: true })).toBeNull();
+  });
+
+  it("does not propose F10 again within 14 days of an answer (RC-22, RC8)", () => {
+    const measured = { vdot: 38, status: "measured" as const, source: "effort:a1" };
+    const p = proposeMeasured(34, measured, NOW);
+    if (!p) throw new Error("no proposal");
+    const refused = [{ proposal: p, decision: "refused" as const, on: "2026-11-10" }];
+    expect(proposeMeasured(34, measured, NOW, { riseOnly: true, history: refused })).toBeNull();
+    expect(proposeMeasured(34, measured, "2026-11-25T08:00", { riseOnly: true, history: refused })).not.toBeNull();
   });
 });

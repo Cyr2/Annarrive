@@ -59,6 +59,17 @@ const dedupeClasses = `
   CREATE UNIQUE INDEX calendar_event_class ON calendar_event (json_extract(data, '$.title'), start_at, end_at)
     WHERE ${importedClass};`;
 
+/**
+ * Hill sessions left the catalogue (she may have no hill): a short-hills run becomes the same easy run with its
+ * sprints on the flat, long hills become intervals (algo.md P12). The change log too, so Annuler writes valid runs.
+ */
+const noHills = ["planned_session", "change_log"]
+  .map(
+    (table) => `UPDATE ${table} SET data = replace(replace(replace(data,
+      '"type":"COTES_C"', '"type":"E"'), '"type":"COTES_L"', '"type":"I"'), '"kind":"hills"', '"kind":"strides"');`,
+  )
+  .join("\n");
+
 /** Append only: a migration that shipped is never edited. */
 const migrations: string[] = [
   initialTables.map(documentTable).join("\n"),
@@ -69,6 +80,7 @@ const migrations: string[] = [
   documentTable("session_feel"),
   documentTable("incident"),
   dedupeClasses,
+  noHills,
 ];
 
 /** `:memory:` for tests, otherwise `annarrive.db` inside `dataDir`. */
