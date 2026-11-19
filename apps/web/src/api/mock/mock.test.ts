@@ -26,6 +26,23 @@ describe("mock api", () => {
     expect(today.activity?.askFeel).toBe(true);
   });
 
+  it("asks « Tu l'as faite ? » for the run before today, until she answers", async () => {
+    const api = make({ scenario: "didyourun" });
+    const { toConfirm } = await api.today();
+    expect(toConfirm?.date).toBe(MONDAY);
+    if (toConfirm) await api.confirmDone(toConfirm.id);
+    expect((await api.today()).toConfirm).toBeUndefined();
+  });
+
+  it("proposes a level, until she answers", async () => {
+    const api = make({ scenario: "proposal" });
+    const { proposals } = await api.today();
+    expect(proposals).toHaveLength(1);
+    await api.declineProposal(proposals?.[0]?.id ?? "");
+    expect((await api.today()).proposals).toEqual([]);
+    expect((await make().today()).proposals).toEqual([]);
+  });
+
   it("shows a lightened session with its reason and a failed watch sync", async () => {
     const { session } = await make({ scenario: "light" }).today();
     expect(session?.mainSet).toBe("4 × 800 m");

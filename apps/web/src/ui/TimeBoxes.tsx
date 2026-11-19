@@ -17,7 +17,8 @@ function TimeBox({ label, unit, value, max, onChange }: BoxProps) {
         // As wide as its digits (tabular, one `ch` each) plus room for the last one's overhang: the figure and its
         // unit sit centered together, and no digit is ever clipped.
         style={{ width: `calc(${Math.max(1, String(value || 0).length)}ch + 0.15em)` }}
-        className="t-figure min-w-0 max-w-full border-0 bg-transparent p-0 text-center text-ink tabular-nums outline-none"
+        // Padding and an equal negative margin: the box (and so the hit area) reaches the label, the layout does not move.
+        className="t-figure -mx-4 -my-3 box-content min-w-0 max-w-full border-0 bg-transparent px-4 py-3 text-center text-ink tabular-nums outline-none"
       />
       <span aria-hidden="true" className="t-strong flex-none text-ink-2">
         {unit}

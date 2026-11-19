@@ -113,7 +113,7 @@ Garde **le moment**, change **le contenu**. Ne propose jamais une séance plus d
   - Tap sur la ligne : modifier la séance.
   - « Nouvelle séance de muscu » : nom, case jambes, jour, heure, durée, répétition.
 - **Révision** : durée en cases « h » et « min » (2 h par défaut), jour, heure, répétition. Ajouter reste grisé à 0 min ou si la révision passe minuit.
-- **Indispo** : un titre facultatif (« Soirée chez Léa »), jour, heure de début et de fin. L'app ne place rien dessus.
+- **Occupée** : un titre facultatif (« Soirée chez Léa »), jour, heure de début et de fin. L'app ne place rien dessus.
 
 Après ajout, si une course entre en conflit, Reggie la déplace, même si elle est ce soir, et le bandeau dit laquelle et pourquoi : « Muscu ajoutée · Sortie longue passée à dimanche 19:00 : moins de 24 h après ta séance jambes ». Une muscu n'est « jambes » que si l'interrupteur est activé.
 
