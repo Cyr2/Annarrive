@@ -12,6 +12,8 @@ export type Scenario = {
   /** Earlier turns of the thread, oldest first. */
   history?: { role: "anna" | "reggie"; text: string }[];
   seed?: { sessions?: PlannedSession[]; profile?: ProfilePatch; health?: HealthStatus };
+  /** Longer than MAX_REPLY_CHARS only when she asks for it (a source, say). */
+  maxChars?: number;
   expect: {
     /** Every matcher needs one call. */
     calls?: CallMatcher[];
@@ -55,14 +57,20 @@ const KNOWN = new Set([
   ...MODIFYING,
 ]);
 
-/** Tone rules of docs/interactions.md and the never-diagnose rule, checked on every reply. */
+/** Tone rules of docs/interactions.md and the prompt, checked on every reply with its links taken out. */
 const STYLE: [RegExp, string][] = [
   [/[–—]/, "tiret long ou demi-tiret"],
   [/\p{Extended_Pictographic}/u, "emoji"],
   [/!\s*!/, "points d'exclamation en série"],
   [/\btu (as|souffres d'|fais) (une?|des) (tendinite|fracture|déchirure|claquage|périostite|entorse)/i, "diagnostic"],
+  [/\p{L}[?!;]|\p{L}:(\s|$)/u, "typographie : espace avant « ? », « ! », « ; » ou « : »"],
+  [/\d:\d\d\s*(min)?\s*\/\s*km|\d['’]\d\d\/km|min\s*\/\s*km|\d+\s*s\s*\/\s*km/, "allure mal notée (« 5'18 /km »)"],
+  [/\d['’]\d\d\s*(\/km\s*)?(-|à)\s*\d['’]\d\d/, "fourchette d'allure au lieu d'une cible"],
+  [/\b\d{1,2}:\d\d\b/, "heure mal notée (« 18 h 30 »)"],
+  [/tu (aurais|n'aurais pas) dû|c'est dommage|tu as (raté|manqué)|rattrap(er|ons)/i, "culpabilisation"],
+  [/VO2 ?max|\bVMA\b|endurance fondamentale|séance de qualité/i, "jargon"],
 ];
-const MAX_REPLY_CHARS = 700;
+const MAX_REPLY_CHARS = 400;
 
 function matches(call: { name: string; input: unknown }, matcher: CallMatcher): boolean {
   if (call.name !== matcher.name) return false;
@@ -88,11 +96,12 @@ function callReasons(expect: Scenario["expect"], transcript: Transcript): string
   ];
 }
 
-function textReasons(expect: Scenario["expect"], text: string): string[] {
+function textReasons({ expect, maxChars = MAX_REPLY_CHARS }: Scenario, text: string): string[] {
   const reasons: string[] = [];
+  const prose = text.replace(/https?:\/\/\S+/g, "");
   if (text.trim() === "") reasons.push("réponse vide");
-  if (text.length > MAX_REPLY_CHARS) reasons.push(`réponse trop longue (${text.length} caractères)`);
-  for (const [pattern, label] of STYLE) if (pattern.test(text)) reasons.push(`style : ${label}`);
+  if (text.length > maxChars) reasons.push(`réponse trop longue (${text.length} caractères)`);
+  for (const [pattern, label] of STYLE) if (pattern.test(prose)) reasons.push(`style : ${label}`);
   for (const r of expect.textMatches ?? []) if (!r.test(text)) reasons.push(`texte attendu : ${r}`);
   for (const r of expect.textForbids ?? []) if (r.test(text)) reasons.push(`texte interdit : ${r}`);
   return reasons;
@@ -100,7 +109,7 @@ function textReasons(expect: Scenario["expect"], text: string): string[] {
 
 export function grade(scenario: Scenario, transcript: Transcript): Grade {
   if (transcript.error) return { pass: false, reasons: [`erreur : ${transcript.error}`] };
-  const reasons = [...callReasons(scenario.expect, transcript), ...textReasons(scenario.expect, transcript.text)];
+  const reasons = [...callReasons(scenario.expect, transcript), ...textReasons(scenario, transcript.text)];
   return { pass: reasons.length === 0, reasons };
 }
 
@@ -109,7 +118,8 @@ export function table(rows: { scenario: Scenario; grade: Grade; calls: string[] 
   const width = Math.max(...rows.map((r) => r.scenario.id.length), 2);
   const lines = rows.map(({ scenario, grade: g, calls }) => {
     const status = g.pass ? "OK   " : "ÉCHEC";
-    const detail = g.pass ? calls.join(", ") || "aucun outil" : g.reasons.join(" ; ");
+    const used = calls.join(", ") || "aucun outil";
+    const detail = g.pass ? used : `${g.reasons.join(" ; ")} (${used})`;
     return `${scenario.id.padEnd(width)}  ${status}  ${detail}`;
   });
   const passed = rows.filter((r) => r.grade.pass).length;

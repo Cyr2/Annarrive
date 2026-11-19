@@ -1,5 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
-import { query } from "@anthropic-ai/claude-agent-sdk";
+import { query, startup } from "@anthropic-ai/claude-agent-sdk";
 import type { CoachPort } from "../coach-port.ts";
 import type { BridgeClient } from "../garmin/bridge-client.ts";
 import { touchesWatch } from "../garmin/workout.ts";
@@ -61,7 +61,7 @@ export function createServices(deps: {
   return {
     auth: new AuthService(stores, deps.clock, deps.publicUrl),
     changes,
-    chat: new ChatService(stores, plan, deps.reggie ?? createReggie(query), deps.clock),
+    chat: new ChatService(stores, plan, deps.reggie ?? createReggie(query, process.env, startup), deps.clock),
     plan,
     timetable: new TimetableService(deps.db, stores, plan, deps.clock, deps.fetchIcs, deps.icsUrl),
     notifications,

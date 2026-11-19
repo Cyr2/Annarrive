@@ -1,5 +1,5 @@
+import { PRIVACY_NOTE } from "@annarrive/protocol";
 import { useEffect, useId } from "react";
-import { PRIVACY_NOTE } from "../../lib/privacy.ts";
 import { Icon } from "../../ui/Icon.tsx";
 import { Group, Section } from "../../ui/List.tsx";
 import { SwitchRow } from "../program/SwitchRow.tsx";

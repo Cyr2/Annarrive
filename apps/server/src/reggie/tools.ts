@@ -5,6 +5,7 @@ import {
   isoWeekSchema,
   localDateSchema,
   localDateTimeSchema,
+  paceLabel,
   painSiteSchema,
   profilePatchSchema,
   unavailableSchema,
@@ -19,10 +20,17 @@ export const MCP_SERVER = "annarrive";
 
 type ToolResult = { content: { type: "text"; text: string }[]; isError?: boolean };
 
+/** Paces go out written as the app writes them (« 6'00 /km »): the model copies them instead of converting seconds. */
+const paceSchema = z.tuple([z.number(), z.number()]);
+const writtenPaces = (key: string, value: unknown) => {
+  const pace = key === "paceSKm" ? paceSchema.safeParse(value) : undefined;
+  return pace?.success ? paceLabel(pace.data) : value;
+};
+
 /** Every tool answers JSON; a refusal from the services comes back as an error the model must relay. */
 async function run(work: () => unknown): Promise<ToolResult> {
   try {
-    return { content: [{ type: "text", text: JSON.stringify(work() ?? { ok: true }) }] };
+    return { content: [{ type: "text", text: JSON.stringify(work() ?? { ok: true }, writtenPaces) }] };
   } catch (error) {
     if (!(error instanceof AppError || error instanceof ZodError)) throw error;
     const message = error instanceof ZodError ? (error.issues[0]?.message ?? "Donnée invalide") : error.message;

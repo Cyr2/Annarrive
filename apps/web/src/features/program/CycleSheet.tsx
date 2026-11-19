@@ -1,4 +1,4 @@
-import { PRIVACY_NOTE } from "../../lib/privacy.ts";
+import { PRIVACY_NOTE } from "@annarrive/protocol";
 import { Button } from "../../ui/controls.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
 import { Surface } from "../../ui/Surface.tsx";

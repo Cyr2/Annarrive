@@ -46,6 +46,15 @@ describe("Reggie's tools", () => {
     ]);
   });
 
+  it("writes paces as the app does, so Reggie copies them", async () => {
+    const t = prepare();
+    const steps = [
+      { kind: "work" as const, durMin: 45, zone: "E" as const, target: { paceSKm: [360, 360] as [number, number] } },
+    ];
+    t.stores.plannedSession.put(session("tonight", "2026-11-16T18:00", { steps }));
+    expect((await t.call("get_today")).json.session.steps[0].target).toEqual({ paceSKm: "6'00 /km" });
+  });
+
   it("reads today, the week, the program and recent data through the plan service", async () => {
     const t = prepare();
     t.stores.activity.put({ id: "a1", start: "2026-11-14T10:00", durMin: 40, distM: 7000, hrSeries: [120, 130] });
