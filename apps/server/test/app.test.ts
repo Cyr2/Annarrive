@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { healthSchema } from "@annarrive/protocol";
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
-import { createApp, rateLimit } from "../src/app.ts";
+import { clientIp, createApp, rateLimit } from "../src/app.ts";
 import { MONDAY_8AM, postLogin, SECRET, setup } from "./helpers.ts";
 
 describe("server", () => {
@@ -151,6 +151,21 @@ describe("hardening", () => {
     expect((await app.request("/")).status).toBe(429);
     now = 1000;
     expect((await app.request("/")).status).toBe(200);
+  });
+
+  it("reads the client's address from Cloudflare only when Cloudflare is the hop Traefik saw", async () => {
+    const app = new Hono().get("/", (c) => c.text(clientIp(c)));
+    const ip = async (headers: Record<string, string>) => (await app.request("/", { headers })).text();
+    // Through Cloudflare: Traefik appends the Cloudflare node, which names the real client.
+    expect(await ip({ "x-forwarded-for": "104.21.3.4", "cf-connecting-ip": "203.0.113.7" })).toBe("203.0.113.7");
+    expect(await ip({ "x-forwarded-for": "2606:4700::1", "cf-connecting-ip": "2001:db8::7" })).toBe("2001:db8::7");
+    // Straight to the origin: the header is the caller's own claim.
+    expect(await ip({ "x-forwarded-for": "198.51.100.9", "cf-connecting-ip": "203.0.113.7" })).toBe("198.51.100.9");
+    // A forged Cloudflare entry before the real hop changes nothing.
+    expect(await ip({ "x-forwarded-for": "104.21.3.4, 198.51.100.9", "cf-connecting-ip": "1.2.3.4" })).toBe(
+      "198.51.100.9",
+    );
+    expect(await ip({ "x-forwarded-for": "104.21.3.4", "cf-connecting-ip": "not an ip" })).toBe("104.21.3.4");
   });
 
   it("caps Reggie at 30 messages per 10 minutes", async () => {
