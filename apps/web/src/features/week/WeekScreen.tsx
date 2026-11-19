@@ -16,6 +16,7 @@ import { WeekStrip } from "../../ui/WeekStrip.tsx";
 import { todayOf } from "../plan/selectors.ts";
 import { usePlan } from "../plan/store.ts";
 import { useSheet } from "../sheets/store.ts";
+import { useTabRoot } from "../tabRoot.ts";
 import { useWeekFilter } from "./filter.ts";
 import { RefreshRow, refreshTimetable } from "./RefreshRow.tsx";
 import { useWeekDrag } from "./useWeekDrag.ts";
@@ -114,8 +115,8 @@ type HeaderProps = {
 };
 
 /**
- * The arrows around the week's range, +, and the kinds to show. This week's range is blue (today's color); on
- * another week it is ink with a return arrow, and touching it leads back, so nothing is added or shifts.
+ * The arrows around the week's range, +, and the kinds to show. The range is ink; on another week a small return
+ * arrow comes before it and touching it leads back, so nothing is added or shifts. The Semaine tab leads back too.
  */
 function WeekHeader({ range = " ", offset, onOffset, onAdd, filter, onFilter }: HeaderProps) {
   const chips = useRef<HTMLFieldSetElement>(null);
@@ -135,7 +136,7 @@ function WeekHeader({ range = " ", offset, onOffset, onAdd, filter, onFilter }: 
           className="t-range m-0 flex min-h-11 min-w-0 flex-1 items-center justify-center text-center"
         >
           {offset === 0 ? (
-            <span className="truncate text-action">{range}</span>
+            <span className="truncate">{range}</span>
           ) : (
             // The range itself leads back, as a title does in iOS: nothing appears or moves around it.
             <button
@@ -185,6 +186,7 @@ export default function WeekScreen() {
   const swipe = useWeekSwipe((step) => setOffset((current) => current + step));
   const rows = useWeekMotion(offset);
   const [filter, setFilter] = useWeekFilter();
+  useTabRoot(() => setOffset(0));
   useEffect(() => {
     if (focus && week) document.getElementById(`day-${focus}`)?.scrollIntoView({ block: "start" });
   }, [focus, week]);

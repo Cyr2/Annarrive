@@ -58,6 +58,7 @@ export default function UnavailableSheet({ spec, ...sheet }: SheetProps<"unavail
       title="Pas dispo"
       subtitle={progressOf(step, draft)}
       onBack={trail.length > 1 ? () => setTrail(trail.slice(0, -1)) : undefined}
+      step={trail.length - 1}
       footer={
         toReggie || step === "fever" ? undefined : (
           <>

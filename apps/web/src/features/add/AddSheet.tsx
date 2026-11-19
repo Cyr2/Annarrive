@@ -55,6 +55,7 @@ export default function AddSheet({ spec, ...sheet }: SheetProps<"add">) {
         title="Placer"
         subtitle={template.name}
         onBack={() => setPlacing(undefined)}
+        step={1}
         footer={
           <Button
             variant="filled"

@@ -9,10 +9,20 @@ import {
   useReducedMotion,
   useTransform,
 } from "motion/react";
-import { type ReactNode, type RefObject, useEffect, useId, useLayoutEffect, useRef } from "react";
+import {
+  Component,
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+} from "react";
 import { createPortal } from "react-dom";
 import { EXIT_SHEET, FADE_REDUCED, SPRING_SHEET } from "../lib/motion.ts";
 import { Icon } from "./Icon.tsx";
+import { handOffSheet, sheetOnScreen } from "./sheetHandoff.ts";
 import { TextButton } from "./TextButton.tsx";
 import { useVisibleArea } from "./useVisibleArea.ts";
 
@@ -38,6 +48,8 @@ type Props = {
   busy?: boolean;
   /** False when the sheet takes the place of another one already up: it does not rise again. */
   appear?: boolean;
+  /** Where she is in a flow inside the sheet (0 first): a change slides the content forward or back. */
+  step?: number;
   children: ReactNode;
 };
 
@@ -166,7 +178,13 @@ function useFrostWhileMoving(panel: RefObject<HTMLElement | null>, y: MotionValu
       for (const unsubscribe of off) unsubscribe();
     };
   }, [panel, y, rising]);
+  // A step inside the sheet is over: the glass comes back unless the sheet still moves.
+  const settle = useCallback(
+    () => panel.current?.toggleAttribute("data-moving", dragging.current || y.isAnimating()),
+    [panel, y],
+  );
   return {
+    settle,
     onDragStart: () => {
       dragging.current = true;
       panel.current?.setAttribute("data-moving", "");
@@ -177,6 +195,18 @@ function useFrostWhileMoving(panel: RefObject<HTMLElement | null>, y: MotionValu
       requestAnimationFrame(() => panel.current?.toggleAttribute("data-moving", y.isAnimating()));
     },
   };
+}
+
+/** React's one moment before the page changes: the step on screen is copied before the next one replaces it. */
+class StepWatch extends Component<{ step: number }> {
+  override getSnapshotBeforeUpdate(previous: { step: number }) {
+    if (previous.step !== this.props.step) handOffSheet(this.props.step > previous.step);
+    return null;
+  }
+  override componentDidUpdate() {}
+  override render() {
+    return null;
+  }
 }
 
 /** While it is the sheet on screen: the app behind is inert, focus is inside, Escape closes, focus goes back after. */
@@ -213,7 +243,7 @@ type HeaderProps = Pick<Props, "title" | "subtitle" | "action" | "busy"> & {
 
 function HeaderRow({ titleId, title, subtitle, back, onCancel, cancelLabel, action, busy }: HeaderProps) {
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 pt-2">
+    <div data-sheet-part="head" className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 pt-2">
       {back ? (
         // On a 320 px phone the chevron alone goes back, as in iOS, so a long title never runs into it.
         <TextButton className="-ml-1 min-w-11 justify-self-start gap-0.5" onClick={back}>
@@ -260,6 +290,7 @@ function Panel({
   footer,
   busy = false,
   appear = true,
+  step = 0,
   children,
 }: Omit<Props, "open">) {
   const titleId = useId();
@@ -279,6 +310,18 @@ function Panel({
   const frost = useFrostWhileMoving(panel, y, appear && !still);
 
   useModal(panel, close, covered);
+
+  // On screen, the sheet plays in what took the place of the one before (sheetHandoff.ts).
+  const rising = useRef(appear);
+  const { settle } = frost;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new step is what plays the handoff
+  useLayoutEffect(() => {
+    const element = panel.current;
+    if (covered || !element) return;
+    const leave = sheetOnScreen(element, rising.current, still, settle);
+    rising.current = false;
+    return leave;
+  }, [covered, step, still, settle]);
 
   return (
     <div
@@ -346,7 +389,9 @@ function Panel({
             busy={busy}
           />
         </header>
+        <StepWatch step={step} />
         <div
+          data-sheet-part="body"
           className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain px-4 pt-4 *:flex-none"
           style={{ paddingBottom: footer ? 16 : "max(24px, env(safe-area-inset-bottom))" }}
         >
@@ -355,6 +400,7 @@ function Panel({
         {footer && (
           // A disabled fieldset holds every button of the footer while the change is on its way.
           <fieldset
+            data-sheet-part="foot"
             disabled={busy}
             className="sheet-footer m-0 flex min-w-0 flex-none flex-col gap-2 border-t-[0.5px] border-hairline px-4 pt-3"
             style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}

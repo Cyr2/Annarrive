@@ -2,6 +2,12 @@ import { expect, type Locator, onPlan, type Page, test } from "../support/test.t
 
 onPlan();
 
+declare global {
+  interface Window {
+    sheetGhosts: number;
+  }
+}
+
 /**
  * A finger (the mouse, for WebKit and Chromium alike) pressed on `from`, moved by dx, dy, released. It presses
  * `top` px under the element's top, its middle by default.
@@ -100,20 +106,55 @@ test("une feuille n'est que du givre tant qu'elle bouge, et retrouve son verre u
 
 test("une feuille ouverte depuis une autre offre Retour, et tirer vers le bas ferme tout", async ({ page }) => {
   const detail = await openRunDetail(page);
+  // Counts the copies of the sheet's content that played out, frosted, as another took its place.
+  await page.evaluate(() => {
+    window.sheetGhosts = 0;
+    const seen = new Set<Element>();
+    new MutationObserver(() => {
+      const ghost = document.querySelector("[data-sheet-ghost]");
+      if (!ghost || seen.has(ghost)) return;
+      seen.add(ghost);
+      window.sheetGhosts += ghost.parentElement?.hasAttribute("data-moving") ? 1 : 100;
+    }).observe(document.body, { childList: true, subtree: true });
+  });
   await detail.getByRole("button", { name: "Déplacer" }).click();
   const move = page.getByRole("dialog", { name: "Déplacer" });
   await expect(move).toBeVisible();
   await expect(detail).toBeHidden();
 
+  // Pushed inside the sheet: the detail slid out as Déplacer slid in, frost meanwhile, then nothing is left.
+  expect(await page.evaluate(() => window.sheetGhosts)).toBe(1);
+  await expect(move.locator("[data-sheet-ghost]")).toHaveCount(0);
+  await expect(move).not.toHaveAttribute("data-moving");
+
   await move.getByRole("button", { name: "Retour" }).click();
   await expect(move).toBeHidden();
   await expect(detail).toBeVisible();
+  await expect(detail.locator("[data-sheet-ghost]")).toHaveCount(0);
+  await expect(detail).toHaveCSS("overflow", "visible");
 
   await detail.getByRole("button", { name: "Changer" }).click();
   const change = page.getByRole("dialog", { name: "Changer" });
   await expect(change).toBeVisible();
+  // Its height settled: the title stays under the finger.
+  await expect(change.locator("[data-sheet-ghost]")).toHaveCount(0);
   await pull(page, change.getByRole("heading", { name: "Changer" }), 0, 260);
   await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+
+test("Semaine : l'onglet Semaine touché à nouveau ramène à cette semaine, en haut de la page", async ({ page }) => {
+  await page.goto("/semaine");
+  const range = page.locator("p[aria-live]");
+  await expect(range).toHaveText("16 au 22 novembre");
+  // This week's range is in ink, like any other week's.
+  await expect(range.locator("span").first()).not.toHaveCSS("color", "rgb(9, 103, 214)");
+  await page.getByRole("button", { name: "Semaine suivante" }).click();
+  await page.getByRole("button", { name: "Semaine suivante" }).click();
+  await expect(range).toContainText("30 nov. au 6 déc.");
+  await page.evaluate(() => scrollTo(0, 600));
+  await page.getByRole("navigation", { name: "Navigation principale" }).getByRole("link", { name: "Semaine" }).click();
+  await expect(range).toHaveText("16 au 22 novembre");
+  await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
 });
 
 test("Ajouter : passer de Révision ou Occupée à Muscu change le choix sans fermer la feuille", async ({ page }) => {
