@@ -114,6 +114,8 @@ export const passThroughCoach: CoachPort = {
   evaluateTrends: () => null,
   acceptProposal: (st) => ({ state: st, changes: [], warnings: [] }),
   repace: (st) => ({ state: st, changes: [], warnings: [] }),
+  adaptToRun: (st) => ({ state: st, changes: [], warnings: [] }),
+  readFeel: () => ({}),
 };
 
 /** Enough of the algorithm to watch the server wire it: conflicts move 30 min after the event. */

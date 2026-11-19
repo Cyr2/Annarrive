@@ -115,6 +115,8 @@ export function TodayScreen() {
       {/* Settled once what sits under the card is drawn: the first screen's later frames arrive without motion. */}
       <Presence settled={belowCard}>
         {unwellText && <Unwell text={unwellText} />}
+        {/* What Reggie changed because of what she ran (algo.md M10): one line, until the session it moved. */}
+        {today.adapted && <ReggieNote key="adapted" text={today.adapted} onClick={askReggie} />}
         {!activity && toConfirm && <DidYouRun key="ask" run={toConfirm} today={date} onDone={setConfirmed} />}
         {!activity && !toConfirm && confirmed && (
           <FeelAfterConfirm key="feel" run={confirmed} onClose={() => setConfirmed(undefined)} />

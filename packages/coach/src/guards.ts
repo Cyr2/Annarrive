@@ -93,14 +93,31 @@ function shortenQ(s: Session, excess: number): Session {
   return out;
 }
 
+/** G2b's first step alone: easy runs, lowest priority first, down to the catalogue's floors (P15) until `cap` holds. */
+export function trimEasy(week: Session[], cap: number, ruleId: string): { week: Session[]; changes: Change[] } {
+  let out = week;
+  const changes: Change[] = [];
+  const lowestFirst = out.filter(isEasy).sort((a, b) => b.priority - a.priority || b.durMin - a.durMin);
+  for (const s of lowestFirst) {
+    const excess = totalMin(out) - cap;
+    if (excess <= 0) break;
+    const after = resize(s, Math.max(easyFloor(s), s.durMin - excess));
+    if (after.durMin >= s.durMin) continue;
+    out = out.map((x) => (x.id === s.id ? after : x));
+    changes.push({ ruleId, sessionId: s.id, before: s, after });
+  }
+  return { week: out, changes };
+}
+
 /**
  * Shortens the week until it fits `cap` minutes, in the order the research keeps sessions (02 §4.2, 03 §8.1):
  * easy runs down to the catalogue's 30 min (P15), then each Q by a third (P9's cut), then the long run down to its
  * share of the capped week (P14). Only then, when a hard cap still binds, easy runs and the long run go to 20 min.
  */
 export function trimTo(week: Session[], cap: number, ruleId: string): { week: Session[]; changes: Change[] } {
-  let out = week;
-  const changes: Change[] = [];
+  const easy = trimEasy(week, cap, ruleId);
+  let out = easy.week;
+  const changes: Change[] = [...easy.changes];
   const excess = (): number => totalMin(out) - cap;
   const set = (s: Session, after: Session): void => {
     if (after.durMin >= s.durMin) return;
@@ -109,7 +126,6 @@ export function trimTo(week: Session[], cap: number, ruleId: string): { week: Se
   };
   const lowestFirst = (f: (s: Session) => boolean): Session[] =>
     out.filter(f).sort((a, b) => b.priority - a.priority || b.durMin - a.durMin);
-  for (const s of lowestFirst(isEasy)) if (excess() > 0) set(s, resize(s, Math.max(easyFloor(s), s.durMin - excess())));
   for (const s of lowestFirst(isQ)) if (excess() > 0) set(s, shortenQ(s, excess()));
   const lFloor = Math.max(MIN_EASY, longShare(out.length) * cap);
   for (const s of lowestFirst((x) => x.type === "L"))

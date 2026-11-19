@@ -8,6 +8,7 @@ import {
   dateOf,
   daysBetween,
   hoursBetween,
+  mondayOf,
   toMin,
   weekDates,
   weekday,
@@ -450,6 +451,16 @@ export function proposeMoveSlots(sessionId: string, week: WeekState, now: string
     .sort(byCost)
     .map((c): SlotWithReason => ({ slot: c.slot, penalty: c.pts, reason: slotReason(s, c.slot, week) }));
   return best.length > 0 ? { best, forbidden } : { best, forbidden, fallback: ["jog_tonight", "skip"] };
+}
+
+/** AD3: the best valid future slot of the session's own week, on `from` or after, by soft cost; null when none. */
+export function bestSlotFrom(s: Session, week: WeekState, now: string, from: string): Slot | null {
+  const ignored: MoveSlots["forbidden"] = [];
+  const best = weekDates(mondayOf(s.start))
+    .filter((day) => day >= from)
+    .flatMap((day) => bestOfDay(s, day, week, now, ignored))
+    .sort((a, b) => a.pts - b.pts || a.slot.start.localeCompare(b.slot.start))[0];
+  return best?.slot ?? null;
 }
 
 /** Best valid future slot of a day; forbidden ones are collected with their first violation. */

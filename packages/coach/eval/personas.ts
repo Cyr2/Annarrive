@@ -1,4 +1,4 @@
-import type { CalEvent, Goal, Settings } from "../src/index.ts";
+import type { CalEvent, Goal, PaceZone, Settings } from "../src/index.ts";
 import { addDays, at, weekDates } from "../src/index.ts";
 
 /** Monday the bench starts on; the programme starts the Sunday before, at the weekly build (algo.md §0.1). */
@@ -33,6 +33,14 @@ export type Script = {
   movedClass?: number[];
   /** One short night every week (single signal: the coach must not react, D2). */
   oneShortNight?: boolean;
+  /** She runs her footings and long runs in this zone whatever their target (the most common error: too fast). */
+  easyAs?: PaceZone;
+  /** Once a week, a footing followed by a hard session within 48 h becomes a tempo: 20 min at threshold inside. */
+  tempoForEasy?: boolean;
+  /** Once a week from Wednesday, an easy run of this many minutes on a day without a session. */
+  extraRun?: number;
+  /** She stops her long runs at this share of their planned length. */
+  cutLong?: number;
 };
 
 export type Persona = {
@@ -150,6 +158,29 @@ export const PERSONAS: Persona[] = [
     label: "Anna en surmenage, semaines 2 à 4",
     weeks: 6,
     script: { overreach: { from: 2, to: 4 } },
+  },
+  // Runners who do not follow the plan: the app must adapt to what they ran, never make up what they skipped.
+  { ...anna, id: "trop-vite", label: "Anna court ses footings à l'allure marathon", weeks: 6, script: { easyAs: "M" } },
+  {
+    ...anna,
+    id: "en-plus",
+    label: "Anna ajoute une course de 40 min chaque semaine",
+    weeks: 6,
+    script: { extraRun: 40 },
+  },
+  {
+    ...anna,
+    id: "tempo",
+    label: "Anna fait un tempo au lieu d'un footing chaque semaine",
+    weeks: 6,
+    script: { tempoForEasy: true },
+  },
+  {
+    ...anna,
+    id: "longue-coupee",
+    label: "Anna coupe ses sorties longues aux deux tiers",
+    weeks: 6,
+    script: { cutLong: 0.65 },
   },
 ];
 

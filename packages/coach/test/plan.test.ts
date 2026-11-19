@@ -232,6 +232,14 @@ describe("buildWeek", () => {
     expect(l?.durMin).toBe(Math.floor(0.35 * deload.volumeMin));
   });
 
+  it("never builds a deload week above its volume, race-pace blocks included (P9, P-28)", () => {
+    // Bench, Anna week 8: a specific-phase deload planned at 149 min was built at 184 by a race-pace block.
+    for (const w of plan.weeks.filter((x) => x.deload)) {
+      const total = buildWeek(w, { ...ctx, racePaceSKm: 313 }).reduce((sum, s) => sum + s.durMin, 0);
+      expect(total).toBeLessThanOrEqual(w.volumeMin + 1);
+    }
+  });
+
   it("never builds a taper week above its share of the peak, Q included (P18, P-24)", () => {
     const w = plan.weeks.at(-2);
     if (!w) throw new Error("no taper");

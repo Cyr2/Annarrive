@@ -7,11 +7,14 @@ import {
   type Activity,
   addDays,
   at,
+  paces as daniels,
   dateOf,
   daysBetween,
   distributionCheck,
   hoursBetween,
   isHard,
+  predictTime,
+  readRun,
   type Session,
   taperShares,
   weekday,
@@ -78,7 +81,9 @@ function volume(r: RunLog): Criterion {
     }));
     // She ran what was asked last week: nothing justifies building less than the plan (P10, deloads included).
     const followed = done(prev) >= 0.9 * minutes(runs(prev));
-    if (followed && w.planMin > 0 && !isTaper(w))
+    // A test week is lighter by design (research 02 §5.3: the week before a test is eased), not held down by a cap.
+    const testWeek = w.built.some((s) => s.type === "TEST");
+    if (followed && w.planMin > 0 && !isTaper(w) && !testWeek)
       j.check(built >= 0.85 * w.planMin, () => ({
         week: w.week,
         rule: "G2/G4 contre P10",
@@ -156,7 +161,12 @@ function longRun(r: RunLog): Criterion {
       severity: "mineure",
     }));
     const min = MIN_LONG[p.goal.distanceM];
-    if (min && !w.phase.startsWith("base") && !w.phase.includes("décharge") && !isTaper(w))
+    // G1 holds the long run to 1.10 × her longest of 30 days: when she cut the last one short, she set that limit.
+    const before = r.weeks.find((x) => x.week === w.week - 1);
+    const lastL = before?.final.find((s) => s.type === "L");
+    const ranL = before?.activities.find((a) => a.id === `run-${lastL?.id}`);
+    const cut = lastL !== undefined && ranL !== undefined && ranL.durMin < 0.9 * lastL.durMin;
+    if (min && !cut && !w.phase.startsWith("base") && !w.phase.includes("décharge") && !isTaper(w))
       j.check(l.durMin >= min, () => ({
         week: w.week,
         rule: "P14 / G2",
@@ -229,8 +239,9 @@ function spacing(r: RunLog): Criterion {
 /** K5: F7 (Daniels paces from the true level), RC3/RC4 (Runna Pace Insights: a pattern, never one session, one tap). */
 function paces(r: RunLog): Criterion {
   const j = judge();
-  const truth = r.persona.trueVdot;
   for (const w of r.weeks) {
+    // Her level of that week: it rises with her training (sim.ts `progress`).
+    const truth = Math.round(10 * w.trueVdot) / 10;
     const err = Math.abs(w.vdotEnd - truth);
     j.check(err <= 1, () => ({
       week: w.week,
@@ -512,7 +523,159 @@ function structure(r: RunLog): Criterion {
   return { id: "structure", label: "Structure de la semaine", source: "P13, P15, catalogue M3 (Daniels)", ...j.done() };
 }
 
-export const CRITERIA = [volume, intensity, longRun, spacing, paces, health, skipped, taper, stability, structure];
+const lastWeeks = (r: RunLog, w: WeekLog, days: number): WeekLog[] =>
+  r.weeks.filter((x) => x.week <= w.week && daysBetween(x.monday, w.monday) < days);
+const AT_MOST_AMBITIOUS = ["conservateur", "réaliste", "ambitieux"];
+
+/** P21: race-pace blocks follow her target only when it is at most ambitious, else the time her level predicts. */
+function racePace(r: RunLog, vdotNow: number): number {
+  const g = r.persona.goal;
+  const min =
+    g.targetMin && AT_MOST_AMBITIOUS.includes(r.feasibility) ? g.targetMin : predictTime(vdotNow, g.distanceM);
+  return (min * 60) / (g.distanceM / 1000);
+}
+
+/** TR3: every pace a built session aims at comes from the level of that week (F7), race pace from P21. */
+function pacesOfWeek(j: Judge, r: RunLog, w: WeekLog): void {
+  const p = daniels(w.vdotStart);
+  // A test aims at the pace of 20 min all out (catalogue TEST), not a training zone.
+  for (const s of runs(w).filter((x) => x.type !== "TEST"))
+    for (const st of s.steps) {
+      const pace = st.target.paceSKm?.[0];
+      const zone = st.zone;
+      if (pace === undefined || (zone !== "T" && zone !== "I" && zone !== "race")) continue;
+      const want = zone === "race" ? racePace(r, w.vdotStart) : p[zone];
+      j.check(Math.abs(pace - want) <= 3, () => ({
+        week: w.week,
+        rule: "P21 / F7",
+        detail: `${s.type} : allure ${zone} de ${r0(pace)} s/km pour ${r0(want)} attendues (niveau ${w.vdotStart.toFixed(1)}, objectif ${r.feasibility})`,
+        severity: "critique",
+      }));
+    }
+}
+
+/**
+ * K11, does the programme lead to the goal: research 02 R23 (her level re-estimated every 4 weeks, so the paces
+ * follow her progress), P11 and Muñoz 2014 (a build week she follows carries a quality session: no stimulus, no
+ * progression), P21 (paces from her level, race pace from the goal only when it is at most ambitious) and P10 (never
+ * more than the periodised plan asks: too aggressive). Her level rises with what she runs (sim.ts `progress`).
+ */
+function trajectory(r: RunLog): Criterion {
+  const j = judge();
+  const acts = allRuns(r);
+  r.weeks.forEach((w, i) => {
+    if (afterRace(r, w) || isRaceWeek(r, w)) return;
+    if (w.week >= 5) {
+      const recent = lastWeeks(r, w, 28);
+      const from = recent[0]?.monday ?? w.monday;
+      const tested = acts.some(
+        (a) => (a.isTest || a.isRace) && dateOf(a.start) >= from && dateOf(a.start) < addDays(w.monday, 7),
+      );
+      // The app plans the test; a morning decision may still lighten it (D3), which is no fault of the plan.
+      const planned = recent.some((x) => x.built.some((s) => s.type === "TEST"));
+      j.check(tested || planned || recent.some((x) => x.proposals.length > 0), () => ({
+        week: w.week,
+        rule: "R23",
+        detail: `niveau ni testé ni réévalué depuis 4 semaines (app ${w.vdotEnd.toFixed(1)}, réel ${w.trueVdot.toFixed(1)})`,
+        severity: "majeure",
+      }));
+    }
+    const prev = r.weeks[i - 1];
+    const build = /^(dev|spe)/.test(w.phase) && !w.phase.includes("décharge");
+    if (prev && build && done(prev) >= 0.9 * minutes(runs(prev)))
+      j.check(
+        runs(w).some((s) => isHard(s) && s.type !== "L"),
+        () => ({ week: w.week, rule: "P11", detail: `aucune séance de qualité en ${w.phase}`, severity: "majeure" }),
+      );
+    // P9: a deload week is one (volume × 0.75): above its plan it is a load week in disguise, too aggressive.
+    if (w.planMin > 0 && w.phase.includes("décharge"))
+      j.check(minutes(runs(w)) <= 1.1 * w.planMin + 1, () => ({
+        week: w.week,
+        rule: "P9",
+        detail: `semaine de décharge : ${r0(minutes(runs(w)))} min construites pour ${r0(w.planMin)} au plan`,
+        severity: "majeure",
+      }));
+    pacesOfWeek(j, r, w);
+  });
+  return {
+    id: "trajectoire",
+    label: "Trajectoire vers l'objectif",
+    source: "R23 recherche 02 ; P11, Muñoz 2014 ; P21 Daniels ; P10",
+    ...j.done(),
+  };
+}
+
+/** The session a run was matched to (the bench names runs after their session). */
+const sessionOf = (w: WeekLog, a: Activity): Session | undefined => w.final.find((s) => `run-${s.id}` === a.id);
+
+/**
+ * K12, the week follows what she ran: AD3 (research 03 §8.2: never two hard days in a row, her own hard runs
+ * included), AD5 and EV16 (nothing made up: no session grows), AD4 and G2 (what she ran counts in the week).
+ */
+function adaptation(r: RunLog): Criterion {
+  const j = judge();
+  const acts = allRuns(r);
+  for (const w of r.weeks) {
+    const p = daniels(w.vdotStart);
+    const hard = (a: Activity): boolean => readRun(a, p, r.persona.hrMax).hard;
+    const ran = [...w.activities].sort((a, b) => a.start.localeCompare(b.start));
+    ran.forEach((a, i) => {
+      const planned = sessionOf(w, a);
+      if (!hard(a) || (planned && isHard(planned))) return;
+      const next = ran[i + 1];
+      const nextSession = next && sessionOf(w, next);
+      if (next && nextSession && isHard(nextSession) && hoursBetween(a.start, next.start) < 36)
+        j.check(!hard(next), () => ({
+          week: w.week,
+          rule: "AD3",
+          detail: `${nextSession.type} ${next.start.slice(5)} couru le lendemain d'une course rapide non prévue (${a.start.slice(5)})`,
+          severity: "majeure",
+        }));
+    });
+    for (const s of w.final) {
+      const b = w.built.find((x) => x.id === s.id);
+      if (b && s.status !== "skipped")
+        j.check(s.durMin <= b.durMin + 0.5, () => ({
+          week: w.week,
+          rule: "AD5 / EV16",
+          detail: `${s.type} ${s.start.slice(5)} allongée de ${r0(b.durMin)} à ${r0(s.durMin)} min dans la semaine`,
+          severity: "critique",
+        }));
+    }
+    const ranIn = (monday: string): number =>
+      sum(acts.filter((a) => a.start >= monday && a.start < addDays(monday, 7)).map((a) => a.durMin));
+    const chronic = Math.max(...[1, 2, 3, 4].map((k) => ranIn(addDays(w.monday, -7 * k))));
+    const extra = w.activities.some((a) => !sessionOf(w, a));
+    if (extra && chronic > 0)
+      j.check(done(w) <= 1.1 * chronic + 10, () => ({
+        week: w.week,
+        rule: "AD4 / G2",
+        detail: `${r0(done(w))} min courues pour un plafond de ${r0(1.1 * chronic)} min`,
+        severity: "mineure",
+      }));
+  }
+  return {
+    id: "adaptation",
+    label: "Adaptation au réalisé",
+    source: "AD3 recherche 03 §8.2, Seiler 2010 ; AD4 G2 Damsted 2019 ; AD5 EV16 Runna",
+    ...j.done(),
+  };
+}
+
+export const CRITERIA = [
+  volume,
+  intensity,
+  longRun,
+  spacing,
+  paces,
+  health,
+  skipped,
+  taper,
+  stability,
+  structure,
+  trajectory,
+  adaptation,
+];
 
 const WEIGHT: Record<Severity, number> = { critique: 3, majeure: 1, mineure: 0.3 };
 

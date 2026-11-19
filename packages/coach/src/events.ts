@@ -1,3 +1,4 @@
+import { feelLog } from "./adaptation.ts";
 import { downgrade, equivalents, isHard, scaleSession, sessionLoad, toEasy } from "./catalog.ts";
 import { addDays, DAY_NAMES, dateOf, daysBetween, weekday } from "./dates.ts";
 import { paces } from "./fitness.ts";
@@ -370,10 +371,13 @@ export function detectMissed(st: State, activities: Activity[], lastSync: string
   return finish(st, state, changes, warnings);
 }
 
-/** C3: stores the feel; three "hard" on easy sessions raise a pace check (RC5). */
-export function logFeel(st: State, sessionId: string, feel: Feel): Result {
+/** C3: stores the feel, with what she ran when the run is known (AD1); three "hard" on easy sessions raise a pace check (RC5). */
+export function logFeel(st: State, sessionId: string, feel: Feel, run?: Activity): Result {
   const s = find(st, sessionId);
-  const feels = [...st.feels, { sessionId, date: dateOf(s.start), feel, rpeTarget: s.rpeTarget }];
+  const log = run
+    ? feelLog(s, run, feel, paces(st.vdot))
+    : { sessionId, date: dateOf(s.start), feel, rpeTarget: s.rpeTarget };
+  const feels = [...st.feels, log];
   const check = evaluateFeels(feels, st.vdot, s.start);
   const warnings = check
     ? [

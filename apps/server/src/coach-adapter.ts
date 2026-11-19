@@ -1,6 +1,7 @@
 import type { CalEvent, Result, Session, Settings, State } from "@annarrive/coach";
 import * as coach from "@annarrive/coach";
 import {
+  agreeWith,
   type CalendarEvent,
   type DailySignal,
   type PlannedSession,
@@ -229,6 +230,38 @@ function whyText(signals: string[]): string {
   return words.length > 0 ? `${words.join(", ")} et ${last}` : (last ?? "");
 }
 
+/** « ton seuil », « ta sortie longue ». */
+const yours = (type: PlannedSession["type"]): string =>
+  `${agreeWith(type, "") ? "ta" : "ton"} ${sessionNames[type].toLowerCase()}`;
+const dayName = (iso: string): string => coach.DAY_NAMES[coach.weekday(iso)] ?? "";
+
+/** What she did, said plainly: a footing that was a tempo, a run she added, a run longer than planned. */
+function leadOf(a: coach.Adaptation, run: Activity, planned: PlannedSession | undefined): string {
+  const what = planned
+    ? `${yours(planned.type)} de ${dayName(run.start)}`
+    : `ta course en plus de ${dayName(run.start)}`;
+  const What = what.charAt(0).toUpperCase() + what.slice(1);
+  if (a.changes.some((c) => c.ruleId === "AD3")) {
+    const kind = a.reading.intervalMin > a.reading.fastMin / 2 ? "un fractionné" : "un tempo";
+    return planned ? `${What} ressemblait plutôt à ${kind}` : `${What} était rapide`;
+  }
+  if (!planned) return `${What} compte dans ta semaine`;
+  return `${What} était plus ${agreeWith(planned.type, "") ? "longue" : "long"} que prévu`;
+}
+
+/** One line for Aujourd'hui: « Ton footing de mardi ressemblait plutôt à un tempo : je décale ton seuil à jeudi. » */
+function adaptationNote(a: coach.Adaptation, run: Activity, planned: PlannedSession | undefined): string {
+  const actions = a.changes.flatMap((c) => {
+    const { before, after } = c;
+    if (!before || !after) return [];
+    if (c.ruleId === "AD4") return [`je raccourcis ${yours(before.type)} de ${dayName(before.start)}`];
+    return after.start !== before.start
+      ? [`je décale ${yours(before.type)} à ${dayName(after.start)}`]
+      : [`${yours(before.type)} de ${dayName(before.start)} passe en footing`];
+  });
+  return `${leadOf(a, run, planned)} : ${actions.join(" et ")}.`;
+}
+
 /** The real `CoachPort`: translates the stored shapes and lets `@annarrive/coach` decide everything. */
 export const coachAdapter: CoachPort = {
   feasibility: coachFeasibility,
@@ -281,8 +314,13 @@ export const coachAdapter: CoachPort = {
       goal: st.program.goal,
       ...(st.program.startedOn ? { planStart: st.program.startedOn } : {}),
       settings: toSettings(st.settings),
-      history: st.activities,
-      fitness: { vdot: st.fitness.vdot, provisional: st.fitness.provisional === true },
+      // The planned type tells a test she ran (P26) from any run.
+      history: withPlannedType(st),
+      fitness: {
+        vdot: st.fitness.vdot,
+        provisional: st.fitness.provisional === true,
+        measuredOn: st.fitness.date,
+      },
       cal: st.events.map(toCalEvent),
       kept: kept.map(toSession),
       // S9: the week before keeps each run on its day; P9, EV9: fatigue and illness shape the new week.
@@ -461,6 +499,32 @@ export const coachAdapter: CoachPort = {
 
   evaluateTrends(st, past, now) {
     return st.fitness ? coach.evaluateTrends(signalsOf(st), now, answered(past)) : null;
+  },
+
+  adaptToRun(st, run, now) {
+    if (!st.fitness) return { state: st, changes: [], warnings: [] };
+    const planned = st.sessions.find((s) => s.id === run.sessionId);
+    const hrMax = hrMaxOf(st.activities);
+    const r = coach.adaptToRun(toState(st, mondayOf(dateOf(run.start)), true), run, now, {
+      ...(planned ? { sessionId: planned.id } : {}),
+      history: st.activities,
+      ...(hrMax === undefined ? {} : { hrMax }),
+    });
+    if (r.changes.length === 0) return { state: st, changes: [], warnings: [] };
+    const until = r.changes
+      .map((c) => dateOf(c.after?.start ?? now))
+      .sort()
+      .at(-1);
+    return { ...fromResult(st, r, now), note: adaptationNote(r, run, planned), ...(until ? { until } : {}) };
+  },
+
+  readFeel(session, run, vdot) {
+    // shortcut: pace only, the heart rate of a lap is not read here (AD1 reads it on the week's adaptation).
+    const ratio = coach.paceRatio(toSession(session), run);
+    return {
+      rpeDone: coach.readRun(run, coach.paces(vdot)).rpe,
+      ...(ratio === undefined ? {} : { paceRatio: ratio }),
+    };
   },
 
   repace(st, now) {

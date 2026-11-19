@@ -1,7 +1,9 @@
+import { FAST_RATIO } from "./adaptation.ts";
 import { buildSession, isHard, repace } from "./catalog.ts";
 import { addDays, dateOf, daysBetween } from "./dates.ts";
 import { effortReadings, type InitialFitness, isEligibleEffort, paces, speedForVo2, vdot, vo2 } from "./fitness.ts";
 import { checkHard, slotOf } from "./placement.ts";
+import { ranEasy } from "./readiness.ts";
 import type { Activity, DailySignal, FeelLog, Proposal, Result, Session, State } from "./types.ts";
 
 const PROPOSAL_DAYS = 14;
@@ -153,21 +155,24 @@ export type FeelCtx = {
  * days explains them: the week is lightened instead (P9).
  */
 export function evaluateFeels(feels: FeelLog[], current: number, now: string, ctx: FeelCtx = {}): Proposal | null {
-  const easy = feels
-    .filter((f) => f.rpeTarget <= 4 && (ctx.lastChange === undefined || f.date > ctx.lastChange))
-    .sort((a, b) => a.date.localeCompare(b.date));
-  const last3 = easy.slice(-3);
-  if (last3.length < 3 || !last3.every((f) => f.feel === "hard")) return null;
-  if (proposedRecently(ctx.history ?? [], "RC5", now) || last3.some((f) => ctx.fatigueDays?.includes(f.date)))
-    return null;
-  return proposal(
-    "test",
-    current,
-    current,
-    "RC5",
-    last3.map((f) => f.sessionId),
-    now,
-  );
+  const since = (f: FeelLog): boolean => ctx.lastChange === undefined || f.date > ctx.lastChange;
+  const last3 = (keep: (f: FeelLog) => boolean): FeelLog[] =>
+    feels
+      .filter((f) => keep(f) && since(f))
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(-3);
+  const ids = (fs: FeelLog[]): string[] => fs.map((f) => f.sessionId);
+  const history = ctx.history ?? [];
+  const hard = last3(ranEasy);
+  const tired = hard.some((f) => ctx.fatigueDays?.includes(f.date));
+  if (hard.length === 3 && hard.every((f) => f.feel === "hard") && !tired && !proposedRecently(history, "RC5", now))
+    return proposal("test", current, current, "RC5", ids(hard), now);
+  // RC13: easy sessions felt easy and run clearly faster than their target, three times in a row.
+  const fast = last3((f) => f.rpeTarget <= 4);
+  const tooEasy = fast.every((f) => f.feel === "easy" && (f.paceRatio ?? 0) >= FAST_RATIO);
+  if (fast.length === 3 && tooEasy && !proposedRecently(history, "RC13", now))
+    return proposal("test", current, current, "RC13", ids(fast), now);
+  return null;
 }
 
 /** RC7: Garmin VO2max shifted by 2 or more for 14 days → a test, never a VDOT. */

@@ -166,6 +166,27 @@ describe("planWeek (cycle 0.1 buildWeek)", () => {
     expect(types(addDays(MONDAY, 28), true)).not.toContain("TEST");
   });
 
+  it("tests a level again when it turns 4 weeks old within the week, outside the taper (P26, W-6)", () => {
+    const monday = addDays(MONDAY, 14);
+    const types = (fitness: WeekRequest["fitness"], history = runs(8, 4, 45)) =>
+      planWeek(
+        request({ monday, now: `${addDays(monday, -1)}T18:00`, planStart: addDays(MONDAY, -1), fitness, history }),
+      ).sessions.map((s) => s.type);
+    expect(types({ vdot: 40, measuredOn: addDays(monday, -22) })).toContain("TEST");
+    expect(types({ vdot: 40, measuredOn: addDays(monday, -21) })).not.toContain("TEST");
+    expect(types({ vdot: 40 })).not.toContain("TEST");
+    // A test or a race she ran measures her too.
+    const tested: Activity = { id: "t", start: `${addDays(monday, -10)}T08:00`, durMin: 35, distM: 7000, isTest: true };
+    expect(types({ vdot: 40, measuredOn: addDays(monday, -60) }, [...runs(8, 4, 45), tested])).not.toContain("TEST");
+    const race = request({
+      monday: "2027-03-15",
+      now: "2027-03-14T18:00",
+      planStart: addDays(MONDAY, -1),
+      fitness: { vdot: 40, measuredOn: "2027-01-01" },
+    });
+    expect(planWeek(race).sessions.map((s) => s.type)).not.toContain("TEST");
+  });
+
   it("turns the week after three days of confirmed fatigue into a deload (P9, W-3)", () => {
     const day = (k: number, tired: boolean) => ({
       date: addDays(MONDAY, k),

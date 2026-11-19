@@ -111,6 +111,8 @@ const SIGNAL_DAYS = 35;
 const MORNING_DECISION = "morning.decidedOn";
 /** « 2026-11-16|Allégée : nuit courte. » The reason the morning check changed today's session. */
 const MORNING_NOTE = "morning.note";
+/** « change id|last day|line »: what M10 changed after her last run, said on Aujourd'hui. */
+const ADAPT_NOTE = "adapt.note";
 const morningNotes: Partial<Record<DailyDecisionResult["action"], string>> = {
   easier: "Allégée",
   shorter: "Raccourcie",
@@ -237,6 +239,7 @@ export class PlanService {
       date,
       session: day?.sessions[0] ?? null,
       note: this.#morningNote(date),
+      adapted: this.#adaptNote(date),
       events: day?.events ?? [],
       activity: activity ? toActivityView(activity) : null,
       health: this.health(),
@@ -570,6 +573,29 @@ export class PlanService {
     return this.#commit("Séance sautée", [], before, this.#coach.skipSession(before, id, this.#now()));
   }
 
+  /**
+   * M10 after a synced run: the weeks follow what she ran, as one undoable change whose summary is the line
+   * Aujourd'hui shows until the last session it changed.
+   */
+  adaptToRun(run: Activity): ChangeResponse | null {
+    const before = this.coachState();
+    const result = this.#coach.adaptToRun(before, run, this.#now());
+    if (!result.note || !result.until) return null;
+    // The note already says where the session went (AD3 moves one at most).
+    const moved = result.changes.find((c) => c.ruleId === "AD3")?.sessionId;
+    const response = this.#commit(result.note, [], before, result, moved);
+    if (response.change)
+      this.#stores.meta.put({ id: ADAPT_NOTE, value: `${response.change.id}|${result.until}|${result.note}` });
+    return response;
+  }
+
+  /** The adaptation's line, while its sessions are ahead and Annuler has not taken it back. */
+  #adaptNote(date: string): string | undefined {
+    const [id = "", until = "", text] = (this.#stores.meta.get(ADAPT_NOTE)?.value ?? "").split("|");
+    const entry = this.#stores.changeLog.get(id);
+    return entry && !entry.undoneAt && date <= until ? text : undefined;
+  }
+
   /** A Garmin run matched this session: it is done, and Annuler can still reopen it. */
   markDone(id: string): void {
     const session = this.#stores.plannedSession.get(id);
@@ -598,16 +624,18 @@ export class PlanService {
     };
   }
 
-  /** Feel answers of the runs matched to a session, for SG4. */
+  /** Feel answers of the runs matched to a session, with what she ran (SG4, RC5, RC13). */
   #feels(): CoachState["feels"] {
     const today = dateOf(this.#now());
+    const vdot = this.#stores.fitnessEstimate.list().at(-1)?.vdot;
     const fromRuns = this.#stores.activity
       .overlapping(`${addDays(today, -RECENT_DAYS)}T00:00`, this.#now())
       .flatMap((a) => {
         const session = a.sessionId ? this.#stores.plannedSession.get(a.sessionId) : undefined;
         const feel = a.feel ?? a.answeredFeel;
+        const ran = session && vdot !== undefined ? this.#coach.readFeel(session, a, vdot) : {};
         return feel && session
-          ? [{ sessionId: session.id, date: dateOf(session.start), feel, rpeTarget: session.rpeTarget }]
+          ? [{ sessionId: session.id, date: dateOf(session.start), feel, rpeTarget: session.rpeTarget, ...ran }]
           : [];
       });
     const seen = new Set(fromRuns.map((f) => f.sessionId));

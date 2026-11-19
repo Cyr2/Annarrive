@@ -93,8 +93,11 @@ const feelCheck = (date: string, feels: FeelLog[]): boolean => {
     .filter((f) => f.date <= date && daysBetween(f.date, date) <= 2)
     .sort((a, b) => a.date.localeCompare(b.date))
     .at(-1);
-  return last !== undefined && last.feel === "hard" && last.rpeTarget <= 4;
+  return last !== undefined && last.feel === "hard" && ranEasy(last);
 };
+
+/** An easy session she also ran easy (AD1): one run fast by choice is not an easy run felt hard. */
+export const ranEasy = (f: FeelLog): boolean => f.rpeTarget <= 4 && (f.rpeDone ?? f.rpeTarget) <= 4;
 
 const examCheck = (date: string, cal: CalEvent[]): boolean =>
   cal.some((e) => e.kind === "exam" && [date, addDays(date, 1)].includes(dateOf(e.start)));
