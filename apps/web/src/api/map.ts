@@ -30,6 +30,7 @@ import {
   daysBetween,
   decimal,
   duration,
+  longDate,
   minutesOf,
   mondayOf,
   relativeDay,
@@ -81,8 +82,6 @@ const WHY: Record<RunType, string> = {
   I: "Des efforts courts et rapides : l'allure de ton objectif te paraîtra plus facile.",
   R: "Des efforts très courts pour gagner en vitesse et en foulée.",
   SPE: "Tu t'habitues à l'allure de ton objectif, pour qu'elle te paraisse naturelle le jour J.",
-  COTES_C: "La côte renforce tes jambes et ta foulée.",
-  COTES_L: "De longues montées pour ton endurance et ta force.",
   FARTLEK: "Tu accélères et tu ralentis au ressenti, sans regarder ta montre.",
   TEST: "Un effort pour mesurer ta forme et régler tes allures.",
   RACE: "Le jour J. Pars à ton allure, pas plus vite.",
@@ -96,7 +95,6 @@ const STEP_LABELS: Record<ServerStep["kind"], string | undefined> = {
   recover: "Récupérer",
   cooldown: "Retour au calme",
   strides: "Accélération",
-  hills: undefined,
 };
 const EVENT_KINDS: Record<ServerEvent["kind"], EventKind> = {
   class: "class",
@@ -121,10 +119,9 @@ export const clockOf = (at: string) => timeOf(minutesOf(at.length > 5 ? at.slice
 const fullClock = (clock: string) => clock.padStart(5, "0");
 export const localAt = (date: string, clock: string) => `${date}T${fullClock(clock)}`;
 
-/** Short hills sit inside an easy run (algo.md COTES_C, RPE 3): they wear the easy color. */
 function intensityOf(type: RunType): Intensity {
   if (type === "L") return "long";
-  return type === "E" || type === "RECUP" || type === "COTES_C" ? "easy" : "hard";
+  return type === "E" || type === "RECUP" ? "easy" : "hard";
 }
 
 type ServerStep = PlannedSession["steps"][number];
@@ -137,7 +134,7 @@ export function stepDuration(minutes: number): string {
   return seconds % 60 === 0 || whole >= 60 ? duration(Math.round(seconds / 60)) : `${whole} min ${seconds % 60}`;
 }
 
-/** One pass: "800 m", "8 min", "10 s en côte". */
+/** One pass: "800 m", "8 min", "10 s". */
 function size(step: ServerStep): string {
   const metres = step.distM ?? 0;
   const one = metres
@@ -147,7 +144,7 @@ function size(step: ServerStep): string {
     : step.durMin
       ? stepDuration(step.durMin)
       : "";
-  return step.kind === "hills" ? `${one} en côte` : one;
+  return one;
 }
 
 /** The main set as the card names it: "6 × 800 m". */
@@ -158,7 +155,7 @@ function amount(step: ServerStep): string {
 /** The steady easy part of a run is drawn plain, so a long run with a faster block shows its shape. */
 function toneOf(step: ServerStep): StepLine["tone"] {
   if (step.kind === "recover") return "muted";
-  if (step.kind === "strides" || step.kind === "hills") return "hard";
+  if (step.kind === "strides") return "hard";
   return step.kind === "work" && step.zone !== "E" ? "hard" : "plain";
 }
 
@@ -180,7 +177,9 @@ export function toSteps(steps: ServerStep[]): Step[] {
 }
 
 export function toRun(session: SessionView | PlannedSession): Run {
-  const work = session.steps.find((s) => s.kind === "work") ?? session.steps.find((s) => s.kind === "hills");
+  const work = session.steps.find((s) => s.kind === "work");
+  // An easy run with sprints on the flat names them as its main set; its pace stays the easy one.
+  const main = work ?? session.steps.find((s) => s.kind === "strides");
   const paced = work?.target.paceSKm ?? session.steps.find((s) => s.target.paceSKm)?.target.paceSKm;
   const watch = "watch" in session && session.watch ? WATCH[session.watch] : undefined;
   return {
@@ -191,7 +190,7 @@ export function toRun(session: SessionView | PlannedSession): Run {
     durationMin: Math.max(1, Math.round(session.durMin)),
     title: TITLES[session.type],
     intensity: intensityOf(session.type),
-    mainSet: work?.reps ? amount(work) : undefined,
+    mainSet: main?.reps ? amount(main) : undefined,
     pace: paced ? paceLabel(paced) : "",
     steps: toSteps(session.steps),
     why: WHY[session.type],
@@ -272,6 +271,12 @@ export function toProposal(proposal: ServerProposal): Proposal {
     return {
       id: proposal.id,
       text: "Tes dernières courses donnent un autre chrono pour ton objectif. Je te propose de l'ajuster, ou tu gardes le tien.",
+    };
+  const proof = proposal.proof;
+  if (proof && proposal.to > proposal.from)
+    return {
+      id: proposal.id,
+      text: `Ton ${Math.round(proof.distanceM / 1000)} km du ${longDate(proof.date)} montre que tu vas plus vite que tes allures : je te propose de les relever, seuil à ${paceLabel(proof.thresholdSKm)}.`,
     };
   return {
     id: proposal.id,

@@ -63,12 +63,38 @@ describe("database", () => {
     expect(stores.pushSubscription.list()).toHaveLength(1);
   });
 
+  it("turns stored hill sessions into flat ones, in the plan and in the change log (P12)", async () => {
+    const dir = join(await mkdtemp(join(tmpdir(), "annarrive-db-")), "data");
+    const old = openDatabase(dir);
+    const version = z.object({ user_version: z.number() }).parse(old.prepare("PRAGMA user_version").get()).user_version;
+    old.exec(`PRAGMA user_version = ${version - 1}`);
+    const hills = JSON.stringify({
+      ...session("h", "2026-11-20T18:00"),
+      type: "COTES_C",
+      steps: [{ kind: "hills", durMin: 1 / 6, reps: 6, zone: "R", target: { rpe: 8 } }],
+    });
+    old.prepare("INSERT INTO planned_session (id, start_at, end_at, data) VALUES ('h', '', '', ?)").run(hills);
+    const log = JSON.stringify({
+      id: "x",
+      at: "2026-11-16T07:00:00Z",
+      summary: "Séance déplacée",
+      mutations: [{ table: "planned_session", id: "h", before: JSON.parse(hills), after: null }],
+    });
+    old.prepare("INSERT INTO change_log (id, start_at, end_at, data) VALUES ('x', '', '', ?)").run(log);
+    old.close();
+
+    const stores = createStores(openDatabase(dir));
+
+    expect(stores.plannedSession.get("h")).toMatchObject({ type: "E", steps: [{ kind: "strides", zone: "R" }] });
+    expect(JSON.stringify(stores.changeLog.get("x"))).not.toMatch(/COTES|hills/);
+  });
+
   it("removes the duplicated classes of past reads, keeping her « n'a pas lieu » and what Annuler points to", async () => {
     const dir = join(await mkdtemp(join(tmpdir(), "annarrive-db-")), "data");
     const old = openDatabase(dir);
     const version = z.object({ user_version: z.number() }).parse(old.prepare("PRAGMA user_version").get()).user_version;
-    // Back to the database as it was before the fix, duplicates allowed.
-    old.exec(`DROP INDEX calendar_event_class; PRAGMA user_version = ${version - 1}`);
+    // Back to the database as it was before the fix, duplicates allowed (the hills migration came after it).
+    old.exec(`DROP INDEX calendar_event_class; PRAGMA user_version = ${version - 2}`);
     const stores = createStores(old);
     const at = (title: string, start: string, end: string, id: string, over: Partial<CalendarEvent> = {}) =>
       stores.calendarEvent.put({ ...classEvent(title, start, end), id, ...over });

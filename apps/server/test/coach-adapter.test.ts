@@ -157,7 +157,7 @@ describe("coach adapter: a new goal (EV14)", () => {
     const sessions = () => t.services.plan.coachState().sessions;
     const thisWeek = () => sessions().filter((s) => s.start < NEXT_MONDAY);
     const nextWeek = () => sessions().filter((s) => s.start >= NEXT_MONDAY);
-    const quality = nextWeek().find((s) => s.type === "COTES_C");
+    const quality = nextWeek().find((s) => s.steps[0]?.kind === "warmup" && s.type === "E");
     expect(quality).toBeDefined();
     await change(t, "POST", `/api/sessions/${quality?.id}/move`, { start: "2026-11-27T12:00" });
     const moved = sessions().find((s) => s.id === quality?.id);
@@ -169,12 +169,12 @@ describe("coach adapter: a new goal (EV14)", () => {
     expect(thisWeek()).toEqual(before.current);
     expect(nextWeek()).not.toEqual(before.next);
     expect(nextWeek()).toContainEqual(moved);
-    // Her moved hill session stands in for the new week's fartlek: still three runs.
+    // Her moved sprint session counts as one of the new week's easy runs: still three runs.
     expect(
       nextWeek()
         .map((s) => s.type)
         .sort(),
-    ).toEqual(["COTES_C", "E", "L"]);
+    ).toEqual(["E", "FARTLEK", "L"]);
     expect(t.services.plan.program()).toEqual({
       goal: { distanceM: 5000, date: "2026-12-06" },
       declaredTime,
@@ -187,6 +187,38 @@ describe("coach adapter: a new goal (EV14)", () => {
 
     await t.call("POST", `/api/changes/${saved.change?.id}/undo`);
     expect({ current: thisWeek(), next: nextWeek(), program: t.services.plan.program() }).toEqual(before);
+  });
+
+  it("takes a new declared time as new paces only: this week keeps its runs, nothing lands today (F10, RC9, P25)", async () => {
+    const bridge = fakeBridge();
+    const t = await ready({ bridge });
+    t.setNow(WEDNESDAY);
+    history(t, "2026-11-16");
+    t.stores.fitnessEstimate.put({ id: "2026-11-01", date: "2026-11-01", vdot: 34, source: "test" });
+    await t.call("PUT", "/api/program", { goal: { distanceM: 21097.5, date: "2027-03-14" } });
+    // Thursday 19 November, 8:00: the programme started yesterday, today's run is not decided yet.
+    t.setNow(new Date("2026-11-19T07:00:00Z"));
+    const sessions = () => t.services.plan.coachState().sessions;
+    // Her week has no run today: a rebuild of the week used to put one there.
+    for (const s of sessions()) if (s.start.startsWith("2026-11-19")) t.stores.plannedSession.delete(s.id);
+    const shape = () => sessions().map((s) => [s.id, s.type, s.start]);
+    const before = { shape: shape(), sessions: sessions() };
+
+    const saved = await change(t, "PUT", "/api/program", {
+      declaredTime: { distanceM: 21097.5, minutes: 110, date: "2026-10-04" },
+    });
+
+    expect(saved.change?.summary).toBe("Allures recalculées avec ton chrono");
+    const thisWeek = (xs: unknown[][]) => xs.filter((x) => String(x[2]) < NEXT_MONDAY);
+    expect(thisWeek(shape())).toEqual(thisWeek(before.shape));
+    expect(sessions().filter((s) => s.start.startsWith("2026-11-19"))).toEqual(
+      before.sessions.filter((s) => s.start.startsWith("2026-11-19")).map((s) => expect.objectContaining({ id: s.id })),
+    );
+    const ahead = sessions().find((s) => s.start >= "2026-11-20" && s.start < NEXT_MONDAY);
+    const was = before.sessions.find((s) => s.id === ahead?.id);
+    expect(ahead?.steps).not.toEqual(was?.steps);
+    await t.call("POST", `/api/changes/${saved.change?.id}/undo`);
+    expect(sessions()).toEqual(before.sessions);
   });
 
   it("turns what is left of this week into a race week for a race within 7 days, and back when it goes (EV20, P24)", async () => {

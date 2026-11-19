@@ -36,7 +36,7 @@ const easyStep = (durMin: number, rpe = 3): Step => ({
   kind: "work",
   durMin,
   zone: "E",
-  target: { paceSKm: P40.E, rpe },
+  target: { paceSKm: [P40.E, P40.E], rpe },
 });
 
 export const easy = (id: string, start: string, durMin = 45, extra: Partial<Session> = {}): Session =>
@@ -59,7 +59,7 @@ export const sixBy800 = (id = "q", start = ""): Session => {
   const steps: Step[] = [
     { ...easyStep(15), kind: "warmup" },
     { kind: "work", durMin: frac, distM: 800, reps: 6, zone: "I", target: { paceSKm: [P40.I, P40.I], rpe: 8 } },
-    { kind: "recover", durMin: frac, reps: 5, zone: "E", target: { paceSKm: P40.E, rpe: 2 } },
+    { kind: "recover", durMin: frac, reps: 5, zone: "E", target: { paceSKm: [P40.E, P40.E], rpe: 2 } },
     { ...easyStep(10), kind: "cooldown" },
   ];
   return makeSession("I", steps, { id, start });

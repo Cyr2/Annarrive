@@ -359,7 +359,9 @@ export function betterSolution(a: Disruption, b: Disruption): boolean {
  */
 function bestMove(s: Session, rest: WeekState, now: string): Slot | null {
   let best: { slot: Slot; d: Disruption } | null = null;
-  for (const day of weekDates(rest.monday)) {
+  // P25: a repair never brings a run from another day onto today; she would find a run she did not plan.
+  const days = weekDates(rest.monday).filter((day) => day !== dateOf(now) || day === dateOf(s.start));
+  for (const day of days) {
     for (const slot of grid(day, rest.settings, s.durMin)) {
       if (slot.start <= now || checkHard(s, slot, rest).length > 0) continue;
       const d: Disruption = {

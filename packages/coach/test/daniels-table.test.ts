@@ -32,8 +32,7 @@ const TOL_R = TOL + 1.25;
 describe("paces against Daniels' table 5.2 (F7, issue #17)", () => {
   it.each(TRAINING)("VDOT %i", (v, e, m, t, i, r400) => {
     const p = paces(v);
-    expect(p.E[0]).toBeLessThanOrEqual(s(e));
-    expect(p.E[1]).toBeGreaterThanOrEqual(s(e));
+    expect(Math.abs(p.E - s(e))).toBeLessThanOrEqual(TOL);
     expect(Math.abs(p.M - s(m))).toBeLessThanOrEqual(TOL);
     expect(Math.abs(p.T - s(t))).toBeLessThanOrEqual(TOL);
     expect(Math.abs(p.I - s(i))).toBeLessThanOrEqual(TOL);

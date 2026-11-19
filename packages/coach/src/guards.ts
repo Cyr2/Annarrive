@@ -12,7 +12,9 @@ const CHRONIC_WEEKS = 4;
 const LIGHT = 0.8;
 
 const totalMin = (week: Session[]): number => week.reduce((sum, s) => sum + s.durMin, 0);
-const isContinuous = (s: Session): boolean => s.type === "E" || s.type === "RECUP" || s.type === "L";
+/** Sprints with full recoveries are not one block to shorten: they keep the catalogue E floor (P15). */
+const isContinuous = (s: Session): boolean =>
+  (s.type === "E" || s.type === "RECUP" || s.type === "L") && s.steps.some((st) => st.kind === "work");
 
 /** Sets the duration of a run by resizing its main step; a distance step keeps its pace (the watch ends on distance). */
 function resize(s: Session, durMin: number): Session {
@@ -76,7 +78,7 @@ export function capWeekSpikes(
 /** P14: the long run's share of the week, by runs per week. */
 export const longShare = (runs: number): number => (runs <= 3 ? 0.4 : runs === 4 ? 0.35 : 0.3);
 
-const isEasy = (s: Session): boolean => s.type === "E" || s.type === "RECUP" || s.type === "COTES_C";
+const isEasy = (s: Session): boolean => s.type === "E" || s.type === "RECUP";
 const isQ = (s: Session): boolean => s.type !== "L" && s.type !== "RACE" && s.type !== "TEST" && !isEasy(s);
 /** Catalogue floors (P15): RECUP 20 min, E 30 min. */
 const easyFloor = (s: Session): number => (s.type === "RECUP" ? MIN_EASY : MIN_E);

@@ -8,7 +8,7 @@ test("Programme : une course dimanche fait de la fin de semaine une semaine de c
   await page.goto("/semaine");
   const sunday = page.locator("#day-2026-11-22");
   const week = page.locator([16, 17, 18, 19, 20, 21, 22].map((d) => `#day-2026-11-${d}`).join(", "));
-  await expect(page.locator("#day-2026-11-17")).toContainText("Côtes courtes");
+  await expect(page.locator("#day-2026-11-17")).toContainText("6 × 10 s");
   const thisWeek = await week.allInnerTexts();
 
   await page.getByRole("link", { name: "Programme" }).click();

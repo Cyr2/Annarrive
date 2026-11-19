@@ -30,7 +30,7 @@ export const runSchema = z.object({
   intensity: intensitySchema,
   distanceKm: z.number().positive().optional(),
   mainSet: z.string().optional(),
-  /** The main target with its unit, "4'55 /km" or "6'15 à 6'45 /km". */
+  /** The main target with its unit, "4'55 /km". */
   pace: z.string(),
   steps: z.array(stepSchema),
   why: z.string(),

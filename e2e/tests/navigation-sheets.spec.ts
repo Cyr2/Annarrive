@@ -19,8 +19,11 @@ async function pull(page: Page, from: Locator, dx: number, dy: number, top?: num
 
 const openRunDetail = async (page: Page) => {
   await page.goto("/");
-  await page.getByRole("button", { name: /^\d+:\d+.*Côtes courtes/ }).click();
-  const detail = page.getByRole("dialog", { name: "Côtes courtes" });
+  await page
+    .getByRole("button", { name: /^\d+:\d+.*Footing/ })
+    .first()
+    .click();
+  const detail = page.getByRole("dialog", { name: "Footing" });
   // Risen: a finger lands where the sheet stands.
   await expect(detail).toHaveCSS("transform", "none");
   return detail;
@@ -59,7 +62,7 @@ test("la page derrière une feuille reste immobile, feuille ouverte comme tirée
   await expect(main).toHaveCSS("transform", "none");
   // Once risen, the app behind is out of reach.
   await expect(page.locator("#root")).toHaveAttribute("inert", "");
-  const box = await detail.getByRole("heading", { name: "Côtes courtes" }).boundingBox();
+  const box = await detail.getByRole("heading", { name: "Footing" }).boundingBox();
   if (!box) throw new Error("Titre invisible");
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
@@ -71,12 +74,15 @@ test("la page derrière une feuille reste immobile, feuille ouverte comme tirée
 test("une feuille n'est que du givre tant qu'elle bouge, et retrouve son verre une fois posée", async ({ page }) => {
   // A blur that moves is filtered again at every frame: on a phone, sheets with more content stuttered.
   await page.goto("/");
-  await page.getByRole("button", { name: /^\d+:\d+.*Côtes courtes/ }).click();
-  const detail = page.getByRole("dialog", { name: "Côtes courtes" });
+  await page
+    .getByRole("button", { name: /^\d+:\d+.*Footing/ })
+    .first()
+    .click();
+  const detail = page.getByRole("dialog", { name: "Footing" });
   await expect(detail).toHaveAttribute("data-moving", "");
   await expect(detail).toHaveCSS("transform", "none");
   await expect(detail).not.toHaveAttribute("data-moving");
-  const box = await detail.getByRole("heading", { name: "Côtes courtes" }).boundingBox();
+  const box = await detail.getByRole("heading", { name: "Footing" }).boundingBox();
   if (!box) throw new Error("Titre invisible");
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();

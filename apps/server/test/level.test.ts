@@ -46,6 +46,91 @@ const tempoRun = (id: number, start: string): GarminActivity => ({
   rpe: null,
 });
 
+/** Anna's real 12 weeks (level CLI of 2026-11-19): easy runs every 5 days, a half on 27/09, an 11 km tempo on 11/11. */
+function annaRuns(): { runs: GarminActivity[]; laps: Map<number, GarminLap[]> } {
+  const run = (id: number, start: string, km: number, min: number, avgHr: number, maxHr = 170): GarminActivity => ({
+    ...tempoRun(id, start),
+    durationS: min * 60,
+    distanceM: km * 1000,
+    avgHr,
+    maxHr,
+  });
+  const easy = Array.from({ length: 16 }, (_, i) => {
+    const day = new Date(Date.UTC(2026, 7, 30 + i * 5)).toISOString().slice(0, 10);
+    return run(1000 + i, `${day} 18:00:00`, 6, 40.5, 145);
+  });
+  const runs = [
+    ...easy,
+    run(24514776474, "2026-09-27 09:00:00", 21.27, 112.1, 166, 187),
+    run(2001, "2026-10-04 09:00:00", 5.07, 26.43, 160),
+    run(25045694091, "2026-11-11 18:00:00", 11.01, 60.62, 163),
+  ].sort((a, b) => (a.startTimeLocal ?? "").localeCompare(b.startTimeLocal ?? ""));
+  const tempo = [
+    lap(6.4, 148),
+    ...Array.from({ length: 9 }, () => lap(5.3, 168)),
+    { ...lap(6.52, 150), distanceM: 1010 },
+  ];
+  return { runs, laps: new Map([[25045694091, tempo]]) };
+}
+
+describe("Anna's level in service (F10, F11, RC11)", () => {
+  const nov19 = new Date("2026-11-19T07:00:00Z");
+
+  it("reads her first level once the whole sync is stored, not detrained by runs not stored yet (F-32)", async () => {
+    const bridge = fakeBridge();
+    const t = await ready({ bridge });
+    t.setNow(nov19);
+    const { runs, laps } = annaRuns();
+    bridge.recentActivities.mockResolvedValue(runs);
+    bridge.activityLaps.mockImplementation(async (id) => laps.get(id) ?? []);
+    await t.services.garmin?.syncActivities();
+
+    const level = t.stores.fitnessEstimate.list().at(-1);
+    expect(level).toMatchObject({ source: "effort:garmin:25045694091", provisional: false });
+    expect(level?.vdot).toBeCloseTo(38.1, 1);
+  });
+
+  it("proposes the better reading over a stale detrained level, names the run, and accepting it is undoable (RC-21)", async () => {
+    const bridge = fakeBridge();
+    const t = await ready({ bridge });
+    t.setNow(nov19);
+    const { runs, laps } = annaRuns();
+    bridge.activityLaps.mockImplementation(async (id) => laps.get(id) ?? []);
+    const stale = { id: "2026-11-17", date: "2026-11-17", vdot: 34.24, provisional: false };
+    t.stores.fitnessEstimate.put({ ...stale, source: "effort:garmin:24514776474:detrained" });
+    bridge.recentActivities.mockResolvedValue(runs);
+    await t.services.garmin?.syncActivities();
+
+    const [pending] = z.array(proposalSchema).parse((await t.call("GET", "/api/proposals")).json);
+    expect(pending).toMatchObject({ ruleId: "F10", from: 34.24, proof: { date: "2026-11-11", distanceM: 11010 } });
+    expect(pending?.to).toBeCloseTo(38.1, 1);
+    expect(pending?.proof?.thresholdSKm).toBeCloseTo(318, 0);
+    expect(levelReport(t.stores, "2026-11-19T08:00")).toContain("Pourquoi l'écart : une proposition attend sa réponse");
+
+    const accepted = changeResponseSchema.parse((await t.call("POST", `/api/proposals/${pending?.id}/accept`)).json);
+    expect(accepted.change?.summary).toBe("Allures mises à jour");
+    expect(t.stores.fitnessEstimate.list().at(-1)).toMatchObject({ source: "proposal:F10" });
+    await t.call("POST", `/api/changes/${accepted.change?.id}/undo`);
+    expect(t.stores.fitnessEstimate.list().at(-1)?.vdot).toBe(34.24);
+  });
+
+  it("says why the level in service differs from today's reading", () => {
+    const t = setup();
+    t.stores.fitnessEstimate.put({
+      id: "2026-11-17",
+      date: "2026-11-17",
+      vdot: 34.24,
+      source: "effort:garmin:24514776474:detrained",
+      provisional: false,
+    });
+    for (const a of [{ id: "garmin:1", start: "2026-11-11T18:00", durMin: 30, distM: 6500, avgHr: 185, maxHr: 190 }])
+      t.stores.activity.put(a);
+    expect(levelReport(t.stores, "2026-11-19T08:00")).toMatch(
+      /Pourquoi l'écart : calculé le 2026-11-17 sur un effort de 6 à 12 semaines.*La prochaine course synchronisée/,
+    );
+  });
+});
+
 describe("her level from laps and her own time (F10, F18, RC3)", () => {
   it("keeps the laps that say something about pace", () => {
     expect(

@@ -33,20 +33,26 @@ describe("buildSession (C1)", () => {
     expect(t.durMin).toBe(40);
   });
 
-  it("builds short hills as real hill sprints inside an easy run (C-9)", () => {
-    const h = buildSession("COTES_C", { ...ctx, phase: "base", durMin: 48 });
-    expect(h.steps.map((s) => s.kind)).toEqual(["warmup", "hills", "recover", "cooldown"]);
+  it("builds sprints on the flat inside an easy run, in place of hill sprints (C-9)", () => {
+    const h = buildSession("E", { ...ctx, phase: "base", durMin: 48, sprints: true });
+    expect(h.type).toBe("E");
+    expect(h.steps.map((s) => s.kind)).toEqual(["warmup", "strides", "recover", "cooldown"]);
     expect(h.steps[1]).toMatchObject({ reps: 6, durMin: 10 / 60, zone: "R", target: { rpe: 8 } });
     expect(h.steps[1]?.target.paceSKm).toEqual([ctx.paces.R, ctx.paces.R]);
-    expect(h.steps[2]).toMatchObject({ reps: 5, durMin: 1.5, zone: "E", target: { paceSKm: ctx.paces.E } });
+    expect(h.steps[2]).toMatchObject({
+      reps: 5,
+      durMin: 1.5,
+      zone: "E",
+      target: { paceSKm: [ctx.paces.E, ctx.paces.E] },
+    });
     expect(h.durMin).toBeLessThanOrEqual(48);
     expect(isHard(h)).toBe(false);
   });
 
-  it("sizes an I to 3 × 3 min with 3 min recoveries (C-2)", () => {
+  it("sizes an I to 4 × 3 min with 3 min recoveries (C-2)", () => {
     const i = buildSession("I", ctx);
-    expect(work(i)[0]).toMatchObject({ reps: 3, durMin: 3 });
-    expect(i.steps.find((s) => s.kind === "recover")).toMatchObject({ reps: 2, durMin: 3 });
+    expect(work(i)[0]).toMatchObject({ reps: 4, durMin: 3 });
+    expect(i.steps.find((s) => s.kind === "recover")).toMatchObject({ reps: 3, durMin: 3 });
   });
 
   it("progresses T to 20 min and CRUISE from 3 × 5 to 2 × 15", () => {
@@ -57,20 +63,7 @@ describe("buildSession (C1)", () => {
   });
 
   it("builds every type with a positive duration and the catalogue RPE", () => {
-    const types: RunType[] = [
-      "E",
-      "RECUP",
-      "L",
-      "T",
-      "CRUISE",
-      "I",
-      "R",
-      "SPE",
-      "COTES_C",
-      "COTES_L",
-      "FARTLEK",
-      "TEST",
-    ];
+    const types: RunType[] = ["E", "RECUP", "L", "T", "CRUISE", "I", "R", "SPE", "FARTLEK", "TEST"];
     for (const t of types) {
       const s = buildSession(t, ctx);
       expect(s.durMin).toBeGreaterThan(0);
@@ -195,7 +188,7 @@ describe("session transforms", () => {
   });
 
   it("gives every running step a pace, a race day turned easy included (C-10)", () => {
-    for (const type of ["E", "L", "T", "CRUISE", "I", "R", "SPE", "COTES_C", "COTES_L", "FARTLEK", "TEST", "RACE"])
+    for (const type of ["E", "L", "T", "CRUISE", "I", "R", "SPE", "FARTLEK", "TEST", "RACE"])
       for (const s of buildSession(type as RunType, { ...ctx, strides: true }).steps)
         expect(s.target.paceSKm, `${type} ${s.kind}`).toBeDefined();
     const easy = toEasy(buildSession("RACE", { ...ctx, distM: 21097.5, racePaceSKm: 311 }), 30);
@@ -207,6 +200,13 @@ describe("session transforms", () => {
     expect(downgrade(i, P40)).toMatchObject({ type: "T" });
     expect(workMin(downgrade(i, P40))).toBe(Math.floor(workMin(i)));
     expect(downgrade(buildSession("T", ctx), P40).type).toBe("FARTLEK");
+  });
+
+  it("gives each step one target pace, a recovery run 15 s/km under E, kept by a new level (C4)", () => {
+    const recup = buildSession("RECUP", { ...ctx, durMin: 30 });
+    expect(recup.steps[0]?.target.paceSKm).toEqual([P40.E + 15, P40.E + 15]);
+    expect(repace(recup, paces(45)).steps[0]?.target.paceSKm).toEqual([paces(45).E + 15, paces(45).E + 15]);
+    expect(buildSession("L", ctx).steps[0]?.target.paceSKm).toEqual([P40.E, P40.E]);
   });
 
   it("applies new paces and resizes distance fractions", () => {

@@ -9,8 +9,6 @@ export type RunType =
   | "I"
   | "R"
   | "SPE"
-  | "COTES_C"
-  | "COTES_L"
   | "FARTLEK"
   | "TEST"
   /** The goal race itself, on its date (P24). */
@@ -21,8 +19,7 @@ export type PaceZone = "E" | "M" | "T" | "I" | "R" | "race";
 export type Feel = "easy" | "ok" | "hard";
 
 export type Step = {
-  /** "hills": short uphill sprints (COTES_C), run on feel. */
-  kind: "warmup" | "work" | "recover" | "cooldown" | "strides" | "hills";
+  kind: "warmup" | "work" | "recover" | "cooldown" | "strides";
   /** Duration of one repetition. */
   durMin: number;
   distM?: number;
@@ -112,7 +109,7 @@ export type Proposal = {
   expiresOn: string;
 };
 
-export type Paces = { E: [number, number]; M: number; T: number; I: number; R: number };
+export type Paces = { E: number; M: number; T: number; I: number; R: number };
 
 export type Change = { ruleId: string; sessionId?: string; before?: Session; after?: Session; detail?: string };
 export type Warning = { ruleId: string; message: string; sessionId?: string };

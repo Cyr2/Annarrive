@@ -90,13 +90,13 @@ describe("predictTime (F5, F6)", () => {
 describe("paces (F7, F8)", () => {
   it("gives the VDOT 40 paces (F-7)", () => {
     const p = paces(40);
-    expect(p.E.map(formatPace)).toEqual(["5:51", "6:59"]);
+    expect(formatPace(p.E)).toBe("6:08");
     expect([p.M, p.T, p.I, p.R].map(formatPace)).toEqual(["5:27", "5:06", "4:41", "4:26"]);
   });
 
   it("gives the VDOT 50 paces (F-8)", () => {
     const p = paces(50);
-    expect(p.E.map(formatPace)).toEqual(["4:54", "5:52"]);
+    expect(formatPace(p.E)).toBe("5:08");
     expect([p.M, p.T, p.I, p.R].map(formatPace)).toEqual(["4:31", "4:15", "3:55", "3:40"]);
   });
 
@@ -297,6 +297,64 @@ describe("initialFitness (F10)", () => {
     );
   });
 
+  // Anna's real 12 weeks (level CLI of 2026-11-19): 19 runs, HRmax 187, a half on 27/09, an 11 km tempo on 11/11.
+  const annaLap = (min: number, distM: number, avgHr: number) => ({ durMin: min, distM, avgHr });
+  const half: Activity = {
+    id: "garmin:24514776474",
+    start: "2026-09-27T09:00",
+    distM: 21270,
+    durMin: 112.1,
+    avgHr: 166,
+  };
+  const tempo11: Activity = {
+    id: "garmin:25045694091",
+    start: "2026-11-11T18:00",
+    distM: 11010,
+    durMin: 60.62,
+    avgHr: 163,
+    laps: [
+      annaLap(6.4, 1000, 148),
+      ...Array.from({ length: 9 }, () => annaLap(5.3, 1000, 168)),
+      annaLap(6.52, 1010, 150),
+    ],
+  };
+  const fiveK: Activity = { id: "garmin:5k", start: "2026-10-04T09:00", distM: 5070, durMin: 26.43, avgHr: 160 };
+  const easyRuns = Array.from(
+    { length: 16 },
+    (_, i): Activity => ({
+      id: `garmin:e${i}`,
+      start: `${addDays("2026-08-30", i * 5)}T18:00`,
+      distM: 6000,
+      durMin: 40.5,
+      avgHr: 145,
+    }),
+  );
+  const anna = { activities: [...easyRuns, half, fiveK, tempo11], hr: { hrMax: 187 } };
+
+  it("reads a run of more than 60 min at T heart rate as a race, not as T pace (F-30)", () => {
+    const [reading] = effortReadings({ activities: [half], hr: { hrMax: 187 } }, "2026-11-19T08:00");
+    expect(reading).toMatchObject({ kind: "race" });
+    expect(reading?.vdot).toBeCloseTo(vdot(21270, 112.1), 6);
+  });
+
+  it("takes her 11 km tempo of last week over her half of 7 weeks ago, detrained nothing (F-31)", () => {
+    const f = initialFitness(anna, "2026-11-19T08:00");
+    expect(f).toMatchObject({ status: "measured", source: "effort:garmin:25045694091" });
+    expect(f.vdot).toBeCloseTo(38.1, 1);
+    expect(formatPace(paces(f.vdot).T)).toBe("5:18");
+    // Without the tempo, the half counts, detrained only by her longest real break (6 days, since her last run).
+    const noTempo = initialFitness({ ...anna, activities: [...easyRuns, half, fiveK] }, "2026-11-19T08:00");
+    expect(noTempo).toMatchObject({ source: "effort:garmin:24514776474:detrained" });
+    expect(noTempo.vdot).toBeCloseTo(vdot(21270, 112.1) * detrainingFactor(6), 6);
+  });
+
+  it("reads the 51-day 'break' of a first sync that had stored her half and nothing after it (F-32)", () => {
+    const partial = { ...anna, activities: [...easyRuns.filter((a) => a.start < half.start), half] };
+    const f = initialFitness(partial, "2026-11-17T08:00");
+    expect(f).toMatchObject({ source: "effort:garmin:24514776474:detrained" });
+    expect(f.vdot).toBeCloseTo(34.2, 1);
+  });
+
   it("counts a hard run as eligible when heart rate proves it", () => {
     const a: Activity = { id: "h", start: "2026-11-09T08:00", durMin: 30, distM: 6500, avgHr: 185 };
     expect(initialFitness({ activities: [a], hr: { hrMax: 195 } }, NOW).source).toBe("effort:h");
@@ -368,7 +426,7 @@ describe("hrPaceModel (F15)", () => {
 
 describe("pilotFor (F16)", () => {
   it("pilots easy runs by HR, quality by pace, short efforts by RPE", () => {
-    const types: RunType[] = ["E", "L", "T", "I", "R", "COTES_C"];
+    const types: RunType[] = ["E", "L", "T", "I", "R", "FARTLEK"];
     expect(types.map((t) => pilotFor(t))).toEqual(["hr", "hr", "pace", "pace", "rpe", "rpe"]);
   });
 

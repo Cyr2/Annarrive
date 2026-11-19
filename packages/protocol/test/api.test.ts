@@ -22,7 +22,7 @@ describe("session names", () => {
   it("agrees « passé » and « fait » with the name", () => {
     expect(agreeWith("E", "fait")).toBe("fait");
     expect(agreeWith("L", "passé")).toBe("passée");
-    expect(agreeWith("COTES_C", "fait")).toBe("faites");
+    expect(agreeWith("SPE", "fait")).toBe("faite");
   });
 });
 

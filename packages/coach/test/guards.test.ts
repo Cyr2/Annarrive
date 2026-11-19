@@ -153,7 +153,7 @@ describe("distribution (P16)", () => {
   const intervals = makeSession(
     "I",
     [
-      { kind: "warmup", durMin: 15, zone: "E", target: { paceSKm: P40.E, rpe: 3 } },
+      { kind: "warmup", durMin: 15, zone: "E", target: { paceSKm: [P40.E, P40.E], rpe: 3 } },
       { kind: "work", durMin: 3, reps: 8, zone: "I", target: { rpe: 8 } },
       { kind: "recover", durMin: 3, reps: 7, zone: "E", target: { rpe: 2 } },
       { kind: "cooldown", durMin: 10, zone: "E", target: { rpe: 3 } },

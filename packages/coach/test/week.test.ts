@@ -66,6 +66,14 @@ describe("planWeek (cycle 0.1 buildWeek)", () => {
     expect(sessions.find((s) => s.type === "L")?.start.slice(0, 10)).toBe(addDays(MONDAY, 6));
   });
 
+  it("places nothing new today when a week under way is rebuilt, whatever rebuilt it (P25, P-27)", () => {
+    // A settings change on Wednesday morning, the programme started weeks ago: today stays as it was.
+    const now = `${addDays(MONDAY, 2)}T07:00`;
+    const { sessions } = planWeek(request({ now, planStart: addDays(MONDAY, -21) }));
+    expect(sessions.length).toBeGreaterThan(0);
+    expect(sessions.every((s) => dateOf(s.start) > dateOf(now))).toBe(true);
+  });
+
   it("never places a hard run within 24 h after the legs session (H5)", () => {
     const r = request();
     const legsEnd = LEGS.end;
@@ -107,8 +115,8 @@ describe("planWeek (cycle 0.1 buildWeek)", () => {
 
     expect(types(spe([]))).toEqual(["E", "L", "SPE", "T"]);
     expect(types(spe([test("2027-02-08")]))).toEqual(["E", "L", "T", "TEST"]);
-    expect(types(request())).toEqual(["COTES_C", "E", "E", "L"]);
-    expect(types(request({ kept: [test(MONDAY)] }))).toEqual(["COTES_C", "E", "L", "TEST"]);
+    expect(types(request())).toEqual(["E", "E", "E", "L"]);
+    expect(types(request({ kept: [test(MONDAY)] }))).toEqual(["E", "E", "L", "TEST"]);
 
     const fourQ = [0, 2, 4, 6].map((d) => ({ ...hard(`h${d}`, `${addDays(MONDAY, d)}T07:00`, 30), manual: true }));
     expect(types(request({ kept: fourQ }))).toEqual(["L", "T", "T", "T", "T"]);

@@ -114,8 +114,11 @@ export interface CoachPort {
   decisionDue(now: string, sessionStart: string | null, nightSynced: boolean): boolean;
   /** M1 `initialFitness` (F10): history first, then Garmin VO2max or the declared time; null when nothing is known. */
   estimateFitness(st: CoachState, vo2max: number | undefined, now: string): Omit<FitnessEstimate, "id" | "date"> | null;
-  /** M8 after a new run: RC1 and RC2 for a race or test, F10 while the level is provisional. */
-  evaluateRun(st: CoachState, run: Activity, now: string): ProposalDraft | null;
+  /**
+   * M8 after a new run: F10 while the level is provisional, else RC1 and RC2 for a race or test, then F10 again
+   * (rise only) while the level is one F10 measured on its own. `past`: the proposals she answered (RC8).
+   */
+  evaluateRun(st: CoachState, run: Activity, past: Proposal[], now: string): ProposalDraft | null;
   /**
    * M8 RC3 and RC4 after a T, CRUISE or I session: its laps against the targets of the key sessions since the last
    * level change, with the proposals she already answered (RC8).
@@ -133,6 +136,8 @@ export interface CoachPort {
   evaluateFeels(st: CoachState, past: Proposal[], now: string): ProposalDraft | null;
   /** M8 RC7 after a run: Garmin VO2max shifted by 2 for 14 days proposes a test, once per 14 days. */
   evaluateTrends(st: CoachState, past: Proposal[], now: string): ProposalDraft | null;
+  /** RC9 without a proposal: the sessions still ahead take the paces of `st.fitness`, nothing moves, nothing is added. */
+  repace(st: CoachState, now: string): CoachResult;
   /** M8 `acceptProposal` (RC9): new paces for future sessions, and the new estimate in `state.fitness`. */
   acceptProposal(st: CoachState, proposal: ProposalDraft, now: string): CoachResult;
   /**

@@ -20,9 +20,12 @@ const today = dateOf(toParisLocal(systemClock()));
 createStores(db).dailySignal.put({ id: addDays(today, -1), vo2max: 44, rhr: 52, sleepMin: 450 });
 
 if (mode === "plan") {
+  // Her week was built last night: a week rebuilt today never places a run today (algo.md P25).
+  const lastNight = new Date(`${addDays(today, -1)}T22:00:00Z`);
+  let clock = () => lastNight;
   const services = createServices({
     db,
-    clock: systemClock,
+    clock: () => clock(),
     publicUrl: "http://localhost",
     coach: coachAdapter,
     fetchIcs: icsFetcher(),
@@ -43,6 +46,7 @@ if (mode === "plan") {
   const goal = { distanceM: 21097.5, date: "2027-03-14" } as const;
   createStores(db).program.put({ id: "current", value: { goal, startedOn: addDays(today, -8) } });
   services.plan.updateProgram({ goal });
+  clock = systemClock;
   services.plan.createEvent({
     kind: "strength",
     title: "Jambes",

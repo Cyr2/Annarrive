@@ -106,7 +106,7 @@ function tiredLastWeek(r: WeekRequest): number {
 const deloaded = (w: PlanWeek): PlanWeek =>
   w.deload || w.phase === "taper" ? w : { ...w, deload: true, volumeMin: 0.75 * w.volumeMin };
 
-/** F10: the week's first quality slot (short hills or fartlek in base) becomes the test. */
+/** F10: the week's first quality slot (sprints or fartlek in base) becomes the test. */
 function withTest(w: PlanWeek): PlanWeek {
   const easy: TemplateSlot[] = ["L", "E", "RECUP", "E+strides"];
   const i = w.template.findIndex((slot) => !easy.includes(slot));
@@ -277,9 +277,8 @@ export function planWeek(r: WeekRequest): WeekPlan {
     used.add(`${r.monday}-${n}`);
     return `${r.monday}-${n}`;
   };
-  // The past is one long unavailability, so nothing lands before `now`. P25: nor on the day the programme starts.
-  const startsToday = r.planStart === dateOf(r.now);
-  const pastEnd = startsToday ? `${addDays(dateOf(r.now), 1)}T00:00` : r.now;
+  // The past is one long unavailability, so nothing lands before `now`. P25: nor today, whatever rebuilt the week.
+  const pastEnd = `${addDays(dateOf(r.now), 1)}T00:00`;
   const past: CalEvent[] =
     pastEnd > `${r.monday}T00:00`
       ? [{ id: "past", kind: "unavailable", start: `${r.monday}T00:00`, end: pastEnd, manual: true }]

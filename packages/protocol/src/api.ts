@@ -8,21 +8,7 @@ export const localDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Ce jour 
 export const timeOfDaySchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Cette heure n'est pas valide.");
 export const isoWeekSchema = z.string().regex(/^\d{4}-W(0[1-9]|[1-4]\d|5[0-3])$/, "Cette semaine n'est pas valide.");
 
-export const runTypeSchema = z.enum([
-  "E",
-  "RECUP",
-  "L",
-  "T",
-  "CRUISE",
-  "I",
-  "R",
-  "SPE",
-  "COTES_C",
-  "COTES_L",
-  "FARTLEK",
-  "TEST",
-  "RACE",
-]);
+export const runTypeSchema = z.enum(["E", "RECUP", "L", "T", "CRUISE", "I", "R", "SPE", "FARTLEK", "TEST", "RACE"]);
 
 /** The one name of each run type: on the watch, in the app, in notifications and in Reggie's answers. */
 export const sessionNames: Record<z.infer<typeof runTypeSchema>, string> = {
@@ -34,22 +20,19 @@ export const sessionNames: Record<z.infer<typeof runTypeSchema>, string> = {
   I: "Fractionné",
   R: "Vitesse",
   SPE: "Allure objectif",
-  COTES_C: "Côtes courtes",
-  COTES_L: "Côtes longues",
   FARTLEK: "Fartlek",
   TEST: "Test de forme",
   RACE: "Jour J",
 };
 
-/** « passé », « fait » agreed with the session's name: « Sortie longue passée », « Côtes courtes faites ». */
+/** « passé », « fait » agreed with the session's name: « Sortie longue passée », « Footing fait ». */
 export function agreeWith(type: z.infer<typeof runTypeSchema>, participle: string): string {
-  if (type === "COTES_C" || type === "COTES_L") return `${participle}es`;
   return ["L", "R", "SPE"].includes(type) ? `${participle}e` : participle;
 }
 
 const range = z.tuple([z.number(), z.number()]);
 export const stepSchema = z.object({
-  kind: z.enum(["warmup", "work", "recover", "cooldown", "strides", "hills"]),
+  kind: z.enum(["warmup", "work", "recover", "cooldown", "strides"]),
   durMin: z.number().positive().optional(),
   distM: z.number().positive().optional(),
   reps: z.number().int().positive().optional(),
@@ -208,6 +191,8 @@ export const proposalSchema = z.object({
   to: z.number(),
   ruleId: z.string(),
   evidence: z.array(z.string()),
+  /** F10: the run that shows the new level, with the T pace it gives, for « ton 11 km du 11 novembre ». */
+  proof: z.object({ date: localDateSchema, distanceM: z.number(), thresholdSKm: z.number() }).optional(),
   expiresOn: localDateSchema,
   status: z.enum(["pending", "accepted", "declined"]),
   decidedOn: localDateSchema.optional(),
