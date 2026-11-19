@@ -61,7 +61,9 @@ export function busyEvent(form: Form): NewEvent {
 
 /** Whether "Ajouter" can be pressed: a day, and a time (a révision) or a span that ends after it starts. */
 export function isValidForm(kind: "revision" | "busy", form: Form): boolean {
-  return Boolean(form.date) && (kind === "revision" ? Boolean(form.start) : isValidSpan(form.start, form.end));
+  // A revision of 0 min, or one that runs past midnight, has no span.
+  const end = kind === "revision" ? addMinutes(form.start, form.minutes) : form.end;
+  return Boolean(form.date) && isValidSpan(form.start, end);
 }
 
 export function isValidSpan(start: string, end: string): boolean {

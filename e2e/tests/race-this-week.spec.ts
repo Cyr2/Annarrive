@@ -15,7 +15,7 @@ test("Programme : une course dimanche fait de la fin de semaine une semaine de c
   const card = page.getByRole("article", { name: "Ton objectif" });
   await card.getByRole("button", { name: "Modifier l'objectif" }).click();
   const sheet = page.getByRole("dialog", { name: "Ton objectif" });
-  await sheet.getByRole("combobox", { name: "Course" }).selectOption("10 km");
+  await sheet.getByRole("button", { name: "10 km", exact: true }).click();
   await sheet.getByLabel("Date").fill("2026-11-22");
   await expect(sheet).toContainText("Ta semaine devient une semaine de course");
   await sheet.getByRole("button", { name: "Valider" }).click();

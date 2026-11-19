@@ -1,7 +1,8 @@
 import { useState } from "react";
 import type { GoalInput } from "../../api/client.ts";
-import { Button, SegmentedControl } from "../../ui/controls.tsx";
-import { Group, RowInput, RowSelect, Section } from "../../ui/List.tsx";
+import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
+import { Button, Chip, SegmentedControl } from "../../ui/controls.tsx";
+import { Group, RowInput, Section } from "../../ui/List.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
 import { Surface } from "../../ui/Surface.tsx";
 import { TimeBoxes } from "../../ui/TimeBoxes.tsx";
@@ -50,13 +51,16 @@ export default function GoalSheet(sheet: SheetProps<"goal">) {
         </Button>
       }
     >
+      <Section title="Course">
+        <ChoiceGroup label="Course" className="flex flex-wrap gap-2">
+          {RACES.map((r) => (
+            <Chip key={r.race} selected={draft.race === r.race} onClick={() => set({ race: r.race, distanceKm: r.km })}>
+              {r.race}
+            </Chip>
+          ))}
+        </ChoiceGroup>
+      </Section>
       <Group>
-        <RowSelect
-          label="Course"
-          value={draft.race}
-          options={RACES.map((r) => ({ value: r.race, label: r.race }))}
-          onChange={(race) => set({ race, distanceKm: RACES.find((r) => r.race === race)?.km ?? draft.distanceKm })}
-        />
         <RowInput label="Date" type="date" min={todayOf(plan)} value={draft.date} onChange={(date) => set({ date })} />
         <RowInput
           label="Heure de départ"

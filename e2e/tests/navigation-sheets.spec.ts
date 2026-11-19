@@ -165,15 +165,15 @@ test("Semaine : glisser vers la gauche montre la semaine suivante, vers la droit
   await expect(range).toHaveText("16 au 22 novembre");
 });
 
-test("Semaine : un filtre garde un seul type, et « Cette semaine » ramène à la semaine en cours", async ({ page }) => {
+test("Semaine : un filtre garde un seul type, et la plage de dates ramène à la semaine en cours", async ({ page }) => {
   await page.goto("/semaine");
   const range = page.locator("p[aria-live]");
   await expect(range).toHaveText("16 au 22 novembre");
   await page.getByRole("button", { name: "Semaine suivante" }).click();
   await expect(range).toContainText("23 au 29 novembre");
-  await page.getByRole("button", { name: "Cette semaine", exact: true }).click();
+  await page.getByRole("button", { name: /revenir à cette semaine/ }).click();
   await expect(range).toHaveText("16 au 22 novembre");
-  await expect(page.getByRole("button", { name: "Cette semaine", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /revenir à cette semaine/ })).toHaveCount(0);
 
   const sessions = page.locator("[aria-roledescription='séance déplaçable']");
   await expect(sessions.first()).toBeVisible();

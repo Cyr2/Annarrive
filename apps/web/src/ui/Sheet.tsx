@@ -215,9 +215,10 @@ function HeaderRow({ titleId, title, subtitle, back, onCancel, cancelLabel, acti
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 pt-2">
       {back ? (
-        <TextButton className="-ml-1 justify-self-start gap-0.5" onClick={back}>
+        // On a 320 px phone the chevron alone goes back, as in iOS, so a long title never runs into it.
+        <TextButton className="-ml-1 min-w-11 justify-self-start gap-0.5" onClick={back}>
           <Icon name="chevronLeft" size={22} stroke={2.4} />
-          Retour
+          <span className="max-[359px]:sr-only">Retour</span>
         </TextButton>
       ) : (
         <TextButton className="justify-self-start" onClick={onCancel}>

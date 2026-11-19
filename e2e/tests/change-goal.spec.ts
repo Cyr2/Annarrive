@@ -16,7 +16,7 @@ test("Programme : changer de course recalcule le plan sans toucher la semaine en
   await expect(card.getByRole("heading")).toHaveText("Semi-marathon");
   await card.getByRole("button", { name: "Modifier l'objectif" }).click();
   const sheet = page.getByRole("dialog", { name: "Ton objectif" });
-  await sheet.getByRole("combobox", { name: "Course" }).selectOption("10 km");
+  await sheet.getByRole("button", { name: "10 km", exact: true }).click();
   await sheet.getByRole("button", { name: "Valider" }).click();
 
   const changed = banner(page, "Objectif modifié");

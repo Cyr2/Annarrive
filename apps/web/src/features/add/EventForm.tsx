@@ -1,27 +1,19 @@
-import { SegmentedControl } from "../../ui/controls.tsx";
 import { Group, RowInput, RowSelect, Section } from "../../ui/List.tsx";
+import { TimeBoxes } from "../../ui/TimeBoxes.tsx";
 import { type Form, REPEATS, TITLE_MAX } from "./add.ts";
 
-const LENGTHS = [
-  { value: "60", label: "1 h" },
-  { value: "90", label: "1 h 30" },
-  { value: "120", label: "2 h" },
-];
+/** A revision block fits in a day. */
+const MAX_HOURS = 8;
 
 type Props = { kind: "revision" | "busy"; form: Form; today: string; onChange: (patch: Partial<Form>) => void };
 
-/** Révision (length in buttons, day, time, repeat) or Occupée (optional title, day, start and end). */
+/** Révision (length in h and min boxes, day, time, repeat) or Occupée (optional title, day, start and end). */
 export function EventForm({ kind, form, today, onChange: set }: Props) {
   return (
     <>
       {kind === "revision" && (
         <Section title="Durée">
-          <SegmentedControl
-            label="Durée"
-            items={LENGTHS}
-            value={String(form.minutes)}
-            onChange={(v) => set({ minutes: Number(v) })}
-          />
+          <TimeBoxes seconds={form.minutes * 60} maxHours={MAX_HOURS} onChange={(s) => set({ minutes: s / 60 })} />
         </Section>
       )}
       <Group>
