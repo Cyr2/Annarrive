@@ -4,7 +4,8 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "tests",
   globalSetup: "./support/global-setup.ts",
-  fullyParallel: false,
+  // Tests are independent (each undoes its change): spreading them one by one evens out the CI shards.
+  fullyParallel: true,
   workers: 1,
   forbidOnly: Boolean(process.env.CI),
   retries: 0,
