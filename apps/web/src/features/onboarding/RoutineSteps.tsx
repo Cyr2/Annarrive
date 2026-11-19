@@ -1,12 +1,12 @@
 import { useId } from "react";
-import { weekdayName } from "../../lib/date.ts";
 import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
 import { Button, Switch } from "../../ui/controls.tsx";
-import { Group, RowInput, RowSelect, Section } from "../../ui/List.tsx";
+import { DayChips } from "../../ui/DayChips.tsx";
+import { Group, RowInput, Section } from "../../ui/List.tsx";
 import { TextButton } from "../../ui/TextButton.tsx";
 import { DayWindow } from "../program/DayWindow.tsx";
 import type { StrengthDraft } from "./onboarding.ts";
-import { BigChoice, DayChips, update, useDraft } from "./parts.tsx";
+import { BigChoice, ProfileDays, update, useDraft } from "./parts.tsx";
 
 export function WeekStep() {
   const { runsPerWeek, noRunDays, longRunDays } = useDraft();
@@ -27,13 +27,13 @@ export function WeekStep() {
         </ChoiceGroup>
       </Section>
       <Section title="Jours sans course" footnote="Facultatif. Laisse vide si tous les jours te vont.">
-        <DayChips label="Jours sans course" value={noRunDays} onChange={(days) => update({ noRunDays: days })} />
+        <ProfileDays label="Jours sans course" value={noRunDays} onChange={(days) => update({ noRunDays: days })} />
       </Section>
       <Section
         title="Ta sortie longue"
         footnote="Les jours où tu as le temps. Reggie prend le plus libre chaque semaine."
       >
-        <DayChips
+        <ProfileDays
           label="Jours de sortie longue"
           value={longRunDays}
           onChange={(days) => update({ longRunDays: days })}
@@ -67,8 +67,6 @@ export function HoursStep() {
   );
 }
 
-const DAY_OPTIONS = [1, 2, 3, 4, 5, 6, 7].map((d) => ({ value: String(d), label: weekdayName(d - 1) }));
-
 function StrengthCard({ item, index }: { item: StrengthDraft; index: number }) {
   const legsId = useId();
   const { strength } = useDraft();
@@ -89,12 +87,9 @@ function StrengthCard({ item, index }: { item: StrengthDraft; index: number }) {
           </span>
           <Switch checked={item.legs} onChange={(legs) => change({ legs })} labelledBy={legsId} />
         </div>
-        <RowSelect
-          label="Jour"
-          value={String(item.day)}
-          options={DAY_OPTIONS}
-          onChange={(day) => change({ day: Number(day) })}
-        />
+      </Group>
+      <DayChips label="Jour" selected={[item.day - 1]} onToggle={(day) => change({ day: day + 1 })} />
+      <Group>
         <RowInput label="Heure" type="time" value={item.start} onChange={(start) => change({ start })} />
       </Group>
       <TextButton

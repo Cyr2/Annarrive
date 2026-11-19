@@ -3,8 +3,8 @@ import { dayName } from "../../lib/date.ts";
 import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
 import { Chip } from "../../ui/controls.tsx";
 import { Icon } from "../../ui/Icon.tsx";
-import { Group, GroupLabel, RowSelect } from "../../ui/List.tsx";
-import { dayChoices, timeChoices } from "./move.ts";
+import { Group, GroupLabel, RowInput } from "../../ui/List.tsx";
+import { dayChoices } from "./move.ts";
 
 type Props = {
   open: boolean;
@@ -67,11 +67,11 @@ export function SlotPicker({ open, onOpen, monday, options, today, value, onChan
         </p>
       )}
       <Group>
-        <RowSelect
+        <RowInput
           label="Heure"
+          type="time"
           value={start}
-          options={timeChoices().map((t) => ({ value: t, label: t }))}
-          onChange={(time) => value && onChange({ date: value.date, start: time })}
+          onChange={(time) => time && value && onChange({ date: value.date, start: time })}
         />
       </Group>
     </section>

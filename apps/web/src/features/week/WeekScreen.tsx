@@ -8,6 +8,7 @@ import { cx } from "../../lib/cx.ts";
 import { daysBetween, mondayOf } from "../../lib/date.ts";
 import { Button, Chip, IconButton } from "../../ui/controls.tsx";
 import { EmptyState, LoadFailed } from "../../ui/EmptyState.tsx";
+import { Icon } from "../../ui/Icon.tsx";
 import { PullToRefresh } from "../../ui/PullToRefresh.tsx";
 import { Screen } from "../../ui/Screen.tsx";
 import { Skeleton } from "../../ui/Skeleton.tsx";
@@ -113,8 +114,8 @@ type HeaderProps = {
 };
 
 /**
- * The arrows around the week's range, +, and the kinds to show. On another week than this one the range turns
- * blue like a link and a « Cette semaine » pill comes under it: both lead back.
+ * The arrows around the week's range, +, and the kinds to show. This week's range is blue (today's color); on
+ * another week it is ink with a return arrow, and touching it leads back, so nothing is added or shifts.
  */
 function WeekHeader({ range = " ", offset, onOffset, onAdd, filter, onFilter }: HeaderProps) {
   const chips = useRef<HTMLFieldSetElement>(null);
@@ -129,30 +130,30 @@ function WeekHeader({ range = " ", offset, onOffset, onAdd, filter, onFilter }: 
       <h1 className="sr-only-label">Semaine</h1>
       <div className="flex items-center gap-0.5">
         <IconButton icon="chevronLeft" label="Semaine précédente" onClick={() => onOffset(offset - 1)} />
-        <p aria-live="polite" className="t-range m-0 flex min-w-0 flex-1 justify-center text-center">
+        <p
+          aria-live="polite"
+          className="t-range m-0 flex min-h-11 min-w-0 flex-1 items-center justify-center text-center"
+        >
           {offset === 0 ? (
-            <span className="truncate">{range}</span>
+            <span className="truncate text-action">{range}</span>
           ) : (
+            // The range itself leads back, as a title does in iOS: nothing appears or moves around it.
             <button
               type="button"
               onClick={() => onOffset(0)}
-              className="press min-h-11 max-w-full truncate border-0 bg-transparent px-1 text-action"
+              className="press flex min-h-11 max-w-full items-center gap-0.5 border-0 bg-transparent p-0 text-ink"
             >
-              {range}
+              <Icon name="back" size={14} stroke={2.5} className="flex-none text-action" />
+              <span className="truncate">{range}</span>
               <span className="sr-only-label">, revenir à cette semaine</span>
             </button>
           )}
         </p>
         <IconButton icon="chevronRight" label="Semaine suivante" onClick={() => onOffset(offset + 1)} />
         {onAdd && (
-          <IconButton icon="plus" label="Ajouter" variant="tinted" tone="action" className="ml-2" onClick={onAdd} />
+          <IconButton icon="plus" label="Ajouter" variant="tinted" tone="action" className="ml-1" onClick={onAdd} />
         )}
       </div>
-      {offset !== 0 && (
-        <Chip icon="today" className="rise self-center" onClick={() => onOffset(0)}>
-          Cette semaine
-        </Chip>
-      )}
       {/* Its own sideways scroll on a narrow phone: the week swipe leaves it alone (lib/swipe.ts). */}
       <fieldset
         ref={chips}

@@ -186,25 +186,37 @@
     padding-right: var(--spacing-gutter);
     color: var(--color-ink);
   }
-  .row + .row,
-  .step-repeat + .row,
-  .row + .step-repeat {
+  .row + .row {
     border-top: 0.5px solid var(--color-hairline);
   }
-  /* « Répéter n fois »: a tinted group around the lines it repeats, as a Garmin workout shows it (StepList). */
+  /* A session's steps (StepList), the same wherever they show: the lines sit flush with the text of their block,
+     and « Répéter n fois » is a tinted group whose own padding indents the lines it repeats. */
+  .step-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    column-gap: 12px;
+    min-height: 48px;
+    padding-block: 6px;
+  }
+  .step-list > li + li,
+  .step-repeat > ol > li + li {
+    border-top: 0.5px solid var(--color-hairline);
+  }
   .step-repeat {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    padding: 8px 0 2px;
-  }
-  .step-repeat > span {
-    margin-left: var(--spacing-gutter);
+    gap: 6px;
+    padding-block: 10px;
   }
   .step-repeat > ol {
-    margin-inline: 8px;
+    padding-inline: 12px;
     border-radius: var(--radius-row);
     background: var(--color-fill);
+  }
+  .step-repeat .step-row {
+    min-height: 44px;
   }
   /* A field's focus ring goes round its whole row or box, for the keyboard only: a tap shows the caret, and
      the browser's ring would sit inside the row's indent. */

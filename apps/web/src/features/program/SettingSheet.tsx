@@ -1,8 +1,7 @@
 import { useState } from "react";
 import type { Settings } from "../../api/schemas.ts";
-import { weekdayName } from "../../lib/date.ts";
-import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
-import { Button, Chip, SegmentedControl } from "../../ui/controls.tsx";
+import { Button, SegmentedControl } from "../../ui/controls.tsx";
+import { DayChips, toggled } from "../../ui/DayChips.tsx";
 import { Group, RowInput, Section } from "../../ui/List.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
 import { usePlan } from "../plan/store.ts";
@@ -82,21 +81,7 @@ export default function SettingSheet({ spec, ...sheet }: SheetProps<"setting">) 
 function DayToggles({ label, days, onChange }: { label: string; days: number[]; onChange: (days: number[]) => void }) {
   return (
     <Section title={label}>
-      <ChoiceGroup label={label} className="flex flex-wrap gap-2">
-        {Array.from({ length: 7 }, (_, i) => {
-          const on = days.includes(i);
-          return (
-            <Chip
-              key={weekdayName(i)}
-              selected={on}
-              aria-label={weekdayName(i)}
-              onClick={() => onChange(on ? days.filter((d) => d !== i) : [...days, i].sort())}
-            >
-              {weekdayName(i).slice(0, 3)}
-            </Chip>
-          );
-        })}
-      </ChoiceGroup>
+      <DayChips label={label} selected={days} onToggle={(day) => onChange(toggled(days, day))} />
     </Section>
   );
 }

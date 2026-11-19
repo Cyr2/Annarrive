@@ -87,7 +87,9 @@ Other utilities: `.row` (grouped list row with hairlines between rows), `.hairli
 - **`List`**: `SectionTitle` (role 1, 20 px: a section of a screen) and `GroupLabel` (role 2, caption: over a group); `Section` (a `GroupLabel`, content and footnote), `Group` (an inset surface), `RowButton` (label, value, chevron), `RowSelect` (native iOS wheel), `RowInput` (text, date, time). Dates and times show the app's own wording ("lundi 16 novembre", "7:30") over the native field, which still opens the iOS wheel. Placeholders start with "Ex. :".
 - **`PaceValue`** `value, unit?, size?: "figure" | "num" | "title" | "strong", rolling?`. Every pace, time, duration or distance. Always ink and tabular; the unit is smaller in `ink-2`; `rolling` makes digits roll when the value changes.
 - **`SessionShape`** `steps, tone`. The session drawn as rounded bars: warm-up, one bar per repeat (with its recovery low between), cool-down; height is effort, color is the type. Use it wherever a session is shown in some size: day card, detail, and next on Semaine rows, Reggie's widgets, the move and change sheets. Logic in `session-shape.ts` (tested).
-- **`TimeBoxes`** `seconds, onChange, maxHours?`. A target time in two glass boxes, « h » and « min », typed on the number pad (`inputMode="numeric"`). Her target time, never a proposed one. No custom wheels.
+- **`TimeBoxes`** `seconds, onChange, maxHours?`. Every duration (a chrono, a strength session, a revision) in two glass boxes, « h » and « min », typed on the number pad (`inputMode="numeric"`), any value. Each input is as wide as its digits, so the figure and its unit stay centered and no digit is clipped. Her target time, never a proposed one. No custom wheels.
+- **`StepList`** `steps`. A session's steps, the same on the day's card and in the detail sheet: lines flush with the text of the block around it (the block gives the side padding), « Répéter n fois » a tinted group whose own 12 px padding indents the lines it repeats. No row class to pass.
+- **`DayChips`** `label, selected, onToggle` (0 = Monday) and `toggled(days, day)`. Every choice of a weekday, one or several.
 - **`SessionChip`** `tone, children?`. The type as a pill (wash, dot, deep label). Defaults to the type's name ("Intense"); pass the session's title to name it.
 - **`IconTile`**, **`Dot`**, **`Typing`** (`text?` for "Je vérifie"), **`RollingText`** in `bits.tsx`. A `Dot` always goes with a word.
 - **`tones.ts`**: `Tone` and `TONES`.
@@ -105,6 +107,26 @@ Other utilities: `.row` (grouped list row with hairlines between rows), `.hairli
 - **`TextButton`** `tone?: "action" | "danger" | "ink"`, `icon?`. Text only, no glass: sheet header actions, "Actualiser", "Placer", destructive rows inside a `Group` (`className="min-h-13 w-full"`).
 - **`RoundAction`** `label, icon, reggie?, onPrepare?`. The 60 px actions under the day's session; only Reggie's is filled. `onPrepare` runs as the finger lands (the sheet's slots start loading).
 - **`ChoiceGroup`** a fieldset with a hidden legend, so VoiceOver reads the question before the choices.
+
+### One input per kind of value
+
+Chosen with the `ui-ux-pro-max` form rules (the keyboard that fits the value, a visible label, no placeholder as label) and iOS habits. The same kind of value always gets the same component, in every sheet and in the onboarding.
+
+| Value | Component | Where |
+|---|---|---|
+| Duration (chrono, strength session, revision) | `TimeBoxes`, free h and min on the number pad | Objectif, dernier chrono, onboarding, séance de muscu, révision |
+| Time of day | `RowInput type="time"` (the app's "7:30" over the native picker) | every start, end and limit, « Choisir un autre moment » |
+| Date | `RowInput type="date"` ("lundi 16 novembre") | course, indispo, « Jusqu'au » |
+| Weekday, one or several | `DayChips` | jour de muscu, jours sans course, sortie longue |
+| A day of this week to move to | date chips (`Chip`) with their rule | « Choisir un autre moment » |
+| Choice among a few named values | `Chip`s in a sheet; `ChoiceCard`s when the choice is the whole question of a screen (onboarding) | course de l'objectif, distance du dernier chrono |
+| 2 to 4 modes or short numbers | `SegmentedControl` | courses par semaine (réglages), « Viser un chrono / Juste finir », « Juste aujourd'hui / Jusqu'à » |
+| Longer list or long labels | `RowSelect` | répétition, « Quand » |
+| Level out of 10 | `Slider` | douleur, les questions de Reggie sur 10 |
+| Distance not in the list | `RowInput inputMode="decimal"` | « Distance en km » |
+| Free text | `RowInput` in a form, `Input` with its send button for a message | nom, titre, Reggie |
+
+Never a list in fixed steps for a duration or a time of day.
 
 ### Overlays
 

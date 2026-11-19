@@ -56,6 +56,8 @@ const PATHS = {
     </>
   ),
   send: <path d="M12 19V5M5 12l7-7 7 7" />,
+  /** Back to where it started (arrow.uturn.backward): the way back to this week. */
+  back: <path d="M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />,
   chevronDown: <path d="M6 9l6 6 6-6" />,
   chevronLeft: <path d="M15 6l-6 6 6 6" />,
   chevronRight: <path d="M9 6l6 6-6 6" />,
