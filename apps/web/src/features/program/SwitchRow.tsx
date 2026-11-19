@@ -7,7 +7,9 @@ type Props = { title: string; detail?: string; checked: boolean; onChange: (on: 
 export function SwitchRow({ title, detail, checked, onChange }: Props) {
   const id = useId();
   return (
-    <div className="row py-3">
+    // The whole row toggles the switch, not only its thumb: a 44 px target and more.
+    // biome-ignore lint/a11y/noLabelWithoutControl: the Switch inside renders a button, which a label activates
+    <label className="row py-3">
       <span className="flex min-w-0 flex-col gap-0.5">
         <span id={id} className="t-body">
           {title}
@@ -15,6 +17,6 @@ export function SwitchRow({ title, detail, checked, onChange }: Props) {
         {detail && <span className="t-cap">{detail}</span>}
       </span>
       <Switch checked={checked} onChange={onChange} labelledBy={id} />
-    </div>
+    </label>
   );
 }

@@ -273,6 +273,40 @@ describe("chat store", () => {
     });
   });
 
+  // Audit robustesse-2, 3: a reply cut before its end; Réessayer takes the cut words away with the failed pair.
+  it("Réessayer after a cut reply leaves only the new answer", async () => {
+    let calls = 0;
+    const cut: Pick<Api, "chat"> = {
+      async *chat() {
+        calls += 1;
+        const id = `r${calls}`;
+        if (calls === 1) {
+          yield { type: "message", message: { id, role: "reggie", text: "Réponse coupée" } } as const;
+          throw new ApiError(502, "Reggie a été coupé.");
+        }
+        yield { type: "message", message: { id, role: "reggie", text: "Bonjour." } } as const;
+      },
+    };
+    const chat = createChatStore(async () => cut as Api, vi.fn());
+    await chat.getState().send("Salut");
+    const failed = chat.getState().messages.at(-1);
+    expect(failed).toMatchObject({ text: "Reggie a été coupé.", retry: { text: "Salut" } });
+    await chat.getState().retry(failed?.id ?? "");
+    expect(chat.getState().messages.map((m) => m.text)).toEqual([expect.stringMatching(/^Salut/), "Salut", "Bonjour."]);
+  });
+
+  // Audit robustesse-2, 5: a message the server refuses would be refused again the same way.
+  it("offers no Réessayer when the server refuses the message itself", async () => {
+    const refused: Pick<Api, "chat"> = {
+      chat: () => ({
+        [Symbol.asyncIterator]: () => ({ next: () => Promise.reject(new ApiError(400, "Trop long.")) }),
+      }),
+    };
+    const chat = createChatStore(async () => refused as Api, vi.fn());
+    await chat.getState().send("Salut");
+    expect(chat.getState().messages.at(-1)).toMatchObject({ text: "Trop long.", retry: undefined });
+  });
+
   it("loads the stored conversation once, under the welcome line", async () => {
     const chatHistory = vi
       .fn<Api["chatHistory"]>()
@@ -350,6 +384,36 @@ describe("sheet store", () => {
     expect(useSheet.getState().open).toBe(false);
     vi.advanceTimersByTime(SHEET_CLOSE_MS);
     expect(useSheet.getState().current).toBeUndefined();
+    vi.useRealTimers();
+  });
+
+  // Audit robustesse-2, 1: two quick taps on Retour closed the whole stack and left the app.
+  it("a second tap right after Retour goes no further than the sheet below", async () => {
+    vi.useFakeTimers();
+    history.replaceState(null, "");
+    useSheet.getState().show({ kind: "session", id: RUN });
+    useSheet.getState().show({ kind: "move", id: RUN });
+    const back = vi.spyOn(history, "back").mockImplementation(() => undefined);
+    const go = vi.spyOn(history, "go").mockImplementation(() => undefined);
+    useSheet.getState().back();
+    useSheet.getState().back();
+    // The second tap lands on the sheet below's Fermer, in the same place.
+    useSheet.getState().close();
+    await Promise.resolve();
+    expect(useSheet.getState()).toMatchObject({ open: true, current: { kind: "session" }, below: [] });
+    expect(back).toHaveBeenCalledOnce();
+    expect(go).not.toHaveBeenCalled();
+    // The popstate arrives first (Safari answers fast): a tap in the same instant is still the same gesture.
+    onHistoryBack({ sheet: true, depth: 1 });
+    useSheet.getState().close();
+    expect(useSheet.getState().open).toBe(true);
+    // A moment later, Retour works again.
+    vi.advanceTimersByTime(SHEET_CLOSE_MS * 2);
+    useSheet.getState().back();
+    expect(useSheet.getState().open).toBe(false);
+    back.mockRestore();
+    go.mockRestore();
+    vi.advanceTimersByTime(SHEET_CLOSE_MS);
     vi.useRealTimers();
   });
 

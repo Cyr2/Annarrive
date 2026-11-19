@@ -47,6 +47,7 @@ import type { RefreshResult } from "./schemas.ts";
 export const isHealthy = (body: unknown) => healthSchema.safeParse(body).success;
 
 const UNEXPECTED = "Ça n'a pas marché : recharge l'app, puis réessaie.";
+const CUT = "Ma réponse a été coupée en route. Réessaie.";
 export const SIGNED_OUT = "Connecte-toi pour continuer.";
 
 type Fetch = typeof fetch;
@@ -336,7 +337,10 @@ export function createHttpApi(
         const parsed = chatStreamEventSchema.safeParse(data);
         if (!parsed.success) throw new ApiError(502, UNEXPECTED);
         yield* toChatEvents(parsed.data, draft);
+        if (parsed.data.type === "done") return;
       }
+      // Closed before its final message (network cut, proxy): the words so far are not his answer.
+      throw new ApiError(502, CUT);
     },
     async chatHistory(day) {
       const page = await get(day ? `/chat?day=${day}` : "/chat", chatHistorySchema);

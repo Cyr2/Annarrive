@@ -1,12 +1,16 @@
+import { CHAT_TEXT_MAX } from "@annarrive/protocol";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Chip, IconButton, Input } from "../../ui/controls.tsx";
+import { notify } from "../../ui/toast.ts";
 import { useVisibleArea } from "../../ui/useVisibleArea.ts";
 import { frenchSpaces } from "./Message.tsx";
 import { useChat } from "./store.ts";
 
 /** The same journeys as the buttons of Aujourd'hui, one tap away. */
 export const SHORTCUTS = ["Je suis malade", "Plus court", "Décaler à demain", "Pourquoi cette allure ?"];
+
+const TOO_LONG = `Un message s'arrête à ${CHAT_TEXT_MAX} caractères. Envoie la suite dans un autre.`;
 
 type Props = { onHeight: (height: number) => void; onTyping: (typing: boolean) => void; shortcuts: boolean };
 
@@ -20,7 +24,7 @@ export function Composer({ onHeight, onTyping, shortcuts }: Props) {
   const busy = useChat((s) => s.status !== "idle");
   const [text, setText] = useState("");
   const [focused, setFocused] = useState(false);
-  const box = useRef<HTMLDivElement>(null);
+  const box = useRef<HTMLElement>(null);
   // The keyboard covers the bottom of the page: the field sits on top of what is left visible.
   const area = useVisibleArea();
   const typing = focused && area !== undefined;
@@ -63,8 +67,9 @@ export function Composer({ onHeight, onTyping, shortcuts }: Props) {
   };
   // Outside the screen's box: a screen sliding to the next tab (useTabSwipe) would carry it off its place.
   return createPortal(
-    <div
+    <section
       ref={box}
+      aria-label="Écrire à Reggie"
       className="ui-float fixed inset-x-0 z-20 mx-auto flex max-w-xl flex-col gap-2 px-gutter"
       style={{ bottom: above ?? "calc(var(--space-above-tabbar) + env(safe-area-inset-bottom))" }}
     >
@@ -92,7 +97,13 @@ export function Composer({ onHeight, onTyping, shortcuts }: Props) {
         <Input
           id="msg"
           value={text}
-          onChange={setText}
+          onChange={(value) => {
+            // The field stops at the server's limit; a pasted text cut there says so, once.
+            if (value.length >= CHAT_TEXT_MAX && text.length < CHAT_TEXT_MAX)
+              void notify(TOO_LONG, undefined, undefined, "chat-max");
+            setText(value);
+          }}
+          maxLength={CHAT_TEXT_MAX}
           placeholder="Écris à Reggie"
           action={
             <IconButton
@@ -106,7 +117,7 @@ export function Composer({ onHeight, onTyping, shortcuts }: Props) {
           }
         />
       </form>
-    </div>,
+    </section>,
     document.getElementById("root") ?? document.body,
   );
 }

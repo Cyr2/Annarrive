@@ -112,6 +112,8 @@ export function TodayScreen() {
   return (
     <Screen>
       <PullToRefresh onRefresh={refreshTimetable} />
+      {/* The session card holds the page's title; the question that takes its place has none. */}
+      {!activity && !session && toConfirm && <h1 className="sr-only-label">Aujourd'hui</h1>}
       {/* Settled once what sits under the card is drawn: the first screen's later frames arrive without motion. */}
       <Presence settled={belowCard}>
         {unwellText && <Unwell text={unwellText} />}

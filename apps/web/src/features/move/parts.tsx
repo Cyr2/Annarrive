@@ -49,8 +49,9 @@ export function SlotCard({ label, why, on, onPick }: SlotProps) {
   );
 }
 
-/** What else the move changes, said before she validates. */
+/** What else the move changes, said before she validates; nothing when it changes nothing else. */
 export function Consequence({ text }: { text: string }) {
+  if (!text) return null;
   return (
     <p className="t-cap m-0 flex items-start gap-1.5 px-1">
       <Icon name="move" size={16} className="mt-px flex-none" />

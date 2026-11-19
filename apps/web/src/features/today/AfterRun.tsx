@@ -78,12 +78,14 @@ export function FeelPicker({ id, feel, onPick }: { id: string; feel?: Feel; onPi
   return (
     <section className="flex flex-col gap-2" data-feel-for={id}>
       <div className="flex flex-col gap-0.5 px-1">
-        <SectionTitle className="px-0">{FEEL_QUESTION}</SectionTitle>
+        <SectionTitle id={`feel-${id}`} className="px-0">
+          {FEEL_QUESTION}
+        </SectionTitle>
         <span className="t-cap" aria-live="polite">
           {feel ? "Noté. Reggie en tient compte pour la suite." : "Ça m'aide à régler tes prochaines séances."}
         </span>
       </div>
-      <ChoiceGroup label={FEEL_QUESTION} className="grid grid-cols-3 gap-2">
+      <ChoiceGroup labelledBy={`feel-${id}`} className="grid grid-cols-3 gap-2">
         {FEELS.map((choice) => (
           <Chip
             key={choice.value}

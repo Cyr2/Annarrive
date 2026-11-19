@@ -1,7 +1,8 @@
+import { IMPLAUSIBLE_TIME, plausibleTime } from "@annarrive/protocol";
 import { useState } from "react";
 import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
 import { Button, Chip } from "../../ui/controls.tsx";
-import { Group, RowSelect, Section } from "../../ui/List.tsx";
+import { Group, GroupLabel, RowSelect, Section } from "../../ui/List.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
 import { TimeBoxes } from "../../ui/TimeBoxes.tsx";
 import { DISTANCES, LAST_WHEN, type LastWhen, lastTimeOf, whenOf } from "../onboarding/onboarding.ts";
@@ -17,7 +18,8 @@ export default function LastTimeSheet(sheet: SheetProps<"lastTime">) {
   const [distanceM, setDistance] = useState<number>(last?.distanceM ?? 21097.5);
   const [seconds, setSeconds] = useState(Math.round((last?.minutes ?? 0) * 60));
   const [when, setWhen] = useState<LastWhen>(whenOf(last?.date, today));
-  const time = lastTimeOf(distanceM, seconds, when, today);
+  const typed = lastTimeOf(distanceM, seconds, when, today);
+  const time = typed && plausibleTime(typed.distanceM, typed.minutes) ? typed : undefined;
   const save = async () => {
     if (!time) return;
     const done = await plan.apply((api) => api.updateLastTime(time));
@@ -33,8 +35,9 @@ export default function LastTimeSheet(sheet: SheetProps<"lastTime">) {
         </Button>
       }
     >
-      <Section title="Distance">
-        <ChoiceGroup label="Distance" className="flex flex-wrap gap-2">
+      <Section>
+        <GroupLabel id="last-distance">Distance</GroupLabel>
+        <ChoiceGroup labelledBy="last-distance" className="flex flex-wrap gap-2">
           {DISTANCES.map((d) => (
             <Chip key={d.label} selected={distanceM === d.value} onClick={() => setDistance(d.value)}>
               {d.label}
@@ -51,7 +54,12 @@ export default function LastTimeSheet(sheet: SheetProps<"lastTime">) {
           onChange={setWhen}
         />
       </Group>
-      <p className="t-cap m-0 px-4">Tes allures sont recalculées. Ce que tu as déplacé à la main reste en place.</p>
+      {/* In place of the note, not under it: the sheet keeps its height. */}
+      <p className="t-cap m-0 px-4" aria-live="polite">
+        {typed && !time
+          ? IMPLAUSIBLE_TIME
+          : "Tes allures sont recalculées. Ce que tu as déplacé à la main reste en place."}
+      </p>
     </Sheet>
   );
 }

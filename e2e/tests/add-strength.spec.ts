@@ -12,7 +12,7 @@ test("ajouter une séance de muscu « Travaille les jambes » depuis le + la pla
   const legs = sheet.getByRole("switch", { name: "Travaille les jambes" });
   await legs.click();
   await expect(legs).toBeChecked();
-  await sheet.getByRole("button", { name: "Samedi", exact: true }).click();
+  await sheet.getByRole("button", { name: "Sam", exact: true }).click();
   await sheet.getByRole("textbox", { name: "Minutes" }).fill("30");
   await expect(sheet.getByRole("textbox", { name: "Heures" })).toHaveValue("1");
   await sheet.getByRole("button", { name: "OK" }).click();

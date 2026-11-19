@@ -1,5 +1,5 @@
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
-import { type ReactNode, useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { cx } from "../../lib/cx.ts";
 import { SPRING_STEP } from "../../lib/motion.ts";
 import { Button, IconButton } from "../../ui/controls.tsx";
@@ -70,6 +70,24 @@ function Title({ step }: { step: Step }) {
   );
 }
 
+const onboardingEntry = () => {
+  const state: unknown = history.state;
+  return typeof state === "object" && state !== null && "onboarding" in state;
+};
+
+/**
+ * The system's Back (Android, the iPhone's edge swipe) steps back through the questions as the Retour arrow does,
+ * instead of leaving the app: one history entry stands in front of the flow, put back after each step back.
+ */
+function useSystemBack(step: Step, back: () => void) {
+  useEffect(() => {
+    if (step === "welcome") return;
+    if (!onboardingEntry()) history.pushState({ onboarding: true }, "");
+    addEventListener("popstate", back);
+    return () => removeEventListener("popstate", back);
+  }, [step, back]);
+}
+
 /** A few grouped questions per screen, full screen over the app (no tab bar), sliding with a spring. */
 export function OnboardingFlow({ onDone }: { onDone: () => void }) {
   const { step, direction, draft, today, sending } = useOnboarding();
@@ -77,10 +95,17 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
   const blocked = issue(step, draft, today);
   const Body = BODIES[step];
 
+  // A second tap while the next screen slides in would answer a question she has not seen yet.
+  const [moving, setMoving] = useState(false);
   const primary = async () => {
-    if (step !== "summary") return next();
+    if (moving) return;
+    if (step !== "summary") {
+      setMoving(true);
+      return next();
+    }
     if (await submit()) onDone();
   };
+  useSystemBack(step, back);
 
   return (
     <div
@@ -103,7 +128,7 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
       </header>
       <MotionConfig reducedMotion="user">
         <div className="relative flex-1 overflow-hidden">
-          <AnimatePresence initial={false} custom={direction}>
+          <AnimatePresence initial={false} custom={direction} onExitComplete={() => setMoving(false)}>
             <motion.section
               key={step}
               custom={direction}
@@ -130,7 +155,13 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
         <p aria-live="polite" className="t-cap m-0 min-h-4.5 text-center">
           {step === "welcome" ? "" : (blocked ?? "")}
         </p>
-        <Button variant="filled" size="large" disabled={Boolean(blocked) || sending} onClick={() => void primary()}>
+        <Button
+          variant="filled"
+          size="large"
+          disabled={Boolean(blocked) || sending}
+          aria-disabled={moving || undefined}
+          onClick={() => void primary()}
+        >
           {primaryLabel(step, draft, sending)}
         </Button>
       </footer>

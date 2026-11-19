@@ -74,8 +74,11 @@ export function createChatStore(getApi: () => Promise<Api>, onChange: (changeId:
       id: `e${++seq}`,
       role: "reggie",
       text: error instanceof ApiError && error.status !== 0 ? error.message : CANNOT_ANSWER,
-      // 503: Reggie is off on this server; sending the same words again would fail the same way.
-      retry: error instanceof ApiError && error.status === 503 ? undefined : { text: mine.text, from: mine.id },
+      // 503: Reggie is off on this server; 4xx: the message itself is refused. Sending it again would fail the same way.
+      retry:
+        error instanceof ApiError && (error.status === 503 || (error.status >= 400 && error.status < 500))
+          ? undefined
+          : { text: mine.text, from: mine.id },
     });
 
     return {
@@ -138,7 +141,12 @@ export function createChatStore(getApi: () => Promise<Api>, onChange: (changeId:
       async retry(messageId) {
         const retry = get().messages.find((m) => m.id === messageId)?.retry;
         if (!retry || get().status !== "idle") return;
-        set((s) => ({ messages: s.messages.filter((m) => m.id !== messageId && m.id !== retry.from) }));
+        // The failed pair goes, and the words Reggie had begun between them.
+        set((s) => {
+          const to = s.messages.findIndex((m) => m.id === messageId);
+          const from = s.messages.findIndex((m) => m.id === retry.from);
+          return { messages: s.messages.filter((_, i) => i < (from === -1 ? to : from) || i > to) };
+        });
         await get().send(retry.text);
       },
     };

@@ -24,7 +24,7 @@ export function Message({ entry, today }: { entry: Entry; today: string }) {
 
 function UserBubble({ text }: { text: string }) {
   return (
-    <div className="msg bubble-user t-body max-w-[78%] self-end bg-action px-4 py-3 text-on-color">
+    <div className="msg bubble-user t-body max-w-[78%] self-end wrap-anywhere bg-action px-4 py-3 text-on-color">
       {frenchSpaces(text)}
     </div>
   );
@@ -36,7 +36,7 @@ function ReggieBubble({ entry }: { entry: Entry }) {
     <div className="flex max-w-[94%] items-end gap-2 self-start">
       <ReggieAvatar size="md" />
       <Surface variant="widget" className="msg bubble-reggie t-body flex min-w-0 flex-col gap-2 px-4 py-3">
-        <span>{frenchSpaces(entry.text)}</span>
+        <span className="wrap-anywhere">{frenchSpaces(entry.text)}</span>
         {entry.source && (
           <a
             href={entry.source.url}

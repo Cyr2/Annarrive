@@ -128,10 +128,24 @@ export const declaredTimeSchema = z.object({
 });
 export type DeclaredTime = z.infer<typeof declaredTimeSchema>;
 
+/** Paces a finisher can hold over a race (s/km): faster than the world records or slower than a walk is a typo. */
+const PLAUSIBLE_PACE = { fastest: 150, slowest: 900 };
+export const IMPLAUSIBLE_TIME = "Ce chrono ne colle pas à cette distance : vérifie les heures et les minutes.";
+
+export function plausibleTime(distanceM: number, minutes: number): boolean {
+  const pace = (minutes * 60) / (distanceM / 1000);
+  return pace >= PLAUSIBLE_PACE.fastest && pace <= PLAUSIBLE_PACE.slowest;
+}
+
+/** What she sends; a time stored before this check is still read as it is. */
+const declaredTimeInputSchema = declaredTimeSchema.refine((t) => plausibleTime(t.distanceM, t.minutes), {
+  message: IMPLAUSIBLE_TIME,
+});
+
 /** POST /api/feasibility: a goal with the target time she typed, and her last time when she gave one. */
 export const feasibilityInputSchema = goalSchema
   .required({ targetMin: true })
-  .extend({ declaredTime: declaredTimeSchema.optional() });
+  .extend({ declaredTime: declaredTimeInputSchema.optional() });
 export type FeasibilityInput = z.infer<typeof feasibilityInputSchema>;
 /** How her own target looks, never discouraging and never a proposed time; null until her form is known. */
 export const feasibilitySchema = z.object({ verdict: z.enum(["atteignable", "ambitieux"]).nullable() });
@@ -150,7 +164,10 @@ export const programSchema = z.object({
 });
 export type Program = z.infer<typeof programSchema>;
 /** PUT /api/program: the goal may be left out, when only her last time changes. */
-export const programInputSchema = programSchema.extend({ goal: goalSchema.nullable().optional() });
+export const programInputSchema = programSchema.extend({
+  goal: goalSchema.nullable().optional(),
+  declaredTime: declaredTimeInputSchema.optional(),
+});
 export type ProgramInput = z.infer<typeof programInputSchema>;
 
 /** GET /api/program: the stored programme, with the plan the coach follows when there is a goal and a known form. */

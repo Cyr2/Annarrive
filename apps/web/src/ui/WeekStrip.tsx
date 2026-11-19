@@ -41,7 +41,7 @@ const barFill = (color: string) =>
  * The week in one look, the same on Aujourd'hui and on Semaine: seven columns, each with its day, its number
  * (today in the action blue, past days grey) and what is planned. No legend: the colors are the ones of the
  * sessions everywhere else, and a day names its content to VoiceOver. The card keeps the page gutter, like the
- * others (on a 320 px phone a column is 41 px wide, 44 tall).
+ * others.
  */
 export function WeekStrip({ days, label, onSelect, footer }: Props) {
   const runs = days.flatMap((day) => day.marks.map((mark) => mark.minutes ?? 0));
@@ -62,15 +62,18 @@ export function WeekStrip({ days, label, onSelect, footer }: Props) {
               event.preventDefault();
               onSelect(day);
             }}
+            // A column is 41 px at 320: each link reaches 2 px into its neighbours, for a 44 px target.
             className={cx(
-              "press flex min-h-11 flex-col items-center gap-1 rounded-row py-1 text-ink no-underline",
+              "press -mx-0.5 flex min-h-11 flex-col items-center gap-1 rounded-row py-1 text-ink no-underline",
               day.past && "text-ink-2 grayscale",
             )}
           >
-            <span className={cx("t-cap", day.today && "font-semibold text-action")}>{day.short}</span>
+            {/* The space keeps the visible text "Lun 16", the start of the name VoiceOver and voice control use. */}
+            <span className={cx("t-cap", day.today && "font-semibold text-action")}>{day.short}</span>{" "}
+            {/* Never wider than its column, with large text too: today's disc does not cover the next days. */}
             <span
               className={cx(
-                "t-label flex size-8 items-center justify-center rounded-full tabular-nums",
+                "t-label flex aspect-square w-8 max-w-full items-center justify-center rounded-full tabular-nums",
                 day.today && "bg-action text-on-color shadow-glow-action",
               )}
             >
