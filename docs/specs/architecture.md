@@ -151,6 +151,13 @@ Lint (Biome), types, tests avec seuils de couverture, build, image Docker et tes
 
 Coolify : un service pour l'app (web et serveur), un pour le garmin-bridge, un volume pour `/app/data`. Domaine HTTPS obligatoire (PWA, notifications).
 
+À vérifier par le propriétaire du serveur :
+
+- [ ] Les sauvegardes (`/app/data/backups`) contiennent en clair la santé d'Anna, ses messages à Reggie et le lien de son emploi du temps. Elles restent sur le volume privé du serveur, jamais copiées ailleurs à la main.
+- [ ] Si les sauvegardes de volume Coolify vers un stockage externe sont activées, ce stockage est un bucket S3 privé (aucun accès public) et chiffré.
+- [ ] `BRIDGE_SECRET` est long et aléatoire : le bridge partage le réseau Docker `coolify` avec d'autres services.
+- [ ] Les plages d'adresses de Cloudflare copiées dans `apps/server/src/app.ts` sont à jour (https://www.cloudflare.com/ips).
+
 ## Plan de construction
 
 Chaque étape est une ou plusieurs PR, avec CI verte.
