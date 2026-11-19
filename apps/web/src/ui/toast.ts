@@ -38,12 +38,12 @@ function mountToaster(): Promise<void> {
   return mounted;
 }
 
-/** Shows the bottom banner, with "Annuler" or another action when given. */
-export async function notify(message: string, action?: ToastAction, duration = TOAST_MS) {
+/** Shows the bottom banner, with "Annuler" or another action when given; a banner with the same `id` replaces it. */
+export async function notify(message: string, action?: ToastAction, duration = TOAST_MS, id?: string) {
   try {
     const [{ toast }] = await Promise.all([import("sonner"), mountToaster()]);
     useToastHost.setState({ plain: undefined });
-    toast(message, { duration, action });
+    toast(message, { duration, action, id });
   } catch {
     // Offline before Sonner was ever cached: the message still shows, most often "Pas de connexion".
     useToastHost.setState({ plain: { message, action } });
