@@ -66,7 +66,7 @@ const STYLE: [RegExp, string][] = [
   [/\p{L}[?!;]|\p{L}:(\s|$)/u, "typographie : espace avant « ? », « ! », « ; » ou « : »"],
   [/\d:\d\d\s*(min)?\s*\/\s*km|\d['’]\d\d\/km|min\s*\/\s*km|\d+\s*s\s*\/\s*km/, "allure mal notée (« 5'18 /km »)"],
   [/\d['’]\d\d\s*(\/km\s*)?(-|à)\s*\d['’]\d\d/, "fourchette d'allure au lieu d'une cible"],
-  [/\b\d{1,2}:\d\d\b/, "heure mal notée (« 18 h 30 »)"],
+  [/\b\d{1,2}:\d\d\b|\b\d{1,2} h 00\b/, "heure mal notée (« 18 h 30 », « 7 h »)"],
   [/tu (aurais|n'aurais pas) dû|c'est dommage|tu as (raté|manqué)|rattrap(er|ons)/i, "culpabilisation"],
   [/VO2 ?max|\bVMA\b|\bRPE\b|\bzone [1-5]\b|lactique|endurance fondamentale|séance de qualité/i, "jargon"],
 ];

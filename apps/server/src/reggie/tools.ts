@@ -14,23 +14,35 @@ import { tool } from "@anthropic-ai/claude-agent-sdk";
 import { ZodError, z } from "zod";
 import { AppError } from "../errors.ts";
 import type { PlanService } from "../services/plan.ts";
-import { isoWeekOf } from "../time.ts";
+import { frenchDay, isoWeekOf } from "../time.ts";
 
 export const MCP_SERVER = "annarrive";
 
 type ToolResult = { content: { type: "text"; text: string }[]; isError?: boolean };
 
-/** Paces go out written as the app writes them (« 6'00 /km »): the model copies them instead of converting seconds. */
 const paceSchema = z.tuple([z.number(), z.number()]);
-const writtenPaces = (key: string, value: unknown) => {
-  const pace = key === "paceSKm" ? paceSchema.safeParse(value) : undefined;
-  return pace?.success ? paceLabel(pace.data) : value;
-};
+const datedSchema = z.union([z.object({ start: localDateTimeSchema }), z.object({ date: localDateSchema })]);
+
+/**
+ * Written as Anna reads them, so the model copies instead of computing: paces as « 6'00 /km », and every session,
+ * event, slot or day with its `day` in words (« demain, mardi 17 »).
+ */
+function forReggie(today: string) {
+  return (key: string, value: unknown): unknown => {
+    const pace = key === "paceSKm" ? paceSchema.safeParse(value) : undefined;
+    if (pace?.success) return paceLabel(pace.data);
+    if (typeof value !== "object" || value === null || Array.isArray(value) || "day" in value) return value;
+    const dated = datedSchema.safeParse(value);
+    if (!dated.success) return value;
+    const date = "start" in dated.data ? dated.data.start.slice(0, 10) : dated.data.date;
+    return { ...value, day: frenchDay(date, today) };
+  };
+}
 
 /** Every tool answers JSON; a refusal from the services comes back as an error the model must relay. */
-async function run(work: () => unknown): Promise<ToolResult> {
+async function answer(work: () => unknown, today: string): Promise<ToolResult> {
   try {
-    return { content: [{ type: "text", text: JSON.stringify(work() ?? { ok: true }, writtenPaces) }] };
+    return { content: [{ type: "text", text: JSON.stringify(work() ?? { ok: true }, forReggie(today)) }] };
   } catch (error) {
     if (!(error instanceof AppError || error instanceof ZodError)) throw error;
     const message = error instanceof ZodError ? (error.issues[0]?.message ?? "Donnée invalide") : error.message;
@@ -46,6 +58,7 @@ const settingPatch = profilePatchSchema.omit({ cycleTracking: true }).strict();
  * (hence `CoachPort` and the change log). Widgets they produce land in `widgets`, shown under Reggie's reply.
  */
 export function reggieTools(plan: PlanService, widgets: ChatWidget[]) {
+  const run = (work: () => unknown) => answer(work, plan.todayDate());
   const changed = (response: ChangeResponse) => {
     const { change, warnings } = response;
     if (change) widgets.push({ type: "change", changeId: change.id, summary: change.summary, warnings });
