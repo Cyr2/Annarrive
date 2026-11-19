@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { healthSchema } from "@annarrive/protocol";
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
-import { createApp, rateLimit } from "../src/app.ts";
+import { clientIp, createApp, rateLimit } from "../src/app.ts";
 import { MONDAY_8AM, postLogin, SECRET, setup } from "./helpers.ts";
 
 describe("server", () => {
@@ -153,6 +153,21 @@ describe("hardening", () => {
     expect((await app.request("/")).status).toBe(200);
   });
 
+  it("reads the client's address from Cloudflare only when Cloudflare is the hop Traefik saw", async () => {
+    const app = new Hono().get("/", (c) => c.text(clientIp(c)));
+    const ip = async (headers: Record<string, string>) => (await app.request("/", { headers })).text();
+    // Through Cloudflare: Traefik appends the Cloudflare node, which names the real client.
+    expect(await ip({ "x-forwarded-for": "104.21.3.4", "cf-connecting-ip": "203.0.113.7" })).toBe("203.0.113.7");
+    expect(await ip({ "x-forwarded-for": "2606:4700::1", "cf-connecting-ip": "2001:db8::7" })).toBe("2001:db8::7");
+    // Straight to the origin: the header is the caller's own claim.
+    expect(await ip({ "x-forwarded-for": "198.51.100.9", "cf-connecting-ip": "203.0.113.7" })).toBe("198.51.100.9");
+    // A forged Cloudflare entry before the real hop changes nothing.
+    expect(await ip({ "x-forwarded-for": "104.21.3.4, 198.51.100.9", "cf-connecting-ip": "1.2.3.4" })).toBe(
+      "198.51.100.9",
+    );
+    expect(await ip({ "x-forwarded-for": "104.21.3.4", "cf-connecting-ip": "not an ip" })).toBe("104.21.3.4");
+  });
+
   it("caps Reggie at 30 messages per 10 minutes", async () => {
     const t = setup({ reggie: async function* () {} });
     await t.login();
@@ -226,6 +241,34 @@ describe("login", () => {
     const token = new URL(t.services.auth.createLoginLink("https://annarrive.test")).searchParams.get("token") ?? "";
     expect((await postLogin(t.app, token, "cross-site")).status).toBe(403);
     expect((await postLogin(t.app, token)).status).toBe(302);
+  });
+
+  it("refuses a 1 MB login form before reading it", async () => {
+    const t = setup();
+    const response = await t.app.request("/api/auth/login", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded", "sec-fetch-site": "same-origin" },
+      body: `token=${"a".repeat(1024 * 1024)}`,
+    });
+    expect(response.status).toBe(413);
+  });
+
+  it("limits each client to 30 login link posts a minute", async () => {
+    const t = setup();
+    for (let i = 0; i < 30; i++) expect((await postLogin(t.app, `wrong${i}`)).status).toBe(401);
+    expect((await postLogin(t.app, "wrong")).status).toBe(429);
+  });
+
+  it("limits each client to 30 Face ID logins a minute", async () => {
+    const t = setup();
+    const post = () =>
+      t.app.request("/api/auth/passkey", {
+        method: "POST",
+        headers: { "content-type": "application/json", "sec-fetch-site": "same-origin" },
+        body: "{}",
+      });
+    for (let i = 0; i < 30; i++) expect((await post()).status).toBe(400);
+    expect((await post()).status).toBe(429);
   });
 
   it("refuses a link whose token is not base64url", async () => {

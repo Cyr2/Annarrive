@@ -359,9 +359,13 @@ export const dailySignalSchema = z.object({
 });
 export type DailySignal = z.infer<typeof dailySignalSchema>;
 
+/** The browsers' push services (Safari, Chrome, Firefox, Edge): the server posts to this address on every notification. */
+const PUSH_HOSTS =
+  /^(web\.push\.apple\.com|fcm\.googleapis\.com|([\w-]+\.)*push\.services\.mozilla\.com|([\w-]+\.)*notify\.windows\.com)$/;
+
 /** `PushSubscription.toJSON()` from the browser; extra fields are dropped. */
 export const pushSubscriptionInputSchema = z.object({
-  endpoint: z.url({ protocol: /^https$/ }),
+  endpoint: z.url({ protocol: /^https$/, hostname: PUSH_HOSTS }),
   keys: z.object({ p256dh: z.string().min(1), auth: z.string().min(1) }),
 });
 export type PushSubscriptionInput = z.infer<typeof pushSubscriptionInputSchema>;

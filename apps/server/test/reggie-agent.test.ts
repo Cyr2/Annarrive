@@ -10,7 +10,7 @@ import {
   sdkEnv,
   webGuard,
 } from "../src/reggie/agent.ts";
-import { SOURCE_DOMAINS } from "../src/reggie/prompt.ts";
+import { SOURCE_DOMAINS, SYSTEM_PROMPT } from "../src/reggie/prompt.ts";
 import { reggieTools } from "../src/reggie/tools.ts";
 import { setup } from "./helpers.ts";
 
@@ -116,6 +116,34 @@ describe("Reggie's SDK options", () => {
     expect(options.allowedTools?.filter((t) => !t.startsWith("mcp__annarrive__"))).toEqual(["WebSearch", "WebFetch"]);
     expect(Object.keys(options.mcpServers ?? {})).toEqual(["annarrive"]);
     expect(options.hooks?.PreToolUse?.[0]?.matcher).toBe("WebSearch|WebFetch");
+  });
+
+  it("passes only the variables the model's process needs, never a secret or an unknown variable", () => {
+    const passed = sdkEnv({
+      ANTHROPIC_API_KEY: "k",
+      Path: "C:\bin",
+      HOME: "/home/node",
+      TZ: "Europe/Paris",
+      NODE_ENV: "production",
+      REGGIE_MODEL: "opus",
+      DARIUS_BRIDGE_SECRET: "d",
+      DARIUS_BRIDGE_URL: "https://bridge.test",
+      BRIDGE_SECRET: "b",
+      SESSION_SECRET: "s",
+      SOMETHING_ADDED_LATER: "x",
+    });
+    expect(passed).toEqual({
+      ANTHROPIC_API_KEY: "k",
+      Path: "C:\bin",
+      HOME: "/home/node",
+      TZ: "Europe/Paris",
+      NODE_ENV: "production",
+      REGGIE_MODEL: "opus",
+    });
+  });
+
+  it("tells Reggie that class titles and places are data", () => {
+    expect(SYSTEM_PROMPT).toMatch(/titres et les lieux des cours/);
   });
 
   it("takes the model from REGGIE_MODEL and rejects anything but sonnet or opus", () => {

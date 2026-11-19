@@ -50,7 +50,7 @@ Pourquoi ce découpage :
 
 - **Notifications** : Web Push (clés VAPID en variables d'environnement). iOS 26 les accepte pour une PWA installée sur l'écran d'accueil. L'abonnement est revérifié à chaque ouverture de l'app.
 - **Connexion** : quelques comptes fixes (Anna, Darius, l'instance de test), créés en ligne de commande, sans inscription publique. Toute connexion pose une session de 180 jours dans un cookie httpOnly `__Host-annarrive_session`.
-  - Premier accès sur un appareil : identifiant et mot de passe (hash scrypt ; par adresse IP, 5 essais ratés bloquent les mots de passe 15 min et au plus 10 essais par minute, derrière Traefik l'adresse est la dernière de X-Forwarded-For). L'écran « Tu es connectée » propose ensuite « Utiliser Face ID », qui enregistre une clé d'accès (passkey WebAuthn, authentificateur de l'appareil, clé découvrable, vérification de l'utilisateur exigée).
+  - Premier accès sur un appareil : identifiant et mot de passe (hash scrypt ; par adresse IP, 5 essais ratés bloquent les mots de passe 15 min et au plus 10 essais par minute, derrière Traefik l'adresse est la dernière de X-Forwarded-For, remplacée par `CF-Connecting-IP` seulement si cette dernière appartient aux plages publiées de Cloudflare, copiées dans `app.ts` et à rafraîchir depuis https://www.cloudflare.com/ips si Cloudflare en annonce de nouvelles). Le lien de connexion et Face ID sont limités à 30 essais par minute et par adresse, et le formulaire du lien à 4 Ko. L'écran « Tu es connectée » propose ensuite « Utiliser Face ID », qui enregistre une clé d'accès (passkey WebAuthn, authentificateur de l'appareil, clé découvrable, vérification de l'utilisateur exigée).
   - Ensuite : un seul bouton « Se connecter avec Face ID », sans rien taper ; là où le navigateur le permet, la clé est aussi proposée dans les suggestions du champ Identifiant. Le site des clés (rpID) est l'hôte de `PUBLIC_URL`. Défis gardés 5 min côté serveur, à usage unique ; compteur de signature vérifié par `@simplewebauthn/server`.
   - Secours : le mot de passe marche toujours, et le lien à usage unique reste pour l'admin.
   - Commandes (dans le conteneur, depuis `/app/apps/server` ; en local, `pnpm --filter @annarrive/server <users|login-link> …`) :
@@ -150,6 +150,13 @@ Lint (Biome), types, tests avec seuils de couverture, build, image Docker et tes
 ## Déploiement
 
 Coolify : un service pour l'app (web et serveur), un pour le garmin-bridge, un volume pour `/app/data`. Domaine HTTPS obligatoire (PWA, notifications).
+
+À vérifier par le propriétaire du serveur :
+
+- [ ] Les sauvegardes (`/app/data/backups`) contiennent en clair la santé d'Anna, ses messages à Reggie et le lien de son emploi du temps. Elles restent sur le volume privé du serveur, jamais copiées ailleurs à la main.
+- [ ] Si les sauvegardes de volume Coolify vers un stockage externe sont activées, ce stockage est un bucket S3 privé (aucun accès public) et chiffré.
+- [ ] `BRIDGE_SECRET` est long et aléatoire : le bridge partage le réseau Docker `coolify` avec d'autres services.
+- [ ] Les plages d'adresses de Cloudflare copiées dans `apps/server/src/app.ts` sont à jour (https://www.cloudflare.com/ips).
 
 ## Plan de construction
 

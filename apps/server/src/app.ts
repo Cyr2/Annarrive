@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
+import { BlockList, isIP } from "node:net";
 import { join } from "node:path";
 import {
   authenticationResponseSchema,
@@ -109,12 +110,53 @@ export async function sameOrigin(c: Context, next: Next): Promise<void> {
 }
 
 /**
+ * Cloudflare's published ranges, from https://www.cloudflare.com/ips-v4 and /ips-v6 (2026-11-19).
+ * shortcut: copied by hand, refresh when Cloudflare announces new ranges (a new node would only count as one address).
+ */
+const cloudflare = new BlockList();
+for (const range of [
+  "173.245.48.0/20",
+  "103.21.244.0/22",
+  "103.22.200.0/22",
+  "103.31.4.0/22",
+  "141.101.64.0/18",
+  "108.162.192.0/18",
+  "190.93.240.0/20",
+  "188.114.96.0/20",
+  "197.234.240.0/22",
+  "198.41.128.0/17",
+  "162.158.0.0/15",
+  "104.16.0.0/13",
+  "104.24.0.0/14",
+  "172.64.0.0/13",
+  "131.0.72.0/22",
+  "2400:cb00::/32",
+  "2606:4700::/32",
+  "2803:f800::/32",
+  "2405:b500::/32",
+  "2405:8100::/32",
+  "2a06:98c0::/29",
+  "2c0f:f248::/32",
+]) {
+  const [network = "", prefix] = range.split("/");
+  cloudflare.addSubnet(network, Number(prefix), isIP(network) === 6 ? "ipv6" : "ipv4");
+}
+const fromCloudflare = (address: string) => {
+  const version = isIP(address);
+  return version !== 0 && cloudflare.check(address, version === 6 ? "ipv6" : "ipv4");
+};
+
+/**
  * The client's address. Behind Coolify's Traefik the right-most X-Forwarded-For entry is the one Traefik saw,
- * the others are whatever the client sent; without a proxy, the socket's.
+ * the others are whatever the client sent; without a proxy, the socket's. When that hop is a Cloudflare node,
+ * Cloudflare names the client in CF-Connecting-IP; from anywhere else that header is the caller's own claim.
  */
 export function clientIp(c: Context): string {
   const forwarded = c.req.header("x-forwarded-for")?.split(",").at(-1)?.trim();
-  if (forwarded) return forwarded;
+  if (forwarded) {
+    const client = c.req.header("cf-connecting-ip")?.trim() ?? "";
+    return fromCloudflare(forwarded) && isIP(client) ? client : forwarded;
+  }
   try {
     return getConnInfo(c).remote.address ?? "unknown";
   } catch {
@@ -253,7 +295,13 @@ export function createApp({ services, sessionSecret, webDist }: AppOptions): Hon
     onError: (c) => c.json({ error: "Requête trop grosse : raccourcis ton message." }, 413),
   });
 
-  app.post("/api/auth/login", async (c) => {
+  // No session yet: per client, and a form holding one token (under 200 characters) is read only up to 4 kB.
+  const loginLimit = rateLimit(30, 60_000, Date.now, clientIp);
+  const formBodyLimit = bodyLimit({
+    maxSize: 4 * 1024,
+    onError: (c) => c.html(loginError(font, "Ce lien de connexion est trop long : copie-le en entier."), 413),
+  });
+  app.post("/api/auth/login", loginLimit, formBodyLimit, async (c) => {
     let opened: ReturnType<Services["auth"]["login"]>;
     try {
       // Browsers flag a form posted from another site; this one must come from the page above.
@@ -279,7 +327,7 @@ export function createApp({ services, sessionSecret, webDist }: AppOptions): Hon
   app.post("/api/auth/passkey/options", sameOrigin, rateLimit(30, 60_000, Date.now, clientIp), async (c) =>
     c.json(await services.auth.passkeyLoginOptions()),
   );
-  app.post("/api/auth/passkey", sameOrigin, jsonBodyLimit, async (c) => {
+  app.post("/api/auth/passkey", sameOrigin, rateLimit(30, 60_000, Date.now, clientIp), jsonBodyLimit, async (c) => {
     const response = authenticationResponseSchema.parse(await c.req.json());
     await startSession(c, await services.auth.passkeyLogin(response));
     return c.body(null, 204);

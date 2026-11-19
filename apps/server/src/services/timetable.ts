@@ -30,6 +30,9 @@ const vevent = z.object({
 /** What makes two classes one, whatever their UID: ADE can hand new UIDs on each export (same key as the unique index of db.ts). */
 const classKey = (e: Pick<CalendarEvent, "title" | "start" | "end">) => `${e.title}\u0000${e.start}\u0000${e.end}`;
 
+/** Anyone who can name a class writes into Reggie's context and Anna's screen: titles and places stay short. */
+const MAX_TEXT = 80;
+
 /** Keeps the VEVENTs of an ICS feed as classes, in Paris time. Throws rather than drop a class silently. */
 export function parseTimetable(ics: string): CalendarEvent[] {
   const components = Object.values(ical.parseICS(ics)).filter((c) => c?.type === "VEVENT");
@@ -38,7 +41,7 @@ export function parseTimetable(ics: string): CalendarEvent[] {
     if (!parsed.success)
       throw new TimetableError("L'emploi du temps reçu est illisible : rien n'a changé, réessaie plus tard.");
     const e = parsed.data;
-    const title = e.summary?.trim() || "Cours";
+    const title = (e.summary?.trim() || "Cours").slice(0, MAX_TEXT);
     const start = toParisLocal(e.start);
     const end = toParisLocal(e.end);
     return {
@@ -47,7 +50,7 @@ export function parseTimetable(ics: string): CalendarEvent[] {
       title,
       start,
       end,
-      location: e.location?.trim() || undefined,
+      location: e.location?.trim().slice(0, MAX_TEXT) || undefined,
       manual: false,
       cancelled: false,
       recurrence: "none",
