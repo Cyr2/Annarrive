@@ -32,6 +32,14 @@ const services = createServices({
       ? { publicKey, send: (subscription, payload) => sendNotification(subscription, payload) }
       : undefined,
 });
+// A failed repair must not keep the app from starting: the sessions keep their range until the next start.
+try {
+  services.plan.repairPaceRanges();
+} catch (error) {
+  console.error(
+    `Allures : réparation au démarrage en échec (${error instanceof Error ? error.message : "erreur inconnue"})`,
+  );
+}
 const app = createApp({ services, sessionSecret: config.SESSION_SECRET, webDist: config.WEB_DIST });
 
 const jobs = createJobs({

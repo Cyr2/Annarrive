@@ -10,9 +10,10 @@ import {
   paces,
   predictTime,
   proposeMeasured,
+  repaceRanges,
   vdot,
 } from "../src/index.ts";
-import { easy, hard, sixBy800, state } from "./fixtures.ts";
+import { easy, hard, long, sixBy800, state } from "./fixtures.ts";
 
 const NOW = "2026-11-23T08:00";
 const ctx = { hrMax: 195, now: NOW };
@@ -233,6 +234,29 @@ describe("acceptProposal (RC9)", () => {
     };
     const base = acceptProposal(state([easy("e", "2026-11-25T18:00"), strides]), test, NOW);
     expect(base.state.sessions.map((s) => s.type)).toEqual(["E", "TEST"]);
+  });
+});
+
+describe("repaceRanges (C4)", () => {
+  // A session stored before one pace per step: a [fast, slow] range, as « 6'05 à 7'16 /km ».
+  const ranged = (s: ReturnType<typeof long>) => ({
+    ...s,
+    steps: s.steps.map((st) => ({ ...st, target: { ...st.target, paceSKm: [365, 436] as [number, number] } })),
+  });
+
+  it("gives one pace to the ranged sessions ahead, never to a frozen or a past one (C-11)", () => {
+    const past = ranged(long("past", "2026-11-22T09:00"));
+    const soon = ranged(easy("soon", "2026-11-23T18:00"));
+    const frozen = ranged(easy("frozen", "2026-11-25T18:00", 45, { frozen: true }));
+    const ahead = ranged(long("ahead", "2026-11-29T09:00"));
+    const single = easy("single", "2026-11-27T18:00");
+    const st = state([past, soon, frozen, ahead, single], undefined, { vdot: 40 });
+    const r = repaceRanges(st, NOW);
+    expect(r.state.sessions.slice(0, 3)).toEqual(st.sessions.slice(0, 3));
+    expect(r.state.sessions[3]?.steps[0]?.target.paceSKm).toEqual([paces(40).E, paces(40).E]);
+    expect(r.state.sessions[4]).toBe(single);
+    expect(r.changes.map((c) => c.sessionId)).toEqual(["ahead"]);
+    expect(repaceRanges(r.state, NOW).changes).toEqual([]);
   });
 });
 

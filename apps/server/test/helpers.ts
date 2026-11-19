@@ -114,6 +114,7 @@ export const passThroughCoach: CoachPort = {
   evaluateTrends: () => null,
   acceptProposal: (st) => ({ state: st, changes: [], warnings: [] }),
   repace: (st) => ({ state: st, changes: [], warnings: [] }),
+  repaceRanges: (st) => ({ state: st, changes: [], warnings: [] }),
   adaptToRun: (st) => ({ state: st, changes: [], warnings: [] }),
   readFeel: () => ({}),
 };

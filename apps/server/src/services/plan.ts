@@ -502,6 +502,15 @@ export class PlanService {
     );
   }
 
+  /**
+   * Run at each start: sessions stored before one pace per step (C4) still show a range. Through the change log like
+   * every plan write, so the watch gets the fixed sessions at once; a second start finds nothing and records nothing.
+   */
+  repairPaceRanges(): ChangeResponse {
+    const before = this.coachState();
+    return this.#commit("Allures précisées", [], before, this.#coach.repaceRanges(before, this.#now()));
+  }
+
   /** Lets FitnessService record an accepted proposal like any other change. */
   commitResult(summary: string, writes: PlanWrite[], before: CoachState, result: CoachResult): ChangeResponse {
     return this.#commit(summary, writes, before, result);
