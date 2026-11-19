@@ -18,6 +18,16 @@ function whenCalm(task: () => void) {
   }
 }
 
+/** The page that comes back after « Recharger » skips the launch animation (index.html): it is not a launch. */
+function reload(update: (reloadPage?: boolean) => Promise<void>) {
+  try {
+    sessionStorage.setItem("splash-skip", "1");
+  } catch {
+    // Without storage, the animation plays once more: nothing worse.
+  }
+  void update(true);
+}
+
 /**
  * A new version waits until she says so (vite.config.ts, registerType "prompt"): offered in a banner at a calm
  * moment, never in the middle of an action. A PWA kept in memory for days looks for one each time it comes back.
@@ -28,7 +38,7 @@ export function watchForUpdates(register: typeof registerSW) {
       () =>
         void notify(
           "Nouvelle version prête",
-          { label: "Recharger", onClick: () => void update(true) },
+          { label: "Recharger", onClick: () => reload(update) },
           Infinity,
           "update",
         ),

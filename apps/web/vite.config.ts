@@ -36,6 +36,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],
+        // iOS reads its startup images when the app is added to the home screen, never from the cache.
+        globIgnores: ["splash-*.png"],
         navigateFallbackDenylist: [/^\/api/],
         // Shows the server's notifications and opens their screen on tap; precaching stays generated.
         importScripts: ["/push-sw.js"],

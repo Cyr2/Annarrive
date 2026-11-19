@@ -13,11 +13,219 @@
     <meta name="apple-mobile-web-app-title" content="Annarrivé" />
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- iOS splash: the empty sky the launch animation starts on (scripts/splash.mjs), one per iPhone screen. -->
+    <link rel="apple-touch-startup-image" href="/splash-1320x2868.png" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash-1260x2736.png" media="(device-width: 420px) and (device-height: 912px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash-1206x2622.png" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash-1290x2796.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash-1179x2556.png" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash-1284x2778.png" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash-1170x2532.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash-1125x2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash-1242x2688.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash-828x1792.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <link rel="apple-touch-startup-image" href="/splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
     <!-- The text font (styles/app.css), fetched alongside the script so the first screen draws in it. -->
     <link rel="preload" href="./node_modules/@fontsource-variable/outfit/files/outfit-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
     <title>Annarrivé</title>
+    <!--
+      The launch animation (docs/interactions.md, Animations). Inline so it draws with the first frame, before any
+      script; colours are literal because tokens.css is not loaded yet: keep them equal to the tokens (sky, white, the
+      logo's coral and pink). Only transform and opacity move, so it runs on the compositor while the app starts.
+    -->
+    <style>
+      #splash,
+      #splash * {
+        pointer-events: none;
+      }
+      #splash {
+        position: fixed;
+        inset: 0;
+        /* Above the tab bar, sheets and toasts. */
+        z-index: 2147483647;
+        background: linear-gradient(180deg, #fdede3 0%, #fdf1ea 18%, #fbf6f2 40%, #f9f6f3 100%);
+        --w: min(60vw, 240px);
+        /* If its script never runs, it still leaves. */
+        animation: sp-fade 0.4s 2.4s forwards;
+      }
+      .sp-stage {
+        position: absolute;
+        inset: 0;
+        animation: sp-shake 0.35s 0.5s ease-out;
+      }
+      .sp-bib,
+      .sp-burst {
+        position: absolute;
+        left: calc(50% - var(--w) / 2);
+        top: calc(44% - var(--w) * 0.36);
+        width: var(--w);
+        height: calc(var(--w) * 0.72);
+      }
+      .sp-bib {
+        animation: sp-sprint 0.75s cubic-bezier(0.15, 1.25, 0.35, 1) both;
+      }
+      .sp-bib > * {
+        position: absolute;
+      }
+      .sp-burst {
+        left: calc(50% - var(--w) * 1.1);
+        top: calc(44% - var(--w) * 1.1);
+        width: calc(var(--w) * 2.2);
+        height: calc(var(--w) * 2.2);
+        border-radius: 50%;
+        background: rgb(238 138 99 / 0.45);
+        opacity: 0;
+        animation: sp-burst 0.7s 0.55s ease-out forwards;
+      }
+      .sp-card {
+        inset: 0;
+        background: #fff;
+        /* The logo's rx 18 on its 150 by 108 card. */
+        border-radius: 12% / 16.667%;
+        box-shadow: 0 16px 28px rgb(200 110 80 / 0.25);
+        animation: sp-squash 0.75s cubic-bezier(0.15, 1.25, 0.35, 1) both;
+      }
+      .sp-pin {
+        width: 6.667%;
+        height: 9.259%;
+        border-radius: 50%;
+        background: #f5b3be;
+        animation: sp-pop 0.25s cubic-bezier(0.2, 2, 0.4, 1) both;
+      }
+      .sp-svg {
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        fill: #ee8a68;
+      }
+      .sp-num {
+        /* The centre of the « 14 ». */
+        transform-origin: 49.9% 46.4%;
+        animation: sp-pop 0.4s 0.45s cubic-bezier(0.2, 1.8, 0.4, 1) both;
+      }
+      .sp-word {
+        animation: sp-up 0.3s 0.8s ease-out both;
+      }
+      @keyframes sp-sprint {
+        0% {
+          transform: translateX(calc(-50vw - 100%)) skewX(18deg);
+        }
+        70% {
+          transform: translateX(9%) skewX(-6deg);
+        }
+      }
+      @keyframes sp-squash {
+        0%,
+        60% {
+          transform: scale(1.15, 0.9);
+        }
+      }
+      @keyframes sp-pop {
+        0% {
+          transform: scale(0);
+        }
+      }
+      @keyframes sp-up {
+        0% {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+      }
+      @keyframes sp-burst {
+        0% {
+          transform: scale(0.03);
+          opacity: 1;
+        }
+        100% {
+          opacity: 0;
+        }
+      }
+      @keyframes sp-shake {
+        30% {
+          transform: translateX(-4px);
+        }
+        60% {
+          transform: translateX(3px);
+        }
+      }
+      @keyframes sp-fade {
+        to {
+          opacity: 0;
+          visibility: hidden;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #splash {
+          display: none;
+        }
+      }
+    </style>
   </head>
   <body>
+    <div id="splash" aria-hidden="true">
+      <div class="sp-stage">
+        <i class="sp-burst"></i>
+        <div class="sp-bib">
+          <i class="sp-card"></i>
+          <i class="sp-pin" style="left: 8%; top: 11.111%; animation-delay: 0.6s"></i>
+          <i class="sp-pin" style="left: 85.333%; top: 11.111%; animation-delay: 0.65s"></i>
+          <i class="sp-pin" style="left: 8%; top: 79.63%; animation-delay: 0.7s"></i>
+          <i class="sp-pin" style="left: 85.333%; top: 79.63%; animation-delay: 0.75s"></i>
+          <svg class="sp-svg sp-num" viewBox="53 74 150 108"><path d="M108.09 98.2H117.05Q117.42 98.2 117.68 98.46Q117.94 98.72 117.94 99.09V149.11Q117.94 149.48 117.68 149.74Q117.42 150 117.05 150H108.39Q108.02 150 107.76 149.74Q107.5 149.48 107.5 149.11V108.71Q107.5 108.41 107.13 108.41L101.43 109.08H101.29Q100.47 109.08 100.47 108.26L100.25 101.9Q100.25 101.16 100.92 100.86L106.98 98.42Q107.58 98.2 108.09 98.2ZM155.38 128.39V136.01Q155.38 136.38 155.12 136.64Q154.86 136.9 154.49 136.9H152.2Q151.83 136.9 151.83 137.27V149.11Q151.83 149.48 151.57 149.74Q151.31 150 150.94 150H142.28Q141.91 150 141.65 149.74Q141.39 149.48 141.39 149.11V137.27Q141.39 136.9 141.02 136.9H122.52Q122.15 136.9 121.89 136.64Q121.64 136.38 121.64 136.01V129.95Q121.64 129.28 121.78 128.84L131.63 98.94Q131.85 98.2 132.59 98.2H141.99Q142.43 98.2 142.65 98.46Q142.87 98.72 142.73 99.24L133.85 127.06Q133.77 127.5 134.14 127.5H141.02Q141.39 127.5 141.39 127.13V119.44Q141.39 119.07 141.65 118.81Q141.91 118.55 142.28 118.55H150.94Q151.31 118.55 151.57 118.81Q151.83 119.07 151.83 119.44V127.13Q151.83 127.5 152.2 127.5H154.49Q154.86 127.5 155.12 127.76Q155.38 128.02 155.38 128.39Z" /></svg>
+          <svg class="sp-svg sp-word" viewBox="53 74 150 108"><path d="M97.57 170.86 97.32 169.49Q97.32 169.43 97.24 169.43H95.34Q95.27 169.43 95.27 169.49L95.02 170.86Q95.01 171 94.85 171H93.67Q93.49 171 93.53 170.83L95.45 162.04Q95.48 161.9 95.62 161.9H97Q97.14 161.9 97.17 162.04L99.09 170.83V170.88Q99.09 171 98.95 171H97.74Q97.58 171 97.57 170.86ZM95.57 168.24H97.01Q97.09 168.24 97.07 168.18L96.32 164.07Q96.31 164.03 96.28 164.03Q96.26 164.03 96.24 164.07L95.5 168.18Q95.49 168.24 95.57 168.24ZM106.02 161.9H107.2Q107.27 161.9 107.31 161.95Q107.36 161.99 107.36 162.06V170.84Q107.36 170.91 107.31 170.95Q107.27 171 107.2 171H105.84Q105.71 171 105.67 170.87L103.73 165.36Q103.72 165.32 103.69 165.33Q103.66 165.33 103.66 165.37L103.67 170.84Q103.67 170.91 103.62 170.95Q103.58 171 103.51 171H102.33Q102.26 171 102.22 170.95Q102.17 170.91 102.17 170.84V162.06Q102.17 161.99 102.22 161.95Q102.26 161.9 102.33 161.9H103.67Q103.8 161.9 103.84 162.03L105.79 167.5Q105.8 167.54 105.83 167.54Q105.87 167.53 105.87 167.49V162.06Q105.87 161.99 105.91 161.95Q105.96 161.9 106.02 161.9ZM114.81 161.9H116Q116.06 161.9 116.11 161.95Q116.15 161.99 116.15 162.06V170.84Q116.15 170.91 116.11 170.95Q116.06 171 116 171H114.63Q114.5 171 114.46 170.87L112.52 165.36Q112.51 165.32 112.48 165.33Q112.45 165.33 112.45 165.37L112.46 170.84Q112.46 170.91 112.41 170.95Q112.37 171 112.3 171H111.12Q111.06 171 111.01 170.95Q110.96 170.91 110.96 170.84V162.06Q110.96 161.99 111.01 161.95Q111.06 161.9 111.12 161.9H112.46Q112.59 161.9 112.63 162.03L114.58 167.5Q114.59 167.54 114.62 167.54Q114.66 167.53 114.66 167.49V162.06Q114.66 161.99 114.7 161.95Q114.75 161.9 114.81 161.9ZM123.28 170.86 123.03 169.49Q123.03 169.43 122.95 169.43H121.05Q120.98 169.43 120.98 169.49L120.73 170.86Q120.72 171 120.56 171H119.38Q119.2 171 119.23 170.83L121.16 162.04Q121.19 161.9 121.33 161.9H122.71Q122.85 161.9 122.88 162.04L124.8 170.83V170.88Q124.8 171 124.66 171H123.45Q123.29 171 123.28 170.86ZM121.28 168.24H122.72Q122.8 168.24 122.78 168.18L122.03 164.07Q122.02 164.03 121.99 164.03Q121.97 164.03 121.95 164.07L121.21 168.18Q121.2 168.24 121.28 168.24ZM131.31 170.87 130.21 167.14Q130.18 167.09 130.15 167.09H129.46Q129.39 167.09 129.39 167.15V170.84Q129.39 170.91 129.35 170.95Q129.3 171 129.23 171H128.04Q127.97 171 127.93 170.95Q127.88 170.91 127.88 170.84V162.06Q127.88 161.99 127.93 161.95Q127.97 161.9 128.04 161.9H130.48Q131.17 161.9 131.7 162.23Q132.22 162.56 132.52 163.17Q132.81 163.77 132.81 164.55Q132.81 165.36 132.5 165.94Q132.19 166.53 131.63 166.83Q131.57 166.84 131.59 166.91L132.86 170.82Q132.88 170.84 132.88 170.88Q132.88 171 132.73 171H131.48Q131.35 171 131.31 170.87ZM129.39 163.26V165.85Q129.39 165.92 129.46 165.92H130.25Q130.72 165.92 131.01 165.55Q131.3 165.19 131.3 164.56Q131.3 163.94 131.01 163.57Q130.72 163.2 130.25 163.2H129.46Q129.39 163.2 129.39 163.26ZM139.51 170.87 138.4 167.14Q138.38 167.09 138.34 167.09H137.65Q137.58 167.09 137.58 167.15V170.84Q137.58 170.91 137.54 170.95Q137.49 171 137.43 171H136.23Q136.17 171 136.12 170.95Q136.08 170.91 136.08 170.84V162.06Q136.08 161.99 136.12 161.95Q136.17 161.9 136.23 161.9H138.68Q139.37 161.9 139.89 162.23Q140.42 162.56 140.71 163.17Q141 163.77 141 164.55Q141 165.36 140.69 165.94Q140.38 166.53 139.82 166.83Q139.77 166.84 139.78 166.91L141.06 170.82Q141.07 170.84 141.07 170.88Q141.07 171 140.92 171H139.68Q139.55 171 139.51 170.87ZM137.58 163.26V165.85Q137.58 165.92 137.65 165.92H138.44Q138.91 165.92 139.2 165.55Q139.5 165.19 139.5 164.56Q139.5 163.94 139.2 163.57Q138.91 163.2 138.44 163.2H137.65Q137.58 163.2 137.58 163.26ZM144.27 170.84V162.06Q144.27 161.99 144.31 161.95Q144.36 161.9 144.43 161.9H145.62Q145.69 161.9 145.73 161.95Q145.78 161.99 145.78 162.06V170.84Q145.78 170.91 145.73 170.95Q145.69 171 145.62 171H144.43Q144.36 171 144.31 170.95Q144.27 170.91 144.27 170.84ZM150.9 170.86 149.04 162.07 149.03 162.02Q149.03 161.9 149.17 161.9H150.49Q150.64 161.9 150.66 162.04L151.73 168.3Q151.75 168.34 151.77 168.34Q151.8 168.34 151.81 168.3L152.87 162.04Q152.88 161.9 153.03 161.9H154.31Q154.48 161.9 154.44 162.07L152.57 170.86Q152.54 171 152.4 171H151.07Q150.93 171 150.9 170.86ZM162.09 163.2H159.28Q159.21 163.2 159.21 163.26V165.72Q159.21 165.79 159.28 165.79H160.94Q161.01 165.79 161.05 165.83Q161.1 165.88 161.1 165.94V166.94Q161.1 167.01 161.05 167.05Q161.01 167.1 160.94 167.1H159.28Q159.21 167.1 159.21 167.16V169.63Q159.21 169.7 159.28 169.7H162.09Q162.15 169.7 162.2 169.75Q162.24 169.79 162.24 169.86V170.84Q162.24 170.91 162.2 170.95Q162.15 171 162.09 171H157.86Q157.8 171 157.75 170.95Q157.7 170.91 157.7 170.84V162.06Q157.7 161.99 157.75 161.95Q157.8 161.9 157.86 161.9H162.09Q162.15 161.9 162.2 161.95Q162.24 161.99 162.24 162.06V163.04Q162.24 163.11 162.2 163.15Q162.15 163.2 162.09 163.2ZM159.26 160.89 160.03 159.55Q160.08 159.44 160.23 159.44H161.16Q161.27 159.44 161.29 159.5Q161.32 159.56 161.27 159.64L160.3 160.98Q160.24 161.07 160.12 161.07H159.38Q159.29 161.07 159.25 161.02Q159.21 160.96 159.26 160.89Z" /></svg>
+        </div>
+      </div>
+    </div>
+    <script>
+      (() => {
+        const splash = document.getElementById("splash");
+        const types = ["pointerdown", "keydown", "visibilitychange"];
+        const end = () => {
+          splash.remove();
+          for (const type of types) document.removeEventListener(type, end, true);
+        };
+        let reloaded = false;
+        try {
+          // Set by « Recharger » (features/updates.ts): a new version, not a launch.
+          reloaded = sessionStorage.getItem("splash-skip") === "1";
+          sessionStorage.removeItem("splash-skip");
+        } catch {}
+        // Opened in the background (a reload while away) or with reduced motion: nothing plays.
+        if (reloaded || document.visibilityState !== "visible" || matchMedia("(prefers-reduced-motion: reduce)").matches)
+          return end();
+        // A tap or a key ends it at once and still reaches what lies under it: the overlay takes no touch.
+        for (const type of types) document.addEventListener(type, end, true);
+
+        // The bib hands over to the first thing on Aujourd'hui, measured now: the moon on a rest day, else the card.
+        const leave = () => {
+          if (!splash.isConnected) return;
+          const bib = splash.querySelector(".sp-bib");
+          const main = location.pathname === "/" ? document.querySelector("#root main") : null;
+          const target = main && (main.querySelector(".rest-moon") || main.querySelector("article"));
+          const to = target && target.getBoundingClientRect();
+          const from = bib.getBoundingClientRect();
+          const moon = target && target.classList.contains("rest-moon");
+          const timing = { duration: 500, easing: "cubic-bezier(.5,0,.2,1)", fill: "forwards" };
+          if (to && to.width > 0 && to.top < innerHeight) {
+            const dx = to.left + to.width / 2 - from.left - from.width / 2;
+            const dy = to.top + to.height / 2 - from.top - from.height / 2;
+            const transform = `translate(${dx}px, ${dy}px) scale(${to.width / from.width}, ${to.height / from.height})`;
+            bib.animate({ transform, opacity: moon ? 1 : 0 }, timing);
+            if (moon) {
+              // The card rounds into the moon; what is printed on it fades.
+              const [card, ...printed] = bib.children;
+              card.animate({ borderRadius: "50%" }, { duration: 400, easing: "ease-in", fill: "forwards" });
+              for (const part of printed) part.animate({ opacity: 0 }, { duration: 200, fill: "forwards" });
+            }
+          } else bib.animate({ transform: "scale(.9)", opacity: 0 }, timing);
+          // The moon is seen landing before the sky clears; the card's handover is a cross-fade.
+          const reveal = { duration: moon ? 250 : 400, delay: moon ? 400 : 250, easing: "ease-out", fill: "forwards" };
+          splash.animate({ opacity: 0 }, reveal).onfinish = end;
+        };
+        // On the animation's own clock: the word lands last.
+        splash.querySelector(".sp-word").addEventListener("animationend", () => setTimeout(leave, 250));
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <!-- What Aujourd'hui reads, in one request, fetched while the app's script downloads rather than after it
