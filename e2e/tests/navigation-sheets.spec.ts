@@ -129,10 +129,10 @@ test("Semaine : glisser vers la gauche montre la semaine suivante, vers la droit
   await page.goto("/semaine");
   const range = page.locator("p[aria-live]");
   await expect(range).toHaveText("16 au 22 novembre");
-  const days = page.locator("#day-2026-11-18");
+  const days = page.locator("#day-2026-11-17");
   await pull(page, days, -220, 0);
-  await expect(range).toHaveText("23 au 29 novembre");
-  await pull(page, page.locator("#day-2026-11-25"), 220, 0);
+  await expect(range).toContainText("23 au 29 novembre");
+  await pull(page, page.locator("#day-2026-11-24"), 220, 0);
   await expect(range).toHaveText("16 au 22 novembre");
   // While the finger is down, the next week is already drawn beside this one and comes in with it.
   const anchor = await page.locator("#day-2026-11-18").boundingBox();
@@ -157,4 +157,24 @@ test("Semaine : glisser vers la gauche montre la semaine suivante, vers la droit
   // A vertical move stays a scroll, never a turn.
   await pull(page, page.locator("#day-2026-11-18"), 10, 160);
   await expect(range).toHaveText("16 au 22 novembre");
+});
+
+test("Semaine : un filtre garde un seul type, et « Cette semaine » ramène à la semaine en cours", async ({ page }) => {
+  await page.goto("/semaine");
+  const range = page.locator("p[aria-live]");
+  await expect(range).toHaveText("16 au 22 novembre");
+  await page.getByRole("button", { name: "Semaine suivante" }).click();
+  await expect(range).toContainText("23 au 29 novembre");
+  await page.getByRole("button", { name: "Cette semaine", exact: true }).click();
+  await expect(range).toHaveText("16 au 22 novembre");
+  await expect(page.getByRole("button", { name: "Cette semaine", exact: true })).toHaveCount(0);
+
+  const sessions = page.locator("[aria-roledescription='séance déplaçable']");
+  await expect(sessions.first()).toBeVisible();
+  await page.getByRole("button", { name: "Cours", exact: true }).click();
+  await expect(sessions).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Cours", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Tout", exact: true }).click();
+  await expect(sessions.first()).toBeVisible();
 });

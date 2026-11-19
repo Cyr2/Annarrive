@@ -65,7 +65,7 @@ const rev = (start: string, end: string): EventSeed => ({ kind: "revision", titl
 
 const WEEK: (RunSeed | EventSeed)[][] = [
   [cls("Physique", "10:15", "12:15"), rev("14:00", "16:00"), INTERVALS],
-  [cls("Français", "8:15", "10:15"), cls("Allemand", "12:45", "14:45")],
+  [cls("(M1M2E G3 NL) UE1 Français", "8:15", "10:15"), cls("(M1M2E G3 NL) UE4 Allemand", "12:45", "14:45")],
   [easyRun("7:30", 45), rev("16:00", "18:00")],
   [cls("Mathématiques", "8:15", "10:15")],
   [STRIDES],

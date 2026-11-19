@@ -1,7 +1,6 @@
 import { Fragment, useDeferredValue, useEffect, useState } from "react";
 import type { Run, Today, Week } from "../../api/schemas.ts";
 import { LoadFailed } from "../../ui/EmptyState.tsx";
-import { Icon } from "../../ui/Icon.tsx";
 import { Presence } from "../../ui/Presence.tsx";
 import { PullToRefresh } from "../../ui/PullToRefresh.tsx";
 import { RoundAction } from "../../ui/RoundAction.tsx";
@@ -100,7 +99,7 @@ export function TodayScreen() {
     );
   }
 
-  const { activity, next, goal, date, toConfirm, unwellText } = today;
+  const { activity, next, date, toConfirm, unwellText } = today;
   // Over and unconfirmed: the question replaces the card, it no longer offers to move or change it.
   const session = today.session?.id === toConfirm?.id ? undefined : today.session;
   const askReggie = () => {
@@ -115,20 +114,6 @@ export function TodayScreen() {
       <PullToRefresh onRefresh={refreshTimetable} />
       {/* Settled once what sits under the card is drawn: the first screen's later frames arrive without motion. */}
       <Presence settled={belowCard}>
-        {goal && (
-          <a
-            href="/programme"
-            onClick={(e) => {
-              e.preventDefault();
-              go("/programme");
-            }}
-            className="ui-glass press t-label inline-flex min-h-11 items-center gap-2 self-start rounded-full px-4 text-ink"
-          >
-            <Icon name="flag" size={16} />
-            {goal.label} · J-{goal.daysLeft}
-          </a>
-        )}
-
         {unwellText && <Unwell text={unwellText} />}
         {!activity && toConfirm && <DidYouRun key="ask" run={toConfirm} today={date} onDone={setConfirmed} />}
         {!activity && !toConfirm && confirmed && (

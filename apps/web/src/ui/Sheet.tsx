@@ -284,9 +284,12 @@ function Panel({
       className="fixed inset-x-0 top-0 bottom-0 z-40"
       style={area && { top: area.top, height: area.height, bottom: "auto" }}
     >
+      {/* The scrim and the sheet keep their own layers (will-change) for as long as they are up. Otherwise, once the
+          slide ends, Chrome on Android folds the sheet back into the page and skips painting it for a frame or two:
+          the page flashed through it. */}
       <motion.div
         aria-hidden="true"
-        className="absolute inset-0 bg-scrim"
+        className="absolute inset-0 bg-scrim will-change-[opacity]"
         style={still ? undefined : { opacity: progress }}
         initial={still && appear && { opacity: 0 }}
         animate={still ? { opacity: 1, transition: FADE_REDUCED } : undefined}
@@ -303,7 +306,7 @@ function Panel({
         aria-labelledby={titleId}
         tabIndex={-1}
         data-variant="sheet"
-        className="surface contain-layout absolute inset-x-0 bottom-0 mx-auto flex max-h-[calc(100%-env(safe-area-inset-top)-16px)] w-full max-w-xl flex-col outline-none"
+        className="surface contain-layout absolute inset-x-0 bottom-0 mx-auto flex will-change-transform max-h-[calc(100%-env(safe-area-inset-top)-16px)] w-full max-w-xl flex-col outline-none"
         aria-busy={busy}
         style={{ y }}
         initial={appear && (still ? { opacity: 0 } : { y: "105%" })}

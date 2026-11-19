@@ -17,13 +17,15 @@ Référence pour les maquettes et le code. Chaque action dit ce qu'elle ouvre, c
 6. **Une seule question à la fois** quand Reggie a besoin d'une info, avec des réponses en boutons.
 Chaque explication (pourquoi cette séance, séance allégée, verdict de la cible) se termine par le lien bleu « En parler avec Reggie › » : il ouvre Reggie sur ce sujet et envoie la question pour elle.
 7. **Une allure s'écrit toujours avec son unité**, en notation de coureur : « 5'15 /km », « 6'37 à 7'53 /km ». Les durées restent « 50 min », « 1 h 06 ». Chaque étape courue a son allure, comme sur la montre.
+8. **Un cours s'affiche par son nom.** Le flux de l'université écrit « (M1M2E G3 NL) UE1 Français » : l'app montre « Français » en titre et « UE1 · M1M2E G3 NL » sur la ligne secondaire, partout (Semaine, Ma journée, fiche du cours). Les codes UE passent d'abord, puis ce qui était entre parenthèses ; sans nom de cours, les codes font le titre. La fiche du cours garde le nom complet du flux.
+9. **Les actions d'une feuille restent à portée.** Les boutons qui agissent (Déplacer, Changer, Pas dispo, « Ce cours n'a pas lieu », Reconnecter...) sont épinglés en bas de la feuille, jamais au bout du défilement.
 
 ## Aujourd'hui
 
 | Élément | Au tap | Ce qui se passe |
 |---|---|---|
-| Puce « Semi · J-62 » | Ouvre l'onglet Programme | Rien ne change |
-| Carte de la séance | Ouvre le détail de la séance (étapes, allures, pourquoi cette séance) | Rien ne change |
+| Jour de repos | Pas de carte : la lune à gauche, « Repos » et sa phrase à côté, sur une seule rangée ; la prochaine séance en dessous | Rien ne change. L'objectif et son compte à rebours vivent dans Programme, pas ici |
+| Carte de la séance | Ouvre le détail de la séance (étapes, allures, pourquoi cette séance). Déplacer, Changer et Pas dispo restent épinglés en bas de la feuille, visibles quel que soit le défilement des étapes | Rien ne change |
 | Voir les étapes | Déplie les étapes dans la carte, comme une séance Garmin : « Échauffement · 15 min », un groupe « Répéter 3 fois » autour des lignes qu'il répète (« 8 min », « Récupérer · 2 min »), « Retour au calme · 10 min », chaque ligne avec son allure. Absent quand la séance n'a qu'une étape | Rien ne change. Deuxième tap = replie |
 | Carte « Tu l'as faite ? » | Apparaît quand une séance de la semaine est finie sans course reçue de la montre. « Oui, je l'ai faite » ou « Non, je l'ai sautée » | Oui : séance faite. Non : séance passée, jamais rattrapée. Bandeau Annuler dans les deux cas |
 | Ligne « Tu es enrhumée » (ou fièvre, douleur) et « Ça va mieux » | Reste en haut tant qu'un état Malade ou Douleur dure | « Ça va mieux » lance le retour, comme dans Pas dispo. Bandeau Annuler |
@@ -93,12 +95,14 @@ Garde **le moment**, change **le contenu**. Ne propose jamais une séance plus d
 | Élément | Geste | Ce qui se passe |
 |---|---|---|
 | Flèches gauche et droite | Tap | Semaine précédente ou suivante. Les semaines passées sont en lecture seule |
-| La page | Glisser à gauche ou à droite | La semaine suit le doigt, et la suivante (ou la précédente) est déjà dessinée à côté : elles glissent ensemble, jamais de vide (une semaine pas encore lue montre sa place). Lâchée au-delà d'un quart de la largeur (ou lancée), la voisine se pose avec un ressort et devient la semaine affichée ; sinon tout revient, rien n'est relu. Avec « Réduire les animations », la semaine change d'un coup. Un glissement vertical reste un défilement, un appui long reste le déplacement d'une séance |
+| La page | Glisser à gauche ou à droite | La semaine suit le doigt, et la suivante (ou la précédente) est déjà dessinée à côté : elles glissent ensemble, jamais de vide (une semaine pas encore lue montre sa place). Lâchée au-delà d'un quart de la largeur (ou lancée), la voisine se pose avec un ressort et devient la semaine affichée ; sinon tout revient, rien n'est relu. Avec « Réduire les animations », la semaine change d'un coup. Un glissement vertical reste un défilement, un appui long reste le déplacement d'une séance. Sur Semaine, glisser ne change jamais d'onglet : un glissement depuis le bord serait pris par le geste retour d'Android, qui occupe les deux bords |
 | Actualiser | Tap | Relit l'emploi du temps tout de suite. Si un cours change, une ligne apparaît : « 1 cours annulé jeudi · Footing passé à vendredi 18:00 ». Une relecture automatique qui change quelque chose laisse la même ligne jusqu'au soir |
 | La page, tout en haut | Tirer vers le bas | Même lecture qu'Actualiser, aussi sur Aujourd'hui et Programme. Les flèches d'Actualiser descendent dans une pastille de verre en suivant la moitié du doigt et tournent avec lui ; au-delà de 64 px elles passent au bleu, et lâcher lance la lecture (les flèches tournent seules, la ligne dit « Lecture en cours… »), puis la pastille remonte. En deçà, elle remonte sans rien lire. Jamais sous une feuille ; un glissement de côté ou un appui long n'est pas un tirage. Une seule lecture à la fois |
 | Course, muscu, révision | Appui long (0,3 s) puis glisser | La séance se soulève (petite vibration). Les créneaux possibles s'entourent en pointillés, les jours interdits s'atténuent avec leur raison. Lâcher = déplacement, bandeau Annuler |
 | Course, muscu, révision | Tap | Course : détail. Muscu ou révision : feuille de modification |
-| Cours (emploi du temps) | Tap | Fiche du cours, lecture seule, avec « Ce cours n'a pas lieu ». Les cours ne se glissent pas (cadenas) |
+| Cours (emploi du temps) | Tap | Fiche du cours, lecture seule, avec « Ce cours n'a pas lieu » épinglé en bas et le nom complet du flux. Les cours ne se glissent pas (cadenas) |
+| Tout · Courses · Muscu · Cours · Révisions | Tap | La liste des jours et la frise ne montrent plus que ce type ; un jour sans rien de ce type le dit en une ligne calme (« Pas de cours »). Les indispos ne s'affichent que dans Tout. Le choix est gardé sur le téléphone et revient à la prochaine visite. Sur un écran étroit, la rangée défile de côté sans tourner la semaine |
+| Plage de dates, « Cette semaine » | Tap | Sur une autre semaine que celle en cours, la plage passe en bleu comme un lien et une pastille « Cette semaine » apparaît dessous : les deux ramènent à la semaine en cours |
 | **+** | Tap | Feuille « Ajouter » |
 
 ### Feuille « Ajouter »
@@ -194,7 +198,7 @@ Toutes respectent « Réduire les animations » d'iOS : dans ce cas, simples fon
 | Moment | Animation |
 |---|---|
 | Appui sur un bouton | Réduction à 96 % pendant l'appui, retour en 120 ms |
-| Ouverture d'une feuille | Monte du bas avec un ressort sans rebond (environ 350 ms). L'écran derrière ne bouge pas : il s'assombrit légèrement, en suivant la feuille image par image : à l'ouverture, pendant qu'on la tire, à la fermeture (bouton, glissement, tap à côté, retour Android), sans à-coup. La feuille se ferme en la tirant vers le bas, par sa poignée ou depuis n'importe où dans son contenu quand celui-ci est en haut (un contenu défilé remonte d'abord). Tant qu'elle bouge, rien ne floute (ni elle, en givre opaque, ni la page derrière) ; son verre revient en fondu (150 ms) une fois posée |
+| Ouverture d'une feuille | Monte du bas avec un ressort sans rebond (environ 350 ms). L'écran derrière ne bouge pas : il s'assombrit légèrement, en suivant la feuille image par image : à l'ouverture, pendant qu'on la tire, à la fermeture (bouton, glissement, tap à côté, retour Android), sans à-coup. La feuille se ferme en la tirant vers le bas, par sa poignée ou depuis n'importe où dans son contenu quand celui-ci est en haut (un contenu défilé remonte d'abord). Tant qu'elle bouge, elle ne floute pas (givre opaque) ; son verre revient en fondu (150 ms) une fois posée. La page derrière garde son verre tel quel : rien n'y clignote à l'ouverture ni à la fermeture. Sur écran tactile, la feuille est opaque et les cartes gardent leur teinte sans flou en direct |
 | Feuille ouverte depuis une autre | Elle prend la place de la première. En haut à gauche, « Retour » ramène la première telle qu'on l'a laissée ; tirer vers le bas, toucher à côté ou Échap ferment tout. Le retour Android revient d'une feuille à la fois |
 | Changement d'onglet | Le nouvel écran s'ouvre en haut de page ; seul le retour du navigateur retrouve la position laissée |
 | Déplier les étapes | La hauteur s'ouvre et les lignes apparaissent en fondu, 250 ms |
@@ -208,3 +212,4 @@ Toutes respectent « Réduire les animations » d'iOS : dans ce cas, simples fon
 | Choix dans un widget | Le bouton choisi se remplit, les autres s'estompent |
 | Choix dans une liste (carte de choix) | La carte cède légèrement sous le doigt et revient avec un ressort, la coche arrive avec un petit ressort |
 | Changement d'onglet | Fondu croisé de 200 ms, la pastille de l'onglet actif glisse vers le nouvel onglet |
+| Glisser vers un onglet voisin (Aujourd'hui, Programme, Reggie) | Ordre de la barre : Aujourd'hui, Semaine, Programme, Reggie. L'écran suit le doigt ; lâché au-delà d'un quart de la largeur (ou lancé), il part de son côté et l'onglet voisin arrive de l'autre en fondu (260 ms) ; sinon il revient. Au bout de la barre (vers la droite sur Aujourd'hui, vers la gauche sur Reggie), l'écran cède un peu puis revient. Doigt seulement (pas la souris). Un défilement vertical, un appui long, une rangée qui défile de côté, un champ, un curseur, une feuille ouverte ou le tirage pour actualiser ne lancent jamais ce geste. Avec « Réduire les animations », l'onglet change d'un coup, rien ne glisse |

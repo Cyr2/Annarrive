@@ -10,7 +10,7 @@ const TITLES: Record<string, string> = {
   Révision: "Révision partiel de thermodynamique",
   Fractionné: "Fractionné en côte, retour en descente",
   "Haut du corps": "Renforcement haut du corps et gainage",
-  Français: "Français langue étrangère, expression écrite",
+  "(M1M2E G3 NL) UE1 Français": "(M1M2E G3 NL) UE1 Français langue étrangère, expression écrite",
   "Footing facile": "Footing facile et tranquille",
   "Sortie longue": "Sortie longue avec la fin à allure semi",
 };

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Chip, IconButton, Input } from "../../ui/controls.tsx";
 import { useVisibleArea } from "../../ui/useVisibleArea.ts";
 import { frenchSpaces } from "./Message.tsx";
@@ -60,7 +61,8 @@ export function Composer({ onHeight, onTyping, shortcuts }: Props) {
     void send(value);
     setText("");
   };
-  return (
+  // Outside the screen's box: a screen sliding to the next tab (useTabSwipe) would carry it off its place.
+  return createPortal(
     <div
       ref={box}
       className="ui-float fixed inset-x-0 z-20 mx-auto flex max-w-xl flex-col gap-2 px-gutter"
@@ -104,6 +106,7 @@ export function Composer({ onHeight, onTyping, shortcuts }: Props) {
           }
         />
       </form>
-    </div>
+    </div>,
+    document.getElementById("root") ?? document.body,
   );
 }

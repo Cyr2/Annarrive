@@ -12,6 +12,8 @@ import { preloadSheet, SheetHost } from "./features/sheets/SheetHost.tsx";
 import { type SheetSpec, useSheet } from "./features/sheets/store.ts";
 import { TodayScreen } from "./features/today/TodayScreen.tsx";
 import { watchForUpdates } from "./features/updates.ts";
+import { swipes, useTabSwipe } from "./features/useTabSwipe.ts";
+import { cx } from "./lib/cx.ts";
 import { whenIdle } from "./lib/idle.ts";
 import { ChunkBoundary, lazyChunk } from "./ui/ChunkBoundary.tsx";
 import { preloadControls, type Tab, TabBar } from "./ui/controls.tsx";
@@ -159,6 +161,7 @@ export function App() {
   }, []);
   useFreshPlan();
   useTopOnNavigate(location);
+  const swipe = useTabSwipe(location, toTab);
   // The journal's breadcrumbs: which screen, which sheet (api/journal.ts).
   useEffect(() => crumb("route", location), [location]);
   useEffect(
@@ -193,7 +196,11 @@ export function App() {
     <>
       <Sky phase={phase} />
       <OfflineLine />
-      <div key={location} className={first.current ? undefined : "screen-in"}>
+      <div
+        key={location}
+        ref={swipe}
+        className={cx(!first.current && "screen-in", swipes(location) && "touch-pan-y touch-pinch-zoom")}
+      >
         <ChunkBoundary fallback={screenFailed}>
           <Suspense
             fallback={

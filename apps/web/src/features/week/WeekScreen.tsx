@@ -6,7 +6,7 @@ import { useSearch } from "wouter";
 import type { Week } from "../../api/schemas.ts";
 import { cx } from "../../lib/cx.ts";
 import { daysBetween, mondayOf } from "../../lib/date.ts";
-import { Button, IconButton } from "../../ui/controls.tsx";
+import { Button, Chip, IconButton } from "../../ui/controls.tsx";
 import { EmptyState, LoadFailed } from "../../ui/EmptyState.tsx";
 import { PullToRefresh } from "../../ui/PullToRefresh.tsx";
 import { Screen } from "../../ui/Screen.tsx";
@@ -15,13 +15,14 @@ import { WeekStrip } from "../../ui/WeekStrip.tsx";
 import { todayOf } from "../plan/selectors.ts";
 import { usePlan } from "../plan/store.ts";
 import { useSheet } from "../sheets/store.ts";
+import { useWeekFilter } from "./filter.ts";
 import { RefreshRow, refreshTimetable } from "./RefreshRow.tsx";
 import { useWeekDrag } from "./useWeekDrag.ts";
 import { useWeekMotion } from "./useWeekMotion.ts";
 import { useWeekSwipe } from "./useWeekSwipe.ts";
 import { WeekDay } from "./WeekDay.tsx";
 import { ItemRow } from "./WeekItem.tsx";
-import { type Day, stripOf, weekDays, weekHeading } from "./week.ts";
+import { type Day, FILTERS, type Filter, stripOf, weekDays, weekHeading } from "./week.ts";
 
 /**
  * The week to draw: the one asked for, or, while it is read, the one already on screen (`fresh` false), so
@@ -66,9 +67,9 @@ function StripCard({ week, today, days }: { week: Week; today: string; days: Day
  * The week before or after, beside the one on screen while a finger swipes, so the page it pulls in is already
  * there. Only to look at: VoiceOver and the keyboard never reach it. Its place, at the right height, if not read yet.
  */
-function Neighbour({ side, offset, today }: { side: -1 | 1; offset: number; today: string }) {
+function Neighbour({ side, offset, today, filter }: { side: -1 | 1; offset: number; today: string; filter: Filter }) {
   const week = usePlan((s) => s.weeks[offset + side]);
-  const days = week ? weekDays(week, today) : [];
+  const days = week ? weekDays(week, today, filter) : [];
   return (
     <div
       inert
@@ -101,6 +102,73 @@ function WeekWaiting({ failed, offset }: { failed: boolean; offset: number }) {
   );
 }
 
+type HeaderProps = {
+  range?: string;
+  offset: number;
+  onOffset: (offset: number) => void;
+  /** Left out on a past week, read only. */
+  onAdd?: () => void;
+  filter: Filter;
+  onFilter: (filter: Filter) => void;
+};
+
+/**
+ * The arrows around the week's range, +, and the kinds to show. On another week than this one the range turns
+ * blue like a link and a « Cette semaine » pill comes under it: both lead back.
+ */
+function WeekHeader({ range = " ", offset, onOffset, onAdd, filter, onFilter }: HeaderProps) {
+  const chips = useRef<HTMLFieldSetElement>(null);
+  // The kind kept from last time is in view on a narrow phone, not cut at the edge of its row.
+  useEffect(() => {
+    const row = chips.current;
+    const chosen = row?.querySelector<HTMLElement>("[aria-pressed='true']");
+    if (row && chosen) row.scrollLeft = chosen.offsetLeft + chosen.offsetWidth - row.clientWidth + 16;
+  }, []);
+  return (
+    <header className="flex flex-col gap-1">
+      <h1 className="sr-only-label">Semaine</h1>
+      <div className="flex items-center gap-0.5">
+        <IconButton icon="chevronLeft" label="Semaine précédente" onClick={() => onOffset(offset - 1)} />
+        <p aria-live="polite" className="t-range m-0 flex min-w-0 flex-1 justify-center text-center">
+          {offset === 0 ? (
+            <span className="truncate">{range}</span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onOffset(0)}
+              className="press min-h-11 max-w-full truncate border-0 bg-transparent px-1 text-action"
+            >
+              {range}
+              <span className="sr-only-label">, revenir à cette semaine</span>
+            </button>
+          )}
+        </p>
+        <IconButton icon="chevronRight" label="Semaine suivante" onClick={() => onOffset(offset + 1)} />
+        {onAdd && (
+          <IconButton icon="plus" label="Ajouter" variant="tinted" tone="action" className="ml-2" onClick={onAdd} />
+        )}
+      </div>
+      {offset !== 0 && (
+        <Chip icon="today" className="rise self-center" onClick={() => onOffset(0)}>
+          Cette semaine
+        </Chip>
+      )}
+      {/* Its own sideways scroll on a narrow phone: the week swipe leaves it alone (lib/swipe.ts). */}
+      <fieldset
+        ref={chips}
+        className="fade-x -mx-4 m-0 flex min-w-0 gap-2 overflow-x-auto overscroll-x-contain border-0 px-4 py-2 [scrollbar-width:none]"
+      >
+        <legend className="sr-only-label">Afficher</legend>
+        {FILTERS.map((f) => (
+          <Chip key={f.value} selected={filter === f.value} onClick={() => onFilter(f.value)}>
+            {f.label}
+          </Chip>
+        ))}
+      </fieldset>
+    </header>
+  );
+}
+
 /**
  * Semaine: the strip says the week at a glance (load per day, today, what is left), then each day on a time
  * column. A long press lifts a session onto another day; + adds strength, a revision or a busy slot.
@@ -115,35 +183,31 @@ export default function WeekScreen() {
   const drag = useWeekDrag(fresh, offset, today);
   const swipe = useWeekSwipe((step) => setOffset((current) => current + step));
   const rows = useWeekMotion(offset);
+  const [filter, setFilter] = useWeekFilter();
   useEffect(() => {
     if (focus && week) document.getElementById(`day-${focus}`)?.scrollIntoView({ block: "start" });
   }, [focus, week]);
 
-  const days = week ? weekDays(week, today) : [];
+  const days = week ? weekDays(week, today, filter) : [];
   const heading = week && weekHeading(week, today);
   const add = () => show({ kind: "add", date: fresh?.monday });
   return (
     <Screen>
       <PullToRefresh onRefresh={refreshTimetable} />
       <div ref={swipe.ref} className="flex touch-pan-y flex-col gap-3">
-        <header>
-          <h1 className="sr-only-label">Semaine</h1>
-          <div className="flex items-center gap-0.5">
-            <IconButton icon="chevronLeft" label="Semaine précédente" onClick={() => setOffset(offset - 1)} />
-            <p aria-live="polite" className="t-range m-0 min-w-0 flex-1 truncate text-center">
-              {heading?.range ?? " "}
-            </p>
-            <IconButton icon="chevronRight" label="Semaine suivante" onClick={() => setOffset(offset + 1)} />
-            {!week?.readOnly && (
-              <IconButton icon="plus" label="Ajouter" variant="tinted" tone="action" className="ml-2" onClick={add} />
-            )}
-          </div>
-        </header>
+        <WeekHeader
+          range={heading?.range}
+          offset={offset}
+          onOffset={setOffset}
+          onAdd={week?.readOnly ? undefined : add}
+          filter={filter}
+          onFilter={setFilter}
+        />
 
         {/* The week and, while a finger swipes, the ones on each side: they move together, nothing blank. */}
         <motion.div style={{ x: swipe.x }} className="relative flex flex-col gap-6">
-          {swipe.active && <Neighbour side={-1} offset={offset} today={today} />}
-          {swipe.active && <Neighbour side={1} offset={offset} today={today} />}
+          {swipe.active && <Neighbour side={-1} offset={offset} today={today} filter={filter} />}
+          {swipe.active && <Neighbour side={1} offset={offset} today={today} filter={filter} />}
           {week && <StripCard week={week} today={today} days={days} />}
           {!week && <WeekWaiting failed={failed} offset={offset} />}
 

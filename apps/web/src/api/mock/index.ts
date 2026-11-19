@@ -336,7 +336,7 @@ function targetTag(time: string, distanceKm: number) {
   return secondsPerKm < 300 ? "ambitious" : "reachable";
 }
 
-/** The short name on the countdown chip: "Semi · J-62". */
+/** The race's short name in the day's answer ("Semi"), as the server gives it. */
 function goalLabel(race: string) {
   return race === "Semi-marathon" ? "Semi" : race;
 }

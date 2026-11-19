@@ -6,14 +6,16 @@ import { SectionTitle } from "../../ui/List.tsx";
 import { Surface } from "../../ui/Surface.tsx";
 import { TONES } from "../../ui/tones.ts";
 import { useSheet } from "../sheets/store.ts";
-import { agenda, endOf, sheetFor, toneOf } from "./today.ts";
+import { agenda, endOf, nameOf, sheetFor, toneOf } from "./today.ts";
 
 /** "Cours · 2 h": the kind (unless the title already says it) and how long it lasts. */
 function caption(item: Item): string {
   const label = TONES[toneOf(item)].label;
   const end = item.kind === "run" ? endOf(item) : item.end;
   const length = duration(minutesOf(end) - minutesOf(item.start));
-  return item.title.toLowerCase().startsWith(label.toLowerCase()) ? length : `${label} · ${length}`;
+  const { title, detail } = nameOf(item);
+  const kind = title.toLowerCase().startsWith(label.toLowerCase()) ? length : `${label} · ${length}`;
+  return detail ? `${kind} · ${detail}` : kind;
 }
 
 /**
@@ -51,7 +53,7 @@ export function DayAgenda({ items, date }: { items: Item[]; date: string }) {
                 >
                   <span className="flex min-w-0 flex-1 flex-col">
                     <span className={cx(run ? "t-strong" : "t-body", cancelled && "text-ink-2 line-through")}>
-                      {item.title}
+                      {nameOf(item).title}
                     </span>
                     <span className="t-cap">{cancelled ? "N'a pas lieu" : caption(item)}</span>
                   </span>

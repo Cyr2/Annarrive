@@ -17,7 +17,16 @@ export default function WatchSheet(sheet: SheetProps<"watch">) {
   ];
   if (watch.lastSync) rows.push({ label: "Dernière synchro", value: ago(watch.lastSync, new Date()) });
   return (
-    <Sheet {...sheet} title="Montre Garmin" cancelLabel="Fermer">
+    <Sheet
+      {...sheet}
+      title="Montre Garmin"
+      cancelLabel="Fermer"
+      footer={
+        <Button variant="tinted" size="large" onClick={() => void run((api) => api.reconnectWatch())}>
+          Reconnecter
+        </Button>
+      }
+    >
       <Group>
         {rows.map((row) => (
           <div key={row.label} className="row">
@@ -27,9 +36,6 @@ export default function WatchSheet(sheet: SheetProps<"watch">) {
         ))}
       </Group>
       <p className="t-cap m-0 px-4">Chaque séance est envoyée dans ton calendrier Garmin, donc sur ta montre.</p>
-      <Button variant="tinted" size="large" onClick={() => void run((api) => api.reconnectWatch())}>
-        Reconnecter
-      </Button>
     </Sheet>
   );
 }
