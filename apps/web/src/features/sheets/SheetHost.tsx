@@ -1,5 +1,6 @@
-import { type ComponentType, Suspense } from "react";
+import { type ComponentType, Suspense, useEffect } from "react";
 import { ChunkBoundary, lazyChunk, retryChunks } from "../../ui/ChunkBoundary.tsx";
+import { handOffSheet } from "../../ui/sheetHandoff.ts";
 import { notify } from "../../ui/toast.ts";
 import { usePlan } from "../plan/store.ts";
 import { type SheetSpec, useSheet } from "./store.ts";
@@ -86,6 +87,15 @@ function failed(spec: SheetSpec) {
 export function SheetHost() {
   const { current, below, open, chained, close, back } = useSheet();
   const busy = usePlan((s) => s.busy);
+  // A sheet takes the place of another (opened from it, Retour, the next step): the one on screen is copied before
+  // React swaps them, to slide out as the next one slides in.
+  useEffect(
+    () =>
+      useSheet.subscribe((s, before) => {
+        if (s.open && before.open && s.current !== before.current) handOffSheet(s.below.length >= before.below.length);
+      }),
+    [],
+  );
   if (!current) return null;
   // Keyed by place in the stack: a sheet keeps its state while another one covers it.
   return [...below, current].map((spec, index) => {

@@ -1,10 +1,12 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { daysBetween, longDate } from "../../lib/date.ts";
+import { reducedMotion } from "../../lib/motion.ts";
 import { Typing } from "../../ui/bits.tsx";
 import { Screen } from "../../ui/Screen.tsx";
 import { TextButton } from "../../ui/TextButton.tsx";
 import { todayOf } from "../plan/selectors.ts";
 import { usePlan } from "../plan/store.ts";
+import { useTabRoot } from "../tabRoot.ts";
 import { Composer } from "./Composer.tsx";
 import { Message } from "./Message.tsx";
 import { type Entry, useChat } from "./store.ts";
@@ -85,6 +87,13 @@ export default function ReggieScreen() {
     window.scrollTo(0, document.documentElement.scrollHeight - window.innerHeight - kept.current);
     kept.current = undefined;
   }, [first]);
+
+  // Its tab touched again: back to the last message, where the conversation opens, not to the oldest one.
+  useTabRoot((event) => {
+    event.preventDefault();
+    following.current = true;
+    end.current?.scrollIntoView({ block: "end", behavior: reducedMotion() ? "instant" : "smooth" });
+  });
 
   const showEarlier = () => {
     kept.current = fromBottom();

@@ -10,11 +10,13 @@ import { skyPhase } from "./features/program/sky.ts";
 import { usePush } from "./features/push/store.ts";
 import { preloadSheet, SheetHost } from "./features/sheets/SheetHost.tsx";
 import { type SheetSpec, useSheet } from "./features/sheets/store.ts";
+import { backToTabRoot } from "./features/tabRoot.ts";
 import { TodayScreen } from "./features/today/TodayScreen.tsx";
 import { watchForUpdates } from "./features/updates.ts";
 import { swipes, useTabSwipe } from "./features/useTabSwipe.ts";
 import { cx } from "./lib/cx.ts";
 import { whenIdle } from "./lib/idle.ts";
+import { reducedMotion } from "./lib/motion.ts";
 import { ChunkBoundary, lazyChunk } from "./ui/ChunkBoundary.tsx";
 import { preloadControls, type Tab, TabBar } from "./ui/controls.tsx";
 import { LoadFailed } from "./ui/EmptyState.tsx";
@@ -136,8 +138,14 @@ export function App() {
   const signedOut = useSignedOut((s) => s.signedOut);
   const phase = usePlan((s) => skyPhase(s.program, s.today?.date));
   const goHome = useCallback(() => navigate("/"), [navigate]);
-  // WebKit hands glisse's tab bar two clicks for one tap: the second must not stack a second entry for Back.
-  const toTab = (href: string) => href !== window.location.pathname + window.location.search && navigate(href);
+  // The tab on screen touched again goes back to its root (features/tabRoot.ts). WebKit hands glisse's tab bar two
+  // clicks for one tap: the second lands here too, on a screen already at its root, and stacks no entry for Back.
+  const toTab = (href: string) => {
+    if (href !== window.location.pathname) return navigate(href);
+    if (window.location.search) navigate(href, { replace: true });
+    if (backToTabRoot())
+      requestAnimationFrame(() => scrollTo({ top: 0, behavior: reducedMotion() ? "instant" : "smooth" }));
+  };
   // Once asked for, the gate stays mounted after the flow: the tour follows it over Aujourd'hui.
   const gate = useRef(false);
   if (useOnboardingNeed((s) => s.need)) gate.current = true;

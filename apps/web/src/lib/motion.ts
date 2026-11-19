@@ -25,6 +25,11 @@ const SPRING_CURVE =
 const EASE_OUT = "cubic-bezier(0.23, 1, 0.32, 1)";
 /** Cards closing the gap a card left (Aujourd'hui). */
 export const SLIDE_CARD = { duration: 400, easing: SPRING_CURVE } as const;
+/** A step inside a sheet (another sheet opened from it, Retour, the next question): the content slides and the
+    sheet's height follows, in the sheet's own timing (SPRING_SHEET). */
+export const SHEET_PAGE = { duration: 400, easing: SPRING_CURVE } as const;
+/** The same, under reduced motion: a cross-fade (FADE_REDUCED). */
+export const SHEET_PAGE_REDUCED = { duration: 150, easing: "linear" } as const;
 /** A row of the week sliding to its new day or hour. */
 export const SLIDE_ROW = { duration: 450, easing: SPRING_CURVE } as const;
 /** A bar of the week strip growing or shrinking to its new load. */
