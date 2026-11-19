@@ -23,16 +23,27 @@ function whenCalm(task: () => void) {
  * moment, never in the middle of an action. A PWA kept in memory for days looks for one each time it comes back.
  */
 export function watchForUpdates(register: typeof registerSW) {
+  const offer = () =>
+    whenCalm(
+      () =>
+        void notify(
+          "Nouvelle version prête",
+          { label: "Recharger", onClick: () => void update(true) },
+          Infinity,
+          "update",
+        ),
+    );
   const update = register({
     onNeedRefresh: () => {
       crumb("app", "nouvelle version prête");
-      whenCalm(
-        () => void notify("Nouvelle version prête", { label: "Recharger", onClick: () => void update(true) }, Infinity),
-      );
+      offer();
     },
     onRegisteredSW(_url, registration) {
       document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") void registration?.update().catch(() => undefined);
+        if (document.visibilityState !== "visible") return;
+        // A banner swiped away comes back the next time she opens the app, while the version still waits.
+        if (registration?.waiting) offer();
+        void registration?.update().catch(() => undefined);
       });
     },
   });
