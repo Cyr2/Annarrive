@@ -112,7 +112,7 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
               animate="center"
               exit="exit"
               transition={SPRING_STEP}
-              className="absolute inset-0 overflow-y-auto overscroll-contain"
+              className="absolute inset-0 scroll-pb-8 overflow-y-auto overscroll-contain"
               style={{ maskImage: FADE_BOTTOM, WebkitMaskImage: FADE_BOTTOM }}
             >
               <div className="mx-auto flex max-w-xl flex-col gap-6 px-4 pt-3 pb-8">

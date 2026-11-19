@@ -14,6 +14,7 @@ export function NextRun({ run, today, label }: { run: Run; today: string; label:
       <SectionTitle>{label}</SectionTitle>
       <button
         type="button"
+        data-tour="next"
         onClick={() => show({ kind: "session", id: run.id })}
         data-variant="inset"
         className="surface press flex w-full flex-col gap-3 border-0 p-4 text-left text-ink"

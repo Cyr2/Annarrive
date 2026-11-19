@@ -325,6 +325,30 @@ describe("week spread (S8, S10, S13)", () => {
     expect(longDay(placeWeek(base, saturdayBusy, both, MONDAY).week.sessions)).toBe(6);
   });
 
+  // Audit onboarding 5: Mon, Tue, Wed then Sat, every run at 7:00, for this profile with her classes linked.
+  it("spreads four runs of a student with three muscu sessions, one of them legs (PL-19)", () => {
+    const cal = [
+      block("haut", "2026-11-23T18:00", "2026-11-23T19:00", "strength"),
+      block("anat", "2026-11-24T10:15", "2026-11-24T12:15", "class"),
+      { ...block("jambes", "2026-11-25T18:00", "2026-11-25T19:00", "strength"), legs: true },
+      block("bioch", "2026-11-26T13:30", "2026-11-26T17:30", "class"),
+      block("gainage", "2026-11-27T18:00", "2026-11-27T19:00", "strength"),
+    ];
+    const anna = { ...SETTINGS, runsPerWeek: 4 as const, latestEnd: "21:30", preferredLongDays: [5, 6] };
+    const prev = [
+      easy("p1", "2026-11-18T07:00", 38),
+      easy("p2", "2026-11-19T07:00", 36),
+      easy("p3", "2026-11-20T07:00", 36),
+      long("p4", "2026-11-21T07:00", 57),
+    ];
+    const runs = [long("l", "", 57), easy("e1", "", 36), easy("e2", "", 38), easy("e3", "", 36)];
+    const d = days(placeWeek(runs, cal, anna, MONDAY, prev).week.sessions);
+    expect(d).toHaveLength(4);
+    // At most one pair of days in a row (4 runs in 7 days), never three, and no more than two empty days.
+    expect(d.filter((x, i) => i > 0 && x - (d[i - 1] ?? 0) === 1).length).toBeLessThanOrEqual(1);
+    expect([-1, ...d, 7].every((x, i, all) => i === 0 || x - (all[i - 1] ?? 0) <= 3)).toBe(true);
+  });
+
   it("places four runs without two days in a row when the week has room (PL-15)", () => {
     const four = [...base, hard("q", "", 50)];
     const r = placeWeek(four, classes, { ...evenings, runsPerWeek: 4 }, MONDAY).week.sessions;

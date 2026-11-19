@@ -1,36 +1,37 @@
-import { daysBetween, longDate, weekdayName } from "../../lib/date.ts";
+import { daysBetween, duration, longDate, weekdayName } from "../../lib/date.ts";
 import { Icon, type IconName } from "../../ui/Icon.tsx";
 import { Group, RowButton, Section } from "../../ui/List.tsx";
 import { PaceValue } from "../../ui/PaceValue.tsx";
 import { Surface } from "../../ui/Surface.tsx";
-import { clock } from "../program/program.ts";
 import { TargetTag, VERDICT_KIND } from "../program/TargetTag.tsx";
 import { DISTANCES, type Draft, distanceOf, type Step, targetOf } from "./onboarding.ts";
 import { useDraft } from "./parts.tsx";
 import { useOnboarding } from "./store.ts";
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
-const list = (items: string[], empty: string) => (items.length ? items.join(", ") : empty);
+const dayNames = (days: number[]) => [...days].sort((a, b) => a - b).map((d) => weekdayName(d - 1).toLowerCase());
+/** Her times were typed in h and min boxes: they read back the same way, « 1 h 50 », « 52 min ». */
+const minutes = (seconds: number) => duration(Math.round(seconds / 60));
+
+type Row = [label: string, value: string, step: Step];
 
 /** Each line of the summary, and the step that changes it. */
-function rows(draft: Draft): [string, string, Step][] {
-  const days = [...draft.noRunDays].sort((a, b) => a - b).map((d) => weekdayName(d - 1).toLowerCase());
+function rows(draft: Draft, linked: boolean | undefined): Row[] {
+  const days = dayNames(draft.noRunDays);
+  const longDays = dayNames(draft.longRunDays.filter((d) => !draft.noRunDays.includes(d)));
   const last = DISTANCES.find((d) => d.value === draft.lastRace);
+  const push = typeof Notification !== "undefined" && Notification.permission === "granted";
   return [
-    ["Dernier chrono", draft.lastSec > 0 && last ? `${last.label} en ${clock(draft.lastSec)}` : "Aucun", "last"],
+    ["Dernier chrono", draft.lastSec > 0 && last ? `${last.label} en ${minutes(draft.lastSec)}` : "Aucun", "last"],
     ["Courses", `${draft.runsPerWeek} par semaine${days.length ? `, sauf ${days.join(", ")}` : ""}`, "week"],
+    ["Sortie longue", longDays.length ? longDays.join(" ou ") : "dimanche", "week"],
     ["Horaires", `${draft.earliest} à ${draft.latestEnd}, coucher ${draft.bedtime}`, "hours"],
-    [
-      "Muscu",
-      list(
-        draft.strength.map((s) => s.name.trim()),
-        "Plus tard",
-      ),
-      "strength",
-    ],
+    ...(draft.strength.length ? [] : [["Muscu", "Plus tard", "strength"] satisfies Row]),
     ["Douleur", draft.pain && draft.zone ? `${draft.zone}, ${draft.level} sur 10` : "Aucune", "health"],
-    ["Données lues", draft.useSleepHr ? "Sommeil et fréquence cardiaque" : "Aucune", "health"],
+    ["Données lues", draft.useSleepHr ? "Sommeil et FC" : "Aucune", "health"],
     ["Cycle menstruel", draft.cycleTracking ? "Activé" : "Désactivé", "health"],
+    ["Emploi du temps", linked ? "Relié" : draft.icsUrl.trim() ? "Lien ajouté" : "Plus tard", "connect"],
+    ["Notifications", push ? "Activées" : "Pas activées", "connect"],
   ];
 }
 
@@ -70,7 +71,7 @@ function Goal({ draft }: { draft: Draft }) {
       >
         <span className="t-cap">{target ? "Chrono visé" : "Objectif"}</span>
         <span className="flex flex-wrap items-center justify-between gap-2">
-          <PaceValue value={target ? clock(draft.targetSec) : "Finir"} size="figure" />
+          <PaceValue value={target ? minutes(draft.targetSec) : "Finir"} size="figure" />
           {target && verdict && <TargetTag kind={VERDICT_KIND[verdict]} />}
         </span>
       </button>
@@ -82,15 +83,30 @@ export function SummaryStep() {
   const draft = useDraft();
   const error = useOnboarding((s) => s.error);
   const goTo = useOnboarding((s) => s.goTo);
+  const linked = useOnboarding((s) => s.linked);
   return (
     <>
       <Goal draft={draft} />
-      <section aria-label="Récapitulatif">
+      <section aria-label="Récapitulatif" className="flex flex-col gap-6">
         <Group>
-          {rows(draft).map(([label, value, step]) => (
+          {rows(draft, linked).map(([label, value, step]) => (
             <RowButton key={label} label={label} value={value} onClick={() => goTo(step)} />
           ))}
         </Group>
+        {draft.strength.length > 0 && (
+          <Section title="Muscu">
+            <Group>
+              {draft.strength.map((s) => (
+                <RowButton
+                  key={s.id}
+                  label={s.name.trim()}
+                  value={`${weekdayName(s.day - 1).toLowerCase()} ${s.start}${s.legs ? ", jambes" : ""}`}
+                  onClick={() => goTo("strength")}
+                />
+              ))}
+            </Group>
+          </Section>
+        )}
       </section>
       {error && (
         <p role="alert" className="t-sub m-0 px-1 text-warn-deep">

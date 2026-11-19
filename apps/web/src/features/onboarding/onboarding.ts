@@ -214,6 +214,8 @@ const hhmm = (minutes: number) => timeOf(minutes).padStart(5, "0");
 const padTime = (time: string) => hhmm(minutesOf(time));
 
 export type Payload = {
+  /** Sent through the timetable route, which reads it: the profile patch does not carry it. */
+  icsUrl?: string;
   program: Program;
   events: CreateEventInput[];
   pain?: Unavailable;
@@ -251,6 +253,7 @@ export function toPayload(draft: Draft, today: string): Payload {
   const ics = draft.icsUrl.trim() ? checkIcsUrl(draft.icsUrl).url : undefined;
   const site = painSiteSchema.safeParse(draft.zone?.toLowerCase());
   return {
+    ...(ics ? { icsUrl: ics } : {}),
     program: { goal, ...(declared ? { declaredTime: declared } : {}) },
     events,
     pain: draft.pain && site.success ? { reason: "pain", where: site.data, walking0to10: draft.level } : undefined,
@@ -265,7 +268,6 @@ export function toPayload(draft: Draft, today: string): Payload {
       useSleepHr: draft.useSleepHr,
       travelMin: 0,
       cycleTracking: draft.cycleTracking,
-      ...(ics ? { icsUrl: ics } : {}),
     },
   };
 }

@@ -20,6 +20,8 @@ export interface OnboardingApi {
   done(): Promise<boolean>;
   feasibility(input: FeasibilityInput): Promise<Feasibility["verdict"]>;
   timetableLinked(): Promise<boolean>;
+  /** Saves and reads the link she pasted; a feed that cannot be read yet keeps the link, Programme says why. */
+  linkTimetable(url: string): Promise<void>;
   saveProgram(program: Program): Promise<void>;
   saveProfile(profile: Profile): Promise<void>;
   addEvent(event: CreateEventInput): Promise<void>;
@@ -29,13 +31,16 @@ export interface OnboardingApi {
   subscribe(subscription: PushSubscriptionJSON): Promise<void>;
 }
 
-async function send(method: string, path: string, body?: unknown): Promise<unknown> {
-  const response = await fetch(`/api${path}`, {
+const request = (method: string, path: string, body?: unknown) =>
+  fetch(`/api${path}`, {
     method,
     credentials: "same-origin",
     headers: body === undefined ? undefined : { "content-type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+
+async function send(method: string, path: string, body?: unknown): Promise<unknown> {
+  const response = await request(method, path, body);
   if (!response.ok) throw new Error(`${method} ${path} : ${response.status}`);
   return response.json();
 }
@@ -44,6 +49,11 @@ export const httpOnboardingApi: OnboardingApi = {
   done: async () => onboardingStatusSchema.parse(await send("GET", "/onboarding")).done,
   feasibility: async (input) => feasibilitySchema.parse(await send("POST", "/feasibility", input)).verdict,
   timetableLinked: async () => timetableStatusSchema.parse(await send("GET", "/timetable")).lastSyncAt !== null,
+  linkTimetable: async (url) => {
+    const response = await request("PUT", "/timetable/url", { url });
+    // 502: the link is stored, only its feed could not be read yet (Programme says why).
+    if (!response.ok && response.status !== 502) throw new Error(`PUT /timetable/url : ${response.status}`);
+  },
   saveProgram: async (program) => void (await send("PUT", "/program", program)),
   saveProfile: async (profile) => void (await send("PATCH", "/profile", profile)),
   addEvent: async (event) => void (await send("POST", "/events", event)),
@@ -59,6 +69,7 @@ export function createMockOnboardingApi(search = ""): OnboardingApi {
     done: async () => !new URLSearchParams(search).has("onboarding"),
     feasibility: async ({ distanceM, targetMin }) => (targetMin < distanceM / 200 ? "ambitieux" : "atteignable"),
     timetableLinked: async () => true,
+    linkTimetable: ok,
     saveProgram: ok,
     saveProfile: ok,
     addEvent: ok,

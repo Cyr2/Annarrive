@@ -5,12 +5,28 @@ import { Button } from "../../ui/controls.tsx";
 import { TextButton } from "../../ui/TextButton.tsx";
 import { usePlan } from "../plan/store.ts";
 
+type Bubble = { target: string; text: string };
+
 /** The guided tour over Aujourd'hui: what each part is for, shown once. A missing target centers the bubble. */
-const BUBBLES = [
+const RUN_DAY: Bubble[] = [
   { target: "main article", text: "Ta séance du jour. Touche la carte pour voir chaque étape et son allure." },
   {
     target: "[data-tour='actions']",
     text: "Reggie répond à tes questions. Déplacer, Changer et Pas dispo règlent un imprévu en deux gestes.",
+  },
+];
+/** Day one is often a rest day: the bubbles point at what is there, the next session and Reggie's tab. */
+const REST_DAY: Bubble[] = [
+  { target: "[data-tour='next']", text: "Ta prochaine séance. Touche la carte pour voir chaque étape et son allure." },
+  {
+    target: "[role='navigation'] a[href='/reggie']",
+    text: "Reggie répond à tes questions. Un jour de séance, Déplacer, Changer et Pas dispo règlent un imprévu en deux gestes.",
+  },
+];
+const AFTER: Bubble[] = [
+  {
+    target: "[data-tour='watch']",
+    text: "Chaque séance part sur ta Garmin. Sa carte dit « Sur ta montre » une fois envoyée, et Programme dit si ta Garmin est reliée.",
   },
   {
     target: "[role='navigation'] a[href='/semaine']",
@@ -50,22 +66,44 @@ function placeBubble(rect: DOMRect | undefined) {
   return { above, fits, place };
 }
 
+/** The page's animations that end (not a pulse that loops). */
+const settling = () =>
+  document.getAnimations?.().filter((a) => a.effect?.getComputedTiming().endTime !== Infinity) ?? [];
+
 function useTargetRect(selector: string | undefined) {
   const [rect, setRect] = useState<DOMRect>();
-  const loaded = usePlan((s) => s.today);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: measures again once Aujourd'hui has loaded
   useLayoutEffect(() => {
-    const el = selector ? document.querySelector(selector) : null;
-    el?.scrollIntoView({ block: "center" });
-    const measure = () => setRect(el?.getBoundingClientRect());
+    let found: Element | null = null;
+    const measure = () => {
+      const el = selector ? document.querySelector(selector) : null;
+      if (el && el !== found) {
+        el.scrollIntoView({ block: "center" });
+        // A card that just appeared is still rising into place: measure again where it stops.
+        void Promise.allSettled(settling().map((a) => a.finished)).then(measure);
+      }
+      found = el;
+      const next = el?.getBoundingClientRect();
+      setRect((old) => (JSON.stringify(old) === JSON.stringify(next) ? old : next));
+    };
     measure();
+    // Aujourd'hui draws its cards a frame or two after the plan arrives: look again as they appear.
+    const observer = new MutationObserver(measure);
+    observer.observe(document.body, { childList: true, subtree: true });
     addEventListener("resize", measure);
-    return () => removeEventListener("resize", measure);
-  }, [selector, loaded]);
+    // The scroll that brings the target in view may still be running: measure where it ends.
+    addEventListener("scroll", measure, { capture: true, passive: true });
+    return () => {
+      observer.disconnect();
+      removeEventListener("resize", measure);
+      removeEventListener("scroll", measure, { capture: true });
+    };
+  }, [selector]);
   return rect;
 }
 
 export function Tour({ onEnd }: { onEnd: () => void }) {
+  const runDay = usePlan((s) => Boolean(s.today?.session));
+  const BUBBLES = [...(runDay ? RUN_DAY : REST_DAY), ...AFTER];
   const [index, setIndex] = useState(0);
   const bubble = BUBBLES[index] ?? BUBBLES[0];
   const rect = useTargetRect(bubble?.target);
