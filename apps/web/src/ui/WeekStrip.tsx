@@ -40,8 +40,8 @@ const barFill = (color: string) =>
 /**
  * The week in one look, the same on Aujourd'hui and on Semaine: seven columns, each with its day, its number
  * (today in the action blue, past days grey) and what is planned. No legend: the colors are the ones of the
- * sessions everywhere else, and a day names its content to VoiceOver. Under 340 px the card bleeds a little past
- * the gutter so each column stays 44 px wide.
+ * sessions everywhere else, and a day names its content to VoiceOver. The card keeps the page gutter, like the
+ * others (on a 320 px phone a column is 41 px wide, 44 tall).
  */
 export function WeekStrip({ days, label, onSelect, footer }: Props) {
   const runs = days.flatMap((day) => day.marks.map((mark) => mark.minutes ?? 0));
@@ -49,7 +49,7 @@ export function WeekStrip({ days, label, onSelect, footer }: Props) {
   const tall = runs.some((minutes) => minutes > 0);
   const nav = useStripMotion(days, BAR / heaviest);
   return (
-    <Surface variant="inset" className="flex flex-col gap-2 pt-2 pb-3 max-[339px]:-mx-3">
+    <Surface variant="inset" className="flex flex-col gap-2 pt-2 pb-3">
       <nav ref={nav} aria-label={label} className="grid grid-cols-7">
         {days.map((day) => (
           <a

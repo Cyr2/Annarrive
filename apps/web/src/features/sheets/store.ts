@@ -14,6 +14,7 @@ export type SheetSpec =
   | { kind: "lastTime" }
   | { kind: "watch" }
   | { kind: "cycle" }
+  | { kind: "timetable" }
   | { kind: "stop" };
 
 export type SettingKey = "runsPerWeek" | "noRunDays" | "longRunDays" | "notBefore" | "notAfter" | "bedtime";

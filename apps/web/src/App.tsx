@@ -51,6 +51,7 @@ const SHEETS: SheetSpec["kind"][] = [
   "goal",
   "watch",
   "cycle",
+  "timetable",
   "stop",
 ];
 

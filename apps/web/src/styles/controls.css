@@ -55,6 +55,7 @@
 /* Tones: action (blue), reggie (green), danger. The filled button takes the tone as its fill. */
 .ui-button.lg-button[data-tone="action"] {
   --lg-tint: var(--color-action);
+  --lg-tint-text: var(--color-action-deep);
 }
 .ui-button.lg-button[data-tone="reggie"] {
   --lg-tint: var(--color-reggie);
@@ -82,7 +83,7 @@
 /* Tinted: a wash of the tone with its label, for a secondary action that still belongs to the moment. */
 .ui-button.lg-button[data-tinted] {
   background-color: color-mix(in srgb, var(--lg-tint, var(--color-ink)) 12%, rgb(255 255 255 / 0.7));
-  color: var(--lg-tint, var(--color-ink));
+  color: var(--lg-tint-text, var(--lg-tint, var(--color-ink)));
 }
 .ui-button.lg-button[data-tinted]:active:not(:disabled) {
   background-color: color-mix(in srgb, var(--lg-tint, var(--color-ink)) 20%, rgb(255 255 255 / 0.7));

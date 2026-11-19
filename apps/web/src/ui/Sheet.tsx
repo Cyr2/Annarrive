@@ -233,7 +233,8 @@ function HeaderRow({ titleId, title, subtitle, back, onCancel, cancelLabel, acti
       </div>
       {action ? (
         <TextButton
-          className="justify-self-end font-semibold"
+          // The label is 33 px wide: the hit area reaches 44 px without moving it.
+          className="relative justify-self-end font-semibold after:absolute after:inset-y-0 after:-inset-x-2 after:content-['']"
           onClick={action.onClick}
           disabled={action.disabled || busy}
           aria-busy={busy}

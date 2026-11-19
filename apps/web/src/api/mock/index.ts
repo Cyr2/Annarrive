@@ -10,7 +10,7 @@ import {
   toIso,
 } from "../../lib/date.ts";
 import type { Api } from "../client.ts";
-import type { Activity, CalendarEvent, ChangeRow, Item, Program, Run } from "../schemas.ts";
+import type { Activity, CalendarEvent, ChangeRow, Item, Program, Proposal, Run } from "../schemas.ts";
 import { chatDay, type ReggieMemory, reggie } from "./chat.ts";
 import { applyChange, blockedDays, changeOptions, isRun, proposeSlots } from "./rules.ts";
 import { seedProgram, seedWeek, strengthEvent } from "./seed.ts";
@@ -19,9 +19,10 @@ import { worstItems, worstProgram } from "./worst.ts";
 
 /**
  * Which "today" the mock shows: the states of the mockups (Main, Repos, Apres), a lightened session,
- * and `worst`, the longest realistic values (break-ui check).
+ * `worst`, the longest realistic values (break-ui check), `didyourun` (a run before today is over and unmatched)
+ * and `proposal` (Reggie proposes a new level).
  */
-export type Scenario = "run" | "rest" | "done" | "light" | "worst";
+export type Scenario = "run" | "rest" | "done" | "light" | "worst" | "didyourun" | "proposal";
 
 type State = {
   weeks: Record<string, Item[]>;
@@ -29,6 +30,12 @@ type State = {
   activity?: Activity;
   refreshed: boolean;
   unwell?: boolean;
+  proposals: Proposal[];
+};
+
+const PROPOSAL: Proposal = {
+  id: "p-1",
+  text: "Tes dernières séances rapides sont bien passées : je te propose des allures un peu plus vives.",
 };
 
 const ACTIVITY: Activity = {
@@ -51,10 +58,16 @@ export function createMockApi({
   monday = mondayOf(toIso(new Date())),
   latencyMs = 0,
 }: MockOptions = {}) {
-  const today = scenario === "rest" ? addDays(monday, 1) : monday;
+  const today = scenario === "rest" || scenario === "didyourun" ? addDays(monday, 1) : monday;
   const seeded = seedProgram(addDays(monday, 62), new Date());
   const program = scenario === "worst" ? worstProgram(seeded) : seeded;
-  const state: State = { weeks: {}, program, refreshed: false, activity: scenario === "done" ? ACTIVITY : undefined };
+  const state: State = {
+    weeks: {},
+    program,
+    refreshed: false,
+    activity: scenario === "done" ? ACTIVITY : undefined,
+    proposals: scenario === "proposal" ? [PROPOSAL] : [],
+  };
   const log = new Map<string, State>();
   const memory: ReggieMemory = { count: 0 };
   let seq = 0;
@@ -127,6 +140,9 @@ export function createMockApi({
         next,
         activity: state.activity,
         unwell: state.unwell,
+        proposals: state.proposals,
+        // The last run before today, still on the plan: the screen asks whether she ran it.
+        toConfirm: scenario === "didyourun" ? runs.findLast((r) => r.date < today) : undefined,
       };
     },
     async week(offset) {
@@ -249,9 +265,16 @@ export function createMockApi({
         state.unwell = false;
         return undefined;
       }),
-    // The mock never proposes a new level: these only exist for the Api contract.
-    acceptProposal: () => commit("Allures mises à jour", () => undefined),
-    declineProposal: () => commit("Proposition refusée", () => undefined),
+    acceptProposal: (id) =>
+      commit("Allures mises à jour", () => {
+        state.proposals = state.proposals.filter((p) => p.id !== id);
+        return undefined;
+      }),
+    declineProposal: (id) =>
+      commit("Proposition refusée", () => {
+        state.proposals = state.proposals.filter((p) => p.id !== id);
+        return undefined;
+      }),
     async undo(changeId) {
       await wait();
       const before = log.get(changeId);

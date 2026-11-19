@@ -27,6 +27,8 @@
 
   /* ---- Meaning: action (do something), Reggie (he speaks or acts), warn (look), danger (destroys) ---- */
   --color-action: #0967d6; /* iOS-like blue; white on it 5.3:1 */
+  /* The same blue, deeper, for action text on the tinted sky field and tinted buttons: 5.0:1 there (action: 3.9). */
+  --color-action-deep: #0857b8;
   /* Opaque, so a selected row stays as light as its neighbours: a tint, never a darker fill. */
   --color-action-wash: #eef4fc; /* the action blue at 7 % on white; action text on it 4.8:1 */
   /* The selected tab, laid over its own label on the clear tab bar: the label keeps 4.5:1 (measured). */

@@ -269,6 +269,12 @@ describe("http client, reading", () => {
     });
   });
 
+  it("maps the session that is over and unmatched, for « Tu l'as faite ? »", async () => {
+    const today = { ...reads["GET /api/today"], session: null, toConfirm: SESSION };
+    const { api } = server({ ...reads, "GET /api/today": today });
+    expect((await api.today()).toConfirm).toMatchObject({ id: SESSION.id, title: "Fractionné" });
+  });
+
   it("reads the first screen in one request at launch, then each route on its own", async () => {
     const paths = ["/today", "/program", "/proposals", "/timetable", "/weeks/2026-W47", "/weeks/2026-W48"];
     const first = Object.fromEntries(paths.map((p) => [p, reads[`GET /api${p}` as keyof typeof reads]]));

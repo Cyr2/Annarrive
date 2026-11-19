@@ -381,7 +381,10 @@ function StillTabBar({ items, active }: { items: TabItem[]; active: string | nul
     "--lg-tabs": items.length,
   };
   return (
-    <nav
+    // glisse's own bar is a div with this role: the same element before and after the swap, one landmark.
+    // biome-ignore lint/a11y/useSemanticElements: matches glisse's markup.
+    <div
+      role="navigation"
       aria-label="Navigation principale"
       data-icons=""
       className="lg-tab-bar ui-tab-bar pointer-events-auto"
@@ -414,6 +417,6 @@ function StillTabBar({ items, active }: { items: TabItem[]; active: string | nul
         </span>
       </span>
       <span className="lg-glass lg-tab-lens" aria-hidden="true" />
-    </nav>
+    </div>
   );
 }

@@ -51,10 +51,38 @@ function StrengthForm({ saved, sheet }: FormProps) {
   const run = async (action: Parameters<typeof apply>[0]) => {
     if (await apply(action)) sheet.onOpenChange(false);
   };
+  const footer = !saved ? undefined : confirm ? (
+    <>
+      <span className="t-strong text-center">Supprimer {saved.name} ?</span>
+      <Group>
+        <TextButton
+          tone="danger"
+          className="min-h-13 w-full"
+          onClick={() => void run((api) => api.deleteStrength(saved.id, "all", thisWeek(saved)))}
+        >
+          Cette semaine et les suivantes
+        </TextButton>
+        <TextButton
+          tone="danger"
+          className="hairline-top min-h-13 w-full"
+          onClick={() => void run((api) => api.deleteStrength(saved.id, "one", thisWeek(saved)))}
+        >
+          Cette semaine seulement
+        </TextButton>
+      </Group>
+    </>
+  ) : (
+    <Group>
+      <TextButton tone="danger" className="min-h-13 w-full" onClick={() => setConfirm(true)}>
+        Supprimer la séance
+      </TextButton>
+    </Group>
+  );
   return (
     <Sheet
       {...sheet}
       title="Séance de muscu"
+      footer={footer}
       action={{
         label: "OK",
         disabled: !draft.name.trim() || !draft.start || draft.durationMin === 0,
@@ -94,33 +122,6 @@ function StrengthForm({ saved, sheet }: FormProps) {
           onChange={(s) => set({ durationMin: s / 60 })}
         />
       </Section>
-      {saved && !confirm && (
-        <Group>
-          <TextButton tone="danger" className="min-h-13 w-full" onClick={() => setConfirm(true)}>
-            Supprimer la séance
-          </TextButton>
-        </Group>
-      )}
-      {saved && confirm && (
-        <Section title={`Supprimer ${saved.name} ?`}>
-          <Group>
-            <TextButton
-              tone="danger"
-              className="min-h-13 w-full"
-              onClick={() => void run((api) => api.deleteStrength(saved.id, "all", thisWeek(saved)))}
-            >
-              Cette semaine et les suivantes
-            </TextButton>
-            <TextButton
-              tone="danger"
-              className="hairline-top min-h-13 w-full"
-              onClick={() => void run((api) => api.deleteStrength(saved.id, "one", thisWeek(saved)))}
-            >
-              Cette semaine seulement
-            </TextButton>
-          </Group>
-        </Section>
-      )}
     </Sheet>
   );
 }

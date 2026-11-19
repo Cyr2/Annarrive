@@ -18,7 +18,7 @@ export function ThisWeek({ week, today }: { week: Week; today: string }) {
             e.preventDefault();
             go("/semaine");
           }}
-          className="t-body inline-flex min-h-11 items-center"
+          className="t-body inline-flex min-h-11 items-center text-action-deep"
         >
           Tout voir
         </a>
