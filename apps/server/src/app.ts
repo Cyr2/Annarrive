@@ -253,7 +253,13 @@ export function createApp({ services, sessionSecret, webDist }: AppOptions): Hon
     onError: (c) => c.json({ error: "Requête trop grosse : raccourcis ton message." }, 413),
   });
 
-  app.post("/api/auth/login", async (c) => {
+  // No session yet: per client, and a form holding one token (under 200 characters) is read only up to 4 kB.
+  const loginLimit = rateLimit(30, 60_000, Date.now, clientIp);
+  const formBodyLimit = bodyLimit({
+    maxSize: 4 * 1024,
+    onError: (c) => c.html(loginError(font, "Ce lien de connexion est trop long : copie-le en entier."), 413),
+  });
+  app.post("/api/auth/login", loginLimit, formBodyLimit, async (c) => {
     let opened: ReturnType<Services["auth"]["login"]>;
     try {
       // Browsers flag a form posted from another site; this one must come from the page above.
@@ -279,7 +285,7 @@ export function createApp({ services, sessionSecret, webDist }: AppOptions): Hon
   app.post("/api/auth/passkey/options", sameOrigin, rateLimit(30, 60_000, Date.now, clientIp), async (c) =>
     c.json(await services.auth.passkeyLoginOptions()),
   );
-  app.post("/api/auth/passkey", sameOrigin, jsonBodyLimit, async (c) => {
+  app.post("/api/auth/passkey", sameOrigin, rateLimit(30, 60_000, Date.now, clientIp), jsonBodyLimit, async (c) => {
     const response = authenticationResponseSchema.parse(await c.req.json());
     await startSession(c, await services.auth.passkeyLogin(response));
     return c.body(null, 204);

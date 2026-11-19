@@ -228,6 +228,34 @@ describe("login", () => {
     expect((await postLogin(t.app, token)).status).toBe(302);
   });
 
+  it("refuses a 1 MB login form before reading it", async () => {
+    const t = setup();
+    const response = await t.app.request("/api/auth/login", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded", "sec-fetch-site": "same-origin" },
+      body: `token=${"a".repeat(1024 * 1024)}`,
+    });
+    expect(response.status).toBe(413);
+  });
+
+  it("limits each client to 30 login link posts a minute", async () => {
+    const t = setup();
+    for (let i = 0; i < 30; i++) expect((await postLogin(t.app, `wrong${i}`)).status).toBe(401);
+    expect((await postLogin(t.app, "wrong")).status).toBe(429);
+  });
+
+  it("limits each client to 30 Face ID logins a minute", async () => {
+    const t = setup();
+    const post = () =>
+      t.app.request("/api/auth/passkey", {
+        method: "POST",
+        headers: { "content-type": "application/json", "sec-fetch-site": "same-origin" },
+        body: "{}",
+      });
+    for (let i = 0; i < 30; i++) expect((await post()).status).toBe(400);
+    expect((await post()).status).toBe(429);
+  });
+
   it("refuses a link whose token is not base64url", async () => {
     const t = setup();
     expect((await t.app.request("/api/auth/login?token=%22%3E%3Cscript%3E")).status).toBe(400);
