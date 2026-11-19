@@ -69,17 +69,28 @@ export function webGuard(): HookCallback {
   };
 }
 
-/** The model's process never needs the server's own secrets, whatever a fetched page asks it to do. */
-const SERVER_SECRETS = [
-  "SESSION_SECRET",
-  "BRIDGE_SECRET",
-  "BRIDGE_URL",
-  "GARMIN_EMAIL",
-  "GARMIN_PASSWORD",
-  "GARMIN_API_KEY",
-  "VAPID_PRIVATE_KEY",
-  "ICS_URL",
-];
+/**
+ * The model's process gets only what it runs on, never the server's secrets, whatever a fetched page asks it to do.
+ * Names compared in capitals: Windows spells them Path or SystemRoot.
+ */
+const ALLOWED_ENV = new Set([
+  "PATH",
+  "HOME",
+  "USERPROFILE",
+  "APPDATA",
+  "LOCALAPPDATA",
+  "SYSTEMROOT",
+  "TEMP",
+  "TMP",
+  "TMPDIR",
+  "TZ",
+  "LANG",
+  "ANTHROPIC_API_KEY",
+  "CLAUDE_CODE_OAUTH_TOKEN",
+]);
+const ALLOWED_PREFIXES = ["NODE_", "LC_", "REGGIE_"];
+const allowedEnv = (name: string) =>
+  ALLOWED_ENV.has(name.toUpperCase()) || ALLOWED_PREFIXES.some((p) => name.toUpperCase().startsWith(p));
 
 /**
  * The SDK reads CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY from this env; empty values (as in .env.example) are unset.
@@ -87,7 +98,7 @@ const SERVER_SECRETS = [
  */
 export function sdkEnv(env: NodeJS.ProcessEnv): Record<string, string> {
   const set = Object.fromEntries(
-    Object.entries(env).filter((e): e is [string, string] => Boolean(e[1]) && !SERVER_SECRETS.includes(e[0])),
+    Object.entries(env).filter((e): e is [string, string] => Boolean(e[1]) && allowedEnv(e[0])),
   );
   if (!set.CLAUDE_CODE_OAUTH_TOKEN && !set.ANTHROPIC_API_KEY && set.REGGIE_LOCAL_LOGIN !== "1") {
     // The detail is for whoever runs the server; Anna reads the error's own words.
