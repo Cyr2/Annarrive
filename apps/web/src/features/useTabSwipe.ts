@@ -18,14 +18,22 @@ export function swipeTarget(location: string, step: -1 | 1): string | undefined 
 /** A swipe leads somewhere from this screen. */
 export const swipes = (location: string) => Boolean(swipeTarget(location, 1) ?? swipeTarget(location, -1));
 
-/** Past the last tab the page gives a little, then stops (rubber band). */
-const RESIST = 0.2;
+/**
+ * The screen follows a quarter of the finger toward a tab, a tenth past the last one (rubber band). Not 1:1: each
+ * screen is a whole page on the window's scroll, with its own requests and floating parts (Reggie's field), so
+ * the next one cannot be drawn beside it; it comes in from that side once the finger lets go.
+ */
+const FOLLOW = 0.25;
+const RESIST = 0.1;
+/** How much the screen fades at the end of its follow. */
+const DIM = 0.35;
 /** The screen a swipe opened comes in from this side (1: from the right). */
 let entering: -1 | 0 | 1 = 0;
 
 /**
- * Swipe sideways to the tab beside, as between iOS pages: the screen follows the finger, and past a quarter of the
- * width (or flicked) it leaves and the next one slides in from the side it came from; short of it, it springs back.
+ * Swipe sideways to the tab beside: the screen leans toward the finger and dims, and past a quarter of the
+ * width (or flicked) it slips out and the next one slides in from the side the finger came from; short of it,
+ * it eases back.
  * Touch only (a mouse drag selects text). A vertical move stays a scroll, a long press stays a press, a row that
  * scrolls sideways and a field keep their own moves; a sheet sits outside the screen and never starts one. Reduced
  * motion: the tab changes at once, nothing slides. `ref` goes on the screen's box, which moves.
@@ -39,7 +47,10 @@ export function useTabSwipe(location: string, navigate: (href: string) => void) 
     const element = ref.current;
     if (!element) return;
     if (entering && !reducedMotion()) {
-      element.animate([{ transform: `translateX(${entering * 30}%)`, opacity: 0 }, { transform: "none" }], ENTER);
+      element.animate(
+        [{ transform: `translateX(${entering * FOLLOW * 100}%)`, opacity: 0 }, { transform: "none" }],
+        ENTER,
+      );
     }
     entering = 0;
     if (!swipes(location)) return;
@@ -47,26 +58,35 @@ export function useTabSwipe(location: string, navigate: (href: string) => void) 
     let from: { x: number; y: number; time: number; id: number } | undefined;
     let swiping = false;
     let last = { x: 0, time: 0, velocity: 0 };
+    const width = () => element.offsetWidth || 1;
+    // The screen gives a little and dims toward where it goes: a hint of the turn, never a blank beside it.
+    const frame = (dx: number) => ({
+      transform: `translateX(${dx}px)`,
+      opacity: String(1 - Math.min(1, Math.abs(dx) / (width() * FOLLOW)) * DIM),
+    });
     const place = (dx: number) => {
-      element.style.transform = dx ? `translateX(${dx}px)` : "";
+      const { transform, opacity } = frame(dx);
+      element.style.transform = dx ? transform : "";
+      element.style.opacity = dx ? opacity : "";
     };
     const shown = (dx: number) => {
       if (reducedMotion()) return 0;
-      return swipeTarget(location, dx < 0 ? 1 : -1) ? dx : dx * RESIST;
+      return dx * (swipeTarget(location, dx < 0 ? 1 : -1) ? FOLLOW : RESIST);
     };
     const release = (dx: number, velocity: number) => {
-      const step = turnOf(dx, velocity, element.offsetWidth);
+      const step = turnOf(dx, velocity, width());
       const href = step === 0 ? undefined : swipeTarget(location, step);
       if (href && reducedMotion()) return go.current(href);
-      const to = href ? -step * element.offsetWidth : 0;
       const at = currentX(element);
-      const slide = element.animate(
-        [{ transform: `translateX(${at}px)` }, { transform: `translateX(${to}px)` }],
-        LEAVE,
-      );
-      place(to);
+      if (!href) {
+        place(0);
+        element.animate([frame(at), frame(0)], LEAVE);
+        return;
+      }
+      const away = { transform: `translateX(${-step * width() * FOLLOW}px)`, opacity: "0" };
+      const slide = element.animate([frame(at), away], LEAVE);
+      element.style.opacity = "0";
       void slide.finished.then(() => {
-        if (!href) return place(0);
         entering = step;
         go.current(href);
       });

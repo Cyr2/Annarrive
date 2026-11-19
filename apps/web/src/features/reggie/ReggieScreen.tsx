@@ -97,7 +97,7 @@ export default function ReggieScreen() {
   const days = day !== undefined && messages.some((m) => m.day !== undefined && m.day !== day);
   let shownDay: string | undefined;
   return (
-    <Screen className="gap-4!">
+    <Screen className="gap-4! pb-0!">
       <h1 className="sr-only-label">Reggie</h1>
       {earlier && day && (
         <TextButton className="t-sub self-center" disabled={loadingEarlier} onClick={showEarlier}>
@@ -136,15 +136,16 @@ export default function ReggieScreen() {
         {status === "searching" && <Typing label="Reggie vérifie ses sources" text="Je vérifie" />}
       </div>
       {/* As tall as the floating composer and what is under it (the tab bar, or the keyboard while she types):
-          scrolled to, it lifts the last message above the suggestions and the field. */}
+          scrolled to, it lifts the last message above the suggestions and the field. The screen adds no padding under
+          it (pb-0), so the space below the last message is the gap and this, nothing more. */}
       <div
         ref={end}
         aria-hidden="true"
         className="flex-none"
         style={{
           height: typing
-            ? `${composer + 20}px`
-            : `calc(${composer + 12}px + var(--space-above-tabbar) + env(safe-area-inset-bottom))`,
+            ? `${composer + 8}px`
+            : `calc(${composer}px + var(--space-above-tabbar) + env(safe-area-inset-bottom))`,
         }}
       />
       <Composer onHeight={setComposer} onTyping={setTyping} shortcuts={status === "idle" && !waiting(messages)} />

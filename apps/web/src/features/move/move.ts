@@ -1,18 +1,11 @@
 import type { MoveOptions, Slot } from "../../api/schemas.ts";
-import { addDays, minutesOf, relativeMoment, timeOf } from "../../lib/date.ts";
+import { addDays, relativeMoment } from "../../lib/date.ts";
 
 /** "ce soir 19:30", "mercredi 18:00": the end of "Déplacer : …". */
 export function shortMoment(slot: Slot, today: string): string {
   return relativeMoment(slot.date, slot.start, today)
     .replace(/^\S/, (c) => c.toLowerCase())
     .replace("aujourd'hui", "aujourd'hui à");
-}
-
-/** Half-hour steps between her limits, for "Choisir un autre moment". */
-export function timeChoices(notBefore = "6:00", notAfter = "21:30"): string[] {
-  const choices: string[] = [];
-  for (let m = minutesOf(notBefore); m <= minutesOf(notAfter); m += 30) choices.push(timeOf(m));
-  return choices;
 }
 
 export type DayChoice = { date: string; blocked?: string };

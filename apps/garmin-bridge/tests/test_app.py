@@ -156,6 +156,15 @@ def test_create_workout_validates_the_body(garmin):
     garmin.upload_workout.assert_not_called()
 
 
+def test_list_workouts_keeps_only_the_prefix(garmin):
+    garmin.get_workouts.return_value = [
+        {"workoutId": 1, "workoutName": "Annarrivé test · Fractionné"},
+        {"workoutId": 2, "workoutName": "Garmin Coach 5K"},
+    ]
+    response = client.get("/workouts", params={"name_prefix": "Annarrivé test · "}, headers=AUTH)
+    assert response.json() == [{"workoutId": 1, "name": "Annarrivé test · Fractionné"}]
+
+
 def test_delete_workout(garmin):
     assert client.delete("/workouts/987", headers=AUTH).status_code == 204
     garmin.delete_workout.assert_called_once_with(987)

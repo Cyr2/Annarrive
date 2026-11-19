@@ -45,6 +45,9 @@ Chaque règle vaut pour toute l'app : écrans, feuilles, widgets, onboarding, pa
 - **Visuels** : profil de séance, barres de phase, blocs de la semaine et progressions sont soignés (dégradés, bouts arrondis), jamais de simples rectangles.
 - **Pas de rail** : aucune barre d'accent sur le côté d'une carte ou d'une ligne. Les composants Apple natifs à la place : listes groupées, carte en verre avec icône, pastille de couleur.
 - **Saisie de nombres** : de simples cases avec le pavé numérique (h, min), jamais de roues maison. Pas de fausse séance d'exemple à l'accueil.
+- **Un composant par sorte de valeur**, partout (tableau dans `apps/web/src/ui/README.md`) : une durée (séance, révision, chrono) en cases « h » et « min » (`TimeBoxes`), valeur libre ; une heure du jour avec le champ d'heure (`RowInput type="time"`) ; une date avec `RowInput type="date"` ; un ou plusieurs jours de la semaine en puces (`DayChips`) ; un choix parmi quelques valeurs nommées en puces dans une feuille et en `ChoiceCard` quand le choix est la question d'un écran (onboarding) ; 2 à 4 modes ou nombres courts en `SegmentedControl` ; une liste longue (répétition, « Quand ») en `RowSelect` ; un niveau sur 10 en `Slider`. Jamais une liste à pas fixes pour une durée ou une heure.
+- **Rien ne décale la page** : un état (autre semaine, sélection, chargement) change ce qui est déjà là au lieu d'ajouter un élément qui pousse le reste. Retour à la semaine en cours : la plage de dates elle-même, pas une pastille de plus.
+- **Étapes d'une séance** : un seul composant, `StepList`, avec les mêmes marges partout ; ses lignes s'alignent sur le texte du bloc qui la contient et « Répéter n fois » est un groupe teinté dont le retrait intérieur décale les lignes répétées.
 
 ## Skills à utiliser
 

@@ -62,7 +62,7 @@ export function RunCard({ run, today }: { run: Run; today: string }) {
         <>
           <div className="expand relative" data-open={open}>
             <div aria-hidden={!open} className="hairline-top mx-5 mt-3">
-              <StepList steps={run.steps} rowClassName="row ml-0! pr-0! flex-wrap gap-y-0" />
+              <StepList steps={run.steps} />
             </div>
           </div>
           <StepsToggle count={run.steps.length} open={open} onToggle={() => setOpen(!open)} />

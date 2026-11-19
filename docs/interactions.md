@@ -45,7 +45,7 @@ Garde le **contenu** de la séance, change **le moment**.
    - « Ce soir 19:30 · même jour, une heure plus tard » ;
    - « Mercredi 18:00 · ta muscu jambes est jeudi soir » ;
    - « Jeudi 7:30 · avant tes cours ».
-2. En dessous, « Choisir un autre moment » ouvre un choix de jour (7 puces) et d'heure. Les moments interdits sont grisés avec leur raison : « Moins de 24 h après ta séance jambes ».
+2. En dessous, « Choisir un autre moment » ouvre un choix de jour (7 puces) et d'heure (le champ d'heure de l'app, à la minute près). Les moments interdits sont grisés avec leur raison : « Moins de 24 h après ta séance jambes ».
 3. Anna tape un créneau, puis « Déplacer ».
 4. La carte glisse vers son nouveau jour. Si une autre séance de la semaine doit bouger pour respecter les règles, la feuille le dit avant validation : « Ton footing de jeudi passe à vendredi ».
 5. Bandeau « Fractionné déplacé à mercredi 18:00 · Annuler ». La montre est mise à jour.
@@ -102,7 +102,7 @@ Garde **le moment**, change **le contenu**. Ne propose jamais une séance plus d
 | Course, muscu, révision | Tap | Course : détail. Muscu ou révision : feuille de modification |
 | Cours (emploi du temps) | Tap | Fiche du cours, lecture seule, avec « Ce cours n'a pas lieu » épinglé en bas et le nom complet du flux. Les cours ne se glissent pas (cadenas) |
 | Tout · Courses · Muscu · Cours · Révisions | Tap | La liste des jours et la frise ne montrent plus que ce type ; un jour sans rien de ce type le dit en une ligne calme (« Pas de cours »). Les indispos ne s'affichent que dans Tout. Le choix est gardé sur le téléphone et revient à la prochaine visite. Sur un écran étroit, la rangée défile de côté sans tourner la semaine |
-| Plage de dates, « Cette semaine » | Tap | Sur une autre semaine que celle en cours, la plage passe en bleu comme un lien et une pastille « Cette semaine » apparaît dessous : les deux ramènent à la semaine en cours |
+| Plage de dates | Tap | La plage de la semaine en cours est en bleu (la couleur d'aujourd'hui) et ne fait rien. Sur une autre semaine, elle est à l'encre, précédée d'une petite flèche de retour bleue : la toucher ramène à la semaine en cours. Rien n'apparaît sous l'en-tête et rien ne bouge, comme un titre iOS qui ramène en haut |
 | **+** | Tap | Feuille « Ajouter » |
 
 ### Feuille « Ajouter »
@@ -111,14 +111,14 @@ Garde **le moment**, change **le contenu**. Ne propose jamais une séance plus d
   - **Placer** ouvre jour et heure (pré-remplis sur son habitude), puis « Ajouter ».
   - Tap sur la ligne : modifier la séance.
   - « Nouvelle séance de muscu » : nom, case jambes, jour, heure, durée, répétition.
-- **Révision** : durée en boutons (1 h, 1 h 30, 2 h), jour, heure, répétition.
+- **Révision** : durée en cases « h » et « min » (2 h par défaut), jour, heure, répétition. Ajouter reste grisé à 0 min ou si la révision passe minuit.
 - **Indispo** : un titre facultatif (« Soirée chez Léa »), jour, heure de début et de fin. L'app ne place rien dessus.
 
 Après ajout, si une course entre en conflit, Reggie la déplace, même si elle est ce soir, et le bandeau dit laquelle et pourquoi : « Muscu ajoutée · Sortie longue passée à dimanche 19:00 : moins de 24 h après ta séance jambes ». Une muscu n'est « jambes » que si l'interrupteur est activé.
 
 ### Feuille « Séance de muscu »
 
-- Nom, « Travaille les jambes » (interrupteur), jour, heure, durée, répéter (jamais, chaque semaine, toutes les deux semaines).
+- Nom, « Travaille les jambes » (interrupteur), jour (7 puces), heure, répéter (jamais, chaque semaine, toutes les deux semaines), durée en cases « h » et « min » (jusqu'à 4 h). OK reste grisé à 0 min.
 - OK enregistre. Annuler ferme sans rien changer.
 - Supprimer la séance demande une confirmation : « Supprimer Jambes ? Cette semaine et les suivantes » ou « Cette semaine seulement ».
 
@@ -151,7 +151,7 @@ L'écran montre la discussion du jour. Au-dessus, un lien discret « Voir la dis
 
 ### Le clavier
 
-Pendant la saisie, la barre d'onglets s'efface et le champ se pose juste au-dessus du clavier, comme dans Messages ; les messages restent visibles au-dessus. Le dernier message repose toujours au-dessus des raccourcis et du champ : la conversation le ramène en vue à chaque nouveau message, sauf quand Anna lit plus haut.
+Pendant la saisie, la barre d'onglets s'efface et le champ se pose juste au-dessus du clavier, comme dans Messages ; les messages restent visibles au-dessus. Le dernier message repose toujours au-dessus des raccourcis et du champ : la conversation le ramène en vue à chaque nouveau message, sauf quand Anna lit plus haut. Tout en bas, l'espace sous le dernier message est exactement celui du champ, des raccourcis et de la barre d'onglets (plus l'écart habituel entre deux messages) : jamais de vide en plus.
 
 ### Les widgets dans la conversation
 
@@ -212,4 +212,4 @@ Toutes respectent « Réduire les animations » d'iOS : dans ce cas, simples fon
 | Choix dans un widget | Le bouton choisi se remplit, les autres s'estompent |
 | Choix dans une liste (carte de choix) | La carte cède légèrement sous le doigt et revient avec un ressort, la coche arrive avec un petit ressort |
 | Changement d'onglet | Fondu croisé de 200 ms, la pastille de l'onglet actif glisse vers le nouvel onglet |
-| Glisser vers un onglet voisin (Aujourd'hui, Programme, Reggie) | Ordre de la barre : Aujourd'hui, Semaine, Programme, Reggie. L'écran suit le doigt ; lâché au-delà d'un quart de la largeur (ou lancé), il part de son côté et l'onglet voisin arrive de l'autre en fondu (260 ms) ; sinon il revient. Au bout de la barre (vers la droite sur Aujourd'hui, vers la gauche sur Reggie), l'écran cède un peu puis revient. Doigt seulement (pas la souris). Un défilement vertical, un appui long, une rangée qui défile de côté, un champ, un curseur, une feuille ouverte ou le tirage pour actualiser ne lancent jamais ce geste. Avec « Réduire les animations », l'onglet change d'un coup, rien ne glisse |
+| Glisser vers un onglet voisin (Aujourd'hui, Programme, Reggie) | Ordre de la barre : Aujourd'hui, Semaine, Programme, Reggie. L'écran se penche vers le doigt (un quart de son déplacement) et pâlit un peu : il annonce le changement sans jamais laisser de vide à côté. Lâché au-delà d'un quart de la largeur (ou lancé), il glisse de son côté en s'effaçant (200 ms) et l'onglet voisin arrive de l'autre en fondu (260 ms) ; sinon il revient. L'écran voisin n'est pas dessiné pendant le geste : chaque onglet est une page entière avec ses lectures et ses éléments flottants (le champ de Reggie). Au bout de la barre (vers la droite sur Aujourd'hui, vers la gauche sur Reggie), l'écran cède à peine puis revient. Après un glissement, l'écran arrivé est exactement à sa place (rien ne défile de côté). Doigt seulement (pas la souris). Un défilement vertical, un appui long, une rangée qui défile de côté, un champ, un curseur, une feuille ouverte ou le tirage pour actualiser ne lancent jamais ce geste. Avec « Réduire les animations », l'onglet change d'un coup, rien ne glisse |

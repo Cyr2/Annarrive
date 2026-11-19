@@ -1,8 +1,7 @@
 import type { ReactNode } from "react";
 import { cx } from "../../lib/cx.ts";
 import { ChoiceCard } from "../../ui/ChoiceCard.tsx";
-import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
-import { Chip } from "../../ui/controls.tsx";
+import { DayChips, toggled } from "../../ui/DayChips.tsx";
 import { Surface } from "../../ui/Surface.tsx";
 import { type Draft, questionSteps, type Step } from "./onboarding.ts";
 import { useOnboarding } from "./store.ts";
@@ -34,10 +33,8 @@ export function BigChoice({ on, onClick, label, detail, className, tile }: Choic
   );
 }
 
-const DAYS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
-
-/** The seven days as chips ("Lun", "Mar"...), 1 = Monday as in the profile. */
-export function DayChips({
+/** The app's day chips over the profile's days, where 1 = Monday. */
+export function ProfileDays({
   label,
   value,
   onChange,
@@ -47,23 +44,7 @@ export function DayChips({
   onChange: (v: number[]) => void;
 }) {
   return (
-    // Wraps on a 320 px screen rather than shrinking under 44 px.
-    <ChoiceGroup label={label} className="flex flex-wrap gap-2">
-      {DAYS.map((name, i) => {
-        const day = i + 1;
-        const on = value.includes(day);
-        return (
-          <Chip
-            key={name}
-            selected={on}
-            aria-label={name}
-            onClick={() => onChange(on ? value.filter((d) => d !== day) : [...value, day])}
-          >
-            {name.charAt(0).toUpperCase() + name.slice(1, 3)}
-          </Chip>
-        );
-      })}
-    </ChoiceGroup>
+    <DayChips label={label} selected={value.map((d) => d - 1)} onToggle={(day) => onChange(toggled(value, day + 1))} />
   );
 }
 

@@ -254,6 +254,17 @@ def create_workout(garmin: GarminDep, request: WorkoutRequest) -> CreatedWorkout
     return CreatedWorkout(workout_id=workout_id)
 
 
+@app.get("/workouts", dependencies=protected)
+def list_workouts(garmin: GarminDep, name_prefix: str = "") -> list[dict[str, Any]]:
+    """Read only. The prefix lets a caller list just its own workouts, never the rest of the library."""
+    rows = garmin.get_workouts(0, 100) or []
+    return [
+        {"workoutId": int(w["workoutId"]), "name": w.get("workoutName") or ""}
+        for w in rows
+        if (w.get("workoutName") or "").startswith(name_prefix)
+    ]
+
+
 @app.delete("/workouts/{workout_id}", dependencies=protected, status_code=204)
 def delete_workout(garmin: GarminDep, workout_id: int) -> Response:
     # Each Annarrivé workout is a one-off template; deleting it also removes it from the calendar.

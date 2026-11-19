@@ -1,17 +1,19 @@
 import { useEffect, useState } from "react";
 import type { Strength } from "../../api/schemas.ts";
-import { addDays, duration, mondayOf, weekdayName } from "../../lib/date.ts";
+import { addDays, mondayOf } from "../../lib/date.ts";
 import { Switch } from "../../ui/controls.tsx";
+import { DayChips } from "../../ui/DayChips.tsx";
 import { Group, RowInput, RowSelect, Section } from "../../ui/List.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
 import { TextButton } from "../../ui/TextButton.tsx";
+import { TimeBoxes } from "../../ui/TimeBoxes.tsx";
 import { REPEATS, TITLE_MAX } from "../add/add.ts";
 import { todayOf } from "../plan/selectors.ts";
 import { usePlan } from "../plan/store.ts";
 import type { SheetProps } from "../sheets/SheetHost.tsx";
 
-const DAYS = Array.from({ length: 7 }, (_, i) => ({ value: String(i), label: weekdayName(i) }));
-const LENGTHS = [30, 45, 60, 75, 90, 120].map((m) => ({ value: String(m), label: duration(m) }));
+/** A strength session fits in an evening. */
+const MAX_HOURS = 4;
 const BLANK: Strength = {
   id: "",
   name: "",
@@ -55,7 +57,7 @@ function StrengthForm({ saved, sheet }: FormProps) {
       title="Séance de muscu"
       action={{
         label: "OK",
-        disabled: !draft.name.trim() || !draft.start,
+        disabled: !draft.name.trim() || !draft.start || draft.durationMin === 0,
         onClick: () => void run((api) => api.saveStrength({ ...draft, name: draft.name.trim() }, Boolean(saved))),
       }}
     >
@@ -78,22 +80,20 @@ function StrengthForm({ saved, sheet }: FormProps) {
           </div>
         </Group>
       </Section>
+      <Section title="Jour">
+        <DayChips label="Jour" selected={[draft.weekday]} onToggle={(weekday) => set({ weekday })} />
+      </Section>
       <Group>
-        <RowSelect
-          label="Jour"
-          value={String(draft.weekday)}
-          options={DAYS}
-          onChange={(d) => set({ weekday: Number(d) })}
-        />
         <RowInput label="Heure" type="time" value={draft.start} onChange={(start) => set({ start })} />
-        <RowSelect
-          label="Durée"
-          value={String(draft.durationMin)}
-          options={LENGTHS}
-          onChange={(m) => set({ durationMin: Number(m) })}
-        />
         <RowSelect label="Répéter" value={draft.repeat} options={REPEATS} onChange={(repeat) => set({ repeat })} />
       </Group>
+      <Section title="Durée">
+        <TimeBoxes
+          seconds={draft.durationMin * 60}
+          maxHours={MAX_HOURS}
+          onChange={(s) => set({ durationMin: s / 60 })}
+        />
+      </Section>
       {saved && !confirm && (
         <Group>
           <TextButton tone="danger" className="min-h-13 w-full" onClick={() => setConfirm(true)}>

@@ -12,7 +12,7 @@ import {
   strengthWhen,
   usualDate,
 } from "./add/add.ts";
-import { consequenceOf, dayChoices, shortMoment, timeChoices } from "./move/move.ts";
+import { consequenceOf, dayChoices, shortMoment } from "./move/move.ts";
 import { findItem, findRun, todayOf } from "./plan/selectors.ts";
 import { goalSummary } from "./program/goal.ts";
 import { checkIcsUrl, phaseBar, raceLine, settingValue } from "./program/program.ts";
@@ -179,9 +179,8 @@ describe("move", () => {
     expect(consequenceOf({ date: MONDAY, start: "19:30" }, options)).toBe("Rien d'autre ne bouge.");
     expect(consequenceOf({ date: "2026-11-20", start: "18:00" }, options)).toMatch(/^Si autre chose doit bouger/);
   });
-  it("lists days and half hours", () => {
+  it("lists the days", () => {
     expect(dayChoices(MONDAY, options)[5]?.blocked).toBe("Samedi est un jour sans course");
-    expect(timeChoices("7:00", "8:00")).toEqual(["7:00", "7:30", "8:00"]);
   });
 });
 
@@ -207,6 +206,8 @@ describe("add", () => {
     expect(isValidForm("revision", draft)).toBe(true);
     expect(isValidForm("busy", draft)).toBe(false);
     expect(isValidForm("revision", { ...draft, date: "" })).toBe(false);
+    expect(isValidForm("revision", { ...draft, minutes: 0 })).toBe(false);
+    expect(isValidForm("revision", { ...draft, start: "23:00", minutes: 90 })).toBe(false);
   });
 });
 

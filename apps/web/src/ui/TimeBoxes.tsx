@@ -5,7 +5,7 @@ function TimeBox({ label, unit, value, max, onChange }: BoxProps) {
   return (
     <label
       data-variant="inset"
-      className="surface flex min-w-0 flex-1 items-baseline justify-center gap-1 px-4 py-3 field-ring"
+      className="surface flex min-w-0 flex-1 items-baseline justify-center gap-0.5 px-4 py-3 field-ring"
     >
       <input
         aria-label={label}
@@ -14,7 +14,10 @@ function TimeBox({ label, unit, value, max, onChange }: BoxProps) {
         placeholder="0"
         value={value ? String(value) : ""}
         onChange={(e) => onChange(Math.min(max, Number(e.target.value.replace(/\D/g, "") || 0)))}
-        className="t-figure w-full min-w-0 border-0 bg-transparent text-right text-ink outline-none"
+        // As wide as its digits (tabular, one `ch` each) plus room for the last one's overhang: the figure and its
+        // unit sit centered together, and no digit is ever clipped.
+        style={{ width: `calc(${Math.max(1, String(value || 0).length)}ch + 0.15em)` }}
+        className="t-figure min-w-0 max-w-full border-0 bg-transparent p-0 text-center text-ink tabular-nums outline-none"
       />
       <span aria-hidden="true" className="t-strong flex-none text-ink-2">
         {unit}

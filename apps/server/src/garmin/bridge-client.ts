@@ -43,7 +43,10 @@ export interface BridgeClientOptions {
   fetch?: typeof fetch;
 }
 
-export type BridgeClient = ReturnType<typeof createBridgeClient>;
+/** What the server uses: it never lists workouts. */
+export type BridgeClient = Omit<OwnerBridgeClient, "listWorkouts">;
+/** The owner's test tool also lists its own workouts. */
+export type OwnerBridgeClient = ReturnType<typeof createBridgeClient>;
 
 export function createBridgeClient(options: BridgeClientOptions = {}) {
   const baseUrl = options.baseUrl ?? process.env.BRIDGE_URL;
@@ -97,6 +100,12 @@ export function createBridgeClient(options: BridgeClientOptions = {}) {
         method: "POST",
         body: JSON.stringify(workoutRequestSchema.parse(request)),
       }),
+    /** Workouts whose name starts with `prefix` (read only: the owner's test tool lists its own, never Anna's). */
+    listWorkouts: (prefix: string): Promise<{ workoutId: number; name: string }[]> =>
+      get(
+        `/workouts?name_prefix=${encodeURIComponent(prefix)}`,
+        z.array(z.object({ workoutId: z.number().int(), name: z.string() })),
+      ),
     /** To update a scheduled workout: delete it, then create the new version. */
     deleteWorkout: async (workoutId: number): Promise<void> => {
       await send(`/workouts/${workoutId}`, { method: "DELETE" });

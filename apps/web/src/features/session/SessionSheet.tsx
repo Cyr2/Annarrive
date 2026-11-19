@@ -64,8 +64,8 @@ export default function SessionSheet({ spec, ...sheet }: SheetProps<"session">) 
       </Surface>
       <section className="flex flex-col gap-2">
         <GroupLabel>Étapes</GroupLabel>
-        <Surface variant="inset" className="pb-1">
-          <StepList steps={run.steps} rowClassName="row flex-wrap" />
+        <Surface variant="inset" className="px-4">
+          <StepList steps={run.steps} />
         </Surface>
       </section>
       <Surface as="section" variant="widget" aria-label="Pourquoi cette séance" className="flex gap-3 p-4 pb-2">

@@ -196,30 +196,34 @@ export function App() {
     <>
       <Sky phase={phase} />
       <OfflineLine />
-      <div
-        key={location}
-        ref={swipe}
-        className={cx(!first.current && "screen-in", swipes(location) && "touch-pan-y touch-pinch-zoom")}
-      >
-        <ChunkBoundary fallback={screenFailed}>
-          <Suspense
-            fallback={
-              <Screen>
-                <Skeleton label="Chargement de l'écran" />
-              </Screen>
-            }
-          >
-            <Switch>
-              <Route path="/" component={TodayScreen} />
-              <Route path="/semaine" component={WeekScreen} />
-              <Route path="/programme" component={ProgramScreen} />
-              <Route path="/reggie" component={ReggieScreen} />
-              <Route>
-                <Redirect to="/" />
-              </Route>
-            </Switch>
-          </Suspense>
-        </ChunkBoundary>
+      {/* A screen sliding in or out stays inside the width: off to the side, it would make the page scroll sideways,
+          and a scroll into view (Reggie's last message) would then shift the whole screen. */}
+      <div className="overflow-x-clip">
+        <div
+          key={location}
+          ref={swipe}
+          className={cx(!first.current && "screen-in", swipes(location) && "touch-pan-y touch-pinch-zoom")}
+        >
+          <ChunkBoundary fallback={screenFailed}>
+            <Suspense
+              fallback={
+                <Screen>
+                  <Skeleton label="Chargement de l'écran" />
+                </Screen>
+              }
+            >
+              <Switch>
+                <Route path="/" component={TodayScreen} />
+                <Route path="/semaine" component={WeekScreen} />
+                <Route path="/programme" component={ProgramScreen} />
+                <Route path="/reggie" component={ReggieScreen} />
+                <Route>
+                  <Redirect to="/" />
+                </Route>
+              </Switch>
+            </Suspense>
+          </ChunkBoundary>
+        </div>
       </div>
       <TabBar tabs={TABS} active={active} onNavigate={toTab} />
       <SheetHost />
