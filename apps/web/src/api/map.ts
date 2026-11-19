@@ -633,6 +633,13 @@ export function toChatEvents(event: ChatStreamEvent, draft: { id: string; text: 
     case "text":
       draft.text += event.delta;
       return [{ type: "message", message: { id: draft.id, role: "reggie", text: draft.text } }];
+    case "retract":
+      // An empty draft shows no bubble: the dots come back until the real answer.
+      draft.text = "";
+      return [
+        { type: "message", message: { id: draft.id, role: "reggie", text: "" } },
+        { type: "status", status: "thinking" },
+      ];
     case "done":
       return toMessages({ ...event.message, id: draft.id }).map((message) => ({ type: "message", message }));
     case "error":

@@ -77,6 +77,26 @@ describe("POST /api/chat", () => {
     expect(prompts[1]).toContain("Anna : Je peux décaler ce soir ?\nReggie : Mercredi 18:00 marche.");
   });
 
+  it("streams the answer as it comes, and takes back a long text that turned out to precede a tool", async () => {
+    const long = "Je regarde ta semaine, tes cours, ta muscu et tes créneaux libres pour trouver le meilleur moment.";
+    const reggie: ReggieRun = async function* () {
+      yield { type: "text", delta: `${long} Encore` };
+      yield { type: "tool_call", name: "get_week", input: {} };
+      yield { type: "text", delta: "\n\n" };
+      yield { type: "text", delta: "Jeudi" };
+      yield { type: "text", delta: " 18 h." };
+    };
+    const t = await ready(reggie);
+    const events = parseSse(await (await t.request("POST", "/api/chat", { text: "Quand ?" })).text());
+    expect(events.slice(1, -1)).toEqual([
+      { type: "text", delta: `${long} Encore` },
+      { type: "retract" },
+      { type: "text", delta: "Jeudi" },
+      { type: "text", delta: " 18 h." },
+    ]);
+    expect(events.at(-1)).toMatchObject({ type: "done", message: { text: "Jeudi 18 h." } });
+  });
+
   it("ends with an error event and keeps Anna's message when Reggie fails", async () => {
     const failing: ReggieRun = async function* () {
       yield { type: "text", delta: "Je" };

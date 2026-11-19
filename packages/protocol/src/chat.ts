@@ -75,6 +75,8 @@ export const chatHistoryQuerySchema = z.object({ day: localDateSchema.optional()
 export const chatStreamEventSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("typing") }),
   z.object({ type: z.literal("text"), delta: z.string() }),
+  /** The text streamed so far was not the answer (Reggie went on to call a tool): take it off the screen. */
+  z.object({ type: z.literal("retract") }),
   z.object({ type: z.literal("widget"), widget: chatWidgetSchema }),
   z.object({ type: z.literal("done"), message: chatMessageSchema }),
   /** `retry: false` when sending again cannot help (Reggie is off on this server). */

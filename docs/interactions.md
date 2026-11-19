@@ -209,7 +209,7 @@ Toutes respectent « Réduire les animations » d'iOS : dans ce cas, simples fon
 | La semaine change (adaptation, cours annulé, déplacement, Annuler) | Les lignes glissent vers leur nouvelle place (ressort sans rebond, 450 ms) ; celles qui ont changé s'éclairent deux fois du bleu pâle des actions. Réduit : un seul éclairage de 300 ms, sans glissement |
 | Frise de la semaine | Les barres passent de l'ancienne charge à la nouvelle (350 ms) ; le jour où une séance arrive fait un petit pouls (108 %, 300 ms). Rien au premier affichage |
 | Bandeau Annuler | Monte de 12 px en fondu, repart seul après 6 s |
-| Message de Reggie | Apparaît en fondu en montant de 8 px. Les widgets suivent 60 ms après le texte. Trois points animés pendant qu'il réfléchit |
+| Message de Reggie | Apparaît en fondu en montant de 8 px. Les widgets suivent 60 ms après le texte. Trois points animés pendant qu'il réfléchit, jusqu'à ses premiers mots ; sa réponse s'écrit ensuite au fur et à mesure. Une phrase écrite avant un outil n'est pas sa réponse : l'écran la garde pour lui, ou la retire si elle s'affichait déjà |
 | Choix dans un widget | Le bouton choisi se remplit, les autres s'estompent |
 | Choix dans une liste (carte de choix) | La carte cède légèrement sous le doigt et revient avec un ressort, la coche arrive avec un petit ressort |
 | Changement d'onglet | Fondu croisé de 200 ms, la pastille de l'onglet actif glisse vers le nouvel onglet |

@@ -195,6 +195,26 @@ describe("chat store", () => {
     expect(chat.getState().messages.at(-1)?.answer).toBe("undone");
   });
 
+  it("drops the typing dots at Reggie's first words and brings them back when his text is taken back", async () => {
+    const statuses: string[] = [];
+    const streaming: Pick<Api, "chat"> = {
+      async *chat() {
+        yield { type: "status", status: "thinking" } as const;
+        yield { type: "message", message: { id: "r", role: "reggie", text: "Je" } } as const;
+        statuses.push(chat.getState().status);
+        yield { type: "message", message: { id: "r", role: "reggie", text: "" } } as const;
+        yield { type: "status", status: "thinking" } as const;
+        statuses.push(chat.getState().status);
+        yield { type: "message", message: { id: "r", role: "reggie", text: "Jeudi." } } as const;
+      },
+    };
+    const chat = createChatStore(async () => streaming as Api, vi.fn());
+    await chat.getState().send("Quand ?");
+    expect(statuses).toEqual(["writing", "thinking"]);
+    expect(chat.getState().status).toBe("idle");
+    expect(chat.getState().messages.at(-1)?.text).toBe("Jeudi.");
+  });
+
   it("ignores empty messages and says when Reggie cannot answer", async () => {
     const broken: Pick<Api, "chat"> = {
       chat: () => ({

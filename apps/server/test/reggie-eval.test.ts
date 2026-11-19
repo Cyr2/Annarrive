@@ -45,9 +45,10 @@ describe("grade", () => {
   });
 
   it("accepts any listed value for an input and any tool of anyOf", () => {
-    const jog = reply("Repos conseillé tant que la fièvre dure. Si tu y vas, footing court et tranquille.", [
-      { name: "change_session", input: { sessionId: "tonight", option: "jog30" } },
-    ]);
+    const jog = reply(
+      "Repos conseillé tant que la fièvre dure. Si tu y vas, footing court et tranquille, tu peux annuler.",
+      [{ name: "change_session", input: { sessionId: "tonight", option: "jog30" } }],
+    );
     expect(grade(scenario("fievre-veut-courir"), jog).pass).toBe(true);
     const why = reply("Cette allure vise ton seuil.", [{ name: "get_week", input: {} }]);
     expect(grade(scenario("pourquoi-allure"), why).pass).toBe(true);
@@ -99,6 +100,8 @@ describe("grade", () => {
       "style : culpabilisation",
       "style : jargon",
     ]);
+    expect(reasons("Garde le RPE autour de 7 sur 10.").reasons).toEqual(["style : jargon"]);
+    expect(reasons("Reste en zone 2.").reasons).toEqual(["style : jargon"]);
     const longSource = reply(`Des pâtes. ${"a".repeat(500)} https://nhs.uk`, [{ name: "WebSearch", input: {} }]);
     expect(grade(scenario("nutrition-source"), longSource).pass).toBe(true);
   });
