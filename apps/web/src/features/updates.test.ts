@@ -27,6 +27,8 @@ describe("watchForUpdates", () => {
     expect(message).toBe("Nouvelle version prête");
     action.onClick();
     expect(pwa.update).toHaveBeenCalledWith(true);
+    // The reloaded page skips the launch animation (index.html).
+    expect(sessionStorage.getItem("splash-skip")).toBe("1");
     vi.useRealTimers();
   });
 });
