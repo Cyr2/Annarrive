@@ -9,6 +9,7 @@ import {
   daysBetween,
   hoursBetween,
   mondayOf,
+  toIso,
   toMin,
   weekDates,
   weekday,
@@ -168,6 +169,26 @@ function longDayPenalty(day: number, accepted?: number[]): number {
   if (!accepted?.length) return day === SUNDAY ? 0 : day === SATURDAY ? 10 : 20;
   if (accepted.includes(day)) return day === SUNDAY || accepted.length === 1 ? 0 : 1;
   return 20;
+}
+
+const USUAL_RUNS = 10;
+
+/**
+ * S7 without a stated hour: the median start of her last 10 runs, on the half-hour grid of the placement. Undefined
+ * without any run, and the earliest free slot wins as before.
+ */
+export function usualHour(runs: { start: string }[]): string | undefined {
+  const clocks = runs
+    .map((r) => r.start)
+    .sort()
+    .slice(-USUAL_RUNS)
+    .map((start) => toMin(start) - dayStart(start))
+    .sort((a, b) => a - b);
+  if (clocks.length === 0) return undefined;
+  const mid = Math.floor(clocks.length / 2);
+  const upper = clocks[mid] ?? 0;
+  const median = clocks.length % 2 === 1 ? upper : ((clocks[mid - 1] ?? upper) + upper) / 2;
+  return toIso(Math.round(median / GRID_MIN) * GRID_MIN).slice(11, 16);
 }
 
 function habitPenalties(session: Session, slot: Slot, week: WeekState): Item[] {

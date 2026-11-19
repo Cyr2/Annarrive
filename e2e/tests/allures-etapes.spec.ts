@@ -26,6 +26,31 @@ test("Détail de séance : étapes comme sur la montre, une allure avec son unit
   await page.unrouteAll({ behavior: "ignoreErrors" });
 });
 
+test("Programme : un nouveau nombre de courses s'annule comme tout changement, et la semaine revient telle quelle", async ({
+  page,
+}) => {
+  await page.goto("/semaine");
+  const week = page.getByRole("main");
+  await expect(week).toContainText(/\d+ min/);
+  const before = await week.innerText();
+  await page.getByRole("link", { name: "Programme" }).click();
+  const runs = page.getByRole("button", { name: /^Courses par semaine/ });
+  const count = (await runs.innerText()).replace(/\D/g, "");
+  await runs.click();
+  const sheet = page.getByRole("dialog", { name: "Courses par semaine" });
+  await sheet.getByRole("radio", { name: count === "5" ? "4" : "5" }).click();
+  await sheet.getByRole("button", { name: "Enregistrer" }).click();
+
+  const changed = banner(page, "Reggie a réorganisé ta semaine");
+  await expect(changed).toBeVisible();
+  await expect(changed).not.toContainText("déplacée");
+  await changed.getByRole("button", { name: "Annuler" }).click();
+  await expect(banner(page, "Changement annulé")).toBeVisible();
+  await expect(runs).toContainText(count);
+  await page.getByRole("link", { name: "Semaine" }).click();
+  await expect.poll(() => week.innerText()).toBe(before);
+});
+
 test("Programme : chaque réglage s'ouvre en feuille et ne change rien avant Enregistrer, la bulle du verdict bloque la page", async ({
   page,
 }) => {

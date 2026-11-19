@@ -74,7 +74,7 @@ export function dayTitle(iso: string): string {
 /** "dimanche 17 janvier" */
 export function longDate(iso: string): string {
   const [, m, d] = parts(iso);
-  return `${dayName(iso).toLowerCase()} ${d} ${MONTHS[m - 1]}`;
+  return `${dayName(iso).toLowerCase()} ${d === 1 ? "1er" : d} ${MONTHS[m - 1]}`;
 }
 
 /** French abbreviations: "juin", "juil.", "sept.". */

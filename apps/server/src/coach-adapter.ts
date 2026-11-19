@@ -52,17 +52,21 @@ const toCalEvent = (e: CalendarEvent): CalEvent => ({
 /** The app numbers days 1 (Monday) to 7, the coach 0 to 6. */
 const toDay = (d: number): number => d - 1;
 
-export const toSettings = (p: Profile): Settings => ({
-  runsPerWeek: p.runsPerWeek,
-  earliest: p.earliest,
-  latestEnd: p.latestEnd,
-  noRunDays: p.noRunDays.map(toDay),
-  bedtime: p.bedtime,
-  useSleepHr: p.useSleepHr,
-  travelMin: p.travelMin,
-  ...(p.preferredLongDays === undefined ? {} : { preferredLongDays: p.preferredLongDays.map(toDay) }),
-  ...(p.preferredHour === undefined ? {} : { preferredHour: p.preferredHour }),
-});
+/** S7: without a stated hour, the hour she usually runs at, read from her Garmin runs. */
+export function toSettings(p: Profile, runs: { start: string }[]): Settings {
+  const preferredHour = p.preferredHour ?? coach.usualHour(runs);
+  return {
+    runsPerWeek: p.runsPerWeek,
+    earliest: p.earliest,
+    latestEnd: p.latestEnd,
+    noRunDays: p.noRunDays.map(toDay),
+    bedtime: p.bedtime,
+    useSleepHr: p.useSleepHr,
+    travelMin: p.travelMin,
+    ...(p.preferredLongDays === undefined ? {} : { preferredLongDays: p.preferredLongDays.map(toDay) }),
+    ...(preferredHour === undefined ? {} : { preferredHour }),
+  };
+}
 
 const inWeek = (monday: string) => (s: { start: string }) =>
   dateOf(s.start) >= monday && dateOf(s.start) < addDays(monday, 7);
@@ -74,7 +78,7 @@ function toState(st: CoachState, monday: string, all = false): State {
     monday,
     sessions: sessions.map(toSession),
     cal: st.events.map(toCalEvent),
-    settings: toSettings(st.settings),
+    settings: toSettings(st.settings, st.activities),
     health: st.health,
     feels: st.feels,
     // Without an estimate no week was ever built, so nothing reads these paces.
@@ -272,7 +276,7 @@ export const coachAdapter: CoachPort = {
       now,
       goal,
       ...(st.program.startedOn ? { planStart: st.program.startedOn } : {}),
-      settings: toSettings(st.settings),
+      settings: toSettings(st.settings, st.activities),
       history: st.activities,
       fitness: { vdot: st.fitness.vdot, provisional: st.fitness.provisional === true },
     });
@@ -313,7 +317,7 @@ export const coachAdapter: CoachPort = {
       now,
       goal: st.program.goal,
       ...(st.program.startedOn ? { planStart: st.program.startedOn } : {}),
-      settings: toSettings(st.settings),
+      settings: toSettings(st.settings, st.activities),
       // The planned type tells a test she ran (P26) from any run.
       history: withPlannedType(st),
       fitness: {
@@ -351,7 +355,7 @@ export const coachAdapter: CoachPort = {
 
   updateSettings(st, patch, now) {
     const settings = { ...st.settings, ...patch };
-    return perWeek(st, now, (w) => coach.updateSettings(w, toSettings(settings), now), { settings });
+    return perWeek(st, now, (w) => coach.updateSettings(w, toSettings(settings, st.activities), now), { settings });
   },
 
   onTimetableChange(st, newEvents, now, own = false) {
@@ -397,8 +401,9 @@ export const coachAdapter: CoachPort = {
     let after = session;
     if (decision.action === "easier" || decision.action === "shorter")
       after = coach.changeOptions(week, session.id)[decision.action];
-    // EV9 to EV12 advise and never block: while unwell, the session she may run is the adapted one.
-    if (!session.manual && st.health.kind !== "ok")
+    // EV9 to EV12 advise and never block: while unwell, the session she may run is the adapted one. A cold already
+    // shortened every session ahead when she said it (EV10): shortening again would halve it twice.
+    if (!session.manual && st.health.kind !== "ok" && st.health.kind !== "cold")
       after = coach.adaptForHealth(after, st.health, today, coach.paces(week.vdot));
     const sessions = st.sessions.map((s) => (s.id === session.id ? fromSession(after) : s));
     const warnings =
@@ -483,7 +488,7 @@ export const coachAdapter: CoachPort = {
       lastFeels: st.feels,
       cal: st.events.map(toCalEvent),
       sick: coach.sickDays(st.health, today),
-      settings: toSettings(st.settings),
+      settings: toSettings(st.settings, st.activities),
     };
     const fatigueDays = coach.fatigueDays(
       signalsOf(st),

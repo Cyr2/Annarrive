@@ -148,7 +148,9 @@ export type Health =
    * After feeling better from a fever (EV9): short easy runs before `easyUntil`, then longer ones, Q one notch easier
    * before `qEasierUntil`. `since`: first day of the fever (B1).
    */
-  | { kind: "recovering"; easyUntil: string; qEasierUntil: string; since?: string };
+  | { kind: "recovering"; easyUntil: string; qEasierUntil: string; since?: string }
+  /** After a cold (EV13): easy running only before `easyUntil`, then the usual plan. */
+  | { kind: "easy"; easyUntil: string };
 
 export type State = WeekState & {
   health: Health;

@@ -41,13 +41,12 @@ describe("plan store", () => {
     expect(notify).toHaveBeenLastCalledWith("Changement annulé");
   });
 
-  it("uses a custom banner action, or none when quiet", async () => {
+  it("offers Annuler on a setting change like on any change, or no banner when quiet", async () => {
     const { plan, notify } = setup();
-    const onClick = vi.fn();
-    await plan
-      .getState()
-      .apply((api) => api.updateSettings({ runsPerWeek: 3 }), { action: { label: "Voir", onClick } });
-    expect(notify).toHaveBeenLastCalledWith("Reggie a réorganisé ta semaine", { label: "Voir", onClick });
+    await plan.getState().apply((api) => api.updateSettings({ runsPerWeek: 3 }));
+    const [message, action] = notify.mock.lastCall ?? [];
+    expect(message).toBe("Reggie a réorganisé ta semaine");
+    expect(action.label).toBe("Annuler");
     notify.mockClear();
     await plan.getState().apply((api) => api.updateSettings({ cycle: true }), { quiet: true });
     expect(notify).not.toHaveBeenCalled();

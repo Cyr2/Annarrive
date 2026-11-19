@@ -44,7 +44,7 @@ function PlainToast() {
         {action && (
           <button
             type="button"
-            className="press min-h-11 rounded-full border-0 bg-transparent px-3 t-strong text-action"
+            className="press min-h-11 shrink-0 whitespace-nowrap rounded-full border-0 bg-transparent px-3 t-strong text-action"
             onClick={() => {
               useToastHost.setState({ plain: undefined });
               action.onClick();
