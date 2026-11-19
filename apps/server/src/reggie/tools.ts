@@ -5,9 +5,9 @@ import {
   isoWeekSchema,
   localDateSchema,
   localDateTimeSchema,
+  type Profile,
   paceLabel,
   painSiteSchema,
-  type Profile,
   profilePatchSchema,
   unavailableSchema,
 } from "@annarrive/protocol";

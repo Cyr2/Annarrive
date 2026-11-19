@@ -53,7 +53,9 @@ describe("push subscription", () => {
   it("sends the held subscription again at each start", async () => {
     const api = fakeApi();
     expect(await checkPush(api, fakeEnv({}, true).env)).toEqual({ status: "on", key: KEY });
-    expect(api.subscribePush).toHaveBeenCalledWith(expect.objectContaining({ endpoint: "https://web.push.apple.com/x" }));
+    expect(api.subscribePush).toHaveBeenCalledWith(
+      expect.objectContaining({ endpoint: "https://web.push.apple.com/x" }),
+    );
   });
 
   it("asks permission on the tap, subscribes with the server key, then unsubscribes", async () => {
