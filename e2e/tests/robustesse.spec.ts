@@ -135,8 +135,10 @@ test.describe("réduire les animations", () => {
   test.use({ reducedMotion: "reduce" });
   test("la feuille apparaît en fondu, sans glisser", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("button", { name: "Changer", exact: true }).click();
-    const frames = await page.evaluate(
+    const button = page.getByRole("button", { name: "Changer", exact: true });
+    await button.waitFor();
+    // The sampler starts before the tap: on a slow runner the 150 ms fade could end before a late sampler begins.
+    const sampling = page.evaluate(
       () =>
         new Promise<{ opacity: number; transform: string }[]>((resolve) => {
           const out: { opacity: number; transform: string }[] = [];
@@ -152,6 +154,8 @@ test.describe("réduire les animations", () => {
           tick();
         }),
     );
+    await button.click();
+    const frames = await sampling;
     expect(frames.some((f) => f.opacity < 1)).toBe(true);
     expect(frames.every((f) => f.transform === "none")).toBe(true);
   });
