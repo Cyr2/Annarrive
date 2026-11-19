@@ -800,6 +800,7 @@ describe("Reggie over the server", () => {
       event({ type: "text", delta: "Je regarde." }),
       event({ type: "retract" }),
       event({ type: "text", delta: "Jeudi." }),
+      event({ type: "done", message: { ...done, text: "Jeudi.", widgets: [] } }),
     ].join("");
     const api = createHttpApi(
       vi.fn(async () => new Response(chunked(body))),
@@ -813,7 +814,21 @@ describe("Reggie over the server", () => {
       { type: "message", message: { id: "reggie-5", role: "reggie", text: "" } },
       { type: "status", status: "thinking" },
       { type: "message", message: { id: "reggie-5", role: "reggie", text: "Jeudi." } },
+      { type: "message", message: { id: "reggie-5", role: "reggie", text: "Jeudi." } },
     ]);
+  });
+
+  // Audit robustesse-2, 3: a stream closed before its end (network cut, proxy) looked like a whole answer.
+  it("fails a stream that ends without its final message", async () => {
+    const api = createHttpApi(
+      vi.fn(async () => new Response(chunked(event({ type: "text", delta: "Réponse coupée" })))),
+    );
+    const events: unknown[] = [];
+    const error = await (async () => {
+      for await (const e of api.chat({ text: "Salut" })) events.push(e);
+    })().catch((e: unknown) => e);
+    expect(events).toHaveLength(1);
+    expect(error).toMatchObject({ status: 502 });
   });
 
   it("turns a stream error into Reggie's French message", async () => {

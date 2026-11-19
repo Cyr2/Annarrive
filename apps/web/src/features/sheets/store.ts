@@ -54,11 +54,21 @@ const pushEntry = (depth: number) => {
   if (hasHistory() && depthOf(history.state) < depth) history.pushState({ sheet: true, depth }, "");
 };
 
+/** A second tap this soon after Retour is the same gesture (a double tap), not another step. */
+const DOUBLE_TAP_MS = 400;
+// Retour's history.back() not answered by its popstate yet (the depth in history.state is stale), or a moment ago:
+// a second tap, which lands on Retour or on the Fermer of the sheet below, must go no further.
+let stepping = false;
+let steppedAt = Number.NEGATIVE_INFINITY;
+const justStepped = () => stepping || Date.now() - steppedAt < DOUBLE_TAP_MS;
+
 export const useSheet = create<SheetState>((set, get) => ({
   below: [],
   open: false,
   chained: false,
   show(spec) {
+    // A sheet opened on purpose: the next tap is no longer part of a double tap on Retour.
+    steppedAt = Number.NEGATIVE_INFINITY;
     const { current, open, below } = get();
     if (!current) {
       pushEntry(1);
@@ -73,16 +83,20 @@ export const useSheet = create<SheetState>((set, get) => ({
     set({ current: spec, chained: true });
   },
   back() {
+    if (justStepped()) return;
     const { below, open } = get();
     const previous = below.at(-1);
     if (!open || !previous) return get().close();
     set({ current: previous, below: below.slice(0, -1) });
+    steppedAt = Date.now();
     // Its entry goes too; the popstate that follows finds the stack already at that depth.
-    if (onSheetEntry()) history.back();
+    if (!onSheetEntry()) return;
+    stepping = true;
+    history.back();
   },
   // The sheets stay mounted until the slide is over, then a queued sheet rises.
   close(fromBack = false) {
-    if (!get().open) return;
+    if (!get().open || (!fromBack && justStepped())) return;
     set({ open: false });
     // After the current task: a navigation right after the close (useGo) takes the entry over instead.
     if (!fromBack)
@@ -101,6 +115,7 @@ export const useSheet = create<SheetState>((set, get) => ({
 
 /** The system's Back: one sheet down the stack, or the whole stack closes once Back leaves its first entry. */
 export function onHistoryBack(state: unknown) {
+  stepping = false;
   const sheets = useSheet.getState();
   const depth = depthOf(state);
   if (depth === 0) return sheets.close(true);

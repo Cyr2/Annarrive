@@ -10,13 +10,15 @@ export function ReggieNote({ text, onClick }: { text: string; onClick: () => voi
     <button
       type="button"
       onClick={onClick}
-      aria-label={`Parler à Reggie. ${text}`}
       data-variant="inset"
       className="surface press flex min-h-16 w-full items-center gap-3 border-0 py-3 pr-3 pl-3.5 text-left text-ink"
     >
       <ReggieAvatar size="md" />
+      {/* Its name is its visible text, "Reggie" then his word, so voice control finds it by what it shows. */}
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="t-cap font-semibold text-reggie">Reggie</span>
+        <span className="t-cap font-semibold text-reggie">
+          <span className="sr-only-label">Parler à </span>Reggie
+        </span>{" "}
         <span className="t-sub text-ink">{text}</span>
       </span>
       <Icon name="chevronRight" size={18} className="flex-none text-ink-3" />

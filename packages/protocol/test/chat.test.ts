@@ -1,10 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { chatRequestSchema, chatStreamEventSchema, chatWidgetSchema, unavailableSchema } from "../src/index.ts";
+import {
+  CHAT_TEXT_MAX,
+  chatRequestSchema,
+  chatStreamEventSchema,
+  chatWidgetSchema,
+  unavailableSchema,
+} from "../src/index.ts";
 
 describe("chat schemas", () => {
   it("trims a message and refuses an empty one", () => {
     expect(chatRequestSchema.parse({ text: "  Salut ", context: { screen: "today" } }).text).toBe("Salut");
     expect(chatRequestSchema.safeParse({ text: "   " }).success).toBe(false);
+    // Audit robustesse-2, 5: our own words for a message too long, not zod's.
+    const long = chatRequestSchema.safeParse({ text: "a".repeat(CHAT_TEXT_MAX + 1) });
+    expect(long.error?.issues[0]?.message).toMatch(/^Ton message dépasse/);
   });
 
   it("keeps reply buttons between 2 and 5 and the slider on 0 to 10", () => {

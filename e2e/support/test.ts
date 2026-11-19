@@ -12,7 +12,10 @@ export const test = base.extend<{ session: string }>({
     const elapsed = Date.now() - Number(process.env.E2E_STARTED);
     await page.clock.install({ time: Date.parse(E2E_NOW) + elapsed });
     await page.route("**/api/**", async (route) =>
-      route.fulfill({ response: await route.fetch({ headers: { ...route.request().headers(), cookie: session } }) }),
+      route.fulfill({
+        // A local socket reset (ECONNRESET) is replayed rather than failing the test.
+        response: await route.fetch({ headers: { ...route.request().headers(), cookie: session }, maxRetries: 3 }),
+      }),
     );
     await use(page);
     // A call still in flight when the test ends (an idle preload) must not fail it.

@@ -4,9 +4,12 @@ import {
   createEventInputSchema,
   deleteEventQuerySchema,
   feasibilityInputSchema,
+  IMPLAUSIBLE_TIME,
   icsUrlSchema,
   isoWeekSchema,
+  plausibleTime,
   profilePatchSchema,
+  programInputSchema,
   runTypeSchema,
   sessionNames,
   updateEventInputSchema,
@@ -31,6 +34,25 @@ describe("feasibility input", () => {
     const goal = { distanceM: 10000, date: "2027-04-11" };
     expect(feasibilityInputSchema.safeParse(goal).success).toBe(false);
     expect(feasibilityInputSchema.parse({ ...goal, targetMin: 55 }).targetMin).toBe(55);
+  });
+});
+
+// Audit robustesse-2, 12: « Ton dernier chrono » took 0 h 05 for a half marathon.
+describe("declared time", () => {
+  it("takes a time a runner can run on that distance, not a typo", () => {
+    const semi = 21097.5;
+    expect(plausibleTime(semi, 5)).toBe(false);
+    expect(plausibleTime(semi, 599)).toBe(false);
+    expect(plausibleTime(semi, 110)).toBe(true);
+    expect(plausibleTime(5000, 13)).toBe(true);
+    expect(plausibleTime(42195, 360)).toBe(true);
+    const refused = programInputSchema.safeParse({ declaredTime: { distanceM: semi, minutes: 5 } });
+    expect(refused.error?.issues[0]?.message).toBe(IMPLAUSIBLE_TIME);
+    expect(programInputSchema.safeParse({ declaredTime: { distanceM: semi, minutes: 110 } }).success).toBe(true);
+    const goal = { distanceM: 10000, date: "2027-04-11", targetMin: 55 };
+    expect(feasibilityInputSchema.safeParse({ ...goal, declaredTime: { distanceM: 10000, minutes: 1 } }).success).toBe(
+      false,
+    );
   });
 });
 

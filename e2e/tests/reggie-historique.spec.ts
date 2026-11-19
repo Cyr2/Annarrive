@@ -59,6 +59,7 @@ test("Programme : le verdict de la cible s'explique, puis Reggie en parle", asyn
   const why = page.getByRole("dialog", { name: "Pourquoi ambitieux ?" });
   await expect(why).toContainText("Aujourd'hui, ton niveau te donne environ");
   await expect(why).toContainText("Ta cible va au-delà");
+  const chat = page.waitForResponse((r) => r.url().endsWith("/api/chat") && r.request().method() === "POST");
   await why.getByRole("button", { name: "En parler avec Reggie" }).click();
 
   await expect(page).toHaveURL(/\/reggie$/);
@@ -66,6 +67,8 @@ test("Programme : le verdict de la cible s'explique, puis Reggie en parle", asyn
   await expect(page.getByRole("log")).toContainText(
     "Pourquoi mon objectif est ambitieux ? Qu'est-ce que je peux faire ?",
   );
+  // Reggie's stream ends before the next calls start, so none of them races its closing socket.
+  await (await chat).finished();
 
   await page.getByRole("link", { name: "Programme" }).click();
   await setTarget(true);

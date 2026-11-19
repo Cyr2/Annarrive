@@ -13,7 +13,9 @@ export function ReportIssue() {
   const send = () => {
     incident("report", text.trim().slice(0, 500) || "Signalement sans texte");
     setText("");
-    void notify(navigator.onLine ? "Merci, c'est envoyé." : "Merci. Il partira dès que tu auras du réseau.");
+    const thanks = navigator.onLine ? "Merci, c'est envoyé." : "Merci. Il partira dès que tu auras du réseau.";
+    // A second tap thanks her again in the same banner, not in a pile of them.
+    void notify(thanks, undefined, undefined, "report");
   };
   return (
     <form

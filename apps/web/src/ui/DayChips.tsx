@@ -23,7 +23,8 @@ export function DayChips({ label, selected, onToggle }: Props) {
       {Array.from({ length: 7 }, (_, day) => {
         const name = weekdayName(day);
         return (
-          <Chip key={name} selected={selected.includes(day)} aria-label={name} onClick={() => onToggle(day)}>
+          // Named by what it shows (« Lun »), so voice control finds it by its visible text.
+          <Chip key={name} selected={selected.includes(day)} onClick={() => onToggle(day)}>
             {name.slice(0, 3)}
           </Chip>
         );

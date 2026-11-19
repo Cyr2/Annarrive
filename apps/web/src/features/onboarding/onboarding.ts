@@ -2,9 +2,11 @@ import {
   type CreateEventInput,
   type DeclaredTime,
   type FeasibilityInput,
+  IMPLAUSIBLE_TIME,
   type Profile,
   type Program,
   painSiteSchema,
+  plausibleTime,
   type Unavailable,
 } from "@annarrive/protocol";
 import { addDays, daysBetween, minutesOf, timeOf, weekday } from "../../lib/date.ts";
@@ -179,6 +181,8 @@ export function issue(step: Step, draft: Draft, today: string): string | undefin
     return `Garde au moins ${draft.runsPerWeek} jours pour courir.`;
   if (step === "hours" && minutesOf(draft.latestEnd) <= minutesOf(draft.earliest))
     return "L'heure de fin doit venir après l'heure de début.";
+  if (step === "last" && draft.lastSec > 0 && !plausibleTime(draft.lastRace, draft.lastSec / 60))
+    return IMPLAUSIBLE_TIME;
   if (step === "target" && !draft.finish && draft.targetSec <= 0)
     return "Écris ton chrono, ou choisis « Juste finir ».";
   if (step === "strength" && draft.strength.some((s) => !s.name.trim())) return "Donne un nom à chaque séance.";

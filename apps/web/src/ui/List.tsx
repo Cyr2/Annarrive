@@ -16,8 +16,12 @@ export function SectionTitle({ id, className, children }: { id?: string; classNa
 }
 
 /** Role 2, the label over a group (a list, a set of cards) inside a screen or a sheet: caption. */
-export function GroupLabel({ children }: { children: ReactNode }) {
-  return <h2 className="t-cap m-0 px-4">{children}</h2>;
+export function GroupLabel({ id, children }: { id?: string; children: ReactNode }) {
+  return (
+    <h2 id={id} className="t-cap m-0 px-4">
+      {children}
+    </h2>
+  );
 }
 
 export function Section({ title, footnote, children }: { title?: string; footnote?: string; children: ReactNode }) {

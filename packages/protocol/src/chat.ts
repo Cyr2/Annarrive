@@ -52,8 +52,15 @@ export const chatMessageSchema = z.object({
 });
 export type ChatMessage = z.infer<typeof chatMessageSchema>;
 
+/** The longest message she can send Reggie; the field stops there. */
+export const CHAT_TEXT_MAX = 2000;
+
 export const chatRequestSchema = z.object({
-  text: z.string().trim().min(1).max(2000),
+  text: z
+    .string()
+    .trim()
+    .min(1)
+    .max(CHAT_TEXT_MAX, `Ton message dépasse ${CHAT_TEXT_MAX} caractères : envoie-le en deux fois.`),
   context: chatContextSchema.optional(),
 });
 export type ChatRequest = z.infer<typeof chatRequestSchema>;

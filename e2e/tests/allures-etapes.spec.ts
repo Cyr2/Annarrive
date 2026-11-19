@@ -71,9 +71,9 @@ test("Programme : chaque réglage s'ouvre en feuille et ne change rien avant Enr
   await expect(longDays).toContainText("Dimanche");
   await longDays.click();
   const long = page.getByRole("dialog", { name: "Sortie longue" });
-  await long.getByRole("button", { name: "Samedi" }).click();
-  await long.getByRole("button", { name: "Dimanche" }).click();
-  await long.getByRole("button", { name: "Samedi" }).click();
+  await long.getByRole("button", { name: "Sam", exact: true }).click();
+  await long.getByRole("button", { name: "Dim", exact: true }).click();
+  await long.getByRole("button", { name: "Sam", exact: true }).click();
   // No day left: nothing to save.
   await expect(long.getByRole("button", { name: "Enregistrer" })).toBeDisabled();
   await long.getByRole("button", { name: "Annuler" }).click();
