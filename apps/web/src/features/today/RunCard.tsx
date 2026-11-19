@@ -7,9 +7,10 @@ import { Icon } from "../../ui/Icon.tsx";
 import { SessionChip, SessionShape } from "../../ui/SessionShape.tsx";
 import { StepList } from "../../ui/StepList.tsx";
 import { Surface } from "../../ui/Surface.tsx";
+import { TalkLink } from "../reggie/TalkLink.tsx";
 import { useSheet } from "../sheets/store.ts";
 import { Figure, ToneWash } from "./parts.tsx";
-import { contentKey } from "./today.ts";
+import { contentKey, sessionDetail } from "./today.ts";
 import { WatchStatus } from "./WatchStatus.tsx";
 
 /**
@@ -45,9 +46,15 @@ export function RunCard({ run, today }: { run: Run; today: string }) {
             {sub && <span className="t-sub">{tidy(sub)}</span>}
           </div>
           {run.lightened && (
-            <p className="t-cap m-0 flex items-start gap-2 rounded-row bg-warn-wash px-3 py-2 text-warn-deep">
-              {run.lightened}
-            </p>
+            <div className="flex flex-col items-start rounded-row bg-warn-wash px-3 pt-2">
+              <p className="t-cap m-0 text-warn-deep">{run.lightened}</p>
+              <TalkLink
+                context={sessionDetail(run, today)}
+                about={{ screen: "today", sessionId: run.id }}
+                question="Pourquoi ma séance est allégée ?"
+                className="pointer-events-auto relative -ml-1 self-start text-left"
+              />
+            </div>
           )}
           <SessionShape steps={run.steps} tone={run.intensity} className="h-11" />
           {/* A range of paces is too wide for the big size: both figures drop to the smaller one, side by side or stacked. */}

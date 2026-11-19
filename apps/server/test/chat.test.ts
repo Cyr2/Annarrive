@@ -187,6 +187,6 @@ describe("Changer, Pas dispo and Ça va mieux routes", () => {
     expect((await t.request("POST", "/api/unavailable", { reason: "pain", where: "dos" })).status).toBe(400);
 
     const better = changeResponseSchema.parse(await (await t.request("POST", "/api/feel-better")).json());
-    expect(better.change?.summary).toBe("Ça va mieux : tes séances reprennent");
+    expect(better.change?.summary).toBe("Ça va mieux : 3 jours sans fractionné, puis tes séances reprennent");
   });
 });

@@ -32,6 +32,7 @@ describe("date", () => {
   it("names days like the mockups", () => {
     expect(dayTitle("2026-11-16")).toBe("Lundi 16");
     expect(longDate("2027-01-17")).toBe("dimanche 17 janvier");
+    expect(longDate("2026-12-01")).toBe("mardi 1er décembre");
     expect(weekRange("2026-11-16")).toBe("16 au 22 novembre");
     // Across two months the names shorten, so the range stays on one line between the arrows at 320 px.
     expect(weekRange("2026-11-30")).toBe("30 nov. au 6 déc.");

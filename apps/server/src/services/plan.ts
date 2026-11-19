@@ -372,11 +372,21 @@ export class PlanService {
 
   feelBetter(): ChangeResponse {
     const before = this.coachState();
+    const result = this.#coach.feelBetter(before, this.#now());
+    // EV13: the sessions shortened for the cold get their length back, without Q for 3 days.
+    if (before.health.kind === "cold" && !result.refusal)
+      return this.#rebuild(
+        "Ça va mieux : 3 jours sans fractionné, puis tes séances reprennent",
+        [],
+        result.state,
+        before,
+        true,
+      );
     const summary =
       before.health.kind === "sick"
         ? "Ça va mieux : 3 jours de footing tranquille, puis tes séances reprennent"
         : "Ça va mieux : tes séances reprennent";
-    return this.#commit(summary, [], before, this.#coach.feelBetter(before, this.#now()));
+    return this.#commit(summary, [], before, result);
   }
 
   health(): HealthStatus {
@@ -507,7 +517,7 @@ export class PlanService {
     const warnings = [...current.warnings, ...next.warnings].filter(
       (w, i, all) => all.findIndex((x) => x.message === w.message) === i,
     );
-    return this.#commit(summary, writes, before, { ...next, warnings });
+    return this.#commit(summary, writes, before, { ...next, warnings }, null);
   }
 
   /** F10 from what is stored: Garmin runs, the latest Garmin VO2max, the declared time. */
@@ -680,7 +690,8 @@ export class PlanService {
     writes: PlanWrite[],
     before: CoachState,
     result: CoachResult,
-    movedId?: string,
+    /** The run Anna moved herself, left out of the count; null: a rebuild, whose runs change more than their time. */
+    movedId?: string | null,
   ): ChangeResponse {
     if (result.refusal) throw new InvalidInputError(result.refusal);
     const stateWrites: PlanWrite[] =
@@ -697,7 +708,7 @@ export class PlanService {
         .map((s) => ({ table: "planned_session" as const, id: s.id, after: null })),
       ...result.state.sessions.map((s) => ({ table: "planned_session" as const, id: s.id, after: s })),
     ];
-    const moved = movedSessions(before, result).filter(([, s]) => s.id !== movedId);
+    const moved = movedId === null ? [] : movedSessions(before, result).filter(([, s]) => s.id !== movedId);
     const fullSummary = moved.length > 0 ? `${summary} · ${movedText(moved, result)}` : summary;
     const entry = this.#changes.record(fullSummary, [...writes, ...stateWrites, ...sessionWrites]);
     return {

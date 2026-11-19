@@ -306,6 +306,7 @@ describe("http client, reading", () => {
       mainPaceLabel: "Allure moyenne",
       mainPace: "6'10 /km",
       verdict: "Prévu 50 min, fait en 51 min",
+      cut: false,
       askFeel: true,
       intensity: "hard",
       feel: undefined,
@@ -334,6 +335,16 @@ describe("http client, reading", () => {
     expect(morning.activity).toBeUndefined();
     // Declared pain: « Ça va mieux » is on offer.
     expect(morning.unwell).toBe(true);
+  });
+
+  it("tells a run cut well short from a session done as planned (parcours F8)", async () => {
+    const long = { ...SESSION, type: "L", durMin: 73, status: "done" };
+    const run = { id: "garmin:2", start: "2026-11-16T18:02", durMin: 44, distM: 7000, sessionId: "s1" };
+    const today = await server({
+      ...reads,
+      "GET /api/today": { date: "2026-11-16", session: long, events: [], activity: run, health: OK },
+    }).api.today();
+    expect(today.activity).toMatchObject({ verdict: "Prévu 1 h 13, fait en 44 min", cut: true });
   });
 
   it("asks once for a week that Aujourd'hui and the week both need at launch", async () => {

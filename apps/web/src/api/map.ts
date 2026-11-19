@@ -298,6 +298,9 @@ function clockDuration(minutes: number): string {
   return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
 }
 
+/** Under this share of the planned time, the run was cut short: no check as for a session done as planned. */
+const CUT_SHARE = 0.8;
+
 /** After the run: what Garmin sent, against the session it matched when there is one. */
 export function toActivity(run: ActivityView, session: SessionView | null): Activity {
   const planned = session && run.sessionId === session.id ? session : null;
@@ -313,6 +316,7 @@ export function toActivity(run: ActivityView, session: SessionView | null): Acti
     verdict: planned
       ? `Prévu ${duration(Math.round(planned.durMin))}, fait en ${duration(Math.round(run.durMin))}`
       : "Course en plus, je la compte dans ta semaine.",
+    cut: planned !== null && run.durMin < CUT_SHARE * planned.durMin,
     askFeel: run.feel === undefined,
     intensity: planned ? intensityOf(planned.type) : undefined,
     feel: run.answeredFeel && FEELS[run.answeredFeel],

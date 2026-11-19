@@ -43,7 +43,11 @@ export function AfterRun({ activity, next, today }: { activity: Activity; next?:
           <Figure label={activity.mainPaceLabel} value={activity.mainPace} end />
         </dl>
         <p className="t-body hairline-top relative m-0 flex items-start gap-2 pt-4">
-          <Icon name="checkCircle" size={20} stroke={2.2} className="mt-px flex-none text-reggie" />
+          {activity.cut ? (
+            <Icon name="clock" size={20} stroke={2.2} className="mt-px flex-none text-ink-2" />
+          ) : (
+            <Icon name="checkCircle" size={20} stroke={2.2} className="mt-px flex-none text-reggie" />
+          )}
           {activity.verdict}
         </p>
       </Surface>

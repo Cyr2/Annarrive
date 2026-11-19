@@ -67,6 +67,8 @@ export const activitySchema = z.object({
   mainPaceLabel: z.string(),
   mainPace: z.string(),
   verdict: z.string(),
+  /** Well under the planned time: the verdict says it without the check of a session done as planned. */
+  cut: z.boolean().optional(),
   /** True when the watch did not record how it felt, so the app asks. */
   askFeel: z.boolean(),
   /** The matched session's type, for the card's color; a run with no session has none. */
