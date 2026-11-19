@@ -83,6 +83,9 @@ const migrations: string[] = [
   noHills,
 ];
 
+/** The version this build expects: a restored older copy is migrated at the next start. */
+export const schemaVersion = migrations.length;
+
 /** `:memory:` for tests, otherwise `annarrive.db` inside `dataDir`. */
 export function openDatabase(dataDir: string | ":memory:"): DatabaseSync {
   let path = dataDir;
