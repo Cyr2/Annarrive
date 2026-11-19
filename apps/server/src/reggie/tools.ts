@@ -7,6 +7,7 @@ import {
   localDateTimeSchema,
   paceLabel,
   painSiteSchema,
+  type Profile,
   profilePatchSchema,
   unavailableSchema,
 } from "@annarrive/protocol";
@@ -57,6 +58,9 @@ const settingPatch = profilePatchSchema.omit({ cycleTracking: true }).strict();
  * The app's actions as tools: reads, the Déplacer / Changer / Pas dispo flows and settings, all through `PlanService`
  * (hence `CoachPort` and the change log). Widgets they produce land in `widgets`, shown under Reggie's reply.
  */
+/** The timetable link is a secret (anyone holding it reads her week): it never goes to the model. */
+const withoutLink = ({ icsUrl: _, ...settings }: Profile) => settings;
+
 export function reggieTools(plan: PlanService, widgets: ChatWidget[]) {
   const run = (work: () => unknown) => answer(work, plan.todayDate());
   const changed = (response: ChangeResponse) => {
@@ -82,7 +86,7 @@ export function reggieTools(plan: PlanService, widgets: ChatWidget[]) {
       "get_program",
       "Objectif et plan (phases ; verdict sur sa cible et ses raisons : temps prédit aujourd'hui, semaines, gain demandé et gain habituel), réglages (jours sans course, horaires, coucher) et santé.",
       {},
-      () => run(() => ({ program: plan.programView(), settings: plan.profile(), health: plan.health() })),
+      () => run(() => ({ program: plan.programView(), settings: withoutLink(plan.profile()), health: plan.health() })),
     ),
     tool("get_recent", "Statut santé, sommeil, FC de repos et courses des 14 derniers jours.", {}, () =>
       run(() => plan.recent()),

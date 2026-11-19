@@ -46,6 +46,20 @@ describe("Reggie's tools", () => {
     ]);
   });
 
+  it("never hands Anna's timetable link to the model", async () => {
+    const t = prepare();
+    const link = "https://edt.univ.fr/secret-token.ics";
+    t.stores.profile.put({ id: "current", value: { ...t.services.plan.profile(), icsUrl: link } });
+    for (const x of t.tools) {
+      if (x.name.startsWith("ask_")) continue;
+      const input = x.name === "update_setting" ? { patch: { runsPerWeek: 3 } } : {};
+      const parsed = z.object(x.inputSchema).safeParse(input);
+      if (!parsed.success) continue;
+      expect(JSON.stringify(await t.call(x.name, input))).not.toContain("secret-token");
+    }
+    expect((await t.call("get_program")).json.settings.runsPerWeek).toBeDefined();
+  });
+
   it("writes paces as the app does, so Reggie copies them", async () => {
     const t = prepare();
     const steps = [
