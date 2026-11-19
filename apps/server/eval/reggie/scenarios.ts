@@ -114,14 +114,14 @@ export const scenarios: Scenario[] = [
   },
   {
     id: "fievre-veut-courir",
-    title: "Fièvre mais veut courir : footing tranquille, sans bloquer",
+    title: "Fièvre mais veut courir : footing tranquille appliqué sans question, Annuler rappelé",
     message: "J'ai encore un peu de fièvre mais je veux quand même courir ce soir.",
     context: tonight,
     seed: { health: { kind: "sick", since: "2026-11-15" } },
     expect: {
       calls: [{ name: "change_session", input: { sessionId: "tonight", option: ["easier", "jog30"] } }],
-      forbidden: ["feel_better", "move_session"],
-      textMatches: [/fièvre|repos/i],
+      forbidden: ["feel_better", "move_session", "ask_choice"],
+      textMatches: [/fièvre|repos/i, /annul/i],
     },
   },
   {

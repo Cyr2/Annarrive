@@ -68,7 +68,7 @@ const STYLE: [RegExp, string][] = [
   [/\d['’]\d\d\s*(\/km\s*)?(-|à)\s*\d['’]\d\d/, "fourchette d'allure au lieu d'une cible"],
   [/\b\d{1,2}:\d\d\b/, "heure mal notée (« 18 h 30 »)"],
   [/tu (aurais|n'aurais pas) dû|c'est dommage|tu as (raté|manqué)|rattrap(er|ons)/i, "culpabilisation"],
-  [/VO2 ?max|\bVMA\b|endurance fondamentale|séance de qualité/i, "jargon"],
+  [/VO2 ?max|\bVMA\b|\bRPE\b|\bzone [1-5]\b|lactique|endurance fondamentale|séance de qualité/i, "jargon"],
 ];
 const MAX_REPLY_CHARS = 400;
 

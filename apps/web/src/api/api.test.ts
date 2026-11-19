@@ -778,6 +778,27 @@ describe("Reggie over the server", () => {
     });
   });
 
+  it("empties the draft when the server takes its text back", async () => {
+    const body = [
+      event({ type: "text", delta: "Je regarde." }),
+      event({ type: "retract" }),
+      event({ type: "text", delta: "Jeudi." }),
+    ].join("");
+    const api = createHttpApi(
+      vi.fn(async () => new Response(chunked(body))),
+      undefined,
+      () => new Date(5),
+    );
+    const events = [];
+    for await (const e of api.chat({ text: "Quand ?" })) events.push(e);
+    expect(events).toEqual([
+      { type: "message", message: { id: "reggie-5", role: "reggie", text: "Je regarde." } },
+      { type: "message", message: { id: "reggie-5", role: "reggie", text: "" } },
+      { type: "status", status: "thinking" },
+      { type: "message", message: { id: "reggie-5", role: "reggie", text: "Jeudi." } },
+    ]);
+  });
+
   it("turns a stream error into Reggie's French message", async () => {
     const api = createHttpApi(vi.fn(async () => new Response(chunked(event({ type: "error", error: "Reggie dort" })))));
     const run = async () => {

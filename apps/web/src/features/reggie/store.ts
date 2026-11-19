@@ -18,7 +18,7 @@ export type Entry = ChatMessage & {
 
 export type ChatState = {
   messages: Entry[];
-  status: "idle" | "thinking" | "searching";
+  status: "idle" | "thinking" | "searching" | "writing";
   /** What the conversation is about, "Fractionné, ce soir 18:00", shown above it. */
   context?: string;
   /** The same, for Reggie: the screen and the session. Sent with every message. */
@@ -64,7 +64,9 @@ export function createChatStore(getApi: () => Promise<Api>, onChange: (changeId:
         set({ status: event.status });
         return;
       }
-      set((s) => ({ messages: upsert(s.messages, event.message) }));
+      // His first words replace the typing dots; the reply is still coming, so the chat stays busy.
+      const writing = event.message.role === "reggie" && event.message.text !== "";
+      set((s) => ({ messages: upsert(s.messages, event.message), status: writing ? "writing" : s.status }));
       const widget = event.message.widget;
       if (widget?.type === "change") await onChange(widget.change.changeId);
     };

@@ -17,6 +17,8 @@ import type { PlanService } from "./plan.ts";
 
 // shortcut: Reggie sees the last messages as text, not the SDK session; switch to `resume` if answers lose the thread.
 const MEMORY_SIZE = 20;
+/** Longer than a narration line (« Je regarde ta semaine. »): a reply without tools streams once it gets this long. */
+const NARRATION_CHARS = 100;
 
 const screens: Record<ChatContext["screen"], string> = {
   today: "Aujourd'hui",
@@ -74,24 +76,36 @@ export class ChatService {
     yield { type: "typing" };
     const widgets = this.#widgets;
     widgets.length = 0;
+    // Only the words after the last tool call are the answer; what comes before narrates his steps.
     let text = "";
+    let shown = 0;
+    let afterTool = false;
     try {
       const prompt = this.#prompt(earlier, request);
       for await (const event of this.#reggie({ prompt, tools: this.#tools })) {
-        // Only the words after the last tool call are the answer; what comes before narrates his steps.
-        if (event.type === "text") text += event.delta;
-        else if (event.type === "tool_call") text = "";
-        else if (event.type === "checking") {
-          yield { type: "widget", widget: { type: "checking" } };
-        }
+        if (event.type === "text") {
+          text += event.delta;
+          // The answer starts at its first word, not at the blank line agent.ts puts between two text blocks.
+          if (shown === 0) text = text.trimStart();
+          // After a tool, the text is the answer; before any, a short start may still be narration, so it waits.
+          if (text.length > shown && (afterTool || text.length >= NARRATION_CHARS)) {
+            yield { type: "text", delta: text.slice(shown) };
+            shown = text.length;
+          }
+        } else if (event.type === "tool_call") {
+          if (shown > 0) yield { type: "retract" };
+          text = "";
+          shown = 0;
+          afterTool = true;
+        } else yield { type: "widget", widget: { type: "checking" } };
       }
     } catch (error) {
       console.error(`Reggie a échoué : ${error instanceof Error ? error.name : "inconnu"}`);
       yield errorEvent(error);
       return;
     }
+    if (text.length > shown) yield { type: "text", delta: text.slice(shown) };
     const answer = text.trim();
-    if (answer) yield { type: "text", delta: answer };
     // A widget the model filled badly (an empty session, say) is dropped rather than failing the whole reply.
     const valid = widgets.filter((w) => chatWidgetSchema.safeParse(w).success);
     for (const widget of valid) yield { type: "widget", widget };
