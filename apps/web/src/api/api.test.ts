@@ -884,17 +884,17 @@ describe("push over the server", () => {
     });
     expect(await api.pushKey()).toBe("BKey");
     const subscription = {
-      endpoint: "https://push.apple.com/x",
+      endpoint: "https://web.push.apple.com/x",
       keys: { p256dh: "p", auth: "a" },
       expirationTime: null,
     };
     await api.subscribePush(subscription);
     expect(sent("POST /api/push/subscriptions")).toEqual({
-      endpoint: "https://push.apple.com/x",
+      endpoint: "https://web.push.apple.com/x",
       keys: { p256dh: "p", auth: "a" },
     });
     await expect(api.subscribePush({ endpoint: "http://x" })).rejects.toThrow("illisible");
-    await api.unsubscribePush("https://push.apple.com/x");
-    expect(sent("DELETE /api/push/subscriptions")).toEqual({ endpoint: "https://push.apple.com/x" });
+    await api.unsubscribePush("https://web.push.apple.com/x");
+    expect(sent("DELETE /api/push/subscriptions")).toEqual({ endpoint: "https://web.push.apple.com/x" });
   });
 });

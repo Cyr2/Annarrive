@@ -7,8 +7,8 @@ const KEY = "BAQD_w";
 
 function fakeEnv(over: Partial<PushEnv> = {}, held = false) {
   const subscription = {
-    endpoint: "https://push.apple.com/x",
-    toJSON: () => ({ endpoint: "https://push.apple.com/x", keys: { p256dh: "p", auth: "a" } }),
+    endpoint: "https://web.push.apple.com/x",
+    toJSON: () => ({ endpoint: "https://web.push.apple.com/x", keys: { p256dh: "p", auth: "a" } }),
     unsubscribe: vi.fn(async () => true),
   };
   const manager = {
@@ -53,7 +53,7 @@ describe("push subscription", () => {
   it("sends the held subscription again at each start", async () => {
     const api = fakeApi();
     expect(await checkPush(api, fakeEnv({}, true).env)).toEqual({ status: "on", key: KEY });
-    expect(api.subscribePush).toHaveBeenCalledWith(expect.objectContaining({ endpoint: "https://push.apple.com/x" }));
+    expect(api.subscribePush).toHaveBeenCalledWith(expect.objectContaining({ endpoint: "https://web.push.apple.com/x" }));
   });
 
   it("asks permission on the tap, subscribes with the server key, then unsubscribes", async () => {
@@ -76,7 +76,7 @@ describe("push subscription", () => {
 
     manager.getSubscription.mockResolvedValue(subscription);
     await push.getState().toggle(false);
-    expect(api.unsubscribePush).toHaveBeenCalledWith("https://push.apple.com/x");
+    expect(api.unsubscribePush).toHaveBeenCalledWith("https://web.push.apple.com/x");
     expect(subscription.unsubscribe).toHaveBeenCalled();
     expect(push.getState().status).toBe("off");
   });

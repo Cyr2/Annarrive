@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PushMessage, PushSender } from "../src/services/notifications.ts";
 import { session, setup } from "./helpers.ts";
 
-const subscription = { endpoint: "https://push.test/anna", keys: { p256dh: "p256", auth: "secret" } };
+const subscription = { endpoint: "https://web.push.apple.com/anna", keys: { p256dh: "p256", auth: "secret" } };
 const fixture = (name: string) => readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8");
 
 function pushSetup(send: PushSender = vi.fn(async () => undefined), ics?: () => Promise<string>) {
@@ -40,6 +40,27 @@ describe("push subscription routes", () => {
       (await t.call("POST", "/api/push/subscriptions", { ...subscription, endpoint: "http://x.test" })).status,
     ).toBe(400);
     expect((await t.call("GET", "/api/push/key")).json).toEqual({ publicKey: null });
+  });
+
+  it("accepts only the browsers' push services, so the server never posts to a host of someone's choosing", async () => {
+    const t = setup();
+    await t.login();
+    const post = (endpoint: string) => t.call("POST", "/api/push/subscriptions", { ...subscription, endpoint });
+    for (const ok of [
+      "https://web.push.apple.com/QF8x",
+      "https://fcm.googleapis.com/fcm/send/abc",
+      "https://updates.push.services.mozilla.com/wpush/v2/abc",
+      "https://wns2-par02p.notify.windows.com/w/?token=abc",
+    ])
+      expect((await post(ok)).status).toBe(204);
+    for (const bad of [
+      "https://evil.test/push",
+      "https://web.push.apple.com.evil.test/x",
+      "https://evilpush.services.mozilla.com/x",
+      "https://notify.windows.com.evil.test/x",
+      "https://user@evil.test/web.push.apple.com",
+    ])
+      expect((await post(bad)).status).toBe(400);
   });
 });
 
