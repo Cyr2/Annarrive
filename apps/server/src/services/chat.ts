@@ -9,7 +9,7 @@ import {
   chatWidgetSchema,
 } from "@annarrive/protocol";
 import { AppError } from "../errors.ts";
-import type { ReggieRun } from "../reggie/agent.ts";
+import type { ReggieEvent, ReggieRun } from "../reggie/agent.ts";
 import { type ReggieTool, reggieTools } from "../reggie/tools.ts";
 import type { Stores } from "../storage/stores.ts";
 import { addDays, type Clock, dateOf, frenchMoment, toParisLocal } from "../time.ts";
@@ -37,6 +37,43 @@ function errorEvent(error: unknown): ChatStreamEvent {
   return error.status === 503
     ? { type: "error", error: error.message, retry: false }
     : { type: "error", error: error.message };
+}
+
+/**
+ * What Anna sees of a Reggie turn as it is written. Only the words after the last tool call are the answer; what
+ * comes before narrates his steps. `text` is the answer so far.
+ */
+class Screen {
+  text = "";
+  #shown = 0;
+  #afterTool = false;
+
+  tool(): ChatStreamEvent[] {
+    const shown = this.#shown > 0;
+    this.text = "";
+    this.#shown = 0;
+    this.#afterTool = true;
+    return shown ? [{ type: "retract" }] : [];
+  }
+
+  write(delta: string): ChatStreamEvent[] {
+    // The answer starts at its first word, not at the blank line agent.ts puts between two text blocks.
+    this.text = this.#shown === 0 ? (this.text + delta).trimStart() : this.text + delta;
+    // After a tool, the text is the answer; before any, a short start may still be narration, so it waits.
+    return this.#afterTool || this.text.length >= NARRATION_CHARS ? this.flush() : [];
+  }
+
+  flush(): ChatStreamEvent[] {
+    const rest = this.text.slice(this.#shown);
+    this.#shown = this.text.length;
+    return rest ? [{ type: "text", delta: rest }] : [];
+  }
+
+  see(event: ReggieEvent): ChatStreamEvent[] {
+    if (event.type === "tool_call") return this.tool();
+    if (event.type === "checking") return [{ type: "widget", widget: { type: "checking" } }];
+    return this.write(event.delta);
+  }
 }
 
 export class ChatService {
@@ -76,36 +113,17 @@ export class ChatService {
     yield { type: "typing" };
     const widgets = this.#widgets;
     widgets.length = 0;
-    // Only the words after the last tool call are the answer; what comes before narrates his steps.
-    let text = "";
-    let shown = 0;
-    let afterTool = false;
+    const screen = new Screen();
     try {
       const prompt = this.#prompt(earlier, request);
-      for await (const event of this.#reggie({ prompt, tools: this.#tools })) {
-        if (event.type === "text") {
-          text += event.delta;
-          // The answer starts at its first word, not at the blank line agent.ts puts between two text blocks.
-          if (shown === 0) text = text.trimStart();
-          // After a tool, the text is the answer; before any, a short start may still be narration, so it waits.
-          if (text.length > shown && (afterTool || text.length >= NARRATION_CHARS)) {
-            yield { type: "text", delta: text.slice(shown) };
-            shown = text.length;
-          }
-        } else if (event.type === "tool_call") {
-          if (shown > 0) yield { type: "retract" };
-          text = "";
-          shown = 0;
-          afterTool = true;
-        } else yield { type: "widget", widget: { type: "checking" } };
-      }
+      for await (const event of this.#reggie({ prompt, tools: this.#tools })) yield* screen.see(event);
     } catch (error) {
       console.error(`Reggie a échoué : ${error instanceof Error ? error.name : "inconnu"}`);
       yield errorEvent(error);
       return;
     }
-    if (text.length > shown) yield { type: "text", delta: text.slice(shown) };
-    const answer = text.trim();
+    yield* screen.flush();
+    const answer = screen.text.trim();
     // A widget the model filled badly (an empty session, say) is dropped rather than failing the whole reply.
     const valid = widgets.filter((w) => chatWidgetSchema.safeParse(w).success);
     for (const widget of valid) yield { type: "widget", widget };
