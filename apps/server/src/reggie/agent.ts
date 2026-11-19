@@ -3,6 +3,8 @@ import {
   type HookCallback,
   type Options,
   type query as sdkQuery,
+  type startup as sdkStartup,
+  type WarmQuery,
 } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
 import { AppError } from "../errors.ts";
@@ -17,6 +19,7 @@ export type ReggieEvent =
 
 export type ReggieRun = (input: { prompt: string; tools: ReggieTool[] }) => AsyncIterable<ReggieEvent>;
 export type QueryFn = typeof sdkQuery;
+export type StartupFn = typeof sdkStartup;
 
 /** `sonnet` or `opus`; the alias follows the newest model of each family. */
 export const reggieModelSchema = z.enum(["sonnet", "opus"]).default("sonnet");
@@ -159,11 +162,23 @@ export function eventsOf(message: unknown): Internal[] {
   return [];
 }
 
-/** One Reggie turn through the Agent SDK; `query` is injected so tests never reach the network. */
-export function createReggie(query: QueryFn, env: NodeJS.ProcessEnv = process.env): ReggieRun {
+/**
+ * One Reggie turn through the Agent SDK; `query` and `startup` are injected so tests never reach the network.
+ * With `startup`, each turn leaves a started process behind for the next one (same tools), so the next message
+ * skips the process start. shortcut: one spare at a time; two messages at once, the second starts cold.
+ */
+export function createReggie(query: QueryFn, env: NodeJS.ProcessEnv = process.env, startup?: StartupFn): ReggieRun {
+  let spare: { tools: ReggieTool[]; warm: Promise<WarmQuery> } | undefined;
+  const open = async (prompt: string, tools: ReggieTool[]) => {
+    const warm = spare?.tools === tools ? spare.warm : undefined;
+    if (spare && !warm) void spare.warm.then((w) => w.close(), noop);
+    spare = undefined;
+    const cold = () => query({ prompt, options: reggieOptions(tools, env) });
+    return warm ? warm.then((w) => w.query(prompt), cold) : cold();
+  };
   return async function* ({ prompt, tools }) {
     let wrote = false;
-    for await (const message of query({ prompt, options: reggieOptions(tools, env) })) {
+    for await (const message of await open(prompt, tools)) {
       for (const event of eventsOf(message)) {
         if (event.type !== "text_block") {
           wrote ||= event.type === "text";
@@ -171,5 +186,12 @@ export function createReggie(query: QueryFn, env: NodeJS.ProcessEnv = process.en
         } else if (wrote) yield { type: "text", delta: "\n\n" };
       }
     }
+    if (startup) {
+      const warm = startup({ options: reggieOptions(tools, env) });
+      warm.catch(noop); // a spare that fails to start only means a cold start next time
+      spare = { tools, warm };
+    }
   };
 }
+
+const noop = () => {};

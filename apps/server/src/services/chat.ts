@@ -10,7 +10,7 @@ import {
 } from "@annarrive/protocol";
 import { AppError } from "../errors.ts";
 import type { ReggieRun } from "../reggie/agent.ts";
-import { reggieTools } from "../reggie/tools.ts";
+import { type ReggieTool, reggieTools } from "../reggie/tools.ts";
 import type { Stores } from "../storage/stores.ts";
 import { addDays, type Clock, dateOf, frenchMoment, toParisLocal } from "../time.ts";
 import type { PlanService } from "./plan.ts";
@@ -39,16 +39,19 @@ function errorEvent(error: unknown): ChatStreamEvent {
 
 export class ChatService {
   readonly #stores: Stores;
-  readonly #plan: PlanService;
   readonly #reggie: ReggieRun;
   readonly #clock: Clock;
+  // The same tools for every message, so Reggie's next process can start before Anna writes (agent.ts).
+  // shortcut: one reply's widgets at a time; two messages sent at once would share them.
+  readonly #widgets: ChatWidget[] = [];
+  readonly #tools: ReggieTool[];
   #sequence = 0;
 
   constructor(stores: Stores, plan: PlanService, reggie: ReggieRun, clock: Clock) {
     this.#stores = stores;
-    this.#plan = plan;
     this.#reggie = reggie;
     this.#clock = clock;
+    this.#tools = reggieTools(plan, this.#widgets);
   }
 
   /** One Paris day of the conversation (today by default), and the day before it that has messages. */
@@ -69,11 +72,12 @@ export class ChatService {
     const earlier = this.#stores.chatMessage.list().slice(-MEMORY_SIZE);
     this.#save("anna", request.text, [], request.context);
     yield { type: "typing" };
-    const widgets: ChatWidget[] = [];
+    const widgets = this.#widgets;
+    widgets.length = 0;
     let text = "";
     try {
       const prompt = this.#prompt(earlier, request);
-      for await (const event of this.#reggie({ prompt, tools: reggieTools(this.#plan, widgets) })) {
+      for await (const event of this.#reggie({ prompt, tools: this.#tools })) {
         // Only the words after the last tool call are the answer; what comes before narrates his steps.
         if (event.type === "text") text += event.delta;
         else if (event.type === "tool_call") text = "";

@@ -104,7 +104,8 @@ Pourquoi ce découpage :
   - Pendant la recherche, l'écran affiche « Je vérifie » pour que l'attente soit comprise.
 - Hormis cette recherche encadrée, aucun outil générique (pas de fichiers, pas de terminal). Ses seuls outils sont les actions de l'app : lire le plan et la semaine, lire les données récentes, proposer des créneaux, déplacer, changer, pas dispo, modifier un réglage. Chaque action passe par `packages/coach`, qui refuse tout ce qui casse une règle.
 - Répond en texte court plus des widgets (boutons de réponse, curseur, créneaux, aperçu de séance, carte de changement), décrits dans `docs/interactions.md`.
-- Modèle : choisi sur des faits. Un jeu de 20 scénarios réels (douleur, malade, déplacer, pourquoi cette allure, demande hors règles) est passé sur Sonnet 5.5 (`sonnet`) et Opus 5.5 (`opus`). On garde Sonnet 5.5 s'il fait aussi bien (plus rapide en conversation), sinon Opus 5.5. Vérifier l'identifiant exact du modèle dans la doc avant de le figer.
+- Modèle : choisi sur des faits. Un jeu de 20 scénarios réels (douleur, malade, déplacer, pourquoi cette allure, demande hors règles) est passé sur Sonnet 5.5 (`sonnet`) et Opus 5.5 (`opus`). On garde Sonnet 5.5 s'il fait aussi bien (plus rapide en conversation), sinon Opus 5.5. Vérifier l'identifiant exact du modèle dans la doc avant de le figer. Le jeu compte 31 scénarios (`pnpm --filter @annarrive/server eval:reggie`, 20 par défaut) ; `eval:latency` chronomètre 5 messages typiques.
+- Latence : chaque réponse laisse un processus du SDK déjà démarré pour la suivante (`startup()`), ce qui retire environ 0,4 s au message suivant ; il garde 250 Mo environ en mémoire tant qu'il attend.
 
 ## Données
 

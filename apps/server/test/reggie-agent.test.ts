@@ -6,6 +6,7 @@ import {
   type QueryFn,
   type ReggieEvent,
   reggieOptions,
+  type StartupFn,
   sdkEnv,
   webGuard,
 } from "../src/reggie/agent.ts";
@@ -180,6 +181,39 @@ describe("Reggie's stream", () => {
       { type: "text", delta: "Repos ce soir." },
     ]);
     expect(seen[0]).toMatchObject({ prompt: "Salut", options: { permissionMode: "dontAsk" } });
+  });
+
+  it("starts the next turn's process after each turn and uses it for the same tools only", async () => {
+    const answer = [{ type: "result", subtype: "success", result: "Ok." }];
+    const coldPrompts: unknown[] = [];
+    const warmPrompts: unknown[] = [];
+    const closed = vi.fn();
+    const startup = vi.fn(async () => ({
+      query: (prompt: string) => {
+        warmPrompts.push(prompt);
+        return fakeQuery(answer)({ prompt });
+      },
+      close: closed,
+    })) as unknown as StartupFn;
+    const run = createReggie(fakeQuery(answer, coldPrompts), env, startup);
+    const same = tools();
+    await collect(run({ prompt: "un", tools: same }));
+    await collect(run({ prompt: "deux", tools: same }));
+    await collect(run({ prompt: "trois", tools: tools() }));
+    expect(coldPrompts.map((p) => (p as { prompt: string }).prompt)).toEqual(["un", "trois"]);
+    expect(warmPrompts).toEqual(["deux"]);
+    expect(startup).toHaveBeenCalledTimes(3);
+    await vi.waitFor(() => expect(closed).toHaveBeenCalledTimes(1));
+  });
+
+  it("starts cold when the spare process failed to start", async () => {
+    const seen: unknown[] = [];
+    const startup = vi.fn(async () => Promise.reject(new Error("spawn"))) as unknown as StartupFn;
+    const run = createReggie(fakeQuery([{ type: "result", subtype: "success" }], seen), env, startup);
+    const same = tools();
+    await collect(run({ prompt: "un", tools: same }));
+    await collect(run({ prompt: "deux", tools: same }));
+    expect(seen).toHaveLength(2);
   });
 
   it("fails on an error result, such as too many turns", async () => {

@@ -10,6 +10,7 @@
     "test": "vitest run --coverage",
     "typecheck": "tsc -p .",
     "eval:reggie": "node --env-file-if-exists=../../.env --import tsx eval/reggie/run.ts",
+    "eval:latency": "node --env-file-if-exists=../../.env --import tsx eval/reggie/latency.ts",
     "lighthouse": "tsx src/cli/lighthouse.ts",
     "incidents": "node --env-file-if-exists=../../.env --import tsx src/cli/incidents.ts",
     "level": "node --env-file-if-exists=../../.env --import tsx src/cli/level.ts",

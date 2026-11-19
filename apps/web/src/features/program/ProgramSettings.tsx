@@ -1,5 +1,5 @@
+import { PRIVACY_NOTE } from "@annarrive/protocol";
 import type { Program, Settings } from "../../api/schemas.ts";
-import { PRIVACY_NOTE } from "../../lib/privacy.ts";
 import { Group, RowButton, Section } from "../../ui/List.tsx";
 import { TextButton } from "../../ui/TextButton.tsx";
 import { strengthShort } from "../add/add.ts";
