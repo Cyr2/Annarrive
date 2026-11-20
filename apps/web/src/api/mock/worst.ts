@@ -23,7 +23,11 @@ function crowdedDay(date: string): CalendarEvent[] {
     date,
     start: `${8 + i}:00`,
     end: `${8 + i}:50`,
-    title: i % 2 ? "Méthodologie de la recherche en sciences humaines et sociales" : `TD ${i + 1}`,
+    // Every UE and none: the pills, and the most dots a day of the strip can get.
+    title:
+      i % 2
+        ? "Méthodologie de la recherche en sciences humaines et sociales"
+        : `(M1M2E G3 NL) UE${((i / 2) % 4) + 1} TD ${i + 1}`,
   }));
 }
 

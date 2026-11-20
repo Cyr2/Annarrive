@@ -5,7 +5,7 @@ import { Dot } from "./bits.tsx";
 import { Surface } from "./Surface.tsx";
 import { TONES, type Tone } from "./tones.ts";
 
-/** A thing planned on a day: a run draws a bar of its length, strength a small square, the rest a dot. */
+/** A thing planned on a day: a run draws a bar of its length, strength a small ring, the rest a dot. */
 export type StripMark = { id: string; tone: Tone; minutes?: number };
 
 export type StripDay = {
@@ -83,11 +83,9 @@ export function WeekStrip({ days, label, onSelect, footer }: Props) {
               aria-hidden="true"
               data-bars={day.key}
               className="flex origin-bottom items-end justify-center gap-0.5"
-              style={{ height: tall ? BAR : 8 }}
+              style={tall ? { height: BAR } : { minHeight: 8 }}
             >
-              {day.marks.map((mark) => (
-                <Mark key={mark.id} mark={mark} scale={BAR / heaviest} />
-              ))}
+              <DayMarks marks={day.marks} scale={BAR / heaviest} />
             </span>
           </a>
         ))}
@@ -156,6 +154,27 @@ function useStripMotion(days: StripDay[], scale: number) {
   return nav;
 }
 
+/** The runs' bars side by side, then the dots three a line from the bottom up: four UEs still fit a column at 320. */
+function DayMarks({ marks, scale }: { marks: StripMark[]; scale: number }) {
+  const dots = marks.filter((mark) => !mark.minutes);
+  return (
+    <>
+      {marks
+        .filter((mark) => mark.minutes)
+        .map((mark) => (
+          <Mark key={mark.id} mark={mark} scale={scale} />
+        ))}
+      {dots.length > 0 && (
+        <span className="flex max-w-[22px] flex-wrap-reverse justify-center gap-0.5">
+          {dots.map((mark) => (
+            <Mark key={mark.id} mark={mark} scale={scale} />
+          ))}
+        </span>
+      )}
+    </>
+  );
+}
+
 function Mark({ mark, scale }: { mark: StripMark; scale: number }) {
   if (mark.minutes)
     return (
@@ -165,6 +184,8 @@ function Mark({ mark, scale }: { mark: StripMark; scale: number }) {
         style={{ height: barHeight(mark.minutes, scale), background: barFill(TONES[mark.tone].color) }}
       />
     );
-  if (mark.tone === "strength") return <span className={cx("size-2 rounded-[3px]", TONES.strength.mid)} />;
-  return <Dot size="md" className={TONES[mark.tone].mid} />;
+  // Strength is a small mauve ring, its outline as on its row; the rest a dot of its color (a class, of its UE).
+  if (mark.tone === "strength")
+    return <span className="size-1.5 flex-none rounded-full border-[1.5px] border-strength" />;
+  return <Dot className={TONES[mark.tone].mid} />;
 }

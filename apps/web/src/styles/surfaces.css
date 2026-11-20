@@ -96,6 +96,10 @@
     -webkit-backdrop-filter: var(--surface-sheet-blur);
     backdrop-filter: var(--surface-sheet-blur);
   }
+  /* A strength row (features/week/WeekItem.tsx): its 1 px edge is a fine mauve outline, the way it is recognized. */
+  .surface.event-strength::before {
+    background: var(--color-strength-line);
+  }
   /* On a sheet a group is brighter glass with no blur of its own: one blur, never glass blurring glass. */
   .surface[data-variant="sheet"] .surface:is([data-variant="inset"], [data-variant="widget"]) {
     background: var(--surface-on-sheet);

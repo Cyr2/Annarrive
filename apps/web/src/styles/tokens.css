@@ -59,13 +59,28 @@
   --color-revision-wash: #c9eaee; /* ink 10.6:1, secondary 5.9:1 */
   --color-revision: #5fbec9;
   --color-revision-deep: #155a63; /* 6.2:1 on wash */
-  /* A slate blue, apart from the class grey: a week's strength reads at a glance against her classes. */
-  --color-strength-wash: #e8edf5;
-  --color-strength: #8496b3;
-  --color-strength-deep: #3b4d6b; /* 7.6:1, 6.5:1 on wash */
+  /* A soft mauve, apart from the runs and the UEs: strength reads by its fine outline and its dumbbell. */
+  --color-strength-wash: #e6e2ee;
+  --color-strength: #8c7bb0;
+  --color-strength-deep: #4f4378; /* 8.7:1, 6.9:1 on wash */
+  --color-strength-line: #cbc4db; /* the 1 px outline of a strength row: the mauve at 45 % on white */
   --color-class-wash: #f1f2f4;
   --color-class: #c4cad1;
   --color-class-deep: #434e5a; /* the secondary ink: classes are the backdrop of her week */
+  /* ---- Teaching units (UE1 to UE4 in her timetable): softer than the runs, never mistaken for one. A class wears
+     its UE as a pill (deep on wash) and a dot in the week strip (mid). ---- */
+  --color-ue1: #c66f80;
+  --color-ue1-wash: #fbe9ee;
+  --color-ue1-deep: #9a4458; /* 5.4:1 on wash */
+  --color-ue2: #8a9a4f;
+  --color-ue2-wash: #eef1dd;
+  --color-ue2-deep: #55652a; /* 5.6:1 on wash */
+  --color-ue3: #6e9aae;
+  --color-ue3-wash: #e4eff3;
+  --color-ue3-deep: #3b6476; /* 5.6:1 on wash */
+  --color-ue4: #c99a4a;
+  --color-ue4-wash: #f8eedb;
+  --color-ue4-deep: #80601f; /* 5.1:1 on wash */
 
   /* ---- Surfaces (Surface.tsx): content glass. Half white, so the sky's color fields tint it as it scrolls; the
      blur and saturation make that tint glow, the rim and the sheen give it an edge and a light. Text on it stays
