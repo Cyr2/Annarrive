@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import type { Strength } from "../../api/schemas.ts";
 import { addDays, mondayOf } from "../../lib/date.ts";
+import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 import { Switch } from "../../ui/controls.tsx";
 import { DayChips } from "../../ui/DayChips.tsx";
-import { Group, RowInput, RowSelect, Section } from "../../ui/List.tsx";
+import { Group, RowDuration, RowInput, RowSelect, Section } from "../../ui/List.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
 import { TextButton } from "../../ui/TextButton.tsx";
-import { TimeBoxes } from "../../ui/TimeBoxes.tsx";
 import { REPEATS, TITLE_MAX } from "../add/add.ts";
 import { todayOf } from "../plan/selectors.ts";
 import { usePlan } from "../plan/store.ts";
@@ -51,31 +51,26 @@ function StrengthForm({ saved, sheet }: FormProps) {
   const run = async (action: Parameters<typeof apply>[0]) => {
     if (await apply(action)) sheet.onOpenChange(false);
   };
-  const footer = !saved ? undefined : confirm ? (
-    <>
-      <span className="t-strong text-center">Supprimer {saved.name} ?</span>
-      <Group>
-        <TextButton
-          tone="danger"
-          className="min-h-13 w-full"
-          onClick={() => void run((api) => api.deleteStrength(saved.id, "all", thisWeek(saved)))}
-        >
-          Cette semaine et les suivantes
-        </TextButton>
-        <TextButton
-          tone="danger"
-          className="hairline-top min-h-13 w-full"
-          onClick={() => void run((api) => api.deleteStrength(saved.id, "one", thisWeek(saved)))}
-        >
-          Cette semaine seulement
-        </TextButton>
-      </Group>
-    </>
-  ) : (
+  const footer = saved && (
     <Group>
       <TextButton tone="danger" className="min-h-13 w-full" onClick={() => setConfirm(true)}>
         Supprimer la séance
       </TextButton>
+      <ConfirmDialog
+        open={confirm}
+        onClose={() => setConfirm(false)}
+        title={`Supprimer ${saved.name} ?`}
+        actions={[
+          {
+            label: "Cette semaine et les suivantes",
+            onClick: () => void run((api) => api.deleteStrength(saved.id, "all", thisWeek(saved))),
+          },
+          {
+            label: "Cette semaine seulement",
+            onClick: () => void run((api) => api.deleteStrength(saved.id, "one", thisWeek(saved))),
+          },
+        ]}
+      />
     </Group>
   );
   return (
@@ -113,15 +108,14 @@ function StrengthForm({ saved, sheet }: FormProps) {
       </Section>
       <Group>
         <RowInput label="Heure" type="time" value={draft.start} onChange={(start) => set({ start })} />
+        <RowDuration
+          label="Durée"
+          minutes={draft.durationMin}
+          maxHours={MAX_HOURS}
+          onChange={(durationMin) => set({ durationMin })}
+        />
         <RowSelect label="Répéter" value={draft.repeat} options={REPEATS} onChange={(repeat) => set({ repeat })} />
       </Group>
-      <Section title="Durée">
-        <TimeBoxes
-          seconds={draft.durationMin * 60}
-          maxHours={MAX_HOURS}
-          onChange={(s) => set({ durationMin: s / 60 })}
-        />
-      </Section>
     </Sheet>
   );
 }

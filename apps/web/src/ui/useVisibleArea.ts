@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { keyboardInset } from "../lib/keyboard.ts";
 
 type Area = { top: number; height: number };
 
@@ -21,9 +22,11 @@ export function useVisibleArea(): Area | undefined {
       // A rotation changes the width: the tallest height is measured again.
       if (window.innerWidth !== width) [width, tallest] = [window.innerWidth, 0];
       tallest = Math.max(tallest, window.innerHeight);
-      setArea(
-        viewport.height < tallest - KEYBOARD_MIN ? { top: viewport.offsetTop, height: viewport.height } : undefined,
-      );
+      // iOS: measured against the layout viewport, which fixed elements are placed in and which never shrinks.
+      const covered =
+        keyboardInset(document.documentElement.clientHeight, viewport) > KEYBOARD_MIN ||
+        viewport.height < tallest - KEYBOARD_MIN;
+      setArea(covered ? { top: viewport.offsetTop, height: viewport.height } : undefined);
     };
     measure();
     viewport.addEventListener("resize", measure);

@@ -113,22 +113,22 @@ Garde **le moment**, change **le contenu**. Ne propose jamais une séance plus d
   - **Placer** ouvre jour et heure (pré-remplis sur son habitude), puis « Ajouter ».
   - Tap sur la ligne : modifier la séance.
   - « Nouvelle séance de muscu » : nom, case jambes, jour, heure, durée, répétition.
-- **Révision** : durée en cases « h » et « min » (2 h par défaut), jour, heure, répétition. Ajouter reste grisé à 0 min ou si la révision passe minuit.
+- **Révision** : jour, heure, durée sur la roue native d'iOS, lue « 2 h » (2 h par défaut, jusqu'à 8 h), répétition. Ajouter reste grisé à 0 min ou si la révision passe minuit.
 - **Occupée** : un titre facultatif (« Soirée chez Léa »), jour, heure de début et de fin. L'app ne place rien dessus.
 
 Après ajout, si une course entre en conflit, Reggie la déplace, même si elle est ce soir, et le bandeau dit laquelle et pourquoi : « Muscu ajoutée · Sortie longue passée à dimanche 19:00 : moins de 24 h après ta séance jambes ». Une muscu n'est « jambes » que si l'interrupteur est activé.
 
 ### Feuille « Séance de muscu »
 
-- Nom, « Travaille les jambes » (interrupteur), jour (7 puces), heure, répéter (jamais, chaque semaine, toutes les deux semaines), durée en cases « h » et « min » (jusqu'à 4 h). OK reste grisé à 0 min.
+- Nom, « Travaille les jambes » (interrupteur), jour (7 puces), heure, répéter (jamais, chaque semaine, toutes les deux semaines), durée sur la roue native d'iOS, lue « 1 h 30 » (jusqu'à 4 h). OK reste grisé à 0 min.
 - OK enregistre. Annuler ferme sans rien changer.
-- Supprimer la séance demande une confirmation : « Supprimer Jambes ? Cette semaine et les suivantes » ou « Cette semaine seulement ».
+- Supprimer la séance ouvre une alerte de confirmation (`ConfirmDialog`) : « Supprimer Jambes ? », « Cette semaine et les suivantes », « Cette semaine seulement » et Annuler. Le bouton Supprimer ne change pas.
 
 ## Programme
 
 | Élément | Au tap | Ce qui se passe |
 |---|---|---|
-| Pastille « Ambitieux » ou « Atteignable » (carte de l'objectif) | Une petite bulle explique le verdict en mots simples : son niveau aujourd'hui (temps prédit sur la course), le gain que sa cible demande sur les semaines d'entraînement du plan, et le gain habituel sur cette durée. Jamais un chrono proposé (algo.md P20). « OK » ou un tap à côté la ferme. Tant qu'elle est ouverte, la page derrière ne défile pas | « En parler avec Reggie » ouvre Reggie, à propos de l'objectif, et envoie « Pourquoi mon objectif est ambitieux ? Qu'est-ce que je peux faire ? » (ou « Mon objectif est atteignable : comment je m'y prends ? »). Pendant l'onboarding, la pastille informe seulement : elle n'a pas de chevron |
+| Pastille « Ambitieux » ou « Atteignable » (carte de l'objectif) | Une feuille « Pourquoi atteignable ? » (ou « ambitieux ») explique le verdict en mots simples : son niveau aujourd'hui (temps prédit sur la course), le gain que sa cible demande sur les semaines d'entraînement du plan, et le gain habituel sur cette durée. Jamais un chrono proposé (algo.md P20). « Fermer », un tap à côté ou un tirage vers le bas la ferme, comme toute feuille. Tant qu'elle est ouverte, la page derrière ne défile pas | « En parler avec Reggie » ouvre Reggie, à propos de l'objectif, et envoie « Pourquoi mon objectif est ambitieux ? Qu'est-ce que je peux faire ? » (ou « Mon objectif est atteignable : comment je m'y prends ? »). Pendant l'onboarding, la pastille informe seulement : elle n'a pas de chevron |
 | Modifier l'objectif | Reprend les écrans de création du programme, pré-remplis, avec l'heure de départ de la course | Avant validation, un résumé montre ce qui change (« 2 semaines de plus, chrono visé atteignable »). Les semaines à venir sont recalculées, la semaine en cours garde ce qu'Anna a déjà déplacé. Une course dans les 7 jours, nouvelle ou retirée, refait aussi ce qui reste de la semaine en cours (algo.md EV20) ; le résumé le dit : « Ta semaine devient une semaine de course : rien de dur dans les 3 jours avant. » |
 | Ton dernier chrono | Feuille : distance, temps (h, min), « Quand » (moins de 3 mois, 3 à 6 mois, plus de 6 mois, estimation), Enregistrer | Son niveau est recalculé avec ce chrono (algo.md F10) et les séances à venir prennent les nouvelles allures : aucune séance n'est ajoutée, déplacée ni retirée, la séance du jour décidée ne change pas (EV14, P25). Bandeau « Allures recalculées avec ton chrono · Annuler » |
 | Courses par semaine, jours sans course, sortie longue, pas avant, pas après, heure de coucher | Chaque réglage ouvre la même feuille : le choix (boutons ou jours à cocher), puis Enregistrer. Rien ne change avant Enregistrer. Sortie longue : plusieurs jours possibles (samedi et dimanche par défaut à l'onboarding) | La semaine en cours et les suivantes sont réorganisées en un seul changement ; la sortie longue va sur le plus libre des jours cochés. Bandeau « Reggie a réorganisé ta semaine » avec Annuler, qui rend exactement la semaine d'avant. Le bandeau ne compte pas de courses déplacées : les durées et les types changent aussi |
@@ -138,7 +138,7 @@ Après ajout, si une course entre en conflit, Reggie la déplace, même si elle 
 | Sommeil et fréquence cardiaque | Interrupteur | Désactivé : l'algo n'utilise plus que le ressenti pour adapter les séances |
 | Cycle menstruel | Interrupteur | Activé : explication et accord demandés d'abord. L'app ne change jamais les séances selon la phase du cycle. Seuls les symptômes qu'Anna signale comptent |
 | Notifications | Réglages iOS de l'app | Rien ne change dans le plan |
-| Arrêter ce programme | Confirmation « Arrêter le programme Semi-marathon ? » | Passe en mode entretien : 2 à 3 courses faciles par semaine, une séance de qualité |
+| Arrêter ce programme | Alerte de confirmation « Arrêter ton plan semi-marathon ? », avec « Arrêter le programme » et Annuler | Passe en mode entretien : 2 à 3 courses faciles par semaine, une séance de qualité |
 | Signaler un souci (tout en bas) | Champ facultatif, bouton d'envoi dedans à droite | Ses 50 derniers gestes (écrans, boutons touchés, appels au serveur) partent au journal des incidents avec sa phrase, même vide. Rien ne change dans le plan. Bandeau « Merci, c'est envoyé. » ; hors ligne, « Merci. Il partira dès que tu auras du réseau. » et l'envoi part au retour du réseau |
 
 ## Reggie (la conversation)

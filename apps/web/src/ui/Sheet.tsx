@@ -21,6 +21,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { EXIT_SHEET, FADE_REDUCED, SPRING_SHEET } from "../lib/motion.ts";
+import { lockScroll, revealDelta } from "../lib/overlay.ts";
 import { Icon } from "./Icon.tsx";
 import { handOffSheet, sheetOnScreen } from "./sheetHandoff.ts";
 import { TextButton } from "./TextButton.tsx";
@@ -76,8 +77,9 @@ const SLOP = 8;
 
 const FOCUSABLE =
   'button:not(:disabled), [href], input:not(:disabled), select, textarea, [tabindex]:not([tabindex="-1"])';
-/** What keeps its own drag: the handle (Motion takes it from the press), fields, sliders. */
-const NO_PULL = "[data-sheet-handle], input, textarea, select, [role='slider']";
+/** What keeps its own drag: the handle (Motion takes it from the press), fields, sliders, switches. A switch's
+    thumb slid a little downward used to start the sheet's pull too: both moved under the finger, in frost. */
+const NO_PULL = "[data-sheet-handle], input, textarea, select, [role='slider'], [role='switch']";
 
 /** Tab from the last control comes back to the first one (and Shift+Tab the other way): focus never leaves. */
 function keepFocusIn(panel: HTMLElement, event: KeyboardEvent) {
@@ -197,6 +199,39 @@ function useFrostWhileMoving(panel: RefObject<HTMLElement | null>, y: MotionValu
   };
 }
 
+/**
+ * While it is the sheet on screen, the page under it stays put (iOS scrolls it otherwise, from the scrim or a
+ * list at its end), and a focused field stays in sight above the keyboard: when the keyboard comes, changes
+ * height, or another field takes the focus, the content scrolls just enough.
+ */
+function useStillPage(panel: RefObject<HTMLElement | null>, area: unknown, active: boolean, still: boolean) {
+  useEffect(() => {
+    const element = panel.current;
+    if (!element || !active) return;
+    return lockScroll(element);
+  }, [panel, active]);
+  const reveal = useCallback(() => {
+    const body = panel.current?.querySelector<HTMLElement>(":scope > [data-sheet-part='body']");
+    const field = document.activeElement;
+    if (!body || !(field instanceof HTMLElement) || !body.contains(field) || !field.matches("input, textarea, select"))
+      return;
+    // The whole row, its label with it.
+    const box = (field.closest(".row, .ui-field") ?? field).getBoundingClientRect();
+    const top = revealDelta(box, body.getBoundingClientRect());
+    if (top) body.scrollBy({ top, behavior: still ? "instant" : "smooth" });
+  }, [panel, still]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the visible area changing is what calls for it
+  useLayoutEffect(reveal, [area, reveal]);
+  useEffect(() => {
+    const element = panel.current;
+    if (!element || !active) return;
+    // After iOS has placed the page for the field: the keyboard may already be up (from one field to the next).
+    const focused = () => requestAnimationFrame(reveal);
+    element.addEventListener("focusin", focused);
+    return () => element.removeEventListener("focusin", focused);
+  }, [panel, active, reveal]);
+}
+
 /** React's one moment before the page changes: the step on screen is copied before the next one replaces it. */
 class StepWatch extends Component<{ step: number }> {
   override getSnapshotBeforeUpdate(previous: { step: number }) {
@@ -243,7 +278,11 @@ type HeaderProps = Pick<Props, "title" | "subtitle" | "action" | "busy"> & {
 
 function HeaderRow({ titleId, title, subtitle, back, onCancel, cancelLabel, action, busy }: HeaderProps) {
   return (
-    <div data-sheet-part="head" className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 pt-2">
+    // Annuler or Fermer never shrinks under a long title on a 320 px phone: the title wraps instead.
+    <div
+      data-sheet-part="head"
+      className="grid grid-cols-[minmax(max-content,1fr)_minmax(0,auto)_minmax(max-content,1fr)] items-center gap-2 pt-2"
+    >
       {back ? (
         // On a 320 px phone the chevron alone goes back, as in iOS, so a long title never runs into it.
         <TextButton className="-ml-1 min-w-11 justify-self-start gap-0.5" onClick={back}>
@@ -307,6 +346,7 @@ function Panel({
   const progress = useTransform(y, (value) => standing(value, panel.current));
   const back = onBack ?? previous;
   usePullToClose(panel, drag, !still && !covered);
+  useStillPage(panel, area, !covered, still);
   const frost = useFrostWhileMoving(panel, y, appear && !still);
 
   useModal(panel, close, covered);
@@ -390,12 +430,15 @@ function Panel({
           />
         </header>
         <StepWatch step={step} />
-        <div
-          data-sheet-part="body"
-          className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain px-4 pt-4 *:flex-none"
-          style={{ paddingBottom: footer ? 16 : "max(24px, env(safe-area-inset-bottom))" }}
-        >
-          {children}
+        <div data-sheet-part="body" className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          {/* Its own box, at the content's natural height: a push inside the sheet follows it (sheetHandoff.ts). */}
+          <div
+            data-sheet-content=""
+            className="flex flex-col gap-5 px-4 pt-4 *:flex-none"
+            style={{ paddingBottom: footer ? 16 : "max(24px, env(safe-area-inset-bottom))" }}
+          >
+            {children}
+          </div>
         </div>
         {footer && (
           // A disabled fieldset holds every button of the footer while the change is on its way.

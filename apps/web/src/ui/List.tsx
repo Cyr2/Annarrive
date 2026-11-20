@@ -1,6 +1,6 @@
 import { type ReactNode, useId } from "react";
 import { cx } from "../lib/cx.ts";
-import { longDate } from "../lib/date.ts";
+import { duration, longDate, minutesOf } from "../lib/date.ts";
 import { Icon } from "./Icon.tsx";
 import { Surface } from "./Surface.tsx";
 
@@ -120,6 +120,10 @@ type InputProps = {
   autoComplete?: string;
   /** The server's own limit, so a long title stops at the keyboard instead of failing on save. */
   maxLength?: number;
+  /** What the row shows over a time field read another way (a duration: "1 h 30"). */
+  display?: string;
+  /** What VoiceOver reads when the visible label is not enough ("Durée, heures et minutes"). */
+  ariaLabel?: string;
 };
 
 /** How a date or a time reads in the app ("lundi 16 novembre", "7:30"), whatever the native field shows. */
@@ -142,9 +146,11 @@ export function RowInput({
   inputMode,
   autoComplete,
   maxLength,
+  display,
+  ariaLabel,
 }: InputProps) {
   const id = useId();
-  const text = shown(type, value);
+  const text = display ?? shown(type, value);
   return (
     <div className="row field-ring">
       <label htmlFor={id} className="t-body flex-none">
@@ -161,6 +167,7 @@ export function RowInput({
         // The app writes "7:30"; a time field needs "07:30".
         value={type === "time" ? value.padStart(5, "0") : value}
         min={min}
+        aria-label={ariaLabel}
         maxLength={maxLength}
         inputMode={inputMode}
         placeholder={placeholder}
@@ -175,5 +182,24 @@ export function RowInput({
         )}
       />
     </div>
+  );
+}
+
+type DurationProps = { label: string; minutes: number; onChange: (minutes: number) => void; maxHours: number };
+
+/**
+ * How long an activity lasts (a strength session, a revision), on the same native wheel as a time of day, read as
+ * hours and minutes: "1 h 30". Never empty, so the wheel opens on 0:00 and not on the time it is now.
+ */
+export function RowDuration({ label, minutes, onChange, maxHours }: DurationProps) {
+  return (
+    <RowInput
+      label={label}
+      type="time"
+      ariaLabel={`${label}, heures et minutes`}
+      value={`${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, "0")}`}
+      display={duration(minutes)}
+      onChange={(time) => onChange(Math.min(maxHours * 60, minutesOf(time)))}
+    />
   );
 }

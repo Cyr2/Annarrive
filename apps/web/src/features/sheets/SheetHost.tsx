@@ -38,7 +38,7 @@ const LOADERS: { [K in Kind]: Loader<K> } = {
   watch: () => import("../program/WatchSheet.tsx"),
   cycle: () => import("../program/CycleSheet.tsx"),
   timetable: () => import("../program/TimetableSheet.tsx"),
-  stop: () => import("../program/StopSheet.tsx"),
+  target: () => import("../program/TargetSheet.tsx"),
 };
 
 function chunks<K extends Kind>(kind: K) {
@@ -59,7 +59,7 @@ const SHEETS: { [K in Kind]: ComponentType<SheetProps<K>> & { preload: () => voi
   watch: chunks("watch"),
   cycle: chunks("cycle"),
   timetable: chunks("timetable"),
-  stop: chunks("stop"),
+  target: chunks("target"),
 };
 
 /** Fetches a sheet's file ahead of its first opening, so it rises at once. */

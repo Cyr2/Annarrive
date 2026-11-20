@@ -169,11 +169,6 @@
     line-height: 13px;
   }
 
-  /* While an explanation bubble is open, the page behind it stays put, as under an iOS alert. */
-  html:has([popover]:popover-open) {
-    overflow: hidden;
-  }
-
   /* A grouped list's row: label left, value right, hairline between rows. */
   .row {
     display: flex;

@@ -14,6 +14,7 @@ import { useSheet } from "../sheets/store.ts";
 import { ReggieAvatar, ToneWash } from "../today/parts.tsx";
 import { sessionDetail, whyQuestion } from "../today/today.ts";
 import { WatchStatus } from "../today/WatchStatus.tsx";
+import { changeOptions, moveOptions } from "../useLoad.ts";
 
 /** Session detail: when and what, every step with its pace, Reggie's why, and the three ways to adjust it. */
 export default function SessionSheet({ spec, ...sheet }: SheetProps<"session">) {
@@ -37,8 +38,19 @@ export default function SessionSheet({ spec, ...sheet }: SheetProps<"session">) 
         upcoming && (
           // Pinned under the body: the ways to adjust it stay in reach however far the steps scroll.
           <div className="grid grid-cols-3 gap-2">
-            <RoundAction label="Déplacer" icon="move" onClick={() => show({ kind: "move", id: run.id })} />
-            <RoundAction label="Changer" icon="change" onClick={() => show({ kind: "change", id: run.id })} />
+            {/* The options leave as the finger lands, as from Aujourd'hui: the push shows them, not a skeleton. */}
+            <RoundAction
+              label="Déplacer"
+              icon="move"
+              onPrepare={() => moveOptions.start(run.id)}
+              onClick={() => show({ kind: "move", id: run.id })}
+            />
+            <RoundAction
+              label="Changer"
+              icon="change"
+              onPrepare={() => changeOptions.start(run.id)}
+              onClick={() => show({ kind: "change", id: run.id })}
+            />
             <RoundAction label="Pas dispo" icon="close" onClick={() => show({ kind: "unavailable", id: run.id })} />
           </div>
         )

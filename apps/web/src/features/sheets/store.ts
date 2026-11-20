@@ -15,7 +15,7 @@ export type SheetSpec =
   | { kind: "watch" }
   | { kind: "cycle" }
   | { kind: "timetable" }
-  | { kind: "stop" };
+  | { kind: "target" };
 
 export type SettingKey = "runsPerWeek" | "noRunDays" | "longRunDays" | "notBefore" | "notAfter" | "bedtime";
 

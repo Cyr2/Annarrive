@@ -1,5 +1,4 @@
-import { Group, RowInput, RowSelect, Section } from "../../ui/List.tsx";
-import { TimeBoxes } from "../../ui/TimeBoxes.tsx";
+import { Group, RowDuration, RowInput, RowSelect } from "../../ui/List.tsx";
 import { type Form, REPEATS, TITLE_MAX } from "./add.ts";
 
 /** A revision block fits in a day. */
@@ -7,15 +6,10 @@ const MAX_HOURS = 8;
 
 type Props = { kind: "revision" | "busy"; form: Form; today: string; onChange: (patch: Partial<Form>) => void };
 
-/** Révision (length in h and min boxes, day, time, repeat) or Occupée (optional title, day, start and end). */
+/** Révision (day, time, length on the native wheel, repeat) or Occupée (optional title, day, start and end). */
 export function EventForm({ kind, form, today, onChange: set }: Props) {
   return (
     <>
-      {kind === "revision" && (
-        <Section title="Durée">
-          <TimeBoxes seconds={form.minutes * 60} maxHours={MAX_HOURS} onChange={(s) => set({ minutes: s / 60 })} />
-        </Section>
-      )}
       <Group>
         {kind === "busy" && (
           <RowInput
@@ -34,6 +28,14 @@ export function EventForm({ kind, form, today, onChange: set }: Props) {
           onChange={(start) => set({ start })}
         />
         {kind === "busy" && <RowInput label="Fin" type="time" value={form.end} onChange={(end) => set({ end })} />}
+        {kind === "revision" && (
+          <RowDuration
+            label="Durée"
+            minutes={form.minutes}
+            maxHours={MAX_HOURS}
+            onChange={(minutes) => set({ minutes })}
+          />
+        )}
         {kind === "revision" && (
           <RowSelect label="Répéter" value={form.repeat} options={REPEATS} onChange={(repeat) => set({ repeat })} />
         )}
