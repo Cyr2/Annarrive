@@ -290,6 +290,18 @@
   :root[data-typing] .ui-tab-bar {
     visibility: hidden;
   }
+  /* The field sits above the tab bar, or just above the keyboard: the window's new bottom on Android, the
+     keyboard's top on iOS, where Composer.tsx lifts it there with a transform. */
+  .ui-composer {
+    bottom: calc(var(--space-above-tabbar) + env(safe-area-inset-bottom));
+  }
+  :root[data-typing] .ui-composer,
+  .ui-composer[data-keyboard] {
+    bottom: var(--space-above-keyboard);
+  }
+  .ui-composer[data-keyboard] {
+    will-change: transform;
+  }
 
   /* A scroller's edges fade instead of cutting a row in half (sheet bodies, the chip rows). */
   .fade-x {

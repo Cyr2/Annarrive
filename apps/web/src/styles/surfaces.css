@@ -130,6 +130,10 @@
     backdrop-filter: blur(var(--lg-blur)) saturate(180%);
     box-shadow: var(--surface-rim), var(--shadow-float);
   }
+  /* Reggie's field and suggestions float over the conversation's words: as dense as a toast, to read over them. */
+  .ui-float.ui-composer {
+    --lg-glass: var(--glass-toast);
+  }
   /* A toast: the same glass a little denser, set apart from the white cards it passes over. */
   .ui-glass.ui-toast {
     --lg-glass: var(--glass-toast);

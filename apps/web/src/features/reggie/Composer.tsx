@@ -1,14 +1,24 @@
 import { CHAT_TEXT_MAX } from "@annarrive/protocol";
-import { useEffect, useRef, useState } from "react";
+import { type SyntheticEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Chip, IconButton, Input } from "../../ui/controls.tsx";
 import { notify } from "../../ui/toast.ts";
 import { useVisibleArea } from "../../ui/useVisibleArea.ts";
+import { keyboardInset } from "./keyboard.ts";
 import { frenchSpaces } from "./Message.tsx";
 import { useChat } from "./store.ts";
 
 /** The same journeys as the buttons of Aujourd'hui, one tap away. */
 export const SHORTCUTS = ["Je suis malade", "Plus court", "Décaler à demain", "Pourquoi cette allure ?"];
+
+/** Longer than the iOS keyboard takes to slide up, while WebKit reports it late and in steps. */
+const KEYBOARD_SLIDE_MS = 600;
+
+/** A tap on a suggestion or on Envoyer leaves the focus in the field: the keyboard stays up, nothing jumps under
+ * her finger, and one tap is enough. */
+const keepFocus = (event: SyntheticEvent) => {
+  if (event.target instanceof Element && event.target.closest("button")) event.preventDefault();
+};
 
 const TOO_LONG = `Un message s'arrête à ${CHAT_TEXT_MAX} caractères. Envoie la suite dans un autre.`;
 
@@ -25,10 +35,8 @@ export function Composer({ onHeight, onTyping, shortcuts }: Props) {
   const [text, setText] = useState("");
   const [focused, setFocused] = useState(false);
   const box = useRef<HTMLElement>(null);
-  // The keyboard covers the bottom of the page: the field sits on top of what is left visible.
-  const area = useVisibleArea();
-  const typing = focused && area !== undefined;
-  const above = area && typing ? `${window.innerHeight - area.top - area.height + 8}px` : undefined;
+  const keyboard = useVisibleArea() !== undefined;
+  const typing = focused && keyboard;
   const report = useRef(onHeight);
   report.current = onHeight;
   const reportTyping = useRef(onTyping);
@@ -43,6 +51,42 @@ export function Composer({ onHeight, onTyping, shortcuts }: Props) {
       delete document.documentElement.dataset.typing;
     };
   }, [typing]);
+
+  // iOS slides the keyboard over a page that keeps its height: the field rides on it, moved by the compositor alone
+  // and at most once a frame, so it stays still above the keyboard while the conversation scrolls. Android shrinks
+  // the window instead: the inset is 0 there and the CSS bottom does the work (styles/app.css).
+  useLayoutEffect(() => {
+    const element = box.current;
+    const viewport = window.visualViewport;
+    if (!focused || !element || !viewport) return;
+    let frame = 0;
+    const place = () => {
+      frame = 0;
+      const inset = keyboardInset(document.documentElement.clientHeight, viewport);
+      element.style.transform = inset ? `translate3d(0, ${-inset}px, 0)` : "";
+      element.toggleAttribute("data-keyboard", inset > 0);
+    };
+    const schedule = () => {
+      frame ||= requestAnimationFrame(place);
+    };
+    const until = performance.now() + KEYBOARD_SLIDE_MS;
+    const watch = () => {
+      place();
+      if (performance.now() < until) frame = requestAnimationFrame(watch);
+    };
+    watch();
+    viewport.addEventListener("resize", schedule);
+    viewport.addEventListener("scroll", schedule);
+    window.addEventListener("scroll", schedule, { passive: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      viewport.removeEventListener("resize", schedule);
+      viewport.removeEventListener("scroll", schedule);
+      window.removeEventListener("scroll", schedule);
+      element.style.transform = "";
+      element.removeAttribute("data-keyboard");
+    };
+  }, [focused]);
 
   useEffect(() => {
     const element = box.current;
@@ -70,8 +114,9 @@ export function Composer({ onHeight, onTyping, shortcuts }: Props) {
     <section
       ref={box}
       aria-label="Écrire à Reggie"
-      className="ui-float fixed inset-x-0 z-20 mx-auto flex max-w-xl flex-col gap-2 px-gutter"
-      style={{ bottom: above ?? "calc(var(--space-above-tabbar) + env(safe-area-inset-bottom))" }}
+      className="ui-float ui-composer fixed inset-x-0 z-20 mx-auto flex max-w-xl flex-col gap-2 px-gutter"
+      onPointerDown={keepFocus}
+      onMouseDown={keepFocus}
     >
       {/* Hidden while Reggie answers or waits for her reply: his own buttons are the answers then. */}
       {shortcuts && (

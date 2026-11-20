@@ -153,7 +153,7 @@ L'écran montre la discussion du jour. Au-dessus, un lien discret « Voir la dis
 
 ### Le clavier
 
-Pendant la saisie, la barre d'onglets s'efface et le champ se pose juste au-dessus du clavier, comme dans Messages ; les messages restent visibles au-dessus. Le dernier message repose toujours au-dessus des raccourcis et du champ : la conversation le ramène en vue à chaque nouveau message, sauf quand Anna lit plus haut. Tout en bas, l'espace sous le dernier message est exactement celui du champ, des raccourcis et de la barre d'onglets (plus l'écart habituel entre deux messages) : jamais de vide en plus.
+Pendant la saisie, la barre d'onglets s'efface et le champ se pose juste au-dessus du clavier dès qu'il s'ouvre, comme dans Messages ; les messages restent visibles au-dessus. Quand la conversation défile, le champ et les raccourcis ne bougent pas et ne passent jamais derrière le clavier. Toucher un raccourci ou « Envoyer » agit du premier coup et laisse le clavier ouvert. Le dernier message repose toujours au-dessus des raccourcis et du champ : la conversation le ramène en vue à chaque nouveau message, sauf quand Anna lit plus haut. Tout en bas, l'espace sous le dernier message est exactement celui du champ, des raccourcis et de la barre d'onglets (plus l'écart habituel entre deux messages) : jamais de vide en plus.
 
 ### Les widgets dans la conversation
 

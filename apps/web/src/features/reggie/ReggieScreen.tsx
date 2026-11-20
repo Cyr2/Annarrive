@@ -153,7 +153,7 @@ export default function ReggieScreen() {
         className="flex-none"
         style={{
           height: typing
-            ? `${composer + 8}px`
+            ? `calc(${composer}px + var(--space-above-keyboard))`
             : `calc(${composer}px + var(--space-above-tabbar) + env(safe-area-inset-bottom))`,
         }}
       />
