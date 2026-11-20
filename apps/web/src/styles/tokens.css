@@ -132,6 +132,8 @@
   --space-under-tabbar: 120px;
   /* Bottom of anything floating just above the tab bar: the toast, Reggie's field. */
   --space-above-tabbar: 94px;
+  /* Between Reggie's field and the keyboard while she types. */
+  --space-above-keyboard: 8px;
 
   /* ---- Motion (the JS springs are in lib/motion.ts) ---- */
   --duration-press: 120ms;
