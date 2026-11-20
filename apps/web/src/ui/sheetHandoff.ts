@@ -8,6 +8,9 @@ let handoff: Handoff | undefined;
 const PAGE = "sheet-page";
 // The header row, the content and the footer of the sheet on screen, not the copies still playing out.
 const PART = "[data-sheet-part]:not([data-sheet-ghost] *)";
+// What sets the sheet's height: its header, its content at its own height (not the scroller around it), its footer.
+const NATURAL =
+  ":is([data-sheet-part='head'], [data-sheet-part='foot'], [data-sheet-content]):not([data-sheet-ghost] *)";
 
 /**
  * The sheet now on screen (Sheet.tsx, before the first paint): it plays in what took the place of the one before,
@@ -15,11 +18,36 @@ const PART = "[data-sheet-part]:not([data-sheet-ghost] *)";
  */
 export function sheetOnScreen(panel: HTMLElement, rising: boolean, still: boolean, settle: () => void) {
   onScreen = panel;
+  const aim = followHeight(panel, still);
   if (rising) handoff = undefined;
-  else playHandoff(panel, still, settle);
+  else playHandoff(panel, still, settle, aim);
   return () => {
+    aim.stop();
     if (onScreen === panel) onScreen = null;
   };
+}
+
+/**
+ * The sheet's height follows its content in the sheet's own timing, never in a jump: what a pushed sheet shows on
+ * its first frame (a skeleton, a field on its way) is often not its final height, which used to snap in once the
+ * data was in. Each change aims again from where the height stands. Reduced motion: the height at once.
+ */
+function followHeight(panel: HTMLElement, still: boolean) {
+  let height: Animation | undefined;
+  // The height last shown: once the content has changed, the panel already stands at its new height.
+  let last = panel.offsetHeight;
+  const aim = (start: number) => {
+    height?.cancel();
+    const end = panel.offsetHeight;
+    last = end;
+    height =
+      !still && Math.abs(start - end) >= 1
+        ? panel.animate([{ height: `${start}px` }, { height: `${end}px` }], { ...SHEET_PAGE, id: PAGE })
+        : undefined;
+  };
+  const watch = new ResizeObserver(() => aim(height?.playState === "running" ? panel.offsetHeight : last));
+  for (const part of panel.querySelectorAll(NATURAL)) watch.observe(part);
+  return Object.assign(aim, { stop: () => watch.disconnect() });
 }
 
 /** What she typed or ticked shows in the copy too: cloning keeps only the fields' first values. */
@@ -77,13 +105,12 @@ export function handOffSheet(forward: boolean) {
  * follows in the sheet's own timing, and nothing blurs meanwhile (frost, as when the sheet moves). A new step
  * mid-way starts from where everything stands. Reduced motion: a cross-fade, the height at once.
  */
-function playHandoff(panel: HTMLElement, still: boolean, settle: () => void) {
+function playHandoff(panel: HTMLElement, still: boolean, settle: () => void, aim: (start: number) => void) {
   const from = handoff;
   handoff = undefined;
   if (!from) return;
   for (const animation of panel.getAnimations({ subtree: true })) if (animation.id === PAGE) animation.cancel();
   panel.querySelector(":scope > [data-sheet-ghost]")?.remove();
-  const to = panel.offsetHeight;
   const parts = [...panel.querySelectorAll<HTMLElement>(PART)];
   panel.append(from.ghost);
   for (const copy of from.ghost.querySelectorAll<HTMLElement>("[data-scroll]"))
@@ -117,8 +144,7 @@ function playHandoff(panel: HTMLElement, still: boolean, settle: () => void) {
       timing,
     );
   });
-  if (!still && Math.abs(from.height - to) >= 1)
-    out.push(panel.animate([{ height: `${from.height}px` }, { height: `${to}px` }], timing));
+  aim(from.height);
   Promise.all(out.map((animation) => animation.finished)).then(
     () => {
       from.ghost.remove();

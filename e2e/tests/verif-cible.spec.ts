@@ -63,7 +63,7 @@ test.describe("320 px", () => {
   });
 });
 
-test("muscu : h, min et OK ont une cible de 44 px au moins", async ({ page }) => {
+test("muscu : la durée et OK ont une cible de 44 px au moins", async ({ page }) => {
   await page.goto("/programme");
   await page
     .getByRole("button", { name: /Jambes/ })
@@ -71,11 +71,9 @@ test("muscu : h, min et OK ont une cible de 44 px au moins", async ({ page }) =>
     .click();
   const sheet = page.getByRole("dialog", { name: "Séance de muscu" });
   await expect(sheet).toHaveCSS("transform", "none");
-  for (const name of ["Heures", "Minutes"]) {
-    const b = await box(sheet.getByRole("textbox", { name }));
-    expect(b.width).toBeGreaterThanOrEqual(44);
-    expect(b.height).toBeGreaterThanOrEqual(44);
-  }
+  const length = await box(sheet.getByLabel("Durée, heures et minutes"));
+  expect(length.width).toBeGreaterThanOrEqual(44);
+  expect(length.height).toBeGreaterThanOrEqual(44);
   // OK: its label is narrower, its hit area (a pseudo-element) reaches 44 px.
   const ok = sheet.getByRole("button", { name: "OK" });
   const b = await box(ok);

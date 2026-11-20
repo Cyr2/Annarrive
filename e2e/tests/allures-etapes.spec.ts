@@ -100,11 +100,10 @@ test("Programme : chaque réglage s'ouvre en feuille et ne change rien avant Enr
   await card.getByRole("button", { name: /Ambitieux|Atteignable/ }).click();
   const why = page.getByRole("dialog", { name: /^Pourquoi/ });
   await expect(why).toBeVisible();
-  const overflow = () => page.evaluate(() => getComputedStyle(document.documentElement).overflow);
-  expect(await overflow()).toBe("hidden");
-  await why.getByRole("button", { name: "OK" }).click();
+  // A regular sheet now: the app behind is out of reach, Fermer closes it.
+  await expect(page.locator("#root")).toHaveAttribute("inert", "");
+  await why.getByRole("button", { name: "Fermer" }).click();
   await expect(why).toBeHidden();
-  expect(await overflow()).not.toBe("hidden");
 
   // Back to « Juste finir », as the other tests expect it.
   await card.getByRole("button", { name: "Modifier l'objectif" }).click();

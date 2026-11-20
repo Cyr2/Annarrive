@@ -80,12 +80,49 @@
   }
 }
 .msg,
-.rise,
-.pop-in:popover-open {
+.rise {
   animation: rise var(--duration-message) var(--ease-out) both;
 }
 .msg-widget {
   animation-delay: var(--delay-widget);
+}
+
+/* A confirmation (ui/ConfirmDialog.tsx) pops in as an iOS alert, from a touch larger, and fades out. Its scrim
+   fades with it. */
+.ui-alert {
+  opacity: 0;
+  transform: scale(1.08);
+  transition:
+    opacity var(--duration-select) var(--ease-out),
+    transform var(--duration-select) var(--ease-out),
+    overlay var(--duration-select) allow-discrete,
+    display var(--duration-select) allow-discrete;
+}
+.ui-alert[open] {
+  opacity: 1;
+  transform: none;
+}
+@starting-style {
+  .ui-alert[open] {
+    opacity: 0;
+    transform: scale(1.08);
+  }
+}
+.ui-alert::backdrop {
+  background: var(--color-scrim);
+  opacity: 0;
+  transition:
+    opacity var(--duration-select) var(--ease-out),
+    overlay var(--duration-select) allow-discrete,
+    display var(--duration-select) allow-discrete;
+}
+.ui-alert[open]::backdrop {
+  opacity: 1;
+}
+@starting-style {
+  .ui-alert[open]::backdrop {
+    opacity: 0;
+  }
 }
 
 /* A card that goes (ui/Presence.tsx): it fades and shrinks a little where it was, the others close the gap. */
@@ -219,7 +256,6 @@
   .roll,
   .rise,
   .msg,
-  .pop-in:popover-open,
   .done-pop,
   .rest-moon {
     animation: fade-in var(--duration-fade) linear both;
@@ -227,6 +263,10 @@
   /* After .rise: a card that came and goes again must still fade out, or it never leaves. */
   .card-out {
     animation: fade-out var(--duration-fade) linear forwards;
+  }
+  .ui-alert,
+  .ui-alert[open] {
+    transform: none;
   }
   .typing-dot {
     animation: none;

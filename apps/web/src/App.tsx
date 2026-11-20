@@ -54,7 +54,7 @@ const SHEETS: SheetSpec["kind"][] = [
   "watch",
   "cycle",
   "timetable",
-  "stop",
+  "target",
 ];
 
 const PRELOAD_DELAY_MS = 800;

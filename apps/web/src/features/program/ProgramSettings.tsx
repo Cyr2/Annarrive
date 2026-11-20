@@ -1,5 +1,7 @@
 import { PRIVACY_NOTE } from "@annarrive/protocol";
+import { useState } from "react";
 import type { Program, Settings } from "../../api/schemas.ts";
+import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 import { Group, RowButton, Section } from "../../ui/List.tsx";
 import { TextButton } from "../../ui/TextButton.tsx";
 import { strengthShort } from "../add/add.ts";
@@ -77,13 +79,28 @@ export function ProgramSettings({ program }: { program: Program }) {
         </Section>
       )}
 
-      {!program.maintenance && (
-        <Group className="mt-2">
-          <TextButton tone="danger" className="min-h-13 w-full" onClick={() => show({ kind: "stop" })}>
-            Arrêter ce programme
-          </TextButton>
-        </Group>
-      )}
+      {!program.maintenance && <StopRow race={program.goal.race} />}
     </>
+  );
+}
+
+/** Arrêter ce programme: confirmed in an alert, then maintenance mode. */
+function StopRow({ race }: { race: string }) {
+  const [asking, setAsking] = useState(false);
+  return (
+    <Group className="mt-2">
+      <TextButton tone="danger" className="min-h-13 w-full" onClick={() => setAsking(true)}>
+        Arrêter ce programme
+      </TextButton>
+      <ConfirmDialog
+        open={asking}
+        onClose={() => setAsking(false)}
+        title={`Arrêter ton plan ${race.toLowerCase()} ?`}
+        message="Tu passes en mode entretien : 2 à 3 courses faciles par semaine, dont une un peu plus rythmée."
+        actions={[
+          { label: "Arrêter le programme", onClick: () => void usePlan.getState().apply((api) => api.stopProgram()) },
+        ]}
+      />
+    </Group>
   );
 }

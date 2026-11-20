@@ -1,10 +1,10 @@
 import { CHAT_TEXT_MAX } from "@annarrive/protocol";
 import { type SyntheticEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { keyboardInset } from "../../lib/keyboard.ts";
 import { Chip, IconButton, Input } from "../../ui/controls.tsx";
 import { notify } from "../../ui/toast.ts";
 import { useVisibleArea } from "../../ui/useVisibleArea.ts";
-import { keyboardInset } from "./keyboard.ts";
 import { frenchSpaces } from "./Message.tsx";
 import { useChat } from "./store.ts";
 

@@ -13,8 +13,13 @@ test("ajouter une séance de muscu « Travaille les jambes » depuis le + la pla
   await legs.click();
   await expect(legs).toBeChecked();
   await sheet.getByRole("button", { name: "Sam", exact: true }).click();
-  await sheet.getByRole("textbox", { name: "Minutes" }).fill("30");
-  await expect(sheet.getByRole("textbox", { name: "Heures" })).toHaveValue("1");
+  // The length on the native wheel, as a time of day is: 1 h by default, 1 h 30 now.
+  const length = sheet.getByLabel("Durée, heures et minutes");
+  await expect(length).toHaveValue("01:00");
+  await length.fill("01:30");
+  await expect(sheet.locator(".row").filter({ has: page.getByLabel("Durée, heures et minutes") })).toContainText(
+    "1 h 30",
+  );
   await sheet.getByRole("button", { name: "OK" }).click();
 
   const added = banner(page, "Muscu ajoutée");
