@@ -1,6 +1,6 @@
 import { type Item, isRepeat, type Run, type StepLine, type WatchStatus } from "../../api/schemas.ts";
 import { addMinutes, minutesOf, relativeDay, relativeMoment, span } from "../../lib/date.ts";
-import { classTitle } from "../../lib/text.ts";
+import { classRow, type Ue } from "../../lib/text.ts";
 import type { Tone } from "../../ui/tones.ts";
 import type { SheetSpec } from "../sheets/store.ts";
 
@@ -8,9 +8,9 @@ export function toneOf(item: Item): Tone {
   return item.kind === "run" ? item.intensity : item.kind;
 }
 
-/** The name she reads: a class's course name, its codes underneath (lib/text.ts); anything else as it is. */
-export function nameOf(item: Item): { title: string; detail?: string } {
-  return item.kind === "class" ? classTitle(item.title) : { title: item.title };
+/** The name she reads: a class's course name, its UE as a pill and its other codes underneath (lib/text.ts). */
+export function nameOf(item: Item): { title: string; detail?: string; ue?: Ue } {
+  return item.kind === "class" ? classRow(item.title) : { title: item.title };
 }
 
 /** "Ma journée": the day's items in time order. */

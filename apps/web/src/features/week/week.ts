@@ -1,7 +1,8 @@
 import type { CalendarEvent, Item, MoveOptions, Run, Slot, Week } from "../../api/schemas.ts";
 import { addDays, addMinutes, dayName, dayTitle, duration, minutesOf, span, weekRange } from "../../lib/date.ts";
+import type { Tone } from "../../ui/tones.ts";
 import type { StripDay, StripMark } from "../../ui/WeekStrip.tsx";
-import { agenda, toneOf } from "../today/today.ts";
+import { agenda, nameOf, toneOf } from "../today/today.ts";
 
 /** A row of a day: one item, or her classes folded into one line when they crowd the day. */
 export type Row = { kind: "item"; item: Item } | { kind: "classes"; items: CalendarEvent[] };
@@ -96,14 +97,22 @@ export function dayLabel(day: Day): string {
 const shortName = (date: string) => dayName(date).slice(0, 3);
 const shortTitle = (day: Day) => `${shortName(day.date)} ${Number(day.date.slice(8))}`;
 
-/** Each run is a mark of its length; strength, revision and classes one mark per kind (busy slots count as classes). */
+/**
+ * Each run is a mark of its length; strength and revision one mark per kind; classes one dot per UE, in its color,
+ * and one grey dot for those without a UE (busy slots count as classes).
+ */
 function marksOf(day: Day): StripMark[] {
   const live = day.items.filter((item) => !cancelled(item));
   const runs = live.filter(isRun).map((run) => ({ id: run.id, tone: toneOf(run), minutes: run.durationMin }));
   const kinds = new Set(
-    live.filter((item) => !isRun(item)).map((item) => (item.kind === "busy" ? "class" : item.kind)),
+    live
+      .filter((item) => !isRun(item))
+      .map((item): Tone => {
+        if (item.kind === "busy") return "class";
+        return item.kind === "class" ? (nameOf(item).ue ?? "class") : item.kind;
+      }),
   );
-  const others = (["revision", "strength", "class"] as const).filter((tone) => kinds.has(tone));
+  const others = (["revision", "strength", "ue1", "ue2", "ue3", "ue4", "class"] as const).filter((t) => kinds.has(t));
   return [...runs, ...others.map((tone) => ({ id: tone, tone }))];
 }
 

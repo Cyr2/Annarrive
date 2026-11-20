@@ -67,7 +67,7 @@ const WEEK: (RunSeed | EventSeed)[][] = [
   [cls("Physique", "10:15", "12:15"), rev("14:00", "16:00"), INTERVALS],
   [cls("(M1M2E G3 NL) UE1 Français", "8:15", "10:15"), cls("(M1M2E G3 NL) UE4 Allemand", "12:45", "14:45")],
   [easyRun("7:30", 45), rev("16:00", "18:00")],
-  [cls("Mathématiques", "8:15", "10:15")],
+  [cls("UE3 Mathématiques", "8:15", "10:15")],
   [STRIDES],
   [rev("10:00", "12:00")],
   [LONG],

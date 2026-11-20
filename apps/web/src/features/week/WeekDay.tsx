@@ -3,7 +3,6 @@ import { cx } from "../../lib/cx.ts";
 import { duration } from "../../lib/date.ts";
 import { Icon } from "../../ui/Icon.tsx";
 import { SectionTitle } from "../../ui/List.tsx";
-import { Surface } from "../../ui/Surface.tsx";
 import { ClassGroup } from "./ClassGroup.tsx";
 import { DraggableItem } from "./WeekItem.tsx";
 import type { Day, DropTarget } from "./week.ts";
@@ -12,7 +11,7 @@ import { isDraggable } from "./week.ts";
 type Props = { day: Day; readOnly: boolean; dragging: boolean; target?: DropTarget };
 
 /**
- * A day of the week: its title, its running load, and its rows. A day with nothing is one quiet line.
+ * A day of the week: its title, its running load, and its rows, each its own glass. A day with nothing is one quiet line.
  * While a session is held, a free day opens a dashed drop slot; a blocked one dims and says why.
  */
 export function WeekDay({ day, readOnly, dragging, target }: Props) {
@@ -38,7 +37,7 @@ export function WeekDay({ day, readOnly, dragging, target }: Props) {
         )}
       </div>
       {(!empty || held) && (
-        <Surface variant="inset" className="flex flex-col gap-0.5 p-1">
+        <div className="flex flex-col gap-2">
           {held && (target.blocked ? <Blocked reason={target.blocked} /> : <DropSlot target={target} />)}
           {day.rows.map((row) =>
             row.kind === "classes" ? (
@@ -52,7 +51,7 @@ export function WeekDay({ day, readOnly, dragging, target }: Props) {
               />
             ),
           )}
-        </Surface>
+        </div>
       )}
     </section>
   );

@@ -46,8 +46,14 @@ Each session type has three tones, read through `ui/tones.ts` (`TONES[tone].wash
 | `easy` | `#CDEBDC` | `#5DBB92` | `#2C6337` (5.6:1 on wash), yellower than Reggie's green on purpose |
 | `long` | `#D3E2FA` | `#6F9EE6` | `#2F449A` (6.6:1 on wash), more indigo than the action blue on purpose |
 | `revision` | `#C9EAEE` | `#5FBEC9` | `#155A63` (6.2:1 on wash) |
-| `strength` | `#E8EDF5` | `#8496B3` | `#3B4D6B` (6.5:1 on wash), a slate blue apart from the class grey |
+| `strength` | `#E6E2EE` | `#8C7BB0` | `#4F4378` (6.9:1 on wash), a soft mauve; `--color-strength-line` `#CBC4DB` is its row's 1 px outline |
 | `class`, `busy`, `rest`, `other` | `#F1F2F4` | `#C4CAD1` | `#434E5A` (the secondary ink) |
+| `ue1` | `#FBE9EE` | `#C66F80` | `#9A4458` (5.4:1 on wash), rose |
+| `ue2` | `#EEF1DD` | `#8A9A4F` | `#55652A` (5.6:1 on wash), olive |
+| `ue3` | `#E4EFF3` | `#6E9AAE` | `#3B6476` (5.6:1 on wash), blue mist |
+| `ue4` | `#F8EEDB` | `#C99A4A` | `#80601F` (5.1:1 on wash), ochre |
+
+A row of a day (Semaine, Ma journée: `features/week/WeekItem.tsx`) is its own glass, and its kind is told by style first: a run has its wash as a corner halo and a chip filled with its mid, strength the mauve outline and its chip, revision its teal book chip, a class its UE pill (wash and deep), or nothing without a UE. Never a vivid full fill in a list.
 
 Paces, times and distances are never colored: the type is said by a `SessionChip`, a `SessionShape` or an `IconTile` next to them.
 

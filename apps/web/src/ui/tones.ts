@@ -1,7 +1,9 @@
+import type { Ue } from "../lib/text.ts";
 import type { IconName } from "./Icon.tsx";
 
 /** What a session or a calendar item is. Its three tones come from tokens.css. */
-export type Tone = "hard" | "easy" | "long" | "class" | "revision" | "strength" | "busy" | "rest" | "other";
+/** A class's teaching unit (lib/text.ts) is a tone too: its pill in a row, its dot in the week strip. */
+export type Tone = "hard" | "easy" | "long" | "class" | "revision" | "strength" | "busy" | "rest" | "other" | Ue;
 
 type ToneStyle = {
   /** Background of a row, a chip or a card corner. */ wash: string;
@@ -44,7 +46,8 @@ export const TONES: Record<Tone, ToneStyle> = {
     color: "var(--color-revision)",
     deep: "text-revision-deep",
     label: "Révision",
-    icon: "revision",
+    // The book: revising is reading. A class wears its UE pill rather than an icon.
+    icon: "class",
   },
   strength: {
     wash: "bg-strength-wash",
@@ -85,5 +88,37 @@ export const TONES: Record<Tone, ToneStyle> = {
     deep: "text-class-deep",
     label: "Autre",
     icon: "info",
+  },
+  ue1: {
+    wash: "bg-ue1-wash",
+    mid: "bg-ue1",
+    color: "var(--color-ue1)",
+    deep: "text-ue1-deep",
+    label: "UE1",
+    icon: "class",
+  },
+  ue2: {
+    wash: "bg-ue2-wash",
+    mid: "bg-ue2",
+    color: "var(--color-ue2)",
+    deep: "text-ue2-deep",
+    label: "UE2",
+    icon: "class",
+  },
+  ue3: {
+    wash: "bg-ue3-wash",
+    mid: "bg-ue3",
+    color: "var(--color-ue3)",
+    deep: "text-ue3-deep",
+    label: "UE3",
+    icon: "class",
+  },
+  ue4: {
+    wash: "bg-ue4-wash",
+    mid: "bg-ue4",
+    color: "var(--color-ue4)",
+    deep: "text-ue4-deep",
+    label: "UE4",
+    icon: "class",
   },
 };

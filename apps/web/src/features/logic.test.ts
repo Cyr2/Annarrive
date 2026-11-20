@@ -42,7 +42,7 @@ const run = today.session;
 if (!run) throw new Error("seed");
 
 describe("today", () => {
-  it("builds the week strip: a bar per run, one mark per other kind, a name that starts with the visible text", () => {
+  it("builds the week strip: a bar per run, one mark per other kind or UE, a name that starts with the visible text", () => {
     const strip = stripOf(weekDays(week, MONDAY), (day) => `#day-${day.date}`);
     expect(strip).toHaveLength(7);
     expect(strip[0]).toMatchObject({ short: "Lun", number: "16", today: true, href: "#day-2026-11-16" });
@@ -53,7 +53,7 @@ describe("today", () => {
       ["strength", undefined],
       ["class", undefined],
     ]);
-    expect(strip[1]?.marks.map((m) => m.tone)).toEqual(["class"]);
+    expect(strip[1]?.marks.map((m) => m.tone)).toEqual(["ue1", "ue4"]);
   });
 
   it("orders the day and names times", () => {

@@ -288,7 +288,9 @@ export function createMockApi({
       state.program.timetableCheckedAt = new Date().toISOString();
       if (state.refreshed) return { checkedAt: state.program.timetableCheckedAt };
       state.refreshed = true;
-      const thursday = week(today).find((i): i is CalendarEvent => i.kind === "class" && i.title === "Mathématiques");
+      const thursday = week(today).find(
+        (i): i is CalendarEvent => i.kind === "class" && i.title === "UE3 Mathématiques",
+      );
       if (thursday) put({ ...thursday, cancelled: true });
       return { checkedAt: state.program.timetableCheckedAt, summary: "1 cours annulé jeudi" };
     },
