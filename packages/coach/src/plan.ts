@@ -1,4 +1,4 @@
-import { buildSession, EASY_TO_LONG, longBlock, MAX_E, STRIDES_MIN, scaleSession } from "./catalog.ts";
+import { buildSession, EASY_TO_LONG, longBlock, MAX_E, STRIDES_MIN, scaleSession, taperSession } from "./catalog.ts";
 import { addDays, daysBetween, mondayOf, nextMonday } from "./dates.ts";
 import { predictTime } from "./fitness.ts";
 import { enforceDistribution, longShare, trimTo } from "./guards.ts";
@@ -417,8 +417,11 @@ export function buildWeek(week: PlanWeek, ctx: WeekCtx): Session[] {
     deload: week.deload,
   };
   // A test keeps its length whatever the week (F10).
-  const qFactor = (slot: TemplateSlot): number =>
-    slot === "TEST" ? 1 : week.phase === "taper" ? 0.55 : week.deload ? 2 / 3 : 1;
+  const sizeQ = (slot: TemplateSlot, q: Session): Session => {
+    if (slot === "TEST") return q;
+    if (week.phase === "taper") return taperSession(q, 0.55);
+    return week.deload ? scaleSession(q, 2 / 3) : q;
+  };
   // P18's last Q at D-4 is H12; its last L at D-14/21 is the plan's template (generatePlan).
   // P9's L × 0.75 is already in a deload week's volume (× 0.75): applying it again would halve the long run.
   const load = !week.deload && week.phase !== "taper";
@@ -432,8 +435,7 @@ export function buildWeek(week: PlanWeek, ctx: WeekCtx): Session[] {
     if (slot === "E" || slot === "RECUP" || slot === "E+strides" || slot === "E+sprints") return null;
     qCount++;
     const priority: Session["priority"] = qCount === 1 ? (shortRace ? 1 : 2) : 3;
-    const q = buildSession(slot, { ...base, ...withRace(ctx) });
-    return { ...(qFactor(slot) < 1 ? scaleSession(q, qFactor(slot)) : q), id, priority };
+    return { ...sizeQ(slot, buildSession(slot, { ...base, ...withRace(ctx) })), id, priority };
   });
   const easySlots = week.template.filter((s) => s === "E" || s === "RECUP" || s === "E+strides" || s === "E+sprints");
   const left = Math.max(0, week.volumeMin - fixed.reduce((sum, s) => sum + (s?.durMin ?? 0), 0));
