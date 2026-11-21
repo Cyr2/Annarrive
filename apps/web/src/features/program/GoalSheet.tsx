@@ -1,3 +1,4 @@
+import { RACE_NAME_MAX } from "@annarrive/protocol";
 import { useState } from "react";
 import type { GoalInput } from "../../api/client.ts";
 import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
@@ -61,6 +62,13 @@ export default function GoalSheet(sheet: SheetProps<"goal">) {
         </ChoiceGroup>
       </Section>
       <Group>
+        <RowInput
+          label="Nom de la course"
+          placeholder="Semi de Strasbourg"
+          maxLength={RACE_NAME_MAX}
+          value={draft.name ?? ""}
+          onChange={(name) => set({ name })}
+        />
         <RowInput label="Date" type="date" min={todayOf(plan)} value={draft.date} onChange={(date) => set({ date })} />
         <RowInput
           label="Heure de départ"

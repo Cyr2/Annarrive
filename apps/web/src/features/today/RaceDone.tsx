@@ -7,6 +7,7 @@ import { LogoSlot } from "../../ui/LogoSlot.tsx";
 import { PaceValue } from "../../ui/PaceValue.tsx";
 import { Surface } from "../../ui/Surface.tsx";
 import { usePlan } from "../plan/store.ts";
+import { raceTitle } from "../program/goal.ts";
 import { useSheet } from "../sheets/store.ts";
 import { ReggieAvatar, ToneWash } from "./parts.tsx";
 import { paceText, raceClock, sinceLast, splitLabel, targetGap } from "./today.ts";
@@ -52,7 +53,7 @@ export function RaceDone({ race }: { race: RaceResult }) {
         <ToneWash tone="long" />
         <LogoSlot size={52} className="absolute top-5 right-5 rotate-6 rounded-tile shadow-float" />
         <h1 id="race-title" className="t-sub relative m-0 pr-16 font-normal">
-          {race.race}
+          {raceTitle(race)}
         </h1>
         <PaceValue value={raceClock(race.timeMin)} size="figure" className="relative" />
         <span

@@ -81,7 +81,7 @@ export class ReviewService {
     if (!run) return undefined;
     const earlier = this.#runs(addDays(goal.date, -365 * 3), goal.date);
     const report = coach.raceReport(goal, run, coach.previousRace(goal, earlier, program.declaredTime));
-    return { date: goal.date, distanceM: goal.distanceM, ...report };
+    return { ...(goal.name ? { name: goal.name } : {}), date: goal.date, distanceM: goal.distanceM, ...report };
   }
 
   /** RR1 at the sync: the run Garmin sent is the goal race; marked so the coach finds it once the goal is gone (MA6). */

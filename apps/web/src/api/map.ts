@@ -341,7 +341,7 @@ export function toToday(
     date: today.date,
     goal: goal
       ? {
-          label: goal.distanceM === 21097.5 ? "Semi" : raceOf(goal.distanceM),
+          label: goal.name ?? (goal.distanceM === 21097.5 ? "Semi" : raceOf(goal.distanceM)),
           daysLeft: daysBetween(today.date, goal.date),
         }
       : undefined,
@@ -361,6 +361,7 @@ export function toToday(
     race: today.race && {
       ...today.race,
       race: raceOf(today.race.distanceM),
+      name: today.race.name,
       distanceKm: today.race.distanceM / 1000,
     },
   };
@@ -447,6 +448,7 @@ export function toGoal(goal: GoalInput): NonNullable<ServerProgram["goal"]> {
     date: goal.date,
     targetMin: targetMin > 0 ? targetMin : undefined,
     startTime: goal.startTime ? fullClock(goal.startTime) : undefined,
+    name: goal.name,
   };
 }
 
@@ -493,6 +495,7 @@ export function toProgram({ program, profile, lastSyncAt, days, today, watch }: 
           date: goal.date,
           targetTime: goal.targetMin ? targetTime(goal.targetMin) : undefined,
           startTime: goal.startTime && clockOf(goal.startTime),
+          name: goal.name,
           targetTag: plan?.verdict && TARGET_TAGS[plan.verdict],
           targetWhy: plan?.odds,
         }

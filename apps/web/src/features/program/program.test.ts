@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { seedProgram } from "../../api/mock/seed.ts";
 import { EMPTY, issue, toPayload } from "../onboarding/onboarding.ts";
 import { runWindow } from "./DayWindow.tsx";
+import { raceTitle } from "./goal.ts";
 import {
   clock,
   garminLine,
@@ -38,6 +39,14 @@ describe("target time", () => {
     expect(secondsOf("1:48:00")).toBe(6480);
     expect(secondsOf("1:48")).toBe(6480);
     expect(secondsOf(undefined)).toBe(0);
+  });
+});
+
+describe("race title", () => {
+  it("shows her name for the race, else its distance", () => {
+    expect(raceTitle({ race: "Semi-marathon", name: "Semi de Strasbourg" })).toBe("Semi de Strasbourg");
+    expect(raceTitle({ race: "Semi-marathon" })).toBe("Semi-marathon");
+    expect(raceTitle({ race: "Semi-marathon", name: "" })).toBe("Semi-marathon");
   });
 });
 

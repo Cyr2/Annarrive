@@ -35,7 +35,15 @@ export type UnavailableInput = {
   until?: string;
 };
 
-export type GoalInput = { race: string; distanceKm: number; date: string; targetTime?: string; startTime?: string };
+export type GoalInput = {
+  race: string;
+  distanceKm: number;
+  date: string;
+  targetTime?: string;
+  startTime?: string;
+  /** Her own name for the race; shown in place of the distance. */
+  name?: string;
+};
 
 export type ChatInput = { text: string; context?: ChatContext };
 /** One day of the conversation, and the day before it that has messages (absent when none). */
