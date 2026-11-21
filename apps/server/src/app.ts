@@ -9,6 +9,7 @@ import {
   incidentBatchSchema,
   passwordLoginSchema,
   registrationResponseSchema,
+  type SessionInfo,
 } from "@annarrive/protocol";
 import { getConnInfo } from "@hono/node-server/conninfo";
 import { serveStatic } from "@hono/node-server/serve-static";
@@ -343,7 +344,7 @@ export function createApp({ services, sessionSecret, webDist }: AppOptions): Hon
   /** The signed-in account; a session opened by a link without a name has none, so it cannot add Face ID. */
   const accountOf = async (c: Context) => {
     const userId = (await currentSession(c))?.userId;
-    if (!userId) throw new ReadOnlyError("Connecte-toi avec ton identifiant et ton mot de passe pour activer Face ID.");
+    if (!userId) throw new ReadOnlyError("Connecte-toi avec ton identifiant et ton mot de passe pour l'activer.");
     return userId;
   };
   app.post("/api/auth/logout", async (c) => {
@@ -351,6 +352,11 @@ export function createApp({ services, sessionSecret, webDist }: AppOptions): Hon
     if (sessionId) services.auth.logout(sessionId);
     deleteCookie(c, SESSION_COOKIE, { prefix: "host", secure: true, path: "/" });
     return c.body(null, 204);
+  });
+  // A session opened by a link has no account: it holds no passkey, and the app offers none to add either.
+  app.get("/api/session", async (c) => {
+    const userId = (await currentSession(c))?.userId;
+    return c.json<SessionInfo>({ hasPasskey: userId ? services.auth.hasPasskey(userId) : false });
   });
   app.post("/api/passkeys/options", rateLimit(30, 60_000), async (c) =>
     c.json(await services.auth.registrationOptions(await accountOf(c))),

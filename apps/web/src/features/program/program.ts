@@ -14,11 +14,6 @@ export const SETTING_LABELS: Record<SettingKey, string> = {
   travelMin: "Après une course, avant un cours",
 };
 
-/** The two settings added in Réglages carry « Nouveau » for their first two weeks. */
-const NEW_UNTIL = "2026-12-06";
-export const isNewSetting = (key: SettingKey, today: string | undefined) =>
-  (key === "preferredHour" || key === "travelMin") && today !== undefined && today < NEW_UNTIL;
-
 export function settingValue(key: SettingKey, settings: Settings): string {
   if (key === "runsPerWeek") return String(settings.runsPerWeek);
   if (key === "noRunDays" || key === "longRunDays") {

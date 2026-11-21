@@ -2,9 +2,8 @@ import type { Program, Settings } from "../../api/schemas.ts";
 import { ago } from "../../lib/date.ts";
 import { Dot } from "../../ui/bits.tsx";
 import { Group, RowButton, Section } from "../../ui/List.tsx";
-import { usePlan } from "../plan/store.ts";
 import { type SettingKey, useSheet } from "../sheets/store.ts";
-import { isNewSetting, SETTING_LABELS, settingValue, watchState } from "./program.ts";
+import { SETTING_LABELS, settingValue, watchState } from "./program.ts";
 
 /** Groups of Réglages that read the plan's settings: runs, hours, the watch. */
 
@@ -15,24 +14,12 @@ const HOURS: SettingKey[] = ["notBefore", "notAfter", "bedtime", "noRunDays", "t
 /** Every setting opens the same sheet, saved with « Enregistrer »: one undoable change, never a change per tap. */
 function SettingRows({ keys, settings }: { keys: SettingKey[]; settings: Settings }) {
   const show = useSheet((s) => s.show);
-  const today = usePlan((s) => s.today?.date);
   return (
     <Group>
       {keys.map((key) => (
         <RowButton
           key={key}
-          label={
-            isNewSetting(key, today) ? (
-              <>
-                {SETTING_LABELS[key]}{" "}
-                <span className="t-cap ml-1 inline-block rounded-full bg-action-wash px-2 align-[2px] font-semibold text-action">
-                  Nouveau
-                </span>
-              </>
-            ) : (
-              SETTING_LABELS[key]
-            )
-          }
+          label={SETTING_LABELS[key]}
           value={settingValue(key, settings)}
           onClick={() => show({ kind: "setting", key })}
         />

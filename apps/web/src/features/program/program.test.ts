@@ -5,7 +5,6 @@ import { runWindow } from "./DayWindow.tsx";
 import {
   clock,
   garminLine,
-  isNewSetting,
   lastRaceLine,
   RACE_AGO,
   raceAgoOf,
@@ -84,12 +83,6 @@ describe("réglages", () => {
     expect(settingValue("preferredHour", { ...settings, preferredHour: "7:30" })).toBe("7:30");
     expect(settingValue("travelMin", settings)).toBe("30 min");
     expect(settingValue("travelMin", { ...settings, travelMin: 90 })).toBe("1 h 30");
-  });
-
-  it("marks the two new settings « Nouveau » for two weeks only", () => {
-    expect(isNewSetting("travelMin", "2026-11-21")).toBe(true);
-    expect(isNewSetting("bedtime", "2026-11-21")).toBe(false);
-    expect(isNewSetting("preferredHour", "2026-12-06")).toBe(false);
   });
 });
 

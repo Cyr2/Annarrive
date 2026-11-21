@@ -83,3 +83,7 @@ export const creationOptionsSchema = z.object({
     .optional(),
   attestation: z.enum(["direct", "enterprise", "indirect", "none"]).optional(),
 });
+
+/** GET /api/session: what the signed-in account holds, so Réglages can tell if Face ID is already on. */
+export const sessionInfoSchema = z.object({ hasPasskey: z.boolean() });
+export type SessionInfo = z.infer<typeof sessionInfoSchema>;

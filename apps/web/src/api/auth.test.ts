@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { logInWithPasskey, logInWithPassword, registerPasskey } from "./auth.ts";
+import { hasPasskey, logInWithPasskey, logInWithPassword, registerPasskey } from "./auth.ts";
 
 const browser = vi.hoisted(() => ({ startAuthentication: vi.fn(), startRegistration: vi.fn() }));
 vi.mock("@simplewebauthn/browser", () => browser);
@@ -68,6 +68,13 @@ describe("auth calls", () => {
     await registerPasskey(fetcher);
     expect(browser.startRegistration).toHaveBeenCalledWith({ optionsJSON: CREATION });
     expect(fetcher.mock.calls[1]?.[0]).toBe("/api/passkeys");
+  });
+
+  it("reads whether the account holds a passkey, and offers one when it cannot tell", async () => {
+    expect(await hasPasskey(vi.fn<typeof fetch>(async () => json({ hasPasskey: true })))).toBe(true);
+    expect(await hasPasskey(vi.fn<typeof fetch>(async () => json({ hasPasskey: false })))).toBe(false);
+    expect(await hasPasskey(vi.fn<typeof fetch>(async () => json({ nope: 1 })))).toBe(false);
+    expect(await hasPasskey(vi.fn<typeof fetch>(() => Promise.reject(new TypeError("offline"))))).toBe(false);
   });
 
   it("refuses options it cannot read, before the browser prompts", async () => {

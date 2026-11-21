@@ -177,13 +177,13 @@ export class AuthService {
         requireUserVerification: true,
       });
     } catch {
-      throw new InvalidInputError("Face ID n'a pas été enregistré : réessaie.");
+      throw new InvalidInputError("Ça n'a pas été enregistré : réessaie.");
     }
-    if (!result.verified) throw new InvalidInputError("Face ID n'a pas été enregistré : réessaie.");
+    if (!result.verified) throw new InvalidInputError("Ça n'a pas été enregistré : réessaie.");
     const { credential } = result.registrationInfo;
     // Never replace a stored passkey, whoever holds it: that would hand its id to another key.
     if (this.#stores.passkey.get(credential.id))
-      throw new InvalidInputError("Cette clé d'accès est déjà enregistrée : connecte-toi avec Face ID.");
+      throw new InvalidInputError("Cette clé d'accès est déjà enregistrée : connecte-toi avec elle.");
     this.#stores.passkey.put({
       id: credential.id,
       userId,
@@ -220,6 +220,11 @@ export class AuthService {
     if (!passkey) throw new NotFoundError(`Aucune clé d'accès « ${passkeyId} ».`);
     this.#stores.passkey.delete(passkeyId);
     this.#endSessions(passkey.userId);
+  }
+
+  /** Whether the account holds at least one passkey (on any of its devices). */
+  hasPasskey(userId: string): boolean {
+    return this.#passkeysOf(userId).length > 0;
   }
 
   #passkeysOf(userId: string): Passkey[] {

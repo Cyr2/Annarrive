@@ -1,12 +1,13 @@
 import { PRIVACY_NOTE } from "@annarrive/protocol";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { canUsePasskeys, logOut, registerPasskey } from "../../api/auth.ts";
+import { hasPasskey, logOut, registerPasskey } from "../../api/auth.ts";
 import { ApiError, errorMessage } from "../../api/errors.ts";
 import type { Program, Settings } from "../../api/schemas.ts";
 import { signOut } from "../../api/session.ts";
 import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 import { LoadFailed } from "../../ui/EmptyState.tsx";
+import { Icon } from "../../ui/Icon.tsx";
 import { Group, RowButton, Section } from "../../ui/List.tsx";
 import { PullToRefresh } from "../../ui/PullToRefresh.tsx";
 import { Screen } from "../../ui/Screen.tsx";
@@ -14,7 +15,7 @@ import { Skeleton } from "../../ui/Skeleton.tsx";
 import { TextButton } from "../../ui/TextButton.tsx";
 import { notify } from "../../ui/toast.ts";
 import { strengthShort } from "../add/add.ts";
-import { passkeyError, unlockName } from "../auth/unlock.ts";
+import { passkeyError, thisDevicePasskey } from "../auth/unlock.ts";
 import { usePlan } from "../plan/store.ts";
 import { NotificationsRow } from "../push/NotificationsRow.tsx";
 import { usePush } from "../push/store.ts";
@@ -124,16 +125,20 @@ function SettingGroups({ program }: { program: Program }) {
 
 /** Compte: Face ID on this phone, and Se déconnecter (confirmed, since signing in again takes a moment). */
 function Account() {
-  const unlock = unlockName(navigator.userAgent);
-  const [canAdd, setCanAdd] = useState(false);
+  const wording = thisDevicePasskey();
+  const unlock = wording.name;
+  // Only a browser without WebAuthn hides the row; null while the account is being asked.
+  const supported = typeof PublicKeyCredential !== "undefined";
+  const [on, setOn] = useState<boolean | null>(null);
   const [leaving, setLeaving] = useState(false);
   useEffect(() => {
-    void canUsePasskeys().then(setCanAdd);
-  }, []);
+    if (supported) void hasPasskey().then(setOn);
+  }, [supported]);
   const addPasskey = async () => {
     try {
       await registerPasskey();
-      void notify(`${unlock} est prêt : rien à taper la prochaine fois.`);
+      setOn(true);
+      void notify(`${wording.enabled} : rien à taper la prochaine fois.`);
     } catch (failure) {
       const message = passkeyError(failure, unlock);
       if (message) void notify(message);
@@ -154,7 +159,18 @@ function Account() {
   return (
     <Section title="Compte">
       <Group>
-        {canAdd && <RowButton label={unlock} value="Ajouter" onClick={() => void addPasskey()} />}
+        {supported && on === true && (
+          <div className="row">
+            <span className="t-body flex items-center gap-2">
+              <Icon name={wording.icon} size={20} className="text-ink-2" />
+              {wording.enabled}
+            </span>
+            <Icon name="check" size={20} stroke={2.5} className="text-ok-deep" />
+          </div>
+        )}
+        {supported && on === false && (
+          <RowButton tone="link" label={wording.enable} onClick={() => void addPasskey()} />
+        )}
         <RowButton tone="link" label="Se déconnecter" onClick={() => setLeaving(true)} />
       </Group>
       <ConfirmDialog
