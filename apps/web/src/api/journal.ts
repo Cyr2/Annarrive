@@ -32,7 +32,7 @@ export function crumb(kind: Breadcrumb["kind"], label: string) {
 export const breadcrumbs = (): readonly Breadcrumb[] => crumbs;
 
 /** The built entry file (`index-<hash>.js`): it names the build its stacks map back to. */
-const version = () =>
+export const version = () =>
   document.querySelector<HTMLScriptElement>("script[type=module][src]")?.src.split("/").pop() ?? "dev";
 
 function device(): IncidentInput["device"] {
