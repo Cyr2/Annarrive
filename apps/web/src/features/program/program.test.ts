@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { seedProgram } from "../../api/mock/seed.ts";
 import { EMPTY, issue, toPayload } from "../onboarding/onboarding.ts";
 import { runWindow } from "./DayWindow.tsx";
-import { raceTitle } from "./goal.ts";
+import { goalDateOk, nextRaceDraft, raceTitle } from "./goal.ts";
 import { clock, lastRaceLine, RACE_AGO, raceAgoOf, raceClock, raceDateOf, secondsOf, settingValue } from "./program.ts";
 import { skyPhase } from "./sky.ts";
 import { targetReasons } from "./TargetTag.tsx";
@@ -93,5 +93,28 @@ describe("onboarding timetable link", () => {
     expect(toPayload(draft, "2026-11-16").icsUrl).toBe("https://ent.example.fr/agenda.ics");
     expect(toPayload(EMPTY, "2026-11-16").icsUrl).toBeUndefined();
     expect(issue("days", { ...EMPTY, icsUrl: "pas un lien" }, "2026-11-16")).toBeDefined();
+  });
+});
+
+describe("a new race after the one she ran", () => {
+  const ran = {
+    race: "Semi-marathon",
+    distanceKm: 21.1,
+    date: "2026-11-22",
+    targetTime: "1:48:00",
+    startTime: "9:30",
+    name: "Semi de Strasbourg",
+  };
+  it("keeps only the distance as a suggestion: no name, date, start or chrono of the race she ran", () => {
+    expect(nextRaceDraft(ran)).toEqual({ race: "Semi-marathon", distanceKm: 21.1, date: "" });
+  });
+  it("takes a date after today, never today or before", () => {
+    expect(goalDateOk("2026-11-23", "2026-11-22")).toBe(true);
+    expect(goalDateOk("2026-11-22", "2026-11-22")).toBe(false);
+    expect(goalDateOk("2026-11-01", "2026-11-22")).toBe(false);
+    expect(goalDateOk("", "2026-11-22")).toBe(false);
+  });
+  it("lets her keep the date of a race set for today while she edits it", () => {
+    expect(goalDateOk("2026-11-22", "2026-11-22", "2026-11-22")).toBe(true);
   });
 });

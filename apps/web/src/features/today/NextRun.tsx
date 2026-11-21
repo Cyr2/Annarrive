@@ -9,6 +9,9 @@ import { useSheet } from "../sheets/store.ts";
 /** The next session as a small card of the app: when, what, its shape, duration and pace. Opens its detail. */
 export function NextRun({ run, today, label }: { run: Run; today: string; label: string }) {
   const show = useSheet((s) => s.show);
+  const moment = relativeMoment(run.date, run.start, today);
+  // Under « Demain », the card says only the time: the day is not said twice.
+  const when = moment.startsWith(`${label} `) ? run.start : moment;
   return (
     <section className="flex flex-col gap-2">
       <SectionTitle>{label}</SectionTitle>
@@ -21,7 +24,7 @@ export function NextRun({ run, today, label }: { run: Run; today: string; label:
         className="surface press flex w-full flex-col gap-3 border-0 p-4 text-left text-ink"
       >
         <span className="flex w-full items-center justify-between gap-2">
-          <span className="t-cap">{relativeMoment(run.date, run.start, today)}</span>
+          <span className="t-cap tabular-nums">{when}</span>
           <Icon name="chevronRight" size={18} className="flex-none text-ink-3" />
         </span>
         <span className="flex flex-wrap items-center gap-x-2 gap-y-1">

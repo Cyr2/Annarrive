@@ -6,16 +6,23 @@ import { Screen } from "./Screen.tsx";
 import { Sky } from "./Sky.tsx";
 import { Surface } from "./Surface.tsx";
 
-type Props = { icon: IconName; title: string; children?: ReactNode; action?: ReactNode };
+type Props = {
+  icon: IconName;
+  title: string;
+  children?: ReactNode;
+  action?: ReactNode;
+  /** The whole page (the crash screen): its title is the page's h1, for VoiceOver's rotor. */
+  page?: boolean;
+};
 
 /** Nothing to show, or something went wrong: an icon, one sentence, and always a way forward. */
-export function EmptyState({ icon, title, children, action }: Props) {
+export function EmptyState({ icon, title, children, action, page = false }: Props) {
   return (
     <Surface className="flex flex-col items-center gap-3 px-6 py-8 text-center">
       <span className="flex size-12 items-center justify-center rounded-full bg-action-wash text-action">
         <Icon name={icon} />
       </span>
-      <SectionTitle className="px-0">{title}</SectionTitle>
+      {page ? <h1 className="t-title px-0">{title}</h1> : <SectionTitle className="px-0">{title}</SectionTitle>}
       {children && <p className="t-sub m-0 max-w-[32ch]">{children}</p>}
       {action}
     </Surface>
@@ -48,6 +55,7 @@ export function AppCrash({ onReload }: { onReload: () => void }) {
         <EmptyState
           icon="info"
           title="Quelque chose a coincé"
+          page
           action={
             <Button variant="filled" icon="change" onClick={onReload}>
               Réessayer

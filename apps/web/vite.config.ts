@@ -39,6 +39,8 @@ export default defineConfig({
         // iOS reads its startup images when the app is added to the home screen, never from the cache.
         globIgnores: ["splash-*.png"],
         navigateFallbackDenylist: [/^\/api/],
+        // Only names with a content hash skip the revision: assets/app.js keeps its name and needs one.
+        dontCacheBustURLsMatching: /-[\w-]{8}\.\w+$/,
         // Shows the server's notifications and opens their screen on tap; precaching stays generated.
         importScripts: ["/push-sw.js"],
       },
@@ -51,6 +53,9 @@ export default defineConfig({
       output: {
         // Everything the first screen needs in one file: each extra chunk costs a round trip on a phone.
         codeSplitting: { groups: [{ name: "app", tags: ["$initial"] }] },
+        // Every other file imports this one: a hash in its name would rename them all at each deploy. The server
+        // has it revalidated (apps/server/src/app.ts), and the service worker versions it by content.
+        entryFileNames: "assets/app.js",
       },
     },
   },

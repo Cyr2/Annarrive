@@ -9,7 +9,8 @@
   transition: transform var(--duration-hold) var(--ease-out);
 }
 
-/* Lifted: pops to 102 % with the lift shadow, from where it sat. */
+/* Lifted: pops to 102 % with the lift shadow, from where it sat. Opaque frost, like a sheet on the move: on a
+   touch screen content glass has no blur, and the row under it read through it. */
 @keyframes week-lift {
   from {
     transform: scale(0.97);
@@ -19,6 +20,9 @@
 .week-lift {
   transform: scale(1.02);
   box-shadow: var(--shadow-lift);
+  background: var(--surface-sheen), var(--surface-solid);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   animation: week-lift var(--duration-select) var(--ease-out) both;
 }
 

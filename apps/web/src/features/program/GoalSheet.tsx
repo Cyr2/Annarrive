@@ -1,6 +1,7 @@
 import { RACE_NAME_MAX } from "@annarrive/protocol";
 import { useState } from "react";
 import type { GoalInput } from "../../api/client.ts";
+import { addDays } from "../../lib/date.ts";
 import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
 import { Button, Chip, SegmentedControl } from "../../ui/controls.tsx";
 import { Group, RowInput, Section } from "../../ui/List.tsx";
@@ -10,7 +11,7 @@ import { TimeBoxes } from "../../ui/TimeBoxes.tsx";
 import { todayOf } from "../plan/selectors.ts";
 import { usePlan } from "../plan/store.ts";
 import type { SheetProps } from "../sheets/SheetHost.tsx";
-import { goalSummary, RACES } from "./goal.ts";
+import { goalDateOk, goalSummary, nextRaceDraft, RACES } from "./goal.ts";
 import { secondsOf } from "./program.ts";
 
 const MODES = [
@@ -28,9 +29,11 @@ const fullClock = (seconds: number) => {
 export default function GoalSheet(sheet: SheetProps<"goal">) {
   const plan = usePlan();
   const goal = plan.program?.goal;
-  const [draft, setDraft] = useState<GoalInput | undefined>(goal && { ...goal });
-  const [finish, setFinish] = useState(!goal?.targetTime);
+  const next = sheet.spec.next === true;
+  const [draft, setDraft] = useState<GoalInput | undefined>(goal && (next ? nextRaceDraft(goal) : { ...goal }));
+  const [finish, setFinish] = useState(!next && !goal?.targetTime);
   if (!goal || !draft) return null;
+  const today = todayOf(plan);
   const set = (patch: Partial<GoalInput>) => setDraft({ ...draft, ...patch });
   const seconds = secondsOf(draft.targetTime);
   const input = { ...draft, targetTime: finish || seconds === 0 ? undefined : draft.targetTime };
@@ -45,7 +48,7 @@ export default function GoalSheet(sheet: SheetProps<"goal">) {
         <Button
           variant="filled"
           size="large"
-          disabled={!draft.date || (!finish && seconds === 0)}
+          disabled={!goalDateOk(draft.date, today, next ? undefined : goal.date) || (!finish && seconds === 0)}
           onClick={() => void save()}
         >
           Valider
@@ -69,7 +72,13 @@ export default function GoalSheet(sheet: SheetProps<"goal">) {
           value={draft.name ?? ""}
           onChange={(name) => set({ name })}
         />
-        <RowInput label="Date" type="date" min={todayOf(plan)} value={draft.date} onChange={(date) => set({ date })} />
+        <RowInput
+          label="Date"
+          type="date"
+          min={addDays(today, 1)}
+          value={draft.date}
+          onChange={(date) => set({ date })}
+        />
         <RowInput
           label="Heure de départ"
           type="time"
@@ -89,11 +98,13 @@ export default function GoalSheet(sheet: SheetProps<"goal">) {
         />
         {!finish && <TimeBoxes seconds={seconds} onChange={(s) => set({ targetTime: fullClock(s) })} />}
       </Section>
-      <Section title="Ce qui change">
-        <Surface variant="inset" className="p-4">
-          <span className="t-body">{goalSummary(goal, input, todayOf(plan))}</span>
-        </Surface>
-      </Section>
+      {draft.date && (
+        <Section title="Ce qui change">
+          <Surface variant="inset" className="p-4">
+            <span className="t-body">{goalSummary(goal, input, today)}</span>
+          </Surface>
+        </Section>
+      )}
     </Sheet>
   );
 }

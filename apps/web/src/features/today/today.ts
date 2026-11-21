@@ -130,7 +130,7 @@ export function sinceLast(timeMin: number, previous: { timeMin: number; date?: s
 /** 306 s/km → "5'06 /km", the runner's notation. */
 export function paceText(secondsPerKm: number): string {
   const total = Math.round(secondsPerKm);
-  return `${Math.floor(total / 60)}'${pad(total % 60)} /km`;
+  return `${Math.floor(total / 60)}'${pad(total % 60)}\u00a0/km`;
 }
 
 /** Under each bar of the splits: "5 km", then the kilometre it ends at, "Fin" for the last. */

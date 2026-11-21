@@ -25,7 +25,7 @@ export function WeekStep() {
           onChange={(n) => update({ runsPerWeek: n === "3" ? 3 : n === "4" ? 4 : 5 })}
         />
       </Ask>
-      <Ask question="Ta sortie longue, plutôt quel jour ?">
+      <Ask question="Quels jours pour ta sortie longue ?">
         <ProfileDays
           label="Jours de sortie longue"
           value={longRunDays}

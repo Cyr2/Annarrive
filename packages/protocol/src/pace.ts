@@ -8,5 +8,6 @@ function minutesSeconds(secondsPerKm: number): string {
 export function paceLabel(secondsPerKm: number | readonly [number, number]): string {
   const [a, b] = typeof secondsPerKm === "number" ? [secondsPerKm, secondsPerKm] : secondsPerKm;
   const [fast, slow] = [minutesSeconds(Math.min(a, b)), minutesSeconds(Math.max(a, b))];
-  return `${fast === slow ? fast : `${fast} à ${slow}`} /km`;
+  // A no-break space: the unit never starts a line of its own.
+  return `${fast === slow ? fast : `${fast} à ${slow}`}\u00a0/km`;
 }

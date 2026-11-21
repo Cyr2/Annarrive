@@ -16,6 +16,8 @@ test("Le bilan du dimanche s'affiche en haut d'Aujourd'hui, « × » le ferme et
 
   await review.getByRole("button", { name: "Fermer le bilan" }).click();
   await expect(review).toBeHidden();
+  // Audit iPhone G3: VoiceOver goes on with the day's card, not from the top of the page.
+  await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
   await page.reload();
   await expect(page.getByText("Sortie longue faite")).toBeVisible();
   await expect(page.getByRole("region", { name: "Ton bilan de la semaine" })).toBeHidden();
@@ -57,4 +59,23 @@ test("Après la course objectif, le résultat remplace la journée jusqu'à « G
   await expect(page.getByText("Jour J fait")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Demain" })).toBeVisible();
   await expect(page.getByText("Footing facile").first()).toBeVisible();
+  // Audit iPhone F2: the title says « Demain », the card only the time.
+  await expect(page.locator('[data-tour="next"]')).not.toContainText("Demain");
+});
+
+// Audit iPhone G1: « Une nouvelle course » reopened the race she had just run, dated today, ready to be validated.
+test("« Une nouvelle course » ouvre un objectif vierge, qui refuse une date passée", async ({ page }) => {
+  await page.goto("/?mock=course");
+  await page.getByRole("button", { name: /Une nouvelle course/ }).click();
+  const sheet = page.getByRole("dialog", { name: "Ton objectif" });
+  await expect(sheet.getByLabel("Nom de la course")).toHaveValue("");
+  await expect(sheet.getByLabel("Date")).toHaveValue("");
+  await expect(sheet.getByRole("button", { name: "Semi-marathon" })).toHaveAttribute("aria-pressed", "true");
+  const validate = sheet.getByRole("button", { name: "Valider" });
+  await sheet.getByRole("radio", { name: "Juste finir" }).click();
+  await expect(validate).toBeDisabled();
+  await sheet.getByLabel("Date").fill("2020-03-01");
+  await expect(validate).toBeDisabled();
+  await sheet.getByLabel("Date").fill("2099-03-01");
+  await expect(validate).toBeEnabled();
 });

@@ -310,7 +310,7 @@ export const scenarios: Scenario[] = [
     id: "allure-sortie-longue",
     title: "Allure de la sortie longue : une seule allure, bien notée",
     message: "Je cours à quelle allure dimanche pour ma sortie longue ?",
-    expect: { anyOf: ["get_week"], forbidden: allModifying, textMatches: [/6'00 \/km/] },
+    expect: { anyOf: ["get_week"], forbidden: allModifying, textMatches: [/6'00\s\/km/] },
   },
   {
     id: "vie-privee",

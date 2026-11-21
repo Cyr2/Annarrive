@@ -188,7 +188,7 @@ describe("her level from laps and her own time (F10, F18, RC3)", () => {
 
     const report = levelReport(t.stores, NOW);
     expect(report).toContain("seuil (FC)");
-    expect(report).toMatch(/T 5'1\d \/km/);
+    expect(report).toMatch(/T 5'1\d\s\/km/);
   });
 
   it("takes a time she types in Programme at once, the goal untouched", async () => {

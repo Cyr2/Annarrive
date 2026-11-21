@@ -238,7 +238,7 @@ describe("http client, reading", () => {
       date: "2026-11-16",
       start: "18:00",
       mainSet: "6 × 800 m",
-      pace: "4'55 /km",
+      pace: "4'55\u00a0/km",
       watch: "failed",
     });
     expect(today.session?.steps).toEqual([
@@ -246,11 +246,11 @@ describe("http client, reading", () => {
       {
         repeat: 6,
         steps: [
-          { label: "800 m", pace: "4'55 /km", tone: "hard" },
+          { label: "800 m", pace: "4'55\u00a0/km", tone: "hard" },
           { label: "Récupérer · 2 min", pace: "", tone: "muted", minutes: 2 },
         ],
       },
-      { label: "Retour au calme · 10 min", pace: "6'15 à 6'45 /km", tone: "plain", minutes: 10 },
+      { label: "Retour au calme · 10 min", pace: "6'15 à 6'45\u00a0/km", tone: "plain", minutes: 10 },
     ]);
     expect(today.proposals?.map((p) => p.text.split(" :")[0])).toEqual([
       "Tes dernières séances rapides sont bien passées",
@@ -337,7 +337,7 @@ describe("http client, reading", () => {
       distanceKm: 8.3,
       duration: "51:12",
       mainPaceLabel: "Allure moyenne",
-      mainPace: "6'10 /km",
+      mainPace: "6'10\u00a0/km",
       verdict: "Prévu 50 min, fait en 51 min",
       cut: false,
       askFeel: true,
@@ -530,17 +530,17 @@ describe("http client, reading", () => {
     expect(sprints.mainSet).toBe("6 × 10 s");
     // As the watch runs it: a « Répéter 6 fois » group around the sprint and its jog back, every line with a pace.
     expect(sprints.steps).toEqual([
-      { label: "Échauffement · 29 min", pace: "5'25 à 6'29 /km", tone: "plain", minutes: 29 },
+      { label: "Échauffement · 29 min", pace: "5'25 à 6'29\u00a0/km", tone: "plain", minutes: 29 },
       {
         repeat: 6,
         steps: [
-          { label: "Accélération · 10 s", pace: "4'25 /km", tone: "hard", minutes: 1 / 6 },
-          { label: "Récupérer · 1 min 30", pace: "5'25 à 6'29 /km", tone: "muted", minutes: 1.5 },
+          { label: "Accélération · 10 s", pace: "4'25\u00a0/km", tone: "hard", minutes: 1 / 6 },
+          { label: "Récupérer · 1 min 30", pace: "5'25 à 6'29\u00a0/km", tone: "muted", minutes: 1.5 },
         ],
       },
-      { label: "Retour au calme · 10 min", pace: "5'25 à 6'29 /km", tone: "plain", minutes: 10 },
+      { label: "Retour au calme · 10 min", pace: "5'25 à 6'29\u00a0/km", tone: "plain", minutes: 10 },
     ]);
-    expect(sprints.pace).toBe("5'25 à 6'29 /km");
+    expect(sprints.pace).toBe("5'25 à 6'29\u00a0/km");
     const strides = toRun(
       session("E", [
         { kind: "work", durMin: 45, zone: "E", target: e },
@@ -548,8 +548,8 @@ describe("http client, reading", () => {
       ]),
     );
     expect(strides.steps).toEqual([
-      { label: "45 min", pace: "5'25 à 6'29 /km", tone: "plain", minutes: 45 },
-      { repeat: 6, steps: [{ label: "Accélération · 20 s", pace: "4'25 /km", tone: "hard", minutes: 1 / 3 }] },
+      { label: "45 min", pace: "5'25 à 6'29\u00a0/km", tone: "plain", minutes: 45 },
+      { repeat: 6, steps: [{ label: "Accélération · 20 s", pace: "4'25\u00a0/km", tone: "hard", minutes: 1 / 3 }] },
     ]);
     const race = { paceSKm: [313, 313] as [number, number], rpe: 6 };
     const long = toRun(
@@ -720,8 +720,8 @@ describe("http client, changes", () => {
       warnings: ["Repos ou vélo conseillé"],
     };
     expect(toPreviewRows(preview, "2026-11-16")).toEqual([
-      { day: "Aujourd'hui", label: "Footing · 20 min", tone: "easy", before: "Fractionné · 50 min · 4'55 /km" },
-      { day: "Demain", label: "Repos", tone: "rest", before: "Fractionné · 50 min · 4'55 /km" },
+      { day: "Aujourd'hui", label: "Footing · 20 min", tone: "easy", before: "Fractionné · 50 min · 4'55\u00a0/km" },
+      { day: "Demain", label: "Repos", tone: "rest", before: "Fractionné · 50 min · 4'55\u00a0/km" },
       { day: "Conseil", label: "Repos ou vélo conseillé", tone: "other" },
     ]);
   });

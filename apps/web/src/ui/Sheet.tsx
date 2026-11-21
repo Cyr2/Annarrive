@@ -290,7 +290,11 @@ function HeaderRow({ titleId, title, subtitle, back, onCancel, cancelLabel, acti
           <span className="max-[359px]:sr-only">Retour</span>
         </TextButton>
       ) : (
-        <TextButton className="justify-self-start" onClick={onCancel}>
+        // « OK » is 22 px wide: the hit area reaches 44 px without moving it.
+        <TextButton
+          className="relative justify-self-start after:absolute after:inset-y-0 after:-inset-x-3 after:content-['']"
+          onClick={onCancel}
+        >
           {cancelLabel}
         </TextButton>
       )}
@@ -430,7 +434,13 @@ function Panel({
           />
         </header>
         <StepWatch step={step} />
-        <div data-sheet-part="body" className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <div
+          data-sheet-part="body"
+          // Focusable, so a Bluetooth keyboard or Switch Control can scroll it (axe scrollable-region-focusable).
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must take the focus to scroll by keys.
+          tabIndex={0}
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+        >
           {/* Its own box, at the content's natural height: a push inside the sheet follows it (sheetHandoff.ts). */}
           <div
             data-sheet-content=""

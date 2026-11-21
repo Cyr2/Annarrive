@@ -14,7 +14,7 @@ const HR_FROM = {
 
 /** « Ton niveau »: VO2max (only when her watch gave one), threshold pace, threshold heart rate, each with its source. */
 export function figures(d: Data): Figure[] {
-  const [pace = "", unit] = paceLabel(d.thresholdPace).split(" ");
+  const [pace = "", unit] = paceLabel(d.thresholdPace).split(/\s/);
   const hr = d.thresholdHr;
   const vo2max = d.vo2max && {
     label: "VO2max",

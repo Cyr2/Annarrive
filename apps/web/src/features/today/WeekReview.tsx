@@ -41,12 +41,21 @@ export function notInReview(review: Review | undefined, next: Run | undefined): 
 export function WeekReview({ review, onClose }: { review: Review; onClose: () => void }) {
   const go = useGo();
   const next = addDays(review.monday, 7);
+  const close = () => {
+    onClose();
+    // Once the review is gone, VoiceOver and the keyboard go on with the day's card, not the top of the page.
+    requestAnimationFrame(() => {
+      const heading = document.querySelector<HTMLElement>("main h1");
+      heading?.setAttribute("tabindex", "-1");
+      heading?.focus({ preventScroll: true });
+    });
+  };
   return (
     <section aria-label="Ton bilan de la semaine" className="flex flex-col gap-4">
       <Surface as="article" className="relative flex flex-col gap-4 p-5">
         <div className="flex items-start justify-between gap-2">
           <h2 className="t-sub m-0 pt-2.5 font-normal">Ta semaine, {weekRange(review.monday)}</h2>
-          <IconButton icon="close" label="Fermer le bilan" onClick={onClose} className="-mt-1 -mr-2 flex-none" />
+          <IconButton icon="close" label="Fermer le bilan" onClick={close} className="-mt-1 -mr-2 flex-none" />
         </div>
         <dl className="m-0 flex flex-wrap gap-x-7 gap-y-3">
           {/* The label reads after its figure, as on the mockup; VoiceOver reads it first. */}

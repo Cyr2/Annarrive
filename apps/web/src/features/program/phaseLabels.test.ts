@@ -85,7 +85,14 @@ describe("phaseLabels (mockup programme-v2, B)", () => {
       0,
       ["0 Base", null, "192.8 Spécifique", "278 Affût."],
     ],
-    ["one week of base: Base hidden", 320, [1, 9, 4, 2], 1, [null, "23.3 Développement", "200.5 Spécifique", null]],
+    // Audit iPhone F4: « Spécifique » whole left no room for the taper's name; « Spé. Affût. » both fit.
+    [
+      "one week of base: Base hidden, Spé. makes room for the taper",
+      320,
+      [1, 9, 4, 2],
+      1,
+      [null, "23.3 Développement", "200.5 Spé.", "264 Affûtage"],
+    ],
   ])("%s", (_, width, weeks, current, expected) => {
     expect(layout(width, weeks, current)).toEqual(expected);
   });

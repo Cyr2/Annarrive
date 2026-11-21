@@ -21,9 +21,27 @@ export type Label = { x: number; text: string } | null;
  * Each phase name under its own segment (mockup programme-v2, B): the current one whole and bold from its segment's
  * start, right-aligned when it would run past the end; each other from its segment's start, at least 8 px after the
  * previous label, inside its segment, the last right-aligned to the end; the short form when the full one does not
- * fit, and none on screen when even that does not (VoiceOver still reads them all).
+ * fit, and none on screen when even that does not (VoiceOver still reads them all). A name left out takes the short
+ * form of the one before it when that makes room for both (« Spé. Affût. » rather than « Spécifique » alone).
  */
-export function phaseLabels({ width, weeks, names, current, measure }: LabelInput): Label[] {
+export function phaseLabels(input: LabelInput): Label[] {
+  const short = new Set<number>();
+  let labels = layout(input, short);
+  for (;;) {
+    const missing = labels.findIndex((l, i) => !l && i > 0);
+    const before = labels
+      .slice(0, Math.max(missing, 0))
+      .findLastIndex((l, i) => l && i !== input.current && !short.has(i) && SHORT[l.text]);
+    if (missing < 0 || before < 0) return labels;
+    const tried = layout(input, new Set([...short, before]));
+    if (!tried[missing]) return labels;
+    short.add(before);
+    labels = tried;
+  }
+}
+
+/** Every label placed from left to right, the phases in `short` in their short form. */
+function layout({ width, weeks, names, current, measure }: LabelInput, short: Set<number>): Label[] {
   const total = weeks.reduce((a, b) => a + b, 0);
   const usable = width - SEGMENT_GAP * (weeks.length - 1);
   let x = 0;
@@ -39,19 +57,22 @@ export function phaseLabels({ width, weeks, names, current, measure }: LabelInpu
   const curX = current === last ? width - curW : Math.min(segments[current]?.x0 ?? 0, width - curW);
   labels[current] = { x: curX, text: curName };
   let prevEnd = Number.NEGATIVE_INFINITY;
-  names.forEach((name, i) => {
-    const s = segments[i];
-    if (i === current || !s) {
-      if (i === current) prevEnd = curX + curW;
-      return;
-    }
-    const lo = Math.max(s.x0, prevEnd + LABEL_GAP);
-    const hi = Math.min(i === last ? width : s.x1 + SEGMENT_GAP, i < current ? curX - LABEL_GAP : width);
-    const fit = placed(name, lo, hi, i === last ? prevEnd + LABEL_GAP : null, measure);
-    if (!fit) return;
-    labels[i] = { x: fit.x, text: fit.text };
-    prevEnd = fit.x + fit.w;
-  });
+  // The current phase is never shortened: it keeps its full name.
+  names
+    .map((name, i) => (short.has(i) ? (SHORT[name] ?? name) : name))
+    .forEach((name, i) => {
+      const s = segments[i];
+      if (i === current || !s) {
+        if (i === current) prevEnd = curX + curW;
+        return;
+      }
+      const lo = Math.max(s.x0, prevEnd + LABEL_GAP);
+      const hi = Math.min(i === last ? width : s.x1 + SEGMENT_GAP, i < current ? curX - LABEL_GAP : width);
+      const fit = placed(name, lo, hi, i === last ? prevEnd + LABEL_GAP : null, measure);
+      if (!fit) return;
+      labels[i] = { x: fit.x, text: fit.text };
+      prevEnd = fit.x + fit.w;
+    });
   return labels;
 }
 

@@ -3,9 +3,9 @@ import { paceLabel, stepBlocks } from "../src/index.ts";
 
 describe("paceLabel", () => {
   it("writes the runner's notation with the unit, one value or a range", () => {
-    expect(paceLabel(346)).toBe("5'46 /km");
-    expect(paceLabel([473, 397])).toBe("6'37 à 7'53 /km");
-    expect(paceLabel([299.6, 300.2])).toBe("5'00 /km");
+    expect(paceLabel(346)).toBe("5'46\u00a0/km");
+    expect(paceLabel([473, 397])).toBe("6'37 à 7'53\u00a0/km");
+    expect(paceLabel([299.6, 300.2])).toBe("5'00\u00a0/km");
   });
 });
 
