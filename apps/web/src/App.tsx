@@ -6,6 +6,7 @@ import { SignedOut } from "./features/auth/SignedOut.tsx";
 import { OfflineLine } from "./features/OfflineLine.tsx";
 import { checkOnboarding, useOnboardingNeed } from "./features/onboarding/done.ts";
 import { isStale, usePlan } from "./features/plan/store.ts";
+import { leaveSettings, SETTINGS_PATH } from "./features/program/settingsPath.ts";
 import { skyPhase } from "./features/program/sky.ts";
 import { usePush } from "./features/push/store.ts";
 import { preloadSheet, SheetHost } from "./features/sheets/SheetHost.tsx";
@@ -28,6 +29,7 @@ import { loadToast, ToastHost } from "./ui/ToastHost.tsx";
 // The first screen ships in the initial file; the other tabs load at idle (or when a finger lands on their tab).
 const WeekScreen = lazyChunk(() => import("./features/week/WeekScreen.tsx"));
 const ProgramScreen = lazyChunk(() => import("./features/program/ProgramScreen.tsx"));
+const SettingsScreen = lazyChunk(() => import("./features/program/SettingsScreen.tsx"));
 const ReggieScreen = lazyChunk(() => import("./features/reggie/ReggieScreen.tsx"));
 // Onboarding is its own chunk, fetched only when the server says it is not done.
 const OnboardingGate = lazyChunk(() => import("./features/onboarding/OnboardingGate.tsx"));
@@ -52,7 +54,6 @@ const SHEETS: SheetSpec["kind"][] = [
   "setting",
   "goal",
   "watch",
-  "cycle",
   "timetable",
   "target",
 ];
@@ -62,7 +63,7 @@ const PRELOAD_DELAY_MS = 800;
 /** Everything a first tap would otherwise wait for: the other tabs, the sheets (with motion), the banner, glisse. */
 const PRELOADS: (() => void)[] = [
   () => void usePlan.getState().loadProgram(),
-  ...[WeekScreen, ProgramScreen, ReggieScreen].map((screen) => screen.preload),
+  ...[WeekScreen, ProgramScreen, ReggieScreen, SettingsScreen].map((screen) => screen.preload),
   () => loadToast().catch(() => undefined),
   ...SHEETS.map((kind) => () => preloadSheet(kind)),
   preloadControls,
@@ -130,7 +131,8 @@ const screenFailed = (retry: () => void) => (
 
 export function App() {
   const [location, navigate] = useLocation();
-  const active = TABS.some((tab) => tab.href === location) ? location : null;
+  // A page pushed over a tab (Réglages over Programme) keeps that tab lit.
+  const active = TABS.find((tab) => location === tab.href || location.startsWith(`${tab.href}/`))?.href ?? null;
   // The first screen paints at once (it is the LCP); every screen after it fades in.
   const first = useRef<string | null>(location);
   if (location !== first.current) first.current = null;
@@ -141,6 +143,8 @@ export function App() {
   // The tab on screen touched again goes back to its root (features/tabRoot.ts). WebKit hands glisse's tab bar two
   // clicks for one tap: the second lands here too, on a screen already at its root, and stacks no entry for Back.
   const toTab = (href: string) => {
+    // Its tab touched again, or a swipe to the right: a pushed page pops back to the tab's root.
+    if (window.location.pathname.startsWith(`${href}/`)) return leaveSettings(navigate);
     if (href !== window.location.pathname) return navigate(href);
     if (window.location.search) navigate(href, { replace: true });
     if (backToTabRoot())
@@ -225,6 +229,7 @@ export function App() {
                 <Route path="/" component={TodayScreen} />
                 <Route path="/semaine" component={WeekScreen} />
                 <Route path="/programme" component={ProgramScreen} />
+                <Route path={SETTINGS_PATH} component={SettingsScreen} />
                 <Route path="/reggie" component={ReggieScreen} />
                 <Route>
                   <Redirect to="/" />

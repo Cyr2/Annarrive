@@ -55,6 +55,11 @@ export async function registerPasskey(fetcher?: typeof fetch): Promise<void> {
   await post("/api/passkeys", response, fetcher);
 }
 
+/** « Se déconnecter »: the server ends this device's session and drops its cookie. */
+export async function logOut(fetcher?: typeof fetch): Promise<void> {
+  await post("/api/auth/logout", undefined, fetcher);
+}
+
 /** A device that can hold a passkey behind Face ID, Touch ID or a fingerprint. */
 export async function canUsePasskeys(): Promise<boolean> {
   if (typeof PublicKeyCredential === "undefined") return false;

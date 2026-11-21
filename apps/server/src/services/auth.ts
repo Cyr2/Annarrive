@@ -97,6 +97,11 @@ export class AuthService {
     return session && session.expiresAt > this.#clock().toISOString() ? session : undefined;
   }
 
+  /** « Se déconnecter »: this device's session ends; her other devices stay signed in. */
+  logout(sessionId: string): void {
+    this.#stores.authSession.delete(hash(sessionId));
+  }
+
   /** Options for « Se connecter avec Face ID »: any passkey of this site, so nothing is typed first. */
   async passkeyLoginOptions() {
     const options = await generateAuthenticationOptions({

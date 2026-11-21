@@ -2,6 +2,7 @@ import type { CalendarEvent, HealthStatus, PlannedSession, Unavailable } from "@
 import type { Hono } from "hono";
 import { vi } from "vitest";
 import { createApp } from "../src/app.ts";
+import { coachAdapter } from "../src/coach-adapter.ts";
 import { type CoachPort, type CoachState, coachFeasibility } from "../src/coach-port.ts";
 import type { BridgeClient } from "../src/garmin/bridge-client.ts";
 import type { ReggieRun } from "../src/reggie/agent.ts";
@@ -62,6 +63,8 @@ const withStatus = (st: CoachState, id: string, status: PlannedSession["status"]
 export const passThroughCoach: CoachPort = {
   feasibility: coachFeasibility,
   programPlan: () => null,
+  usualHour: coachAdapter.usualHour,
+  vo2maxVersusRace: coachAdapter.vo2maxVersusRace,
   buildWeek: (st) => ({ state: st, changes: [], warnings: [] }),
   moveSession: (st, id, slot) => ({
     state: {
@@ -72,8 +75,8 @@ export const passThroughCoach: CoachPort = {
     warnings: [],
   }),
   proposeMoveSlots: () => ({ best: [], forbidden: [], sideEffects: [] }),
-  updateSettings: (st, patch) => ({
-    state: { ...st, settings: { ...st.settings, ...patch } },
+  updateSettings: (st, settings) => ({
+    state: { ...st, settings },
     changes: [],
     warnings: [],
   }),

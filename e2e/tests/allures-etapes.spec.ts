@@ -34,6 +34,7 @@ test("Programme : un nouveau nombre de courses s'annule comme tout changement, e
   await expect(week).toContainText(/\d+ min/);
   const before = await week.innerText();
   await page.getByRole("link", { name: "Programme" }).click();
+  await page.getByRole("button", { name: "Réglages" }).click();
   const runs = page.getByRole("button", { name: /^Courses par semaine/ });
   const count = (await runs.innerText()).replace(/\D/g, "");
   await runs.click();
@@ -54,7 +55,7 @@ test("Programme : un nouveau nombre de courses s'annule comme tout changement, e
 test("Programme : chaque réglage s'ouvre en feuille et ne change rien avant Enregistrer, la bulle du verdict bloque la page", async ({
   page,
 }) => {
-  await page.goto("/programme");
+  await page.goto("/programme/reglages");
   // A choice in a setting's sheet changes nothing until Enregistrer: closing it leaves the plan as it was.
   const runs = page.getByRole("button", { name: /^Courses par semaine/ });
   const before = await runs.innerText();
@@ -79,14 +80,15 @@ test("Programme : chaque réglage s'ouvre en feuille et ne change rien avant Enr
   await long.getByRole("button", { name: "Annuler" }).click();
   await expect(long).toBeHidden();
 
-  await page.getByRole("button", { name: /^Ton dernier chrono/ }).click();
-  const last = page.getByRole("dialog", { name: "Ton dernier chrono" });
+  await page.getByRole("button", { name: "Programme", exact: true }).click();
+  await page.getByRole("button", { name: /^Ta dernière course/ }).click();
+  const last = page.getByRole("dialog", { name: "Ta dernière course" });
   await last.getByLabel("Heures").fill("1");
   await last.getByLabel("Minutes").fill("50");
   await last.getByRole("button", { name: "Enregistrer" }).click();
   const recomputed = banner(page, "Allures recalculées avec ton chrono");
   await expect(recomputed).toBeVisible();
-  await expect(page.getByRole("button", { name: /^Ton dernier chrono/ })).toContainText("Semi-marathon en 1:50:00");
+  await expect(page.getByRole("button", { name: /^Ta dernière course/ })).toContainText("Semi en 1:50, il y a");
   await recomputed.getByRole("button", { name: "Annuler" }).click();
 
   const card = page.getByRole("article", { name: "Ton objectif" });

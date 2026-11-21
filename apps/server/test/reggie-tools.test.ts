@@ -169,10 +169,14 @@ describe("Reggie's tools", () => {
     );
   });
 
-  it("updates a setting, but never cycle tracking, which needs Anna's consent", async () => {
+  it("updates a setting, clears her preferred hour, and refuses a field it does not know", async () => {
     const t = prepare();
     await t.call("update_setting", { patch: { noRunDays: [6] } });
     expect(t.services.plan.profile().noRunDays).toEqual([6]);
+    await t.call("update_setting", { patch: { preferredHour: "18:00", travelMin: 45 } });
+    expect(t.services.plan.profile()).toMatchObject({ preferredHour: "18:00", travelMin: 45 });
+    await t.call("update_setting", { patch: { preferredHour: null } });
+    expect(t.services.plan.profile()).not.toHaveProperty("preferredHour");
     await expect(t.call("update_setting", { patch: { cycleTracking: true } })).rejects.toThrow();
   });
 

@@ -56,7 +56,7 @@ for (const [name, title, ready] of [
 }
 
 const openStrength = async (page: Page) => {
-  await page.goto("/programme");
+  await page.goto("/programme/reglages");
   await page
     .getByRole("button", { name: /Jambes/ })
     .first()
@@ -149,8 +149,8 @@ test("supprimer demande confirmation dans une alerte, le bouton Supprimer ne cha
 });
 
 test("arrêter le programme se confirme dans la même alerte", async ({ page }) => {
-  await page.goto("/programme");
-  await page.getByRole("button", { name: "Arrêter ce programme" }).click();
+  await page.goto("/programme/reglages");
+  await page.getByRole("button", { name: "Arrêter le programme" }).click();
   const alert = page.getByRole("dialog", { name: /^Arrêter ton plan/ });
   await expect(alert).toContainText("mode entretien");
   await expect(alert.getByRole("button", { name: "Arrêter le programme" })).toBeVisible();

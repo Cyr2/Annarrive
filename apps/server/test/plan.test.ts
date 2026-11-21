@@ -285,6 +285,28 @@ describe("settings", () => {
     expect((await t.call("GET", "/api/profile")).json).toMatchObject({ runsPerWeek: 3, bedtime: "23:00" });
   });
 
+  it("gives a new profile 30 min between a run and a class, and says her usual hour until she sets one (S7, H1)", async () => {
+    const t = await ready();
+    t.stores.activity.put({ id: "a", start: "2026-11-10T18:10", durMin: 50, distM: 8000 });
+    expect((await t.call("GET", "/api/profile")).json).toMatchObject({ travelMin: 30, usualHour: "18:00" });
+
+    await change(t, "PATCH", "/api/profile", { preferredHour: "07:30", travelMin: 45 });
+    expect(t.services.plan.profile()).toMatchObject({ preferredHour: "07:30", travelMin: 45 });
+    const cleared = await change(t, "PATCH", "/api/profile", { preferredHour: null });
+    expect(t.services.plan.profile()).not.toHaveProperty("preferredHour");
+    await undo(t, cleared.change?.id);
+    expect(t.services.plan.profile().preferredHour).toBe("07:30");
+  });
+
+  it("says what Garmin's VO2max reads next to her declared race (F19)", async () => {
+    const t = await ready();
+    expect((await t.call("GET", "/api/program")).json).not.toHaveProperty("garmin");
+    t.stores.dailySignal.put({ id: "2026-11-15", vo2max: 44 });
+    expect((await t.call("GET", "/api/program")).json).toMatchObject({ garmin: { vo2max: 44 } });
+    await t.call("PUT", "/api/program", { declaredTime: { distanceM: 21097.5, minutes: 110 } });
+    expect((await t.call("GET", "/api/program")).json).toMatchObject({ garmin: { vo2max: 44, versus: "agrees" } });
+  });
+
   it("rejects an invalid setting", async () => {
     const t = await ready();
     expect((await t.call("PATCH", "/api/profile", { runsPerWeek: 9 })).status).toBe(400);

@@ -447,8 +447,8 @@ describe("coach adapter: Anna's actions", () => {
     t.stores.plannedSession.put(built("long", "L", "2026-11-16T17:00", 66));
     const r = await change(t, "POST", "/api/events", {
       ...legs,
-      start: "2026-11-16T18:30",
-      end: "2026-11-16T19:30",
+      start: "2026-11-16T18:45",
+      end: "2026-11-16T19:45",
     });
     expect(t.stores.plannedSession.get("long")?.start).not.toBe("2026-11-16T17:00");
     expect(r.change?.summary).toMatch(
@@ -494,7 +494,6 @@ describe("coach adapter: Anna's actions", () => {
       bedtime: "23:00",
       useSleepHr: true,
       travelMin: 0,
-      cycleTracking: false,
     });
     const next = t.stores.plannedSession.overlapping("2026-11-23T00:00", "2026-11-30T00:00");
     expect(next).toHaveLength(4);

@@ -36,7 +36,6 @@ const LOADERS: { [K in Kind]: Loader<K> } = {
   goal: () => import("../program/GoalSheet.tsx"),
   lastTime: () => import("../program/LastTimeSheet.tsx"),
   watch: () => import("../program/WatchSheet.tsx"),
-  cycle: () => import("../program/CycleSheet.tsx"),
   timetable: () => import("../program/TimetableSheet.tsx"),
   target: () => import("../program/TargetSheet.tsx"),
 };
@@ -57,7 +56,6 @@ const SHEETS: { [K in Kind]: ComponentType<SheetProps<K>> & { preload: () => voi
   goal: chunks("goal"),
   lastTime: chunks("lastTime"),
   watch: chunks("watch"),
-  cycle: chunks("cycle"),
   timetable: chunks("timetable"),
   target: chunks("target"),
 };

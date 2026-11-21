@@ -20,7 +20,7 @@ test("Semaine et Programme disent quand leur lecture échoue, et Réessayer les 
   await expect(page.getByRole("heading", { name: "Programme indisponible" })).toBeVisible();
   await page.unroute(down);
   await page.getByRole("button", { name: "Réessayer" }).click();
-  await expect(page.getByRole("heading", { name: "Tes courses" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ton niveau" })).toBeVisible();
 });
 
 test("l'emploi du temps ou Garmin en panne laissent le plan s'afficher, seule leur ligne le dit", async ({ page }) => {
@@ -30,6 +30,7 @@ test("l'emploi du temps ou Garmin en panne laissent le plan s'afficher, seule le
   await expect(page.getByRole("article").first()).toBeVisible();
   await expect(page.getByText("Injoignable pour l'instant")).toBeVisible();
   await page.getByRole("link", { name: "Programme" }).click();
+  await page.getByRole("button", { name: "Réglages" }).click();
   await expect(page.getByText("État inconnu")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Tes courses" })).toBeVisible();
 });
@@ -163,7 +164,7 @@ test.describe("réduire les animations", () => {
 
 test.describe("zoom 200 %", () => {
   test.use({ viewport: { width: 196, height: 426 } });
-  for (const path of ["/", "/semaine", "/programme"]) {
+  for (const path of ["/", "/semaine", "/programme", "/programme/reglages"]) {
     test(`${path} ne défile pas à l'horizontale`, async ({ page }) => {
       await page.goto(path);
       await expect(page.locator("main [aria-busy='true']")).toHaveCount(0);

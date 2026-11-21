@@ -55,6 +55,14 @@ describe("checkHard (H1 to H7)", () => {
     expect(ids(checkHard(e, at(e, "2026-11-23T18:00"), week([easy("x", "2026-11-23T08:00")])))).toEqual(["H3"]);
   });
 
+  it("ends a run `travelMin` before a class, 30 min for a new profile (PL-21)", () => {
+    const course = block("c", "2026-11-25T10:15", "2026-11-25T12:15", "class");
+    const travel = { ...SETTINGS, travelMin: 30 };
+    expect(checkHard(e, at(e, "2026-11-25T09:00"), week([], [course], travel))).toEqual([]);
+    expect(ids(checkHard(e, at(e, "2026-11-25T09:15"), week([], [course], travel)))).toEqual(["H1"]);
+    expect(checkHard(e, at(e, "2026-11-25T09:15"), week([], [course]))).toEqual([]);
+  });
+
   it("refuses consecutive hard days and a hard run less than 1 h before legs the same day", () => {
     expect(ids(checkHard(q, at(q, "2026-11-27T08:00"), week([long("l", "2026-11-28T09:00")])))).toEqual(["H4"]);
     expect(ids(checkHard(q, at(q, "2026-11-24T16:30"), week([])))).toEqual(["H6"]);

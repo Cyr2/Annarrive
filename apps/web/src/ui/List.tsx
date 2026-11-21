@@ -61,8 +61,9 @@ export function RowButton({ label, value, onClick, tone = "plain" }: RowButtonPr
     >
       <span className="t-body min-w-0 py-2">{label}</span>
       {tone === "plain" && (
-        // A long value ("Lundi, Mercredi, Samedi, Dimanche") wraps instead of running over the label.
-        <span className="t-body flex min-w-0 max-w-[55%] items-center gap-2 text-right text-ink-2">
+        // A long value ("Lundi, Mercredi, Samedi, Dimanche") wraps instead of running over the label; its longest
+        // word never runs under the chevron.
+        <span className="t-body flex max-w-[55%] items-center gap-2 text-right text-ink-2">
           <span className="min-w-0">{value}</span>
           <Chevron />
         </span>

@@ -74,7 +74,7 @@ export function planRoutes({ plan, changes, timetable, garmin, fitness, review }
         return c.body(null, 204);
       })
       .post("/race/keep-fit", (c) => c.json(plan.keepFit()))
-      .get("/profile", (c) => c.json(plan.profile()))
+      .get("/profile", (c) => c.json(plan.profileView()))
       .patch("/profile", async (c) => c.json(plan.updateProfile(await body(c, profilePatchSchema))))
       .get("/onboarding", (c) => c.json(plan.onboarding()))
       .post("/feasibility", async (c) => c.json(plan.feasibility(await body(c, feasibilityInputSchema))))

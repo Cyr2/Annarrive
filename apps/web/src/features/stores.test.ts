@@ -48,7 +48,7 @@ describe("plan store", () => {
     expect(message).toBe("Reggie a réorganisé ta semaine");
     expect(action.label).toBe("Annuler");
     notify.mockClear();
-    await plan.getState().apply((api) => api.updateSettings({ cycle: true }), { quiet: true });
+    await plan.getState().apply((api) => api.updateSettings({ recoveryData: false }), { quiet: true });
     expect(notify).not.toHaveBeenCalled();
   });
 

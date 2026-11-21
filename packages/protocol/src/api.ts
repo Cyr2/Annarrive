@@ -94,11 +94,16 @@ export const profileSchema = z.object({
   preferredLongDays: z.array(z.number().int().min(1).max(7)).min(1).optional(),
   preferredHour: timeOfDaySchema.optional(),
   useSleepHr: z.boolean(),
+  /** How long before a class (or any calendar item) her run must end: shower, change, get there (H1). */
   travelMin: z.number().int().min(0).max(120),
-  cycleTracking: z.boolean(),
   icsUrl: icsUrlSchema.optional(),
 });
 export type Profile = z.infer<typeof profileSchema>;
+/** `travelMin` of a new profile (algo.md H1): a shower and the way to class. Older profiles keep theirs. */
+export const DEFAULT_TRAVEL_MIN = 30;
+/** GET /api/profile: with the hour she usually runs at, read from her Garmin runs, for « Heure préférée ». */
+export const profileViewSchema = profileSchema.extend({ usualHour: timeOfDaySchema.optional() });
+export type ProfileView = z.infer<typeof profileViewSchema>;
 
 /** A profile stored before the long run took several days: its one `preferredLongDay` becomes a list of one. */
 export const storedProfileSchema = z.preprocess((raw) => {
@@ -172,6 +177,10 @@ export type ProgramInput = z.infer<typeof programInputSchema>;
 
 /** GET /api/program: the stored programme, with the plan the coach follows when there is a goal and a known form. */
 export const programViewSchema = programSchema.extend({
+  /** « Ta montre »: Garmin's latest VO2max, and how it reads next to her declared race (algo.md F19). */
+  garmin: z
+    .object({ vo2max: z.number().positive(), versus: z.enum(["agrees", "above", "below"]).optional() })
+    .optional(),
   plan: z
     .object({
       /** Monday of « Semaine 1 »: the week the programme starts in, which runs plan week 1 (P3) too. */
@@ -246,7 +255,11 @@ export type DeleteEventQuery = z.infer<typeof deleteEventQuerySchema>;
 
 export const moveSessionInputSchema = z.object({ start: localDateTimeSchema });
 /** The timetable link changes through `PUT /timetable/url`, which also re-reads the classes. */
-export const profilePatchSchema = profileSchema.omit({ icsUrl: true }).partial();
+// `preferredHour: null` clears her hour: the coach goes back to the hour she usually runs at (S7).
+export const profilePatchSchema = profileSchema
+  .omit({ icsUrl: true })
+  .partial()
+  .extend({ preferredHour: timeOfDaySchema.nullable().optional() });
 export type ProfilePatch = z.infer<typeof profilePatchSchema>;
 
 export const slotSchema = z.object({ start: localDateTimeSchema, end: localDateTimeSchema });

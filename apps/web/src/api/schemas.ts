@@ -192,8 +192,13 @@ export const settingsSchema = z.object({
   notAfter: clock,
   bedtime: clock,
   recoveryData: z.boolean(),
-  cycle: z.boolean(),
   notifications: z.boolean(),
+  /** The hour she asked for, "18:00"; absent: automatic, around `usualHour`. */
+  preferredHour: clock.optional(),
+  /** The hour she usually runs at, read from her Garmin runs (server side). */
+  usualHour: clock.optional(),
+  /** Minutes between the end of a run and the start of a class (algo.md H1). */
+  travelMin: z.number().int().min(0),
   /** The days her long run may go on, 0 = Monday to 6 = Sunday; Sunday unless she chose. */
   longRunDays: z.array(z.number().int().min(0).max(6)),
 });
@@ -230,6 +235,8 @@ export const programSchema = z.object({
     .optional(),
   /** `connected` is absent when the server could not reach the watch's state. */
   watch: z.object({ model: z.string(), connected: z.boolean().optional(), lastSync: z.string().optional() }),
+  /** « Ta montre »: Garmin's VO2max, and how it reads next to her last race (algo.md F19). */
+  garmin: z.object({ vo2max: z.number(), versus: z.enum(["agrees", "above", "below"]).optional() }).optional(),
 });
 
 export const sessionPreviewSchema = z.object({

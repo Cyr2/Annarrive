@@ -40,7 +40,6 @@ if (mode === "plan") {
     bedtime: "23:00",
     useSleepHr: true,
     travelMin: 0,
-    cycleTracking: false,
   });
   // Her programme started last week: nothing holds today back (a programme never places a run on its first day).
   const goal = { distanceM: 21097.5, date: "2027-03-14" } as const;

@@ -13,11 +13,18 @@ export type SheetSpec =
   | { kind: "goal" }
   | { kind: "lastTime" }
   | { kind: "watch" }
-  | { kind: "cycle" }
   | { kind: "timetable" }
   | { kind: "target" };
 
-export type SettingKey = "runsPerWeek" | "noRunDays" | "longRunDays" | "notBefore" | "notAfter" | "bedtime";
+export type SettingKey =
+  | "runsPerWeek"
+  | "noRunDays"
+  | "longRunDays"
+  | "notBefore"
+  | "notAfter"
+  | "bedtime"
+  | "preferredHour"
+  | "travelMin";
 
 type SheetState = {
   current?: SheetSpec;

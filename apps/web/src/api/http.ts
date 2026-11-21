@@ -5,7 +5,7 @@ import {
   chatStreamEventSchema,
   healthSchema,
   moveSlotsSchema,
-  profileSchema,
+  profileViewSchema,
   proposalSchema,
   pushKeySchema,
   pushSubscriptionInputSchema,
@@ -243,7 +243,7 @@ export function createHttpApi(
     async program() {
       const [program, profile, status, days, link] = await Promise.all([
         get("/program", serverProgramSchema),
-        get("/profile", profileSchema),
+        get("/profile", profileViewSchema),
         timetable.read(),
         twoWeeks(),
         watch.read(),

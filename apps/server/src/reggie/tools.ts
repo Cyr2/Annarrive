@@ -51,8 +51,7 @@ async function answer(work: () => unknown, today: string): Promise<ToolResult> {
   }
 }
 
-/** Anna must agree before cycle tracking turns on (docs/interactions.md, Programme): not Reggie's call. */
-const settingPatch = profilePatchSchema.omit({ cycleTracking: true }).strict();
+const settingPatch = profilePatchSchema.strict();
 
 /**
  * The app's actions as tools: reads, the Déplacer / Changer / Pas dispo flows and settings, all through `PlanService`
@@ -149,7 +148,7 @@ export function reggieTools(plan: PlanService, widgets: ChatWidget[]) {
     ),
     tool(
       "update_setting",
-      "Modifie un réglage : courses par semaine, jours sans course (1 lundi à 7 dimanche), pas avant, fin au plus tard, coucher, jour de sortie longue, heure préférée, sommeil et FC, trajet.",
+      "Modifie un réglage : courses par semaine, jours sans course (1 lundi à 7 dimanche), pas avant, fin au plus tard, coucher, jour de sortie longue, heure préférée (null : l'heure habituelle), sommeil et FC, temps entre une course et un cours (travelMin, en min).",
       { patch: settingPatch },
       ({ patch }) => run(() => changed(plan.updateProfile(patch))),
     ),
