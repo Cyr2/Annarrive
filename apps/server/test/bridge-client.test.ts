@@ -60,9 +60,9 @@ describe("bridge client", () => {
 
   it("sends the shared secret and validates the activities", async () => {
     const { client, fetchMock } = clientAnswering(json([activity]));
-    expect(await client.recentActivities(5)).toEqual([activity]);
+    expect(await client.recentActivities(5, 50)).toEqual([activity]);
     const [url, init] = fetchMock.mock.calls[0] ?? [];
-    expect(String(url)).toBe("http://bridge:8000/activities?limit=5");
+    expect(String(url)).toBe("http://bridge:8000/activities?limit=5&start=50");
     expect(init?.headers).toMatchObject({ "x-bridge-secret": "s3cret" });
     expect(init?.signal).toBeInstanceOf(AbortSignal);
   });

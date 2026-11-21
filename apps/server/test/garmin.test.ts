@@ -9,6 +9,7 @@ import {
 } from "../src/garmin/bridge-client.ts";
 import { workoutHash } from "../src/garmin/workout.ts";
 import { toActivity } from "../src/services/garmin.ts";
+import { addDays } from "../src/time.ts";
 import { fakeBridge, fakeCoach, MONDAY_8AM, session, setup } from "./helpers.ts";
 
 function garminRun(id: number, startTimeLocal: string, over: Partial<GarminActivity> = {}): GarminActivity {
@@ -206,6 +207,81 @@ describe("Garmin activities", () => {
     const plain = setup();
     await plain.login();
     expect((await plain.call("GET", "/api/watch")).json).toEqual({ configured: false, lastSyncAt: null });
+  });
+});
+
+describe("Garmin history backfill", () => {
+  const TODAY = "2026-11-16";
+  /** A run every 3 days and a ride in between, for 14 months, newest first as Garmin lists them. */
+  const history = (): GarminActivity[] =>
+    [...Array(140).keys()].flatMap((k) => [
+      garminRun(1000 + k, `${addDays(TODAY, -3 * k - 1)} 18:00:00`, k === 100 ? { eventType: "race" } : {}),
+      garminRun(5000 + k, `${addDays(TODAY, -3 * k - 2)} 12:00:00`, { type: "cycling" }),
+    ]);
+  const runDays = (from: string) => [...Array(140).keys()].filter((k) => addDays(TODAY, -3 * k - 1) >= from).length;
+
+  function serving(all: GarminActivity[], t: ReturnType<typeof garminSetup>) {
+    t.bridge.recentActivities.mockImplementation(async (limit = 20, start = 0) => all.slice(start, start + limit));
+  }
+
+  it("reads a year of runs once, page by page, with laps for the last 12 weeks only and Garmin's race flag", async () => {
+    const t = garminSetup();
+    serving(history(), t);
+
+    await t.garmin.syncActivities();
+    await t.garmin.syncActivities();
+
+    expect(t.stores.activity.list()).toHaveLength(runDays(addDays(TODAY, -365)));
+    expect(t.bridge.activityLaps).toHaveBeenCalledTimes(runDays(addDays(TODAY, -84)));
+    expect(t.bridge.recentActivities.mock.calls.filter(([limit]) => limit === 50).map(([, start]) => start)).toEqual([
+      0, 50, 100, 150, 200,
+    ]);
+    expect(t.stores.activity.get("garmin:1100")?.isRace).toBe(true);
+    // History only: nothing matched, nothing noted.
+    expect(t.stores.activity.list().filter((a) => a.sessionId)).toEqual([]);
+    expect(t.send).not.toHaveBeenCalled();
+    expect(t.stores.meta.get("garmin.backfill")?.value).toBe("done");
+  });
+
+  it("stops on a rate limit and resumes at its page, reading the first level only once the whole year is in (F10)", async () => {
+    const t = garminSetup();
+    const all = history();
+    serving(all, t);
+    t.bridge.recentActivities.mockImplementationOnce(async () => all.slice(0, 20));
+    t.bridge.recentActivities.mockImplementationOnce(async () => all.slice(0, 50));
+    t.bridge.recentActivities.mockRejectedValueOnce(new GarminRateLimitError(300));
+    const firstLevel = vi.spyOn(t.services.plan, "bootstrapFitness");
+    const afterRun = vi.spyOn(t.services.fitness, "afterRun");
+
+    await t.garmin.syncActivities();
+    expect(t.stores.meta.get("garmin.backfill")?.value).toBe("50");
+    expect(firstLevel).not.toHaveBeenCalled();
+    expect(afterRun).not.toHaveBeenCalled();
+
+    t.bridge.recentActivities.mockClear();
+    await t.garmin.syncActivities();
+    expect(t.bridge.recentActivities.mock.calls.filter(([limit]) => limit === 50)[0]).toEqual([50, 50]);
+    expect(t.stores.activity.list()).toHaveLength(runDays(addDays(TODAY, -365)));
+    expect(firstLevel).toHaveBeenCalledOnce();
+  });
+
+  it("keeps runs from before the programme as history: no session matched, no adaptation (M10)", async () => {
+    const t = garminSetup();
+    t.stores.program.put({ id: "current", value: { goal: null, startedOn: TODAY } });
+    t.stores.plannedSession.put(session("before", "2026-11-14T18:00"));
+    t.stores.plannedSession.put(session("today", `${TODAY}T07:00`));
+    t.bridge.recentActivities.mockResolvedValue([
+      garminRun(2, `${TODAY} 07:10:00`),
+      garminRun(1, "2026-11-14 18:00:00"),
+    ]);
+    const adapt = vi.spyOn(t.services.plan, "adaptToRun");
+
+    await t.garmin.syncActivities();
+
+    expect(t.stores.activity.get("garmin:1")?.sessionId).toBeUndefined();
+    expect(t.stores.plannedSession.get("before")?.status).toBe("planned");
+    expect(t.stores.activity.get("garmin:2")?.sessionId).toBe("today");
+    expect(adapt.mock.calls.map(([run]) => run.id)).toEqual(["garmin:2"]);
   });
 });
 

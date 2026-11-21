@@ -44,6 +44,8 @@ export function createServices(deps: {
   push?: { send: PushSender; publicKey: string } | undefined;
   /** Defaults to the Agent SDK; tests pass a fake. */
   reggie?: ReggieRun;
+  /** Pause between two Garmin calls of the history backfill; tests pass 0. */
+  garminPauseMs?: number;
 }): Services {
   const stores = createStores(deps.db);
   const changes = new ChangeService(deps.db, stores, deps.clock);
@@ -52,7 +54,7 @@ export function createServices(deps: {
   const fitness = new FitnessService(stores, plan, changes, deps.coach, deps.clock);
   const review = new ReviewService(stores, deps.clock);
   const garmin = deps.bridge
-    ? new GarminService(stores, plan, fitness, notifications, deps.bridge, deps.clock, review)
+    ? new GarminService(stores, plan, fitness, notifications, deps.bridge, deps.clock, review, deps.garminPauseMs)
     : null;
   // A change reaches the watch within the minute (interactions.md), not at the next 5-minute job.
   changes.onRecorded((entry) => {

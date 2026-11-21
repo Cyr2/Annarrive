@@ -90,8 +90,9 @@ export function createBridgeClient(options: BridgeClientOptions = {}) {
   }
 
   return {
-    recentActivities: (limit = 20): Promise<GarminActivity[]> =>
-      get(`/activities?limit=${limit}`, z.array(garminActivitySchema)),
+    /** Newest first, skipping the `start` newest: the history backfill reads it page by page. */
+    recentActivities: (limit = 20, start = 0): Promise<GarminActivity[]> =>
+      get(`/activities?limit=${limit}&start=${start}`, z.array(garminActivitySchema)),
     activityLaps: (activityId: number): Promise<GarminLap[]> =>
       get(`/activities/${activityId}/laps`, z.array(garminLapSchema)),
     dailySignals: (date: string): Promise<GarminDailySignals> => get(`/daily/${date}`, garminDailySignalsSchema),

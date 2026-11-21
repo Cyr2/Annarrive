@@ -187,6 +187,20 @@ describe("generatePlan (M2)", () => {
     expect(plan.v0).toBe(180);
   });
 
+  it("lets the peak reach a big block of 8 months ago, now that the Garmin history goes back a year (P8)", () => {
+    const recent = runs(8, 4, 45);
+    const spring = runs(4, 3, 110, "2026-03-16").map((a) => ({ ...a, id: `spring-${a.id}` }));
+    const peak = (history: Activity[]) =>
+      Math.max(
+        ...generatePlan({ distanceM: 42195, date: "2027-06-20" }, regular, history, { vdot: 40 }, NOW).weeks.map(
+          (w) => w.volumeMin,
+        ),
+      );
+    expect(peak(recent)).toBeLessThanOrEqual(1.2 * 180);
+    expect(peak([...spring, ...recent])).toBeGreaterThan(1.2 * 180);
+    expect(peak([...spring, ...recent])).toBeLessThanOrEqual(1.2 * 330);
+  });
+
   it("warns about a short plan and a low peak", () => {
     const short = generatePlan(
       { distanceM: 42195, date: "2027-01-31" },

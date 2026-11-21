@@ -200,6 +200,7 @@ export function setup(
     bridge: options.bridge,
     push: options.push,
     reggie: options.reggie,
+    garminPauseMs: 0,
   });
   const app = createApp({ services, sessionSecret: SECRET });
   let cookie = "";
