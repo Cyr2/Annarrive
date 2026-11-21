@@ -70,7 +70,8 @@ function device(t: ReturnType<typeof setup>, ip = "203.0.113.7") {
     return { status: response.status, json: text ? JSON.parse(text) : null, set };
   };
   const get = async (path: string) => (await t.app.request(path, { headers: { cookie } })).status;
-  return { post, get };
+  const session = async () => (await t.app.request("/api/session", { headers: { cookie } })).json();
+  return { post, get, session };
 }
 
 async function withAccount() {
@@ -239,6 +240,20 @@ describe("adding Face ID", () => {
     expect(again.json.excludeCredentials).toEqual([{ id: "cred-1", type: "public-key", transports: ["internal"] }]);
   });
 
+  it("tells the account holds a passkey only once one is registered, and never to a link session", async () => {
+    const { phone, password } = await withAccount();
+    await phone.post("/api/auth/password", { username: "anna", password });
+    expect(await phone.session()).toEqual({ hasPasskey: false });
+
+    const options = await phone.post("/api/passkeys/options");
+    await phone.post("/api/passkeys", attestation(options.json.challenge));
+    expect(await phone.session()).toEqual({ hasPasskey: true });
+
+    const t = setup();
+    await t.login();
+    expect(await t.call("GET", "/api/session")).toEqual({ status: 200, json: { hasPasskey: false } });
+  });
+
   it("refuses an answer to a challenge it did not give, or one used already", async () => {
     const { phone, password } = await withAccount();
     await phone.post("/api/auth/password", { username: "anna", password });
@@ -263,7 +278,7 @@ describe("adding Face ID", () => {
     await t.login();
     expect(await t.call("POST", "/api/passkeys/options")).toEqual({
       status: 403,
-      json: { error: "Connecte-toi avec ton identifiant et ton mot de passe pour activer Face ID." },
+      json: { error: "Connecte-toi avec ton identifiant et ton mot de passe pour l'activer." },
     });
   });
 

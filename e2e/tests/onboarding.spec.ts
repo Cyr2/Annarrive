@@ -31,7 +31,7 @@ test("onboarding d'une base vide jusqu'à Aujourd'hui, sans séance le premier j
   // The race screen is still sliding out: the new one is the last.
   await page.getByRole("button", { name: "10 km", exact: true }).last().click();
   await page.getByLabel("Minutes").last().fill("52");
-  await page.getByLabel("Quand").selectOption("Il y a 3 à 6 mois");
+  await page.getByLabel("Il y a", { exact: true }).last().selectOption("4 mois");
   await next.click();
 
   await expect(title("Ta semaine")).toBeVisible();

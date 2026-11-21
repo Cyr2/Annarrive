@@ -4,7 +4,7 @@ import { errorMessage } from "../../api/errors.ts";
 import { Button } from "../../ui/controls.tsx";
 import { Group, RowInput, Section } from "../../ui/List.tsx";
 import { LogoSlot } from "../../ui/LogoSlot.tsx";
-import { passkeyError, unlockName } from "./unlock.ts";
+import { passkeyError, thisDevicePasskey } from "./unlock.ts";
 
 /** The login screens' frame: the logo, a title and one sentence, then what to do. */
 export function AuthFrame({ title, lead, children }: { title: string; lead: string; children: ReactNode }) {
@@ -36,7 +36,7 @@ export function AuthAlert({ message }: { message: string | null }) {
  * a new phone (then /face-id offers to add Face ID), and stays the way back if Face ID is lost.
  */
 export function SignedOut() {
-  const unlock = unlockName(navigator.userAgent);
+  const { name: unlock, icon } = thisDevicePasskey();
   const passkeys = typeof PublicKeyCredential !== "undefined";
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -93,7 +93,7 @@ export function SignedOut() {
     <AuthFrame title="Connecte-toi" lead="Ensuite, tu restes connectée sur ce téléphone.">
       <AuthAlert message={error} />
       {passkeys && (
-        <Button variant="filled" size="large" icon="faceId" disabled={busy} onClick={withPasskey}>
+        <Button variant="filled" size="large" icon={icon} disabled={busy} onClick={withPasskey}>
           Se connecter avec {unlock}
         </Button>
       )}

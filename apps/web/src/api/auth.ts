@@ -1,4 +1,4 @@
-import { creationOptionsSchema, requestOptionsSchema } from "@annarrive/protocol";
+import { creationOptionsSchema, requestOptionsSchema, sessionInfoSchema } from "@annarrive/protocol";
 import type { z } from "zod";
 import { ApiError } from "./errors.ts";
 import { serverMessage } from "./http.ts";
@@ -53,6 +53,13 @@ export async function registerPasskey(fetcher?: typeof fetch): Promise<void> {
   const optionsJSON = parse(await post("/api/passkeys/options", undefined, fetcher), creationOptionsSchema);
   const response = await startRegistration({ optionsJSON });
   await post("/api/passkeys", response, fetcher);
+}
+
+/** Whether the account already holds a passkey; unknown (network, reply) counts as none, so the row offers it. */
+export async function hasPasskey(fetcher: typeof fetch = fetch): Promise<boolean> {
+  const response = await fetcher("/api/session", { credentials: "same-origin" }).catch(() => null);
+  const parsed = sessionInfoSchema.safeParse(await response?.json().catch(() => undefined));
+  return parsed.success && parsed.data.hasPasskey;
 }
 
 /** « Se déconnecter »: the server ends this device's session and drops its cookie. */

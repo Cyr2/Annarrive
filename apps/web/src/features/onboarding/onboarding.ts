@@ -9,8 +9,8 @@ import {
   plausibleTime,
 } from "@annarrive/protocol";
 import type { Item, Run } from "../../api/schemas.ts";
-import { addDays, daysBetween, minutesOf, timeOf } from "../../lib/date.ts";
-import { checkIcsUrl } from "../program/program.ts";
+import { addDays, minutesOf, timeOf } from "../../lib/date.ts";
+import { checkIcsUrl, raceDateOf } from "../program/program.ts";
 
 /** The onboarding of docs/specs/produit.md as data and pure functions: one question per screen. */
 
@@ -39,36 +39,10 @@ export const DISTANCES = [
 type DistanceM = (typeof DISTANCES)[number]["value"];
 export type Race = DistanceM | "other" | "none";
 
-export const LAST_WHEN = [
-  { value: "recent", label: "Il y a moins de 3 mois", daysAgo: 45 },
-  { value: "months", label: "Il y a 3 à 6 mois", daysAgo: 135 },
-  { value: "older", label: "Il y a plus de 6 mois", daysAgo: 270 },
-  { value: "estimate", label: "C'est une estimation", daysAgo: undefined },
-] as const;
-export type LastWhen = (typeof LAST_WHEN)[number]["value"];
-
-/** Her last time as the level estimate reads it (algo.md F10): a date roughly when, none for an estimate. */
+/** Her last time as the level estimate reads it (algo.md F10): the same answers and dates as Réglages. */
 export function declaredTimeOf(draft: Draft, today: string): DeclaredTime | undefined {
-  return lastTimeOf(draft.lastRace, draft.lastSec, draft.lastWhen, today);
-}
-
-/** Shared by onboarding and Programme: the distance, the time in seconds (0: none), and roughly when. */
-export function lastTimeOf(
-  distanceM: number,
-  seconds: number,
-  when: LastWhen,
-  today: string,
-): DeclaredTime | undefined {
-  if (seconds <= 0) return undefined;
-  const daysAgo = LAST_WHEN.find((w) => w.value === when)?.daysAgo;
-  return { distanceM, minutes: seconds / 60, ...(daysAgo === undefined ? {} : { date: addDays(today, -daysAgo) }) };
-}
-
-/** Back from a stored time to the answer she gave: the closest of the four « Quand ». */
-export function whenOf(date: string | undefined, today: string): LastWhen {
-  if (date === undefined) return "estimate";
-  const ago = daysBetween(date, today);
-  return ago < 90 ? "recent" : ago < 182 ? "months" : "older";
+  if (draft.lastSec <= 0) return undefined;
+  return { distanceM: draft.lastRace, minutes: draft.lastSec / 60, date: raceDateOf(draft.lastAgo, today) };
 }
 
 export type Draft = {
@@ -78,9 +52,10 @@ export type Draft = {
   /** Her target in seconds, typed in the h and min boxes; 0: no target, she runs to finish. */
   targetSec: number;
   /** « Ta dernière course »: its distance, its time in seconds (0: none given), and roughly when. */
-  lastRace: DistanceM;
+  lastRace: number;
   lastSec: number;
-  lastWhen: LastWhen;
+  /** One of `RACE_AGO`, in months. */
+  lastAgo: string;
   runsPerWeek: Profile["runsPerWeek"];
   /** The days her long run may go on, 1 = Monday to 7 = Sunday. */
   longRunDays: number[];
@@ -101,7 +76,7 @@ export const EMPTY: Draft = {
   targetSec: 0,
   lastRace: 21097.5,
   lastSec: 0,
-  lastWhen: "recent",
+  lastAgo: "0",
   runsPerWeek: 3,
   // The weekend is when a student is free for her longest run (algo.md S8).
   longRunDays: [6, 7],
