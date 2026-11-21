@@ -454,6 +454,20 @@ export function scaleSession(s: Session, f: number, roundTo = 1): Session {
   return { ...s, steps, durMin: total(steps) };
 }
 
+/**
+ * P18: a taper Q's fractions × f. Two fractions cannot drop one (withReps keeps 2): they keep their number and each
+ * gets f shorter, at the same pace (2 × 3 km → 2 × 1.7 km).
+ */
+export function taperSession(s: Session, f: number): Session {
+  if (s.steps.find((st) => st.kind === "work")?.reps !== 2) return scaleSession(s, f);
+  const steps = s.steps.map((st): Step => {
+    if (st.kind !== "work") return st;
+    const durMin = st.durMin * f;
+    return st.distM ? { ...st, durMin, distM: Math.round((st.distM * f) / 100) * 100 } : { ...st, durMin };
+  });
+  return { ...s, steps, durMin: total(steps) };
+}
+
 /** Sets the number of work fractions (at least 2) and the recoveries between them. */
 export function withReps(s: Session, reps: number): Session {
   const n = Math.max(2, reps);

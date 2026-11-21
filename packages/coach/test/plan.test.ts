@@ -11,11 +11,12 @@ import {
   peakVolume,
   phaseSplit,
   startingVolume,
+  taperSession,
   totalWeeks,
   volumeCurve,
   weekTemplate,
 } from "../src/index.ts";
-import { P40 } from "./fixtures.ts";
+import { P40, sixBy800 } from "./fixtures.ts";
 import { marathonReturn } from "./marathon-return.ts";
 
 const NOW = "2026-11-16T09:00";
@@ -358,6 +359,16 @@ describe("buildWeek", () => {
     if (!w) throw new Error("no taper");
     const total = buildWeek(w, ctx).reduce((sum, s) => sum + s.durMin, 0);
     expect(total).toBeLessThanOrEqual(w.volumeMin + 1);
+  });
+
+  it("shortens a taper Q's two fractions by 0.55 instead of keeping them whole (P18, P-42)", () => {
+    // Blind re-score: week D-7 of her half kept 2 × 3 km at race pace, the plan's biggest specific session but one.
+    const w = plan.weeks.at(-2);
+    if (!w) throw new Error("no taper");
+    const spe = buildWeek({ ...w, template: ["SPE", "E+strides", "T", "E"] }, { ...ctx, racePaceSKm: 313 })[0];
+    const reps = spe?.steps.find((st) => st.kind === "work");
+    expect([reps?.reps, reps?.distM, reps?.target.paceSKm]).toEqual([2, 1700, [313, 313]]);
+    expect(taperSession(sixBy800(), 0.55).steps.find((st) => st.kind === "work")?.reps).toBe(3);
   });
 
   it("keeps a test whole whatever the week, and an E between 30 and 75 min (F10, P15)", () => {
