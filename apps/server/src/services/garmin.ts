@@ -12,6 +12,7 @@ import { addDays, type Clock, dateOf, toParisLocal } from "../time.ts";
 import type { FitnessService } from "./fitness.ts";
 import type { NotificationService } from "./notifications.ts";
 import type { PlanService } from "./plan.ts";
+import type { ReviewService } from "./review.ts";
 
 /** Garmin type keys of a run: running, trail_running, treadmill_running, virtual_run… */
 const isRun = (a: GarminActivity) => a.type?.includes("run") ?? false;
@@ -68,6 +69,7 @@ export class GarminService {
   readonly #notifications: NotificationService;
   readonly #bridge: BridgeClient;
   readonly #clock: Clock;
+  readonly #review: ReviewService | undefined;
   #syncingWatch = false;
   #syncAgain = false;
 
@@ -78,6 +80,7 @@ export class GarminService {
     notifications: NotificationService,
     bridge: BridgeClient,
     clock: Clock,
+    review?: ReviewService,
   ) {
     this.#stores = stores;
     this.#plan = plan;
@@ -85,6 +88,7 @@ export class GarminService {
     this.#notifications = notifications;
     this.#bridge = bridge;
     this.#clock = clock;
+    this.#review = review;
   }
 
   /** Stores recent runs, marks the planned session each one matches as done, invites a note for today's. */
@@ -101,9 +105,11 @@ export class GarminService {
       const stored = this.#stores.activity.get(run.id);
       const sessionId = stored?.sessionId ?? this.#matchingSession(run)?.id;
       const laps = stored?.laps ?? (await this.#laps(run.id));
-      this.#stores.activity.put({ ...run, answeredFeel: stored?.answeredFeel, sessionId, laps });
+      // RR1: the goal race, marked once, so the two easy weeks after it outlive the goal (MA6).
+      const isRace = stored?.isRace ?? (this.#review?.isGoalRace(run) || undefined);
+      this.#stores.activity.put({ ...run, answeredFeel: stored?.answeredFeel, sessionId, laps, isRace });
       if (sessionId && !stored?.sessionId) this.#plan.markDone(sessionId);
-      if (!stored) fresh.push({ ...run, sessionId, laps });
+      if (!stored) fresh.push({ ...run, sessionId, laps, isRace });
     }
     // Only once every run is stored: a first level read mid-sync took the runs not stored yet for a break (F11).
     for (const run of fresh) {

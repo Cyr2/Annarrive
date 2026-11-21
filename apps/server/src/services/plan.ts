@@ -539,8 +539,8 @@ export class PlanService {
     return guess && { ...guess, id: dateOf(now), date: dateOf(now) };
   }
 
-  /** Sunday 18:00 job (algo.md cycle 0.1). */
-  async buildNextWeek(): Promise<ChangeResponse> {
+  /** Sunday 18:00 job (algo.md cycle 0.1); `notice` is the notification's text, the week in numbers (BR7). */
+  async buildNextWeek(notice?: () => string): Promise<ChangeResponse> {
     const before = this.coachState();
     const response = this.#commit(
       "Ta semaine est prête",
@@ -548,8 +548,25 @@ export class PlanService {
       before,
       this.#coach.buildWeek(before, this.#nextMonday(), this.#now()),
     );
-    if (response.change) await this.#notifications.weekReady();
+    if (response.change) await this.#notifications.weekReady(notice?.());
     return response;
+  }
+
+  /**
+   * « Garder la forme » after the goal race (MA6): no goal from now on. The current week stays (MA8); the next ones
+   * are the two easy weeks after the race, then maintenance (M9).
+   */
+  keepFit(): ChangeResponse {
+    const before = this.coachState();
+    const program: Program = { ...before.program, goal: null };
+    const write: PlanWrite = { table: "program", id: CURRENT, after: { id: CURRENT, value: program } };
+    return this.#rebuild(
+      "Mode entretien : deux semaines faciles pour commencer",
+      [write],
+      { ...before, program },
+      before,
+      false,
+    );
   }
 
   /** After a timetable sync already rewrote the classes: lets the coach move what now conflicts, and tells Anna. */

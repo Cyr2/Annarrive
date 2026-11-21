@@ -21,6 +21,11 @@ function parts(iso: string): [number, number, number] {
   return [y, m, d];
 }
 
+/** "décembre". */
+export function monthName(iso: string): string {
+  return MONTHS[parts(iso)[1] - 1] ?? "";
+}
+
 export function toDate(iso: string): Date {
   const [y, m, d] = parts(iso);
   return new Date(y, m - 1, d);

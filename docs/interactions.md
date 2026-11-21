@@ -91,6 +91,28 @@ Garde **le moment**, change **le contenu**. Ne propose jamais une séance plus d
 | Facile / Correct / Dur | Sélectionne le ressenti. N'apparaît que si la montre n'a rien enregistré | Enregistré pour l'algo. Trois « Dur » d'affilée sur des séances faciles déclenchent une vérification des allures |
 | Champ « Un mot pour Reggie » et flèche | Envoie la note dans la conversation | Reggie répond en une ou deux lignes. Si la note signale une douleur, il lance les questions de « Douleur » |
 
+## Le bilan du dimanche
+
+Une carte en haut d'Aujourd'hui, au-dessus du contenu habituel du jour (algo.md BR7). Elle apparaît le dimanche dès 18:00, ou à la fin de la dernière séance de la semaine si elle finit plus tard, reste tout le lundi et disparaît le mardi. Rien pour une semaine sans course prévue ni courue.
+
+| Élément | Au tap | Ce qui se passe |
+|---|---|---|
+| Notification « Ta semaine est prête » (dimanche 18:00) | Ouvre Aujourd'hui, la carte du bilan en haut | « 4 courses sur 4 cette semaine. La suivante est prête. » |
+| Carte « Ta semaine, 16 au 22 novembre » | Rien : elle informe. Courses faites sur prévues, temps couru, un fait marquant s'il y en a un, la phrase de Reggie | Rien ne change |
+| « × » (Fermer le bilan) | La carte disparaît aussitôt | Retenu par le serveur pour cette semaine : elle ne revient ni à la réouverture ni sur un autre appareil |
+| Ligne de « La semaine prochaine » | Rien : les lignes de Semaine, une par course de la semaine suivante | « Demain » n'est pas répété sous la carte quand sa course y figure déjà |
+| Voir la semaine | Ouvre Semaine sur la semaine suivante | Rien ne change |
+
+## Après la course objectif
+
+Quand Garmin envoie la course du jour J (algo.md RR1), son résultat remplace Aujourd'hui jusqu'à ce qu'Anna choisisse la suite.
+
+| Élément | Au tap | Ce qui se passe |
+|---|---|---|
+| Carte du résultat | Rien : le temps, l'écart au chrono visé (« 28 s sous ton objectif » en vert, « 1 min 10 au-dessus de ton objectif » en neutre, « Course finie » sans chrono visé), l'allure moyenne et l'écart à sa dernière course à cette distance, l'allure par tranche en bleu, la phrase de Reggie, le dossard 14 | Rien ne change |
+| Une nouvelle course | Ouvre la feuille « Ton objectif » | Valider le nouvel objectif rend Aujourd'hui ; Annuler la feuille garde le résultat |
+| Garder la forme | Passe en mode entretien : deux semaines de footings faciles, puis trois courses par semaine sans objectif (algo.md MA6) | Aujourd'hui revient. Bandeau « Mode entretien : deux semaines faciles pour commencer » avec Annuler, qui ramène le résultat |
+
 ## Semaine
 
 | Élément | Geste | Ce qui se passe |

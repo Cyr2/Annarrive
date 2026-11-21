@@ -14,6 +14,7 @@ import { GarminService } from "./garmin.ts";
 import { IncidentService } from "./incidents.ts";
 import { NotificationService, type PushSender } from "./notifications.ts";
 import { PlanService } from "./plan.ts";
+import { ReviewService } from "./review.ts";
 import { TimetableService } from "./timetable.ts";
 
 export type Services = {
@@ -27,6 +28,7 @@ export type Services = {
   chat: ChatService;
   fitness: FitnessService;
   incidents: IncidentService;
+  review: ReviewService;
 };
 
 export function createServices(deps: {
@@ -48,7 +50,10 @@ export function createServices(deps: {
   const notifications = new NotificationService(stores, deps.push);
   const plan = new PlanService(stores, changes, deps.coach, deps.clock, notifications, Boolean(deps.bridge));
   const fitness = new FitnessService(stores, plan, changes, deps.coach, deps.clock);
-  const garmin = deps.bridge ? new GarminService(stores, plan, fitness, notifications, deps.bridge, deps.clock) : null;
+  const review = new ReviewService(stores, deps.clock);
+  const garmin = deps.bridge
+    ? new GarminService(stores, plan, fitness, notifications, deps.bridge, deps.clock, review)
+    : null;
   // A change reaches the watch within the minute (interactions.md), not at the next 5-minute job.
   changes.onRecorded((entry) => {
     if (!garmin || !touchesWatch(entry.mutations, dateOf(toParisLocal(deps.clock())))) return;
@@ -68,5 +73,6 @@ export function createServices(deps: {
     garmin,
     fitness,
     incidents: new IncidentService(stores, deps.clock),
+    review,
   };
 }

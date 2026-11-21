@@ -1,5 +1,14 @@
 import { type Item, isRepeat, type Run, type StepLine, type WatchStatus } from "../../api/schemas.ts";
-import { addMinutes, minutesOf, relativeDay, relativeMoment, span } from "../../lib/date.ts";
+import {
+  addMinutes,
+  daysBetween,
+  decimal,
+  minutesOf,
+  monthName,
+  relativeDay,
+  relativeMoment,
+  span,
+} from "../../lib/date.ts";
 import { classRow, type Ue } from "../../lib/text.ts";
 import type { Tone } from "../../ui/tones.ts";
 import type { SheetSpec } from "../sheets/store.ts";
@@ -81,6 +90,53 @@ export function beforeFirstRun(week: { index?: number | undefined; items: Item[]
 /** Changes when what the card shows changes, so the card can turn over to its new content. */
 export function contentKey(run: Run): string {
   return [run.id, run.title, run.durationMin, run.mainSet, run.pace, run.date, run.start].join("|");
+}
+
+const pad = (n: number) => String(n).padStart(2, "0");
+
+/** A race time to the second: "1:47:32", "24:05". */
+export function raceClock(minutes: number): string {
+  const total = Math.round(minutes * 60);
+  const [h, m, s] = [Math.floor(total / 3600), Math.floor(total / 60) % 60, total % 60];
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+}
+
+/** A gap in time: "28 s", "1 min 10", "4 min". */
+function gapAmount(minutes: number): string {
+  const total = Math.round(Math.abs(minutes) * 60);
+  if (total < 60) return `${total} s`;
+  const s = total % 60;
+  return `${Math.floor(total / 60)} min${s ? ` ${pad(s)}` : ""}`;
+}
+
+/** The result against her target: the exact figure either way, never an alarm (algo.md RR2). */
+export function targetGap(gapMin: number): { text: string; under: boolean } {
+  if (Math.round(Math.abs(gapMin) * 60) === 0) return { text: "Pile ton objectif", under: true };
+  return gapMin < 0
+    ? { text: `${gapAmount(gapMin)} sous ton objectif`, under: true }
+    : { text: `${gapAmount(gapMin)} au-dessus de ton objectif`, under: false };
+}
+
+/** Against her last race at the distance (RR3): « 4 min 28 de mieux qu'en décembre ». */
+export function sinceLast(timeMin: number, previous: { timeMin: number; date?: string }, raceDate: string): string {
+  const { date } = previous;
+  const old = date !== undefined && daysBetween(date, raceDate) > 300;
+  const when = date ? `qu'en ${monthName(date)}${old ? ` ${date.slice(0, 4)}` : ""}` : "que ton dernier chrono";
+  const gain = previous.timeMin - timeMin;
+  if (Math.round(Math.abs(gain) * 60) === 0) return `Le même temps ${when}`;
+  return `${gapAmount(gain)} ${gain > 0 ? "de mieux" : "de plus"} ${when}`;
+}
+
+/** 306 s/km → "5'06 /km", the runner's notation. */
+export function paceText(secondsPerKm: number): string {
+  const total = Math.round(secondsPerKm);
+  return `${Math.floor(total / 60)}'${pad(total % 60)} /km`;
+}
+
+/** Under each bar of the splits: "5 km", then the kilometre it ends at, "Fin" for the last. */
+export function splitLabel(toKm: number, index: number, count: number): string {
+  if (index === count - 1) return "Fin";
+  return index === 0 ? `${decimal(toKm)} km` : decimal(toKm);
 }
 
 /** What a tap on an item opens: the session detail, the strength sheet, or the event card. */

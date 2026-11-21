@@ -2,6 +2,7 @@ import {
   changeSessionInputSchema,
   createEventInputSchema,
   deleteEventQuerySchema,
+  dismissReviewInputSchema,
   feasibilityInputSchema,
   isoWeekSchema,
   moveSessionInputSchema,
@@ -26,13 +27,14 @@ export async function body<T extends z.ZodType>(c: Context, schema: T): Promise<
 }
 
 /** JSON routes of the web app; each validates its input and calls one service. */
-export function planRoutes({ plan, changes, timetable, garmin, fitness }: Services): Hono {
+export function planRoutes({ plan, changes, timetable, garmin, fitness, review }: Services): Hono {
+  const day = () => ({ ...plan.today(), ...review.today() });
   return (
     new Hono()
-      .get("/today", (c) => c.json(plan.today()))
+      .get("/today", (c) => c.json(day()))
       // Everything Aujourd'hui reads at launch in one request, keyed by the route that serves each part alone.
       .get("/first-screen", (c) => {
-        const today = plan.today();
+        const today = day();
         const weeks = [isoWeekOf(today.date), isoWeekOf(addDays(today.date, 7))];
         return c.json({
           "/today": today,
@@ -67,6 +69,11 @@ export function planRoutes({ plan, changes, timetable, garmin, fitness }: Servic
       .post("/unavailable", async (c) => c.json(plan.reportUnavailable(await body(c, unavailableSchema))))
       .post("/unavailable/preview", async (c) => c.json(plan.previewUnavailable(await body(c, unavailableSchema))))
       .post("/feel-better", (c) => c.json(plan.feelBetter()))
+      .post("/review/dismiss", async (c) => {
+        review.dismiss((await body(c, dismissReviewInputSchema)).week);
+        return c.body(null, 204);
+      })
+      .post("/race/keep-fit", (c) => c.json(plan.keepFit()))
       .get("/profile", (c) => c.json(plan.profile()))
       .patch("/profile", async (c) => c.json(plan.updateProfile(await body(c, profilePatchSchema))))
       .get("/onboarding", (c) => c.json(plan.onboarding()))

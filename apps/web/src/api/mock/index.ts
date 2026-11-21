@@ -4,25 +4,37 @@ import {
   dayName,
   daysBetween,
   duration,
+  isoWeek,
   minutesOf,
   mondayOf,
   relativeDay,
   toIso,
 } from "../../lib/date.ts";
 import type { Api } from "../client.ts";
-import type { Activity, CalendarEvent, ChangeRow, Item, Program, Proposal, Run } from "../schemas.ts";
+import type { Activity, CalendarEvent, ChangeRow, Item, Program, Proposal, RaceResult, Run } from "../schemas.ts";
 import { chatDay, type ReggieMemory, reggie } from "./chat.ts";
 import { applyChange, blockedDays, changeOptions, isRun, proposeSlots } from "./rules.ts";
 import { seedProgram, seedWeek, strengthEvent } from "./seed.ts";
 import { applyUnavailable } from "./unavailable.ts";
+import {
+  dismissReview,
+  LONG_ACTIVITY,
+  mockReview,
+  RACE,
+  RACE_ACTIVITY,
+  recoveryWeek,
+  reviewDismissed,
+  withoutRunOn,
+} from "./weekend.ts";
 import { worstItems, worstProgram } from "./worst.ts";
 
 /**
  * Which "today" the mock shows: the states of the mockups (Main, Repos, Apres), a lightened session,
  * `worst`, the longest realistic values (break-ui check), `didyourun` (a run before today is over and unmatched)
- * and `proposal` (Reggie proposes a new level).
+ * `proposal` (Reggie proposes a new level), `bilan` (Sunday evening, the week's review) and `course` (the goal race
+ * just synced).
  */
-export type Scenario = "run" | "rest" | "done" | "light" | "worst" | "didyourun" | "proposal";
+export type Scenario = "run" | "rest" | "done" | "light" | "worst" | "didyourun" | "proposal" | "bilan" | "course";
 
 type State = {
   weeks: Record<string, Item[]>;
@@ -31,6 +43,7 @@ type State = {
   refreshed: boolean;
   unwell?: boolean;
   proposals: Proposal[];
+  race?: RaceResult;
 };
 
 const PROPOSAL: Proposal = {
@@ -51,6 +64,9 @@ const ACTIVITY: Activity = {
   intensity: "hard",
 };
 
+/** The run already synced today, by scenario. */
+const RUN_DONE: Partial<Record<Scenario, Activity>> = { done: ACTIVITY, course: RACE_ACTIVITY, bilan: LONG_ACTIVITY };
+
 export type MockOptions = { scenario?: Scenario; monday?: string; latencyMs?: number };
 
 export function createMockApi({
@@ -58,15 +74,18 @@ export function createMockApi({
   monday = mondayOf(toIso(new Date())),
   latencyMs = 0,
 }: MockOptions = {}) {
-  const today = scenario === "rest" || scenario === "didyourun" ? addDays(monday, 1) : monday;
-  const seeded = seedProgram(addDays(monday, 62), new Date());
+  const weekend = scenario === "bilan" || scenario === "course";
+  const today =
+    scenario === "rest" || scenario === "didyourun" ? addDays(monday, 1) : weekend ? addDays(monday, 6) : monday;
+  const seeded = seedProgram(scenario === "course" ? today : addDays(monday, 62), new Date());
   const program = scenario === "worst" ? worstProgram(seeded) : seeded;
   const state: State = {
     weeks: {},
     program,
     refreshed: false,
-    activity: scenario === "done" ? ACTIVITY : undefined,
+    activity: RUN_DONE[scenario],
     proposals: scenario === "proposal" ? [PROPOSAL] : [],
+    race: scenario === "course" ? { ...RACE, date: today } : undefined,
   };
   const log = new Map<string, State>();
   const memory: ReggieMemory = { count: 0 };
@@ -115,6 +134,7 @@ export function createMockApi({
   });
 
   week(today);
+  if (scenario === "course") state.weeks[monday] = withoutRunOn(week(today), today);
   if (scenario === "light") {
     const run = findRun(`${monday}-2`);
     put({
@@ -143,6 +163,11 @@ export function createMockApi({
         proposals: state.proposals,
         // The last run before today, still on the plan: the screen asks whether she ran it.
         toConfirm: scenario === "didyourun" ? runs.findLast((r) => r.date < today) : undefined,
+        review:
+          scenario === "bilan" && !reviewDismissed(isoWeek(monday))
+            ? mockReview(monday, week(monday), week(addDays(monday, 7)))
+            : undefined,
+        race: state.race,
       };
     },
     async week(offset) {
@@ -308,6 +333,7 @@ export function createMockApi({
         const tag = goal.targetTime ? targetTag(goal.targetTime, goal.distanceKm) : undefined;
         state.program.goal = { ...goal, targetTag: tag };
         state.program.maintenance = false;
+        state.race = undefined;
         return undefined;
       }),
     updateLastTime: (time) =>
@@ -318,6 +344,18 @@ export function createMockApi({
     stopProgram: () =>
       commit("Programme arrêté, place au mode entretien", () => {
         state.program.maintenance = true;
+        return undefined;
+      }),
+    dismissReview: async (week) => {
+      await wait();
+      dismissReview(week);
+    },
+    keepFit: () =>
+      commit("Mode entretien : deux semaines faciles pour commencer", () => {
+        state.program.maintenance = true;
+        state.race = undefined;
+        const next = addDays(mondayOf(today), 7);
+        state.weeks[next] = recoveryWeek(week(next));
         return undefined;
       }),
     reconnectWatch: async () => {

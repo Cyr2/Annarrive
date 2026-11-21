@@ -3,7 +3,7 @@ import { addDays, at, dateOf, daysBetween, weekDates } from "./dates.ts";
 import { adaptForHealth, MODERATE_DAYS, sickDays } from "./events.ts";
 import { paces, predictTime } from "./fitness.ts";
 import { capWeekSpikes, enforceDistribution, resumeWeek, weeklyCaps } from "./guards.ts";
-import { maintenanceWeek, postRaceWeek } from "./maintenance.ts";
+import { lastRaceDay, maintenanceWeek, postRaceIndex, postRaceWeek } from "./maintenance.ts";
 import { nearRace, placeWeek } from "./placement.ts";
 import {
   buildWeek,
@@ -143,7 +143,7 @@ function adjusted(w: PlanWeek, r: WeekRequest): PlanWeek {
 
 type Content = WeekPlan & { phase: Phase };
 
-/** The unplaced sessions the week calls for: plan week (M2), post-race week (P23) or maintenance (M9). */
+/** The unplaced sessions the week calls for: plan week (M2), post-race weeks (P23, MA6) or maintenance (M9). */
 function content(r: WeekRequest, p: Paces): Content {
   const goal = r.goal;
   const history8w = pastWeeks(r.history, r.monday, LOOKBACK_WEEKS);
@@ -159,8 +159,9 @@ function content(r: WeekRequest, p: Paces): Content {
     const ctx = { paces: p, distM: goal.distanceM, longest30dMin: longest30d(r.history, r.now), ...racePace };
     return { sessions: buildWeek(week, ctx), warnings: plan.warnings, phase: week.phase };
   }
-  if (goal && daysBetween(goal.date, r.monday) <= 7)
-    return { sessions: postRaceWeek(mean(history8w), p), warnings: [], phase: "base" };
+  const raceDay = lastRaceDay(goal, r.history, r.monday);
+  const afterRace = raceDay && postRaceIndex(raceDay, r.monday);
+  if (afterRace) return { sessions: postRaceWeek(mean(history8w), p, 3, afterRace), warnings: [], phase: "base" };
   const weekIdx = Math.floor(daysBetween(EPOCH_MONDAY, r.monday) / 7) + 1;
   return { sessions: maintenanceWeek(history8w, r.settings, weekIdx, { paces: p }), warnings: [], phase: "dev" };
 }

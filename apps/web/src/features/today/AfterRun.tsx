@@ -23,7 +23,16 @@ export const FEELS: { value: Feel; label: string }[] = [
  * After the run: the day's small moment of pride (the check pops once in Reggie's green), what she did against
  * the target, her feeling if the watch did not ask, a word for Reggie, then what comes next.
  */
-export function AfterRun({ activity, next, today }: { activity: Activity; next?: Run; today: string }) {
+export function AfterRun({
+  activity,
+  next,
+  today,
+}: {
+  activity: Activity;
+  /** Null: the next run is already on screen (the Sunday review lists it). */
+  next?: Run | null;
+  today: string;
+}) {
   return (
     <>
       <Surface as="article" className="flex flex-col gap-5 overflow-hidden p-5">
@@ -58,7 +67,7 @@ export function AfterRun({ activity, next, today }: { activity: Activity; next?:
       <NoteForReggie
         context={`${activity.title}, ${pastMoment(today, activity.receivedAt, today).replace(/^\S/, (c) => c.toLowerCase())}`}
       />
-      {next?.date === addDays(today, 1) ? (
+      {next === null ? null : next?.date === addDays(today, 1) ? (
         <NextRun run={next} today={today} label="Demain" />
       ) : (
         <p className="t-sub m-0 flex items-center gap-2 px-1">

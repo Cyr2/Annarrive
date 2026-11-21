@@ -18,12 +18,14 @@ import { AfterRun } from "./AfterRun.tsx";
 import { DayAgenda } from "./DayAgenda.tsx";
 import { DidYouRun, FeelAfterConfirm } from "./DidYouRun.tsx";
 import { ProposalCard } from "./ProposalCard.tsx";
+import { RaceDone } from "./RaceDone.tsx";
 import { ReggieNote } from "./ReggieNote.tsx";
 import { RestCard } from "./RestCard.tsx";
 import { RunCard } from "./RunCard.tsx";
 import { ThisWeek } from "./ThisWeek.tsx";
 import { beforeFirstRun, sessionContext } from "./today.ts";
 import { Unwell } from "./Unwell.tsx";
+import { notInReview, useReview, WeekReview } from "./WeekReview.tsx";
 
 let firstDayDrawn = false;
 
@@ -66,6 +68,22 @@ function waitsForOnboarding(need: boolean | undefined, today: Today | undefined,
   return need === true || (need === undefined && !setUp);
 }
 
+/** The plan could not be read, or is on its way: the card's place is held, so nothing jumps when it arrives. */
+function Waiting({ failed }: { failed: boolean }) {
+  return (
+    <Screen>
+      {failed ? (
+        <>
+          <h1 className="sr-only-label">Aujourd'hui</h1>
+          <LoadFailed title="Pas de réseau ?" what="ton plan" onRetry={() => void usePlan.getState().load()} />
+        </>
+      ) : (
+        <Skeleton label="Chargement de ta journée" />
+      )}
+    </Screen>
+  );
+}
+
 /** Aujourd'hui: run day, rest day or after the run. */
 export function TodayScreen() {
   // Deferred: the screen built from the plan renders in short slices rather than in one long task.
@@ -75,6 +93,7 @@ export function TodayScreen() {
   const week = weeks[0];
   // After « Oui, je l'ai faite » the question is gone: how it felt is asked where it was.
   const [confirmed, setConfirmed] = useState<Run>();
+  const [review, closeReview] = useReview(today?.review);
   const onboarding = waitsForOnboarding(
     useOnboardingNeed((s) => s.need),
     today,
@@ -82,19 +101,13 @@ export function TodayScreen() {
   );
   const belowCard = useBelowCard(Boolean(today && week && !onboarding));
 
-  if (status === "error") {
+  if (status === "error" || !today || !week || onboarding) return <Waiting failed={status === "error"} />;
+
+  // After the goal race, its result takes the day's place until she picks what comes next (algo.md RR).
+  if (today.race) {
     return (
       <Screen>
-        <h1 className="sr-only-label">Aujourd'hui</h1>
-        <LoadFailed title="Pas de réseau ?" what="ton plan" onRetry={() => void usePlan.getState().load()} />
-      </Screen>
-    );
-  }
-  if (!today || !week || onboarding) {
-    // The card's place, held while the plan loads, so nothing jumps when it arrives.
-    return (
-      <Screen>
-        <Skeleton label="Chargement de ta journée" />
+        <RaceDone race={today.race} />
       </Screen>
     );
   }
@@ -116,6 +129,7 @@ export function TodayScreen() {
       {!activity && !session && toConfirm && <h1 className="sr-only-label">Aujourd'hui</h1>}
       {/* Settled once what sits under the card is drawn: the first screen's later frames arrive without motion. */}
       <Presence settled={belowCard}>
+        {review && <WeekReview key="review" review={review} onClose={closeReview} />}
         {unwellText && <Unwell text={unwellText} />}
         {/* What Reggie changed because of what she ran (algo.md M10): one line, until the session it moved. */}
         {today.adapted && <ReggieNote key="adapted" text={today.adapted} onClick={askReggie} />}
@@ -123,7 +137,7 @@ export function TodayScreen() {
         {!activity && !toConfirm && confirmed && (
           <FeelAfterConfirm key="feel" run={confirmed} onClose={() => setConfirmed(undefined)} />
         )}
-        {activity && <AfterRun activity={activity} next={next} today={date} />}
+        {activity && <AfterRun activity={activity} next={notInReview(review, next)} today={date} />}
         {!activity && session && (
           <Fragment key="session">
             <RunCard run={session} today={date} />
@@ -161,7 +175,7 @@ export function TodayScreen() {
           </Fragment>
         )}
         {!activity && !session && !toConfirm && (
-          <RestCard next={next} today={date} first={beforeFirstRun(week, date)} />
+          <RestCard next={notInReview(review, next)} today={date} first={beforeFirstRun(week, date)} />
         )}
         {today.proposals?.map((p) => (
           <ProposalCard key={p.id} proposal={p} />

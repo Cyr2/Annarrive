@@ -33,12 +33,9 @@ export class NotificationService {
     this.#stores.pushSubscription.delete(endpoint);
   }
 
-  weekReady(): Promise<void> {
-    return this.#broadcast({
-      title: "Ta semaine est prête",
-      body: "Tes courses sont placées, jette un œil.",
-      url: "/semaine",
-    });
+  /** A tap opens Aujourd'hui, where the Sunday review waits (algo.md BR7). */
+  weekReady(body = "Tes courses sont placées, jette un œil."): Promise<void> {
+    return this.#broadcast({ title: "Ta semaine est prête", body, url: "/" });
   }
 
   runMoved(before: PlannedSession, after: PlannedSession): Promise<void> {
