@@ -167,7 +167,8 @@ export class GarminService {
       }
       this.#stores.meta.put({ id: BACKFILL, value: "done" });
       console.info("Garmin : historique de 12 mois lu");
-      if (this.#stores.fitnessEstimate.list().length === 0) this.#plan.bootstrapFitness();
+      // A level onboarding read mid-read saw part of the year: read again with all of it (F10).
+      this.#plan.bootstrapFitness(true);
     } catch (error) {
       console.error(`Garmin : historique arrêté, repris à la prochaine synchro (${errorName(error)})`);
     } finally {
@@ -241,6 +242,8 @@ export class GarminService {
         this.#syncAgain = false;
         const today = dateOf(this.#now());
         if (!(await this.#removeStale(today))) return this.#failing();
+        // Nothing reaches her watch before onboarding (audit parcours réel B2).
+        if (!this.#plan.onboarding().done) return;
         if (await this.#upload(today)) this.#synced();
         else this.#failing();
       } while (this.#syncAgain);
@@ -260,9 +263,15 @@ export class GarminService {
         dateOf(session.start) < addDays(today, 7);
       if (kept) continue;
       try {
-        if (sync.workoutId !== undefined) await this.#bridge.deleteWorkout(sync.workoutId);
+        // Only the workouts the app created: their template goes, and its calendar entry with it.
+        if (sync.workoutId !== undefined) {
+          await this.#bridge.deleteWorkout(sync.workoutId);
+          console.info(`Montre : entraînement ${sync.workoutId} retiré de Garmin (séance ${sync.id})`);
+        }
         this.#stores.watchSync.delete(sync.id);
       } catch (error) {
+        // Writing switched off: the workout stays tracked and goes once writing is back on.
+        if (error instanceof GarminWriteOffError) return true;
         console.error(`Montre : séance retirée non supprimée (${errorName(error)})`);
         if (stopsSync(error)) return false;
       }

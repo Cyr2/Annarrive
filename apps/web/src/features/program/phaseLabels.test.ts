@@ -63,13 +63,27 @@ describe("phaseLabels (mockup programme-v2, B)", () => {
       2,
       ["0 Base", "51 Dév.", "102 Spécifique", null],
     ],
-    ["base in progress, 160 px", 160, [3, 3, 4, 2], 0, ["0 Base", "41 Dév.", "82 Spé.", null]],
+    [
+      "base in progress, 160 px: Affût. borrows the room after Spé.",
+      160,
+      [3, 3, 4, 2],
+      0,
+      ["0 Base", "41 Dév.", "82 Spé.", "118 Affût."],
+    ],
     [
       "one week of taper: too narrow even for Affût.",
       280,
       [4, 4, 3, 1],
       2,
       ["0 Base", "93.3 Dév.", "186.7 Spécifique", null],
+    ],
+    // Audit parcours réel F6: 12 weeks of base, none of development, 2 of taper; the taper went unnamed.
+    [
+      "two weeks of taper after a long base: named from the room before it",
+      320,
+      [12, 0, 6, 2],
+      0,
+      ["0 Base", null, "192.8 Spécifique", "278 Affût."],
     ],
     ["one week of base: Base hidden", 320, [1, 9, 4, 2], 1, [null, "23.3 Développement", "200.5 Spécifique", null]],
   ])("%s", (_, width, weeks, current, expected) => {

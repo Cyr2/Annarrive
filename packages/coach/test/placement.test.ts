@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Session } from "../src/index.ts";
 import {
+  addDays,
   betterSolution,
   checkHard,
   daysBetween,
@@ -13,7 +14,9 @@ import {
   slotReason,
   softPenalty,
   usualHour,
+  usualHours,
   weekDates,
+  weekday,
 } from "../src/index.ts";
 import { block, blockDays, easy, hard, LEGS, long, MONDAY, SETTINGS, week } from "./fixtures.ts";
 
@@ -187,6 +190,29 @@ describe("placeWeek (A1 to A4)", () => {
     expect(placeWeek([easy("e", "")], [], SETTINGS, MONDAY).week.sessions[0]?.start.slice(11)).toBe("07:00");
   });
 
+  it("reads her weekday, weekend and long-run hours apart (PL-22)", () => {
+    // Audit parcours réel G1: footings at 18:30 in the week, long runs on Sunday mornings; all were put at 18:30.
+    const weeks = ["2026-10-26", "2026-11-02", "2026-11-09", "2026-11-16"];
+    const history = weeks.flatMap((monday) => [
+      { start: `${monday}T18:30`, durMin: 45 },
+      { start: `${addDays(monday, 3)}T18:30`, durMin: 40 },
+      { start: `${addDays(monday, 5)}T09:30`, durMin: 50 },
+      { start: `${addDays(monday, 6)}T09:30`, durMin: 95 },
+    ]);
+    expect(usualHours(history)).toEqual({ weekday: "18:30", weekend: "09:30", long: "09:30" });
+    expect(usualHours([{ start: "2026-11-17T18:00", durMin: 40 }])).toEqual({ weekday: "18:00", long: "18:00" });
+    expect(usualHours([])).toEqual({});
+    const settings = { ...SETTINGS, usualHours: usualHours(history) };
+    const r = placeWeek([long("l", ""), easy("e1", ""), easy("e2", "")], [LEGS], settings, MONDAY);
+    const at = (id: string) => r.week.sessions.find((s) => s.id === id)?.start ?? "";
+    expect(at("l").slice(11)).toBe("09:30");
+    expect(weekday(at("l"))).toBeGreaterThanOrEqual(5);
+    expect([at("e1"), at("e2")].filter((s) => weekday(s) < 5).every((s) => s.endsWith("18:30"))).toBe(true);
+    // A stated hour still wins for every run.
+    const stated = placeWeek([long("l", "")], [LEGS], { ...settings, preferredHour: "17:00" }, MONDAY);
+    expect(stated.week.sessions[0]?.start.slice(11)).toBe("17:00");
+  });
+
   it("keeps fixed sessions and places the rest by priority", () => {
     const manual = easy("m", "2026-11-23T08:00", 45, { manual: true });
     const r = placeWeek([manual, long("l", "")], [], SETTINGS, MONDAY);
@@ -318,6 +344,43 @@ describe("proposeMoveSlots (A6)", () => {
 
   it("rejects an unknown session", () => {
     expect(() => proposeMoveSlots("nope", week([]), "2026-11-23T08:00")).toThrow("Unknown session");
+  });
+
+  it("offers a morning when one is free, even to an evening runner (PL-23)", () => {
+    // Audit parcours réel G1: only « demain 18:00 » and « ce soir 20:30 » were offered.
+    const evening = { ...SETTINGS, preferredHour: "18:30" };
+    const e2 = easy("e", "2026-11-26T18:30");
+    const r = proposeMoveSlots("e", week([e2], [], evening), "2026-11-23T08:00");
+    expect(r.best).toHaveLength(3);
+    expect(r.best.filter((b) => b.slot.start.slice(11) < "12:00")).toHaveLength(1);
+    expect(r.best.some((b) => b.slot.start.startsWith("2026-11-27"))).toBe(true);
+    // Mornings all taken: nothing is forced.
+    const mornings = weekDates(MONDAY).map((d, i) => block(`m${i}`, `${d}T07:00`, `${d}T12:30`));
+    const none = proposeMoveSlots("e", week([e2], mornings, evening), "2026-11-23T08:00");
+    expect(none.best.every((b) => b.slot.start.slice(11) >= "12:00")).toBe(true);
+  });
+});
+
+describe("holidays (H13)", () => {
+  it("keeps quality sessions and tests off 24, 25, 31 December and 1 January (PL-24)", () => {
+    const xmas = "2026-12-21";
+    const holidayWeek = (sessions: Session[]) => ({ ...week(sessions, []), monday: xmas });
+    const test = { ...hard("t", ""), type: "TEST" as const };
+    expect(ids(checkHard(q, at(q, "2026-12-24T18:00"), holidayWeek([])))).toEqual(["H13"]);
+    expect(ids(checkHard(test, at(test, "2026-12-31T10:00"), holidayWeek([])))).toEqual(["H13"]);
+    expect(ids(checkHard(q, at(q, "2027-01-01T10:00"), holidayWeek([])))).toEqual(["H13"]);
+    expect(checkHard(e, at(e, "2026-12-25T10:00"), holidayWeek([]))).toEqual([]);
+    const l = long("l", "");
+    expect(checkHard(l, at(l, "2026-12-25T10:00"), holidayWeek([]))).toEqual([]);
+    expect(checkHard(q, at(q, "2026-12-23T18:00"), holidayWeek([]))).toEqual([]);
+    // Placed, the Q goes to another day.
+    const r = placeWeek(
+      [hard("q1", ""), easy("e1", "")],
+      blockDays(["2026-12-21", "2026-12-22", "2026-12-23"]),
+      SETTINGS,
+      xmas,
+    );
+    expect(r.week.sessions.find((s) => s.id === "q1")?.start.slice(0, 10)).not.toMatch(/-12-2[45]$/);
   });
 });
 

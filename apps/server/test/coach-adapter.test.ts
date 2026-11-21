@@ -126,7 +126,7 @@ describe("coach adapter: building weeks", () => {
   });
 
   it("plans maintenance without a goal, and asks for a level before planning anything", async () => {
-    const t = await ready();
+    const t = await ready({ onboarded: true });
     t.setNow(SUNDAY_6PM);
     const none = await t.services.plan.buildNextWeek();
     expect(none.change).toBeNull();
@@ -148,7 +148,7 @@ describe("coach adapter: a new goal (EV14)", () => {
 
   it("regenerates next week from the new goal, keeps this week and what she moved, undoes as one, updates the watch", async () => {
     const bridge = fakeBridge();
-    const t = await ready({ bridge });
+    const t = await ready({ bridge, onboarded: true });
     t.setNow(WEDNESDAY);
     history(t, "2026-11-16");
     t.stores.fitnessEstimate.put({ id: "2026-11-01", date: "2026-11-01", vdot: 40, source: "test" });
@@ -191,7 +191,7 @@ describe("coach adapter: a new goal (EV14)", () => {
 
   it("takes a new declared time as new paces only: this week keeps its runs, nothing lands today (F10, RC9, P25)", async () => {
     const bridge = fakeBridge();
-    const t = await ready({ bridge });
+    const t = await ready({ bridge, onboarded: true });
     t.setNow(WEDNESDAY);
     history(t, "2026-11-16");
     t.stores.fitnessEstimate.put({ id: "2026-11-01", date: "2026-11-01", vdot: 34, source: "test" });
@@ -223,7 +223,7 @@ describe("coach adapter: a new goal (EV14)", () => {
 
   it("turns what is left of this week into a race week for a race within 7 days, and back when it goes (EV20, P24)", async () => {
     const bridge = fakeBridge();
-    const t = await ready({ bridge });
+    const t = await ready({ bridge, onboarded: true });
     t.setNow(WEDNESDAY);
     history(t, "2026-11-16");
     t.stores.fitnessEstimate.put({ id: "2026-11-01", date: "2026-11-01", vdot: 40, source: "test" });
@@ -536,6 +536,30 @@ describe("coach adapter: Anna's three weeks (parcours final)", () => {
     expect(week().every((s) => s.start.slice(11) >= "17:00")).toBe(true);
   });
 
+  // Audit parcours réel G1: footings at 18:30, long runs on Sunday at 9:30; the long run went to 18:30.
+  it("places her long run at the hour of her long runs, her footings at her weekday hour (S7)", async () => {
+    const t = await ready();
+    t.setNow(new Date("2026-11-15T08:00:00Z"));
+    for (let w = 1; w <= 8; w++)
+      for (const [d, clock, durMin] of [
+        [0, "18:30", 45],
+        [3, "18:30", 45],
+        [6, "09:30", 95],
+      ] as const)
+        t.stores.activity.put({
+          id: `h${w}-${d}`,
+          start: `${addDays("2026-11-16", d - 7 * w)}T${clock}`,
+          durMin,
+          distM: durMin * 160,
+        });
+    t.stores.fitnessEstimate.put({ id: "2026-11-01", date: "2026-11-01", vdot: 40, source: "test" });
+    await t.call("PUT", "/api/program", { goal: { distanceM: 21097.5, date: "2027-03-14" } });
+    const next = t.stores.plannedSession.overlapping("2026-11-16T00:00", "2026-11-23T00:00");
+    const long = next.find((s) => s.type === "L");
+    expect(long?.start.slice(11)).toBe("09:30");
+    expect(next.filter((s) => s.type !== "L").every((s) => s.start.slice(11) === "18:30")).toBe(true);
+  });
+
   it("says a new number of runs without a false count of moved runs, and Annuler gives the week back (F2)", async () => {
     const { t, week } = await eveningRunner();
     t.setNow(new Date("2026-11-17T07:00:00Z"));
@@ -678,7 +702,7 @@ describe("coach adapter: fitness and recalibration", () => {
 
   it("estimates the first level from a hard Garmin run, then proposes the measured one over a provisional level", async () => {
     const bridge = fakeBridge();
-    const t = await ready({ bridge });
+    const t = await ready({ bridge, onboarded: true });
     const garmin = t.services.garmin;
     if (!garmin) throw new Error("garmin service missing");
 
@@ -781,7 +805,7 @@ describe("coach adapter: what she actually ran (M10)", () => {
 
   it("moves the next hard session after a footing run as a tempo, says so on Aujourd'hui, and Annuler takes both back", async () => {
     const bridge = fakeBridge();
-    const t = await ready({ bridge });
+    const t = await ready({ bridge, onboarded: true });
     const garmin = t.services.garmin;
     if (!garmin) throw new Error("garmin service missing");
     // Tuesday 19:00, just after the run.
@@ -866,7 +890,7 @@ describe("coach adapter: what she actually ran (M10)", () => {
 describe("watch latency", () => {
   it("sends a moved session to the watch right away, and marks it failed when Garmin refuses", async () => {
     const bridge = fakeBridge();
-    const t = await ready({ bridge });
+    const t = await ready({ bridge, onboarded: true });
     t.stores.plannedSession.put(built("easy", "E", "2026-11-18T18:00"));
 
     await t.call("POST", "/api/sessions/easy/move", { start: "2026-11-19T07:30" });
@@ -880,7 +904,7 @@ describe("watch latency", () => {
 
   it("gives one pace to sessions stored with a range at start, and sends them again to the watch (C4)", async () => {
     const bridge = fakeBridge();
-    const t = await ready({ bridge });
+    const t = await ready({ bridge, onboarded: true });
     t.stores.fitnessEstimate.put({ id: "2026-11-01", date: "2026-11-01", vdot: 40, source: "test" });
     // Stored before one pace per step: « 6'05 à 7'16 /km ».
     const ranged = (id: string, start: string, over: Partial<PlannedSession> = {}): PlannedSession => {
@@ -910,7 +934,7 @@ describe("watch latency", () => {
 
   it("leaves the watch alone for a change beyond the next 7 days", async () => {
     const bridge = fakeBridge();
-    const t = await ready({ bridge });
+    const t = await ready({ bridge, onboarded: true });
     t.stores.plannedSession.put(built("far", "E", "2026-11-28T18:00"));
     await t.call("POST", "/api/sessions/far/move", { start: "2026-11-29T09:00" });
     await new Promise((resolve) => setTimeout(resolve, 10));

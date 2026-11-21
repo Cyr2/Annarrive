@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Browser, chromium, type FullConfig, webkit } from "@playwright/test";
-import { loginLink, newPassword, type Server, seed, startServer } from "./server.ts";
+import { loginLink, MONDAY_NOW, newPassword, type Server, seed, startServer } from "./server.ts";
 
 /** Opens the one-time link like Anna, taps « Se connecter », and returns the session cookie for the tests. */
 async function logIn(browser: Browser, server: Server, use: FullConfig["projects"][number]["use"]): Promise<string> {
@@ -29,21 +29,27 @@ async function logIn(browser: Browser, server: Server, use: FullConfig["projects
 }
 
 /**
- * Two servers on temporary data: `plan` holds Anna's plan for the tests of each screen, `fresh` only her
- * Garmin data, for onboarding. Nothing is built here: `pnpm build` comes first.
+ * Three servers on temporary data: `plan` holds Anna's plan for the tests of each screen, `fresh` only her
+ * Garmin data, for onboarding, `monday` the same on the Monday evening she starts. Nothing is built here: `pnpm build`
+ * comes first.
  */
 export default async function globalSetup(config: FullConfig) {
   const root = mkdtempSync(join(tmpdir(), "annarrive-e2e-"));
   const planDir = join(root, "plan");
   const freshDir = join(root, "fresh");
-  await Promise.all([seed(planDir, "plan"), seed(freshDir, "garmin")]);
+  const mondayDir = join(root, "monday");
+  await Promise.all([seed(planDir, "plan"), seed(freshDir, "garmin"), seed(mondayDir, "monday", MONDAY_NOW)]);
   // The servers' clocks start at E2E_NOW now; the pages start where the servers are (see test.ts).
   process.env.E2E_STARTED = String(Date.now());
-  // E2E_PORT moves both servers, so two checkouts can run their tests side by side.
+  // E2E_PORT moves the servers, so two checkouts can run their tests side by side.
   const port = Number(process.env.E2E_PORT ?? 4310);
-  const [plan, fresh] = await Promise.all([startServer(port, planDir), startServer(port + 1, freshDir)]);
+  const [plan, fresh, monday] = await Promise.all([
+    startServer(port, planDir),
+    startServer(port + 1, freshDir),
+    startServer(port + 2, mondayDir, MONDAY_NOW),
+  ]);
   const teardown = async () => {
-    await Promise.all([plan.stop(), fresh.stop()]);
+    await Promise.all([plan.stop(), fresh.stop(), monday.stop()]);
     rmSync(root, { recursive: true, force: true });
   };
 
@@ -52,6 +58,7 @@ export default async function globalSetup(config: FullConfig) {
   try {
     process.env.E2E_PLAN_COOKIE = await logIn(browser, plan, use);
     process.env.E2E_FRESH_COOKIE = await logIn(browser, fresh, use);
+    process.env.E2E_MONDAY_COOKIE = await logIn(browser, monday, use);
     // Anna's account on the plan server, for the login screen's tests.
     process.env.E2E_PASSWORD = await newPassword(plan, "anna");
   } catch (error) {
@@ -62,5 +69,6 @@ export default async function globalSetup(config: FullConfig) {
   }
   process.env.E2E_PLAN_URL = plan.url;
   process.env.E2E_FRESH_URL = fresh.url;
+  process.env.E2E_MONDAY_URL = monday.url;
   return teardown;
 }

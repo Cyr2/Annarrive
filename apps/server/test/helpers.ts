@@ -8,6 +8,7 @@ import type { BridgeClient } from "../src/garmin/bridge-client.ts";
 import type { ReggieRun } from "../src/reggie/agent.ts";
 import { createServices } from "../src/services/index.ts";
 import type { PushSender } from "../src/services/notifications.ts";
+import { defaultProfile } from "../src/services/plan.ts";
 import { openDatabase } from "../src/storage/db.ts";
 import { createStores } from "../src/storage/stores.ts";
 import { addMinutes } from "../src/time.ts";
@@ -183,6 +184,8 @@ export function setup(
     bridge?: BridgeClient;
     push?: { send: PushSender; publicKey: string };
     reggie?: ReggieRun;
+    /** Stores a profile, as the end of onboarding does: plan building and the watch wait for it (B2). */
+    onboarded?: boolean;
   } = {},
 ) {
   const db = openDatabase(":memory:");
@@ -202,6 +205,7 @@ export function setup(
     reggie: options.reggie,
     garminPauseMs: 0,
   });
+  if (options.onboarded) createStores(db).profile.put({ id: "current", value: defaultProfile });
   const app = createApp({ services, sessionSecret: SECRET });
   let cookie = "";
   /** An authenticated request. */

@@ -37,7 +37,7 @@ export function seedProgression(monday: string, raceDate: string): NonNullable<P
         start: false,
         line: "Une course récente au-dessus de ton niveau : footing à 6'09 /km au lieu de 6'14 /km.",
       },
-      { date: first, start: true, line: "Ta meilleure course récente : temps estimé 1:53:30." },
+      { date: first, start: true, line: "Ta sortie du 14 octobre : temps estimé 1:53:30." },
     ],
   };
 }

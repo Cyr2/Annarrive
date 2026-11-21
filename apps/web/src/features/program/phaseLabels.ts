@@ -47,12 +47,21 @@ export function phaseLabels({ width, weeks, names, current, measure }: LabelInpu
     }
     const lo = Math.max(s.x0, prevEnd + LABEL_GAP);
     const hi = Math.min(i === last ? width : s.x1 + SEGMENT_GAP, i < current ? curX - LABEL_GAP : width);
-    const fit = fitted(name, hi - lo, measure);
+    const fit = placed(name, lo, hi, i === last ? prevEnd + LABEL_GAP : null, measure);
     if (!fit) return;
-    labels[i] = { x: i === last ? hi - fit.w : lo, text: fit.text };
-    prevEnd = (labels[i]?.x ?? 0) + fit.w;
+    labels[i] = { x: fit.x, text: fit.text };
+    prevEnd = fit.x + fit.w;
   });
   return labels;
+}
+
+/**
+ * A name from `lo`, within `hi`. The last one (`free`: where the free room before it starts) is right-aligned to the
+ * end and, when its own segment is too short, borrows that free room.
+ */
+function placed(name: string, lo: number, hi: number, free: number | null, measure: LabelInput["measure"]) {
+  const fit = fitted(name, hi - lo, measure) ?? (free === null ? undefined : fitted(name, hi - free, measure));
+  return fit && { ...fit, x: free === null ? lo : hi - fit.w };
 }
 
 /** The full name if it fits in `room`, else its short form if that does. */

@@ -10,14 +10,31 @@ import { icsUrl } from "./server.ts";
  * Run before the server starts, with `server-hooks.ts` preloaded (fixed clock, local timetable feed).
  * `garmin`: only what the bridge would have synced, so onboarding starts from an empty plan.
  * `plan`: Anna after onboarding: a semi-marathon, her timetable, legs on Thursday, two weeks of runs.
+ * `monday`: like `garmin`, with the runs of the week before, for an onboarding on a Monday.
  */
 const [dataDir, mode] = process.argv.slice(2);
-if (!dataDir || (mode !== "garmin" && mode !== "plan")) throw new Error("Usage : seed.ts <DATA_DIR> garmin|plan");
+if (!dataDir || (mode !== "garmin" && mode !== "plan" && mode !== "monday"))
+  throw new Error("Usage : seed.ts <DATA_DIR> garmin|plan|monday");
 
 const db = openDatabase(dataDir);
 const today = dateOf(toParisLocal(systemClock()));
 // Without a run, a Garmin VO2max is the level the first week is built on (algo.md F10 c).
 createStores(db).dailySignal.put({ id: addDays(today, -1), vo2max: 44, rhr: 52, sleepMin: 450 });
+
+if (mode === "monday") {
+  // Her runs of the week before she opens the app on Monday (audit parcours réel B1): no plan, so no review.
+  for (const [day, clock, durMin] of [
+    [-6, "18:30", 45],
+    [-4, "18:30", 40],
+    [-1, "09:30", 60],
+  ] as const)
+    createStores(db).activity.put({
+      id: `garmin:${day}`,
+      start: `${addDays(today, day)}T${clock}`,
+      durMin,
+      distM: durMin * 165,
+    });
+}
 
 if (mode === "plan") {
   // Her week was built last night: a week rebuilt today never places a run today (algo.md P25).

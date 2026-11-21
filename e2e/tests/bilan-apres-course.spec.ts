@@ -21,6 +21,18 @@ test("Le bilan du dimanche s'affiche en haut d'Aujourd'hui, « × » le ferme et
   await expect(page.getByRole("region", { name: "Ton bilan de la semaine" })).toBeHidden();
 });
 
+// Audit parcours réel G4: on Monday « La semaine prochaine » listed the week starting today and pushed today's run down.
+test("Le lundi, le bilan reste court au-dessus de la séance du jour, sans redonner la semaine qui commence", async ({
+  page,
+}) => {
+  await page.goto("/?mock=lundi");
+  const review = page.getByRole("region", { name: "Ton bilan de la semaine" });
+  await expect(review).toContainText("4 sur 4");
+  await expect(review.getByRole("heading", { name: "La semaine prochaine" })).toHaveCount(0);
+  await expect(review.getByRole("link", { name: "Voir la semaine" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { level: 1 })).toBeInViewport();
+});
+
 test("« Voir la semaine » du bilan ouvre Semaine sur la semaine suivante", async ({ page }) => {
   await page.goto("/?mock=bilan");
   await page.getByRole("link", { name: "Voir la semaine" }).click();

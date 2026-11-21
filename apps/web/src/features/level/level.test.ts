@@ -17,7 +17,7 @@ describe("Ton niveau", () => {
     const { vo2max: _, thresholdHr: __, ...thin } = anna;
     expect(figures({ ...thin, provisional: true }).map((f) => [f.label, f.value, f.detail])).toEqual([
       ["Allure seuil", "5'05", "Estimée avant ta première course"],
-      ["FC seuil", "À mesurer", "À ta prochaine séance au seuil"],
+      ["FC seuil", "À mesurer", "Se lit sur une séance au seuil"],
     ]);
   });
 

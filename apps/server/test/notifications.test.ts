@@ -2,13 +2,14 @@ import { readFileSync } from "node:fs";
 import { pushKeySchema } from "@annarrive/protocol";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PushMessage, PushSender } from "../src/services/notifications.ts";
-import { session, setup } from "./helpers.ts";
+import { defaultProfile } from "../src/services/plan.ts";
+import { passThroughCoach, session, setup } from "./helpers.ts";
 
 const subscription = { endpoint: "https://web.push.apple.com/anna", keys: { p256dh: "p256", auth: "secret" } };
 const fixture = (name: string) => readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8");
 
 function pushSetup(send: PushSender = vi.fn(async () => undefined), ics?: () => Promise<string>) {
-  const t = setup({ push: { send, publicKey: "public-key" }, ...(ics ? { ics } : {}) });
+  const t = setup({ push: { send, publicKey: "public-key" }, onboarded: true, ...(ics ? { ics } : {}) });
   return { ...t, send };
 }
 
@@ -75,6 +76,19 @@ describe("notifications", () => {
     expect(messages(t.send)).toEqual([
       { title: "Ta semaine est prête", body: "Tes courses sont placées, jette un œil.", url: "/" },
     ]);
+  });
+
+  // Audit parcours réel G3: a week built earlier by a setting change left Sunday silent.
+  it("tells her on Sunday even when the week was already built, and never before onboarding", async () => {
+    const send = vi.fn(async () => undefined);
+    const t = setup({ coach: passThroughCoach, push: { send, publicKey: "k" } });
+    t.services.notifications.subscribe(subscription);
+    await t.services.plan.buildNextWeek();
+    expect(send).not.toHaveBeenCalled();
+
+    t.stores.profile.put({ id: "current", value: defaultProfile });
+    expect((await t.services.plan.buildNextWeek()).change).toBeNull();
+    expect(messages(send).map((m) => m.title)).toEqual(["Ta semaine est prête"]);
   });
 
   it("tells Anna when a timetable change moves a run, with its new time", async () => {

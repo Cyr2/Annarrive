@@ -33,10 +33,21 @@ import { worstItems, worstProgram } from "./worst.ts";
 /**
  * Which "today" the mock shows: the states of the mockups (Main, Repos, Apres), a lightened session,
  * `worst`, the longest realistic values (break-ui check), `didyourun` (a run before today is over and unmatched)
- * `proposal` (Reggie proposes a new level), `bilan` (Sunday evening, the week's review) and `course` (the goal race
+ * `proposal` (Reggie proposes a new level), `bilan` (Sunday evening, the week's review), `lundi` (the Monday after it, its
+ * review still open above the day's run) and `course` (the goal race
  * just synced).
  */
-export type Scenario = "run" | "rest" | "done" | "light" | "worst" | "didyourun" | "proposal" | "bilan" | "course";
+export type Scenario =
+  | "run"
+  | "rest"
+  | "done"
+  | "light"
+  | "worst"
+  | "didyourun"
+  | "proposal"
+  | "bilan"
+  | "lundi"
+  | "course";
 
 type State = {
   weeks: Record<string, Item[]>;
@@ -77,6 +88,8 @@ export function createMockApi({
   latencyMs = 0,
 }: MockOptions = {}) {
   const weekend = scenario === "bilan" || scenario === "course";
+  // The week whose review is open: this one on Sunday evening, last week on the Monday after.
+  const reviewed = scenario === "bilan" ? monday : scenario === "lundi" ? addDays(monday, -7) : undefined;
   const today =
     scenario === "rest" || scenario === "didyourun" ? addDays(monday, 1) : weekend ? addDays(monday, 6) : monday;
   const seeded = seedProgram(scenario === "course" ? today : addDays(monday, 62), new Date());
@@ -169,8 +182,8 @@ export function createMockApi({
         // The last run before today, still on the plan: the screen asks whether she ran it.
         toConfirm: scenario === "didyourun" ? runs.findLast((r) => r.date < today) : undefined,
         review:
-          scenario === "bilan" && !reviewDismissed(isoWeek(monday))
-            ? mockReview(monday, week(monday), week(addDays(monday, 7)))
+          reviewed && !reviewDismissed(isoWeek(reviewed))
+            ? mockReview(reviewed, week(reviewed), week(addDays(reviewed, 7)))
             : undefined,
         race: state.race,
       };

@@ -165,8 +165,8 @@ export function RowInput({
       <input
         id={id}
         type={type}
-        // The app writes "7:30"; a time field needs "07:30".
-        value={type === "time" ? value.padStart(5, "0") : value}
+        // The app writes "7:30"; a time field needs "07:30", and an empty one stays empty (not "00000").
+        value={type === "time" && value ? value.padStart(5, "0") : value}
         min={min}
         aria-label={ariaLabel}
         maxLength={maxLength}

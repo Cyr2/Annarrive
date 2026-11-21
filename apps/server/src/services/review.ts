@@ -32,7 +32,7 @@ export class ReviewService {
 
   /**
    * BR7: Sunday once the week's last session is over and not before 18:00, then all of Monday, until she closes it.
-   * Nothing for a week with no run planned or run.
+   * Nothing for a week with no session planned, nor for one over before the programme started (an onboarding Monday).
    */
   review(): WeekReview | undefined {
     const now = this.#now();
@@ -42,8 +42,10 @@ export class ReviewService {
     const monday = day === 7 ? mondayOf(today) : addDays(today, -7);
     const week = isoWeekOf(monday);
     if (this.#stores.meta.get(DISMISSED)?.value === week) return undefined;
+    const startedOn = this.#stores.program.get(CURRENT)?.value.startedOn;
+    if (!startedOn || startedOn > addDays(monday, 6)) return undefined;
     const facts = this.#facts(monday);
-    if (facts.planned === 0 && facts.minutes === 0) return undefined;
+    if (facts.planned === 0) return undefined;
     if (day === 7) {
       const sessions = this.#sessions(monday).filter((s) => s.status !== "cancelled");
       const lastEnd =
