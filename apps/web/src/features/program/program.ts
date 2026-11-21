@@ -1,6 +1,6 @@
 import { icsUrlSchema } from "@annarrive/protocol";
 import type { Program, Settings } from "../../api/schemas.ts";
-import { daysBetween, longDate, weekdayName } from "../../lib/date.ts";
+import { addDays, daysBetween, decimal, duration, longDate, weekdayName } from "../../lib/date.ts";
 import type { SettingKey } from "../sheets/store.ts";
 
 export const SETTING_LABELS: Record<SettingKey, string> = {
@@ -10,7 +10,14 @@ export const SETTING_LABELS: Record<SettingKey, string> = {
   notBefore: "Pas avant",
   notAfter: "Pas après",
   bedtime: "Heure de coucher",
+  preferredHour: "Heure préférée",
+  travelMin: "Après une course, avant un cours",
 };
+
+/** The two settings added in Réglages carry « Nouveau » for their first two weeks. */
+const NEW_UNTIL = "2026-12-06";
+export const isNewSetting = (key: SettingKey, today: string | undefined) =>
+  (key === "preferredHour" || key === "travelMin") && today !== undefined && today < NEW_UNTIL;
 
 export function settingValue(key: SettingKey, settings: Settings): string {
   if (key === "runsPerWeek") return String(settings.runsPerWeek);
@@ -20,7 +27,59 @@ export function settingValue(key: SettingKey, settings: Settings): string {
     const names = days.map((d) => weekdayName(d).slice(0, days.length > 2 ? 3 : undefined));
     return names.length ? names.join(", ") : "Aucun";
   }
+  // Never "0" on one line and "min" on the next.
+  if (key === "travelMin") return duration(settings.travelMin).replaceAll(" ", " ");
+  if (key === "preferredHour") {
+    if (settings.preferredHour) return settings.preferredHour;
+    return settings.usualHour ? `Automatique · vers ${settings.usualHour}` : "Automatique";
+  }
   return settings[key];
+}
+
+/** « Ta dernière course »: how long ago, in months, as she answers it. */
+export const RACE_AGO = [
+  { value: "0", label: "moins d'un mois" },
+  ...[1, 2, 3, 4, 5, 6].map((m) => ({ value: String(m), label: `${m} mois` })),
+  { value: "7", label: "plus de 6 mois" },
+];
+const MONTH_DAYS = 30.44;
+
+/** Back from a stored date to the answer she gave; a time stored without a date reads as recent. */
+export const raceAgoOf = (date: string | undefined, today: string): string =>
+  date ? String(Math.min(7, Math.round(daysBetween(date, today) / MONTH_DAYS))) : "0";
+
+/** The date to store for her answer: mid-month for « moins d'un mois », nine months for « plus de 6 mois ». */
+export const raceDateOf = (ago: string, today: string): string => {
+  const months = Number(ago);
+  return addDays(today, -Math.round((months === 0 ? 0.5 : months === 7 ? 9 : months) * MONTH_DAYS));
+};
+
+export const RACE_DISTANCES = [
+  { value: 5000, label: "5 km" },
+  { value: 10000, label: "10 km" },
+  { value: 21097.5, label: "Semi" },
+  { value: 42195, label: "Marathon" },
+];
+
+/** A race time as she says it: "1:52" to the minute past an hour, "24:30" under it, seconds when she gave some. */
+export const raceClock = (seconds: number): string =>
+  seconds >= 3600 && seconds % 60 === 0 ? clock(seconds).slice(0, -3) : clock(seconds);
+
+/** "Semi en 1:52, il y a 2 mois": her last race on one line. */
+export function lastRaceLine(last: NonNullable<Program["lastTime"]>, today: string): string {
+  const time = raceClock(Math.round(last.minutes * 60));
+  const name = RACE_DISTANCES.find((d) => d.value === last.distanceM)?.label ?? `${decimal(last.distanceM / 1000)} km`;
+  const ago = RACE_AGO.find((a) => a.value === raceAgoOf(last.date, today))?.label ?? "";
+  return `${name} en ${time}, ${last.date ? `il y a ${ago}` : "estimé"}`;
+}
+
+const VERSUS = { agrees: "en accord avec", above: "au-dessus de", below: "en dessous de" } as const;
+
+/** « Ta montre »: what Garmin says of her level, next to her race (algo.md F19). */
+export function garminLine(garmin: Program["garmin"]): string {
+  if (!garmin) return "Pas encore de VO2max sur ta montre";
+  const line = `VO2max ${Math.round(garmin.vo2max)} selon Garmin`;
+  return garmin.versus ? `${line}, ${VERSUS[garmin.versus]} ta course` : line;
 }
 
 /** "Dimanche 17 janvier · J-62" */
@@ -65,22 +124,6 @@ export function secondsOf(targetTime: string | undefined): number {
   const [h = 0, m = 0, s = 0] = parts.length === 2 ? [...parts, 0] : parts;
   return h * 3600 + m * 60 + s;
 }
-
-/** Days to the goal, as the card's big figure; its label says the day itself and the days after it. */
-export function countdown(date: string, today: string): { value: string; unit?: string; label?: string } {
-  const days = daysBetween(today, date);
-  if (days === 0) return { value: "Bonne course", label: "C'est aujourd'hui" };
-  if (days < 0) return { value: "Terminé", label: "Ton objectif est passé" };
-  return { value: String(days), unit: days > 1 ? "jours" : "jour" };
-}
-
-/** What each phase is for, in her words. A phase the app does not know keeps only its name. */
-export const PHASE_TEXT: Record<string, string> = {
-  Base: "Courir souvent et facile, pour construire ton endurance.",
-  Développement: "Le rythme monte, avec des séances plus soutenues.",
-  Spécifique: "Des séances à l'allure de ton objectif.",
-  Affûtage: "Moins de kilomètres, pour arriver fraîche le jour J.",
-};
 
 /** The watch's link, in Programme and its sheet; unknown when the server could not reach it. */
 export function watchState(connected: boolean | undefined): string {

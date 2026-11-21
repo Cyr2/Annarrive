@@ -51,7 +51,6 @@ services.plan.updateProfile({
   bedtime: "23:00",
   useSleepHr: false,
   travelMin: 10,
-  cycleTracking: false,
 });
 createStores(db).authSession.put({
   id: hash(env.LIGHTHOUSE_SESSION),

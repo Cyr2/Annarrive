@@ -2,7 +2,18 @@ import { describe, expect, it } from "vitest";
 import { seedProgram } from "../../api/mock/seed.ts";
 import { EMPTY, issue, toPayload } from "../onboarding/onboarding.ts";
 import { runWindow } from "./DayWindow.tsx";
-import { clock, countdown, secondsOf } from "./program.ts";
+import {
+  clock,
+  garminLine,
+  isNewSetting,
+  lastRaceLine,
+  RACE_AGO,
+  raceAgoOf,
+  raceClock,
+  raceDateOf,
+  secondsOf,
+  settingValue,
+} from "./program.ts";
 import { skyPhase } from "./sky.ts";
 import { targetReasons } from "./TargetTag.tsx";
 
@@ -32,11 +43,10 @@ describe("target time", () => {
 });
 
 describe("goal card", () => {
-  it("counts the days to the race, down to the day itself", () => {
-    expect(countdown("2026-11-20", "2026-11-17")).toEqual({ value: "3", unit: "jours" });
-    expect(countdown("2026-11-18", "2026-11-17")).toEqual({ value: "1", unit: "jour" });
-    expect(countdown("2026-11-17", "2026-11-17")).toEqual({ value: "Bonne course", label: "C'est aujourd'hui" });
-    expect(countdown("2026-11-16", "2026-11-17")).toEqual({ value: "Terminé", label: "Ton objectif est passé" });
+  it("says a race time as she does: to the minute past an hour", () => {
+    expect(raceClock(6480)).toBe("1:48");
+    expect(raceClock(6485)).toBe("1:48:05");
+    expect(raceClock(24 * 60 + 30)).toBe("24:30");
   });
 
   it("warms the sky with the phase, and in full sun the week of the race", () => {
@@ -45,6 +55,41 @@ describe("goal card", () => {
     expect(skyPhase({ ...program, weekIndex: 9 }, "2026-11-17")).toBe("peak");
     expect(skyPhase(program, "2027-01-12")).toBe("race");
     expect(skyPhase(undefined, undefined)).toBe("base");
+  });
+});
+
+describe("ton niveau", () => {
+  const today = "2026-11-21";
+  it("sums up her last race on one line, and reads back the months she gave", () => {
+    for (const { value } of RACE_AGO) expect(raceAgoOf(raceDateOf(value, today), today)).toBe(value);
+    const semi = { distanceM: 21097.5, minutes: 112, date: raceDateOf("2", today) };
+    expect(lastRaceLine(semi, today)).toBe("Semi en 1:52, il y a 2 mois");
+    expect(lastRaceLine({ ...semi, date: raceDateOf("0", today) }, today)).toBe("Semi en 1:52, il y a moins d'un mois");
+    expect(lastRaceLine({ distanceM: 8000, minutes: 40.5 }, today)).toBe("8 km en 40:30, estimé");
+  });
+
+  it("says what Garmin reads, next to her race when there is one", () => {
+    expect(garminLine({ vo2max: 45.2, versus: "agrees" })).toBe("VO2max 45 selon Garmin, en accord avec ta course");
+    expect(garminLine({ vo2max: 50, versus: "above" })).toBe("VO2max 50 selon Garmin, au-dessus de ta course");
+    expect(garminLine({ vo2max: 40 })).toBe("VO2max 40 selon Garmin");
+    expect(garminLine(undefined)).toBe("Pas encore de VO2max sur ta montre");
+  });
+});
+
+describe("réglages", () => {
+  it("shows her hour, or the automatic one, and the time before a class", () => {
+    const { settings } = seedProgram("2027-01-17", new Date("2026-11-17T08:00:00Z"));
+    expect(settingValue("preferredHour", settings)).toBe("Automatique · vers 18:00");
+    expect(settingValue("preferredHour", { ...settings, usualHour: undefined })).toBe("Automatique");
+    expect(settingValue("preferredHour", { ...settings, preferredHour: "7:30" })).toBe("7:30");
+    expect(settingValue("travelMin", settings)).toBe("30 min");
+    expect(settingValue("travelMin", { ...settings, travelMin: 90 })).toBe("1 h 30");
+  });
+
+  it("marks the two new settings « Nouveau » for two weeks only", () => {
+    expect(isNewSetting("travelMin", "2026-11-21")).toBe(true);
+    expect(isNewSetting("bedtime", "2026-11-21")).toBe(false);
+    expect(isNewSetting("preferredHour", "2026-12-06")).toBe(false);
   });
 });
 

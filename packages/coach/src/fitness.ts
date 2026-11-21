@@ -276,6 +276,19 @@ export function initialFitness(h: FitnessHistory, now: string): InitialFitness {
   return { vdot: chosen.v, status: "provisional", source: chosen.source, testWeek: [2, 4] };
 }
 
+/** F19: Garmin's VO2max and the VDOT of her last race agree within this many points (Engel 2025's mean gap). */
+const VO2MAX_AGREE = 5;
+
+/** F19. What Garmin says of her level next to her own race, for « Ta montre ». Informative only: F17 still holds. */
+export function vo2maxVersusRace(
+  vo2maxGarmin: number,
+  race: { distM: number; tMin: number },
+): "agrees" | "above" | "below" {
+  const gap = vo2maxGarmin - vdot(race.distM, race.tMin);
+  if (Math.abs(gap) < VO2MAX_AGREE) return "agrees";
+  return gap > 0 ? "above" : "below";
+}
+
 /** F12. Null when neither age nor heart rate is known: pilot by RPE. */
 export function hrMax(
   observedMax12m: number | undefined,

@@ -19,7 +19,17 @@ import {
   speedForVo2,
   vdot,
   vo2,
+  vo2maxVersusRace,
 } from "../src/index.ts";
+
+describe("vo2maxVersusRace (F19)", () => {
+  it("agrees within 5 points of the race's VDOT, else says which way (F-33)", () => {
+    const semi = { distM: 21097.5, tMin: 110 };
+    expect(vo2maxVersusRace(44, semi)).toBe("agrees");
+    expect(vo2maxVersusRace(46, semi)).toBe("above");
+    expect(vo2maxVersusRace(34, semi)).toBe("below");
+  });
+});
 
 const NOW = "2026-11-16T08:00";
 const race = (id: string, start: string, v: number, distM = 5000): Activity => ({

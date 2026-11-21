@@ -45,7 +45,8 @@ Barre d'onglets flottante : **Aujourd'hui**, **Semaine**, **Programme**, **Reggi
 | Déplacer, Changer, Pas dispo (feuilles) | `design/Deplacer.dc.html`, `design/Changer.dc.html`, `design/PasDispo.dc.html` |
 | Semaine, glisser une séance | `design/Semaine.dc.html` |
 | Ajouter (bouton +), séance de muscu | `design/Ajouter.dc.html`, `design/Muscu.dc.html` |
-| Programme et réglages | `design/Programme.dc.html` |
+| Programme : objectif, frise des phases, Ton niveau (dernière course, ce que dit la montre), progression | `design/Programme.dc.html`, puis la maquette validée le 21/11/2026 (section 1) |
+| Réglages, page poussée depuis la roue de Programme ; feuille « Ta dernière course » | Maquette validée le 21/11/2026 (sections 2 et 3) |
 | Reggie, conversation et widgets | `design/Assistant.dc.html`, `design/ReggieWidgets.dc.html` |
 | Onboarding | À maquetter |
 
@@ -63,7 +64,7 @@ Ce qu'elle renseigne :
 6. Ses limites : pas avant, pas après, jours sans course (valeurs proposées par défaut).
 7. Ses séances de muscu habituelles : nom, case « jambes », jour, heure (facultatif, faisable plus tard).
 8. Une douleur ou blessure en cours.
-9. Ses accords : sommeil et fréquence cardiaque, cycle menstruel (oui ou non).
+9. Ses accords : sommeil et fréquence cardiaque.
 10. Les notifications.
 
 Le programme commence le lendemain : rien n'est placé le jour de l'onboarding.
@@ -82,5 +83,4 @@ Sa forme de départ est déduite de l'historique Garmin, tours compris (ses pass
 
 | Question | En attendant |
 |---|---|
-| Anna veut-elle que son cycle soit pris en compte ? | Interrupteur désactivé par défaut, symptômes signalés seulement |
 | Écran final de l'onboarding | À décider sur la maquette de l'onboarding |

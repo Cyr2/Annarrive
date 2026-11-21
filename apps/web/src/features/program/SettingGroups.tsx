@@ -2,72 +2,57 @@ import type { Program, Settings } from "../../api/schemas.ts";
 import { ago } from "../../lib/date.ts";
 import { Dot } from "../../ui/bits.tsx";
 import { Group, RowButton, Section } from "../../ui/List.tsx";
-import { DISTANCES } from "../onboarding/onboarding.ts";
+import { usePlan } from "../plan/store.ts";
 import { type SettingKey, useSheet } from "../sheets/store.ts";
-import { DayWindow } from "./DayWindow.tsx";
-import { clock, SETTING_LABELS, settingValue, watchState } from "./program.ts";
+import { isNewSetting, SETTING_LABELS, settingValue, watchState } from "./program.ts";
 
-/** Groups of the Programme tab that read the plan's settings: runs, hours, the watch. */
+/** Groups of Réglages that read the plan's settings: runs, hours, the watch. */
 
-const HOURS: SettingKey[] = ["notBefore", "notAfter", "bedtime"];
+const RUNS: SettingKey[] = ["runsPerWeek", "longRunDays", "preferredHour"];
 
-const RUNS: SettingKey[] = ["runsPerWeek", "noRunDays", "longRunDays"];
+const HOURS: SettingKey[] = ["notBefore", "notAfter", "bedtime", "noRunDays", "travelMin"];
 
 /** Every setting opens the same sheet, saved with « Enregistrer »: one undoable change, never a change per tap. */
-export function Runs({ settings }: { settings: Settings }) {
+function SettingRows({ keys, settings }: { keys: SettingKey[]; settings: Settings }) {
   const show = useSheet((s) => s.show);
+  const today = usePlan((s) => s.today?.date);
   return (
-    <Section title="Tes courses" footnote="Reggie place tes courses dans ces limites, autour de tes cours.">
-      <Group>
-        {RUNS.map((key) => (
-          <RowButton
-            key={key}
-            label={SETTING_LABELS[key]}
-            value={settingValue(key, settings)}
-            onClick={() => show({ kind: "setting", key })}
-          />
-        ))}
-      </Group>
-    </Section>
+    <Group>
+      {keys.map((key) => (
+        <RowButton
+          key={key}
+          label={
+            isNewSetting(key, today) ? (
+              <>
+                {SETTING_LABELS[key]}{" "}
+                <span className="t-cap ml-1 inline-block rounded-full bg-action-wash px-2 align-[2px] font-semibold text-action">
+                  Nouveau
+                </span>
+              </>
+            ) : (
+              SETTING_LABELS[key]
+            )
+          }
+          value={settingValue(key, settings)}
+          onClick={() => show({ kind: "setting", key })}
+        />
+      ))}
+    </Group>
   );
 }
 
-/** « Ton dernier chrono »: her own word on her level, next to what Garmin says of it. */
-export function LastTime({ last }: { last: Program["lastTime"] }) {
-  const show = useSheet((s) => s.show);
-  const race = last && DISTANCES.find((d) => d.value === last.distanceM);
+export function Runs({ settings }: { settings: Settings }) {
   return (
-    <Section title="Ton niveau" footnote="Un chrono récent, ou ton temps estimé : Reggie en tire tes allures.">
-      <Group>
-        <RowButton
-          label="Ton dernier chrono"
-          value={
-            last
-              ? `${race?.label ?? `${last.distanceM / 1000} km`} en ${clock(Math.round(last.minutes * 60))}`
-              : "Aucun"
-          }
-          onClick={() => show({ kind: "lastTime" })}
-        />
-      </Group>
+    <Section title="Tes courses">
+      <SettingRows keys={RUNS} settings={settings} />
     </Section>
   );
 }
 
 export function Hours({ settings }: { settings: Settings }) {
-  const show = useSheet((s) => s.show);
   return (
-    <Section title="Tes horaires" footnote="Tes courses finissent au moins 1 h avant ton coucher.">
-      <Group>
-        <DayWindow notBefore={settings.notBefore} notAfter={settings.notAfter} bedtime={settings.bedtime} />
-        {HOURS.map((key) => (
-          <RowButton
-            key={key}
-            label={SETTING_LABELS[key]}
-            value={settingValue(key, settings)}
-            onClick={() => show({ kind: "setting", key })}
-          />
-        ))}
-      </Group>
+    <Section title="Tes horaires" footnote="Reggie place tes courses dans ces limites, autour de tes cours.">
+      <SettingRows keys={HOURS} settings={settings} />
     </Section>
   );
 }

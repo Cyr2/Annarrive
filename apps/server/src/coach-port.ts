@@ -19,7 +19,6 @@ import type {
   HealthStatus,
   PlannedSession,
   Profile,
-  ProfilePatch,
   Program,
   Proposal,
   Slot,
@@ -100,7 +99,7 @@ export interface CoachPort {
     now: string,
   ): { best: { slot: Slot; reason: string }[]; forbidden: { slot: Slot; reason: string }[]; sideEffects: CoachNote[] };
   /** M7 `updateSettings` (EV14): replaces the current and next week, manual sessions kept. */
-  updateSettings(st: CoachState, patch: ProfilePatch, now: string): CoachResult;
+  updateSettings(st: CoachState, settings: Profile, now: string): CoachResult;
   /**
    * M7 `onTimetableChange` (EV15): `newEvents` replaces `st.events`, conflicting sessions move. `own`: an event
    * Anna placed caused it, so a run within 12 h moves too (EV22).
@@ -175,6 +174,10 @@ export interface CoachPort {
     vo2maxGarmin: number | undefined,
     now: string,
   ): FeasibilityClass | null;
+  /** S7: the hour she usually runs at, from her Garmin runs; what « Heure préférée » shows while she sets none. */
+  usualHour(st: CoachState): string | undefined;
+  /** F19: Garmin's VO2max next to the level her declared race gives, for « Ta montre » in Programme. */
+  vo2maxVersusRace(vo2maxGarmin: number, race: DeclaredTime): "agrees" | "above" | "below";
 }
 
 export function slotFor(session: PlannedSession, start: string): Slot {

@@ -114,26 +114,26 @@ test.describe("onboarding", () => {
 });
 
 test("9. toute la ligne d'un interrupteur le bascule", async ({ page }) => {
-  await page.goto("/programme?mock");
+  await page.goto("/programme/reglages?mock");
   const sleep = page.getByRole("switch", { name: "Sommeil et fréquence cardiaque" });
   const before = await sleep.getAttribute("aria-checked");
   await page.getByText("Lus sur ta Garmin", { exact: false }).click();
   await expect(sleep).not.toHaveAttribute("aria-checked", before ?? "");
 });
 
-test("12 et 13. « Ton dernier chrono » refuse 0 h 05 sur un semi et ne dit « Distance » qu'une fois", async ({
+test("12 et 13. « Ta dernière course » refuse 0 h 05 sur un semi et ne pose « Quelle distance ? » qu'une fois", async ({
   page,
 }) => {
   await page.goto("/programme");
-  await page.getByRole("button", { name: /^Ton dernier chrono/ }).click();
-  const sheet = page.getByRole("dialog", { name: "Ton dernier chrono" });
-  await sheet.getByRole("button", { name: "Semi-marathon", exact: true }).click();
+  await page.getByRole("button", { name: /^Ta dernière course/ }).click();
+  const sheet = page.getByRole("dialog", { name: "Ta dernière course" });
+  await sheet.getByRole("button", { name: "Semi", exact: true }).click();
   await sheet.getByLabel("Heures").fill("0");
   await sheet.getByLabel("Minutes").fill("5");
   await expect(sheet.getByRole("button", { name: "Enregistrer" })).toBeDisabled();
   await expect(sheet).toContainText("Ce chrono ne colle pas à cette distance");
-  await expect(sheet.getByText("Distance", { exact: true })).toHaveCount(1);
-  await expect(sheet.getByRole("group", { name: "Distance" })).toBeVisible();
+  await expect(sheet.getByText("Quelle distance ?", { exact: true })).toHaveCount(1);
+  await expect(sheet.getByRole("group", { name: "Quelle distance ?" })).toBeVisible();
 });
 
 test("13 et 15. « Tu l'as faite ? » garde un titre de page, « Comment c'était ? » n'est dit qu'une fois", async ({
@@ -148,7 +148,7 @@ test("13 et 15. « Tu l'as faite ? » garde un titre de page, « Comment c'étai
 });
 
 test("14. deux signalements de suite ne montrent qu'un « Merci »", async ({ page }) => {
-  await page.goto("/programme");
+  await page.goto("/programme/reglages");
   const send = page.getByRole("button", { name: "Envoyer le signalement" });
   await send.click();
   await send.click();

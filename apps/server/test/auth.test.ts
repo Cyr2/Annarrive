@@ -104,6 +104,15 @@ describe("password", () => {
     expect(await phone.get("/api/today")).toBe(200);
   });
 
+  it("« Se déconnecter » ends this device's session on the server, not only its cookie", async () => {
+    const { t, password, phone } = await withAccount();
+    const { set } = await phone.post("/api/auth/password", { username: "anna", password });
+    expect((await phone.post("/api/auth/logout")).status).toBe(204);
+    expect(await phone.get("/api/today")).toBe(401);
+    const replayed = await t.app.request("/api/today", { headers: { cookie: set ?? "" } });
+    expect(replayed.status).toBe(401);
+  });
+
   it("gives the same answer for a wrong password and an unknown name", async () => {
     const { phone } = await withAccount();
     const wrong = await phone.post("/api/auth/password", { username: "anna", password: "nope" });

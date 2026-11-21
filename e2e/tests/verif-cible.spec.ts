@@ -8,14 +8,14 @@ const box = async (locator: ReturnType<Page["locator"]>) => {
   return b;
 };
 
-test("Programme : le retour du système ferme la feuille du lien ICS et reste sur Programme", async ({ page }) => {
-  await page.goto("/programme");
+test("Réglages : le retour du système ferme la feuille du lien ICS et reste sur Réglages", async ({ page }) => {
+  await page.goto("/programme/reglages");
   const sheet = page.getByRole("dialog", { name: "Emploi du temps" });
   await page.getByRole("button", { name: /^Lien ICS/ }).click();
   await expect(sheet).toBeVisible();
   await page.goBack();
   await expect(sheet).toBeHidden();
-  expect(new URL(page.url()).pathname).toBe("/programme");
+  expect(new URL(page.url()).pathname).toBe("/programme/reglages");
 });
 
 test("la barre d'onglets reste le même repère avant et après le premier toucher", async ({ page }) => {
@@ -46,7 +46,7 @@ test.describe("320 px", () => {
   });
 
   test("muscu : Supprimer la séance reste dans le pied de la feuille, sans défiler", async ({ page }) => {
-    await page.goto("/programme");
+    await page.goto("/programme/reglages");
     await page
       .getByRole("button", { name: /Jambes/ })
       .first()
@@ -64,7 +64,7 @@ test.describe("320 px", () => {
 });
 
 test("muscu : la durée et OK ont une cible de 44 px au moins", async ({ page }) => {
-  await page.goto("/programme");
+  await page.goto("/programme/reglages");
   await page
     .getByRole("button", { name: /Jambes/ })
     .first()

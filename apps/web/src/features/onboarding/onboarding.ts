@@ -1,5 +1,6 @@
 import {
   type CreateEventInput,
+  DEFAULT_TRAVEL_MIN,
   type DeclaredTime,
   type FeasibilityInput,
   IMPLAUSIBLE_TIME,
@@ -270,8 +271,7 @@ export function toPayload(draft: Draft, today: string): Payload {
       ...(longDays.length ? { preferredLongDays: longDays } : {}),
       bedtime: padTime(draft.bedtime),
       useSleepHr: draft.useSleepHr,
-      travelMin: 0,
-      cycleTracking: draft.cycleTracking,
+      travelMin: DEFAULT_TRAVEL_MIN,
     },
   };
 }

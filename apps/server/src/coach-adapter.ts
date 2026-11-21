@@ -269,6 +269,8 @@ function adaptationNote(a: coach.Adaptation, run: Activity, planned: PlannedSess
 /** The real `CoachPort`: translates the stored shapes and lets `@annarrive/coach` decide everything. */
 export const coachAdapter: CoachPort = {
   feasibility: coachFeasibility,
+  usualHour: (st) => coach.usualHour(st.activities),
+  vo2maxVersusRace: (vo2max, race) => coach.vo2maxVersusRace(vo2max, { distM: race.distanceM, tMin: race.minutes }),
   programPlan(st, now) {
     const { goal } = st.program;
     if (!goal || !st.fitness) return null;
@@ -353,8 +355,7 @@ export const coachAdapter: CoachPort = {
     };
   },
 
-  updateSettings(st, patch, now) {
-    const settings = { ...st.settings, ...patch };
+  updateSettings(st, settings, now) {
     return perWeek(st, now, (w) => coach.updateSettings(w, toSettings(settings, st.activities), now), { settings });
   },
 

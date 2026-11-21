@@ -20,7 +20,7 @@ async function pull(page: Page, distance: number) {
 }
 
 test("tirer la page vers le bas relit l'emploi du temps, un petit tirage ne fait rien", async ({ page }) => {
-  for (const path of ["/semaine", "/", "/programme"]) {
+  for (const path of ["/semaine", "/", "/programme/reglages"]) {
     await page.goto(path);
     // The page is drawn once Actualiser, the same read for VoiceOver, is there.
     await expect(page.getByRole("button", { name: "Actualiser" })).toBeVisible();

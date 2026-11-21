@@ -77,7 +77,6 @@ const PROFILE = {
   bedtime: "23:00",
   useSleepHr: true,
   travelMin: 0,
-  cycleTracking: false,
   icsUrl: "https://edt.univ.fr/anna.ics",
 };
 
@@ -669,8 +668,8 @@ describe("http client, changes", () => {
       "PUT /api/timetable/url": refresh,
       "POST /api/watch/sync": null,
     });
-    await api.updateSettings({ notBefore: "6:30", noRunDays: [0, 6], cycle: true });
-    expect(sent("PATCH /api/profile")).toEqual({ earliest: "06:30", noRunDays: [1, 7], cycleTracking: true });
+    await api.updateSettings({ notBefore: "6:30", noRunDays: [0, 6], travelMin: 45 });
+    expect(sent("PATCH /api/profile")).toEqual({ earliest: "06:30", noRunDays: [1, 7], travelMin: 45 });
     await api.updateGoal({ race: "Semi-marathon", distanceKm: 21.1, date: "2027-01-17", targetTime: "1:48" });
     expect(sent("PUT /api/program")).toEqual({ goal: { distanceM: 21097.5, date: "2027-01-17", targetMin: 108 } });
     expect(await api.setTimetableUrl("https://edt.univ.fr/anna.ics")).toEqual({
@@ -683,6 +682,9 @@ describe("http client, changes", () => {
 
   it("maps the other inputs: settings out of range, goals, Pas dispo", () => {
     expect(() => toProfilePatch({ runsPerWeek: 2 })).toThrow("entre 3 et 5");
+    expect(toProfilePatch({ preferredHour: "7:30" })).toEqual({ preferredHour: "07:30" });
+    // « Automatique »: her hour cleared, the server goes back to the one she usually runs at.
+    expect(toProfilePatch({ preferredHour: undefined })).toEqual({ preferredHour: null });
     expect(toProfilePatch({ runsPerWeek: 4, recoveryData: false, bedtime: "23:30", notAfter: "21:00" })).toEqual({
       runsPerWeek: 4,
       useSleepHr: false,

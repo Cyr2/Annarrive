@@ -16,6 +16,7 @@ import type {
   PlannedSession,
   Profile,
   ProfilePatch,
+  ProfileView,
   Program,
   ProgramInput,
   ProgramView,
@@ -26,7 +27,7 @@ import type {
   UpdateEventInput,
   Week,
 } from "@annarrive/protocol";
-import { agreeWith, sessionNames } from "@annarrive/protocol";
+import { agreeWith, DEFAULT_TRAVEL_MIN, sessionNames } from "@annarrive/protocol";
 import { type CoachPort, type CoachResult, type CoachState, type DailyDecisionResult, slotFor } from "../coach-port.ts";
 import { InvalidInputError, NotFoundError, ReadOnlyError } from "../errors.ts";
 import { WATCH_FAILING_SINCE, watchLink, watchStatus } from "../garmin/workout.ts";
@@ -53,8 +54,7 @@ export const defaultProfile: Profile = {
   noRunDays: [],
   bedtime: "23:00",
   useSleepHr: true,
-  travelMin: 0,
-  cycleTracking: false,
+  travelMin: DEFAULT_TRAVEL_MIN,
 };
 
 const eventLabels: Record<CalendarEvent["kind"], string> = {
@@ -201,9 +201,22 @@ export class PlanService {
     return this.#stores.program.get(CURRENT)?.value ?? { goal: null };
   }
 
+  /** Réglages: her profile, with the hour she usually runs at for « Heure préférée » left automatic. */
+  profileView(): ProfileView {
+    const usualHour = this.#coach.usualHour(this.coachState());
+    return { ...this.profile(), ...(usualHour ? { usualHour } : {}) };
+  }
+
   /** The programme with the plan its weeks follow, for Programme and Semaine. */
   programView(): ProgramView {
-    const program = this.program();
+    const vo2max = this.#vo2max();
+    const declared = this.program().declaredTime;
+    const program: ProgramView = {
+      ...this.program(),
+      ...(vo2max && {
+        garmin: { vo2max, ...(declared && { versus: this.#coach.vo2maxVersusRace(vo2max, declared) }) },
+      }),
+    };
     const plan = this.#coach.programPlan(this.coachState(), this.#now());
     if (!plan) return program;
     const verdict = verdictOf(plan.feasibility);
@@ -409,9 +422,15 @@ export class PlanService {
    * EV14. The end of onboarding, a new number of runs or a new long-run day change what the weeks hold, not
    * only where: their automatic sessions still ahead are rebuilt. Other settings move what now breaks a rule.
    */
-  updateProfile(patch: ProfilePatch): ChangeResponse {
+  updateProfile({ preferredHour, ...patch }: ProfilePatch): ChangeResponse {
     const before = this.coachState();
-    const settings = { ...before.settings, ...patch };
+    // null clears her hour: the coach goes back to the one she usually runs at (S7).
+    const { preferredHour: _, ...kept } = before.settings;
+    const settings: Profile = {
+      ...(preferredHour === null ? kept : before.settings),
+      ...patch,
+      ...(preferredHour ? { preferredHour } : {}),
+    };
     const write: PlanWrite = { table: "profile", id: CURRENT, after: { id: CURRENT, value: settings } };
     const onboarded = !this.#stores.profile.get(CURRENT) && this.#stores.program.get(CURRENT) !== undefined;
     const reshaped =
@@ -423,7 +442,7 @@ export class PlanService {
       "Réglages enregistrés",
       [write],
       before,
-      this.#coach.updateSettings(before, patch, this.#now()),
+      this.#coach.updateSettings(before, settings, this.#now()),
     );
   }
 
@@ -529,13 +548,18 @@ export class PlanService {
     return this.#commit(summary, writes, before, { ...next, warnings }, null);
   }
 
+  /** The latest Garmin VO2max young enough to stand for a level (F10 c). */
+  #vo2max(): number | undefined {
+    const today = dateOf(this.#now());
+    return this.#stores.dailySignal
+      .overlapping(addDays(today, -FITNESS_DAYS), addDays(today, 1))
+      .findLast((d) => d.vo2max !== undefined)?.vo2max;
+  }
+
   /** F10 from what is stored: Garmin runs, the latest Garmin VO2max, the declared time. */
   #estimate(state: CoachState): CoachState["fitness"] {
     const now = this.#now();
-    const vo2max = this.#stores.dailySignal
-      .overlapping(addDays(dateOf(now), -FITNESS_DAYS), addDays(dateOf(now), 1))
-      .findLast((d) => d.vo2max !== undefined)?.vo2max;
-    const guess = this.#coach.estimateFitness(state, vo2max, now);
+    const guess = this.#coach.estimateFitness(state, this.#vo2max(), now);
     return guess && { ...guess, id: dateOf(now), date: dateOf(now) };
   }
 

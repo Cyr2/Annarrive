@@ -62,9 +62,10 @@ test("onboarding d'une base vide jusqu'à la première semaine, puis visite guid
   await expect(day).toBeVisible();
   await page.getByRole("link", { name: "Semaine" }).click();
   await expect(page.locator("[aria-roledescription='séance déplaçable']").first()).toBeVisible();
-  // Her classes are in the first week, and Programme shows the link she pasted.
+  // Her classes are in the first week, and Réglages shows the link she pasted.
   await expect(page.locator("#day-2026-11-19")).toContainText("Biochimie");
   await page.getByRole("link", { name: "Programme" }).click();
+  await page.getByRole("button", { name: "Réglages" }).click();
   await expect(page.getByRole("button", { name: /^Lien ICS/ })).toContainText("ics.e2e.test");
 
   // Neither on the next launch, nor once Safari has dropped its storage: the server knows it is done.

@@ -3,11 +3,12 @@ import { expect, onPlan, test } from "../support/test.ts";
 
 onPlan();
 
-test("Programme : changer le lien de l'emploi du temps le relit, puis Actualiser le relit encore", async ({ page }) => {
+test("Réglages : changer le lien de l'emploi du temps le relit, puis Actualiser le relit encore", async ({ page }) => {
   await page.goto("/semaine");
   await expect(page.locator("#day-2026-11-19")).toContainText("Biochimie");
 
   await page.getByRole("link", { name: "Programme" }).click();
+  await page.getByRole("button", { name: "Réglages" }).click();
   const row = page.getByRole("button", { name: /^Lien ICS/ });
   const sheet = page.getByRole("dialog", { name: "Emploi du temps" });
   const link = sheet.getByRole("textbox", { name: "Lien ICS" });
@@ -29,6 +30,7 @@ test("Programme : changer le lien de l'emploi du temps le relit, puis Actualiser
 
   // Puts the first link back for the other tests.
   await page.getByRole("link", { name: "Programme" }).click();
+  await page.getByRole("button", { name: "Réglages" }).click();
   await row.click();
   await link.fill(icsUrl("timetable.ics"));
   await save.click();

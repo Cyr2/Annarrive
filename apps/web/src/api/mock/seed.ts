@@ -160,11 +160,13 @@ export function seedProgram(raceDate: string, now: Date): Program {
       notAfter: "21:00",
       bedtime: "23:00",
       recoveryData: true,
-      cycle: false,
+      travelMin: 30,
+      usualHour: "18:00",
       notifications: true,
     },
     strength: STRENGTH,
     timetableCheckedAt: new Date(now.getTime() - 12 * 60_000).toISOString(),
     watch: { model: "vivoactive 4", connected: true, lastSync: new Date(now.getTime() - 4 * 60_000).toISOString() },
+    garmin: { vo2max: 45, versus: "agrees" },
   };
 }

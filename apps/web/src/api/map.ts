@@ -9,8 +9,8 @@ import type {
   MoveSlots,
   PainSite,
   PlannedSession,
-  Profile,
   ProfilePatch,
+  ProfileView,
   ProgramView,
   CalendarEvent as ServerEvent,
   ChatMessage as ServerMessage,
@@ -392,7 +392,7 @@ const UNWELL: Partial<Record<ServerToday["health"]["kind"], string>> = {
   pain: "Tu as mal : footings tranquilles, pas de fractionné.",
 };
 
-export function toSettings(profile: Profile): Settings {
+export function toSettings(profile: ProfileView): Settings {
   return {
     runsPerWeek: profile.runsPerWeek,
     noRunDays: profile.noRunDays.map((d) => d - 1),
@@ -400,7 +400,9 @@ export function toSettings(profile: Profile): Settings {
     notAfter: clockOf(profile.latestEnd),
     bedtime: clockOf(profile.bedtime),
     recoveryData: profile.useSleepHr,
-    cycle: profile.cycleTracking,
+    travelMin: profile.travelMin,
+    preferredHour: profile.preferredHour && clockOf(profile.preferredHour),
+    usualHour: profile.usualHour && clockOf(profile.usualHour),
     longRunDays: (profile.preferredLongDays ?? [7]).map((d) => d - 1),
     // The switch reads the browser's subscription, not the profile.
     notifications: false,
@@ -420,7 +422,9 @@ export function toProfilePatch(patch: Partial<Settings>): ProfilePatch {
   if (patch.notAfter) out.latestEnd = fullClock(patch.notAfter);
   if (patch.bedtime) out.bedtime = fullClock(patch.bedtime);
   if (patch.recoveryData !== undefined) out.useSleepHr = patch.recoveryData;
-  if (patch.cycle !== undefined) out.cycleTracking = patch.cycle;
+  if (patch.travelMin !== undefined) out.travelMin = patch.travelMin;
+  // Asked for and left empty: back to automatic.
+  if ("preferredHour" in patch) out.preferredHour = patch.preferredHour ? fullClock(patch.preferredHour) : null;
   if (patch.longRunDays?.length) out.preferredLongDays = patch.longRunDays.map((d) => d + 1).sort((a, b) => a - b);
   return out;
 }
@@ -468,7 +472,7 @@ function toStrength(days: DayView[]): Strength[] {
 
 export type ProgramParts = {
   program: ProgramView;
-  profile: Profile;
+  profile: ProfileView;
   /** Undefined when the server could not say (see toWeek). */
   lastSyncAt: string | null | undefined;
   days: DayView[];
@@ -504,6 +508,7 @@ export function toProgram({ program, profile, lastSyncAt, days, today, watch }: 
     timetableCheckedAt: lastSyncAt === undefined ? undefined : (lastSyncAt ?? ""),
     timetableUrl: profile.icsUrl,
     lastTime: program.declaredTime,
+    garmin: program.garmin,
     watch: {
       model: "vivoactive 4",
       connected: watch?.configured && !days.some((d) => d.sessions.some((s) => s.watch === "failed")),

@@ -15,7 +15,7 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { type Context, Hono, type Next } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { compress } from "hono/compress";
-import { getSignedCookie, setSignedCookie } from "hono/cookie";
+import { deleteCookie, getSignedCookie, setSignedCookie } from "hono/cookie";
 import { secureHeaders } from "hono/secure-headers";
 import { ZodError, z } from "zod";
 import { AppError, ReadOnlyError, UnauthorizedError } from "./errors.ts";
@@ -346,6 +346,12 @@ export function createApp({ services, sessionSecret, webDist }: AppOptions): Hon
     if (!userId) throw new ReadOnlyError("Connecte-toi avec ton identifiant et ton mot de passe pour activer Face ID.");
     return userId;
   };
+  app.post("/api/auth/logout", async (c) => {
+    const sessionId = await getSignedCookie(c, sessionSecret, SESSION_COOKIE, "host");
+    if (sessionId) services.auth.logout(sessionId);
+    deleteCookie(c, SESSION_COOKIE, { prefix: "host", secure: true, path: "/" });
+    return c.body(null, 204);
+  });
   app.post("/api/passkeys/options", rateLimit(30, 60_000), async (c) =>
     c.json(await services.auth.registrationOptions(await accountOf(c))),
   );

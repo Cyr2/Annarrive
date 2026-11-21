@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { TAB_ENTER as ENTER, TAB_LEAVE as LEAVE, reducedMotion } from "../lib/motion.ts";
 import { gestureOf, keepsSideways, turnOf } from "../lib/swipe.ts";
+import { SETTINGS_PATH } from "./program/settingsPath.ts";
 
 /** The tabs in the tab bar's order: a swipe to the left goes to the next one. */
 const ORDER = ["/", "/semaine", "/programme", "/reggie"];
@@ -10,6 +11,8 @@ const ORDER = ["/", "/semaine", "/programme", "/reggie"];
  * the weeks; an edge swipe there would fight Android's back gesture, which takes both edges of the screen.
  */
 export function swipeTarget(location: string, step: -1 | 1): string | undefined {
+  // Réglages, pushed over Programme: a swipe to the right goes back to it, as iOS's swipe back.
+  if (location === SETTINGS_PATH) return step === -1 ? "/programme" : undefined;
   const index = ORDER.indexOf(location);
   if (index < 0 || location === "/semaine") return undefined;
   return ORDER[index + step];

@@ -1,40 +1,15 @@
 import type { Program } from "../../api/schemas.ts";
-import { cx } from "../../lib/cx.ts";
 import { daysBetween, longDate } from "../../lib/date.ts";
 import { Button } from "../../ui/controls.tsx";
 import { PaceValue } from "../../ui/PaceValue.tsx";
 import { Surface } from "../../ui/Surface.tsx";
+import { TextButton } from "../../ui/TextButton.tsx";
 import { useSheet } from "../sheets/store.ts";
-import { countdown, phaseBar } from "./program.ts";
+import { ToneWash } from "../today/parts.tsx";
+import { raceClock, secondsOf } from "./program.ts";
 import { TargetTag } from "./TargetTag.tsx";
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
-
-/** One cell per week of the plan, grouped by phase: done and current weeks filled, the current one taller. */
-function WeekBar({ program }: { program: Program }) {
-  let week = 0;
-  return (
-    <div aria-hidden="true" className="flex h-3 items-center gap-2">
-      {phaseBar(program).map((phase) => (
-        <div key={phase.name} className="flex h-full flex-1 items-center gap-0.5" style={{ flexGrow: phase.weeks }}>
-          {Array.from({ length: phase.weeks }, () => {
-            week += 1;
-            return (
-              <span
-                key={week}
-                className={cx(
-                  "flex-1 rounded-full",
-                  week === program.weekIndex ? "h-3 shadow-glow-action" : "h-1.5",
-                  week <= program.weekIndex ? "bg-action" : "bg-hairline-strong",
-                )}
-              />
-            );
-          })}
-        </div>
-      ))}
-    </div>
-  );
-}
 
 function Maintenance() {
   const show = useSheet((s) => s.show);
@@ -52,41 +27,35 @@ function Maintenance() {
   );
 }
 
-/** The goal at a glance: the race, the days left, her own target, and how far along the plan she is. */
+/** The goal at a glance: the day, the race, where she is in the weeks, her own target and how it looks. */
 export function GoalCard({ program, today }: { program: Program; today: string }) {
   const show = useSheet((s) => s.show);
   if (program.maintenance) return <Maintenance />;
   const { goal } = program;
-  const left = countdown(goal.date, today);
-  // The phase is named once, by the timeline below (PlanPhases): here only where she is in the weeks.
-  const note = program.weekTotal ? `Semaine ${program.weekIndex} sur ${program.weekTotal}` : "";
+  // The phase is named once, by the frieze below (PlanPhases): here only where she is in the weeks.
+  const week = program.weekTotal ? `Semaine ${program.weekIndex} sur ${program.weekTotal}` : "";
   return (
-    <Surface as="article" aria-label="Ton objectif" className="flex flex-col gap-5 p-5">
-      <div className="flex flex-col gap-1">
-        <span className="t-cap">Ton objectif</span>
-        <h2 className="t-large m-0">{goal.race}</h2>
+    <Surface as="article" aria-label="Ton objectif" className="relative flex flex-col overflow-hidden p-5">
+      <ToneWash tone="long" />
+      <div className="relative flex items-center justify-between gap-3">
         <span className="t-sub">{capitalize(longDate(goal.date))}</span>
+        <TextButton
+          className="-my-3 -mr-1"
+          aria-label={daysBetween(today, goal.date) < 0 ? "Choisir un nouvel objectif" : "Modifier l'objectif"}
+          onClick={() => show({ kind: "goal" })}
+        >
+          {daysBetween(today, goal.date) < 0 ? "Nouvel objectif" : "Modifier"}
+        </TextButton>
       </div>
-      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
-        <div className="flex flex-col gap-1">
-          <span className="t-cap">{left.unit ? "Plus que" : left.label}</span>
-          <PaceValue value={left.value} unit={left.unit} size="figure" />
+      <h2 className="t-large relative m-0 mt-1">{goal.race}</h2>
+      {week && <span className="t-body relative text-ink-2 tabular-nums">{week}</span>}
+      <div className="hairline-top relative mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pt-4">
+        <div className="flex flex-col">
+          <span className="t-sub">{goal.targetTime ? "Chrono visé" : "Objectif"}</span>
+          <PaceValue value={goal.targetTime ? raceClock(secondsOf(goal.targetTime)) : "Finir"} size="figure" />
         </div>
-        <div className="flex flex-col gap-1">
-          <span className="t-cap">{goal.targetTime ? "Chrono visé" : "Objectif"}</span>
-          <PaceValue value={goal.targetTime ?? "Finir"} size="figure" />
-        </div>
+        {goal.targetTag && <TargetTag kind={goal.targetTag} why={goal.targetWhy} />}
       </div>
-      {goal.targetTag && <TargetTag kind={goal.targetTag} why={goal.targetWhy} className="-mt-2" />}
-      {program.phases.length > 0 && (
-        <div className="hairline-top flex flex-col gap-3 pt-4">
-          <WeekBar program={program} />
-          {note && <span className="t-sub">{note}</span>}
-        </div>
-      )}
-      <Button onClick={() => show({ kind: "goal" })}>
-        {daysBetween(today, goal.date) < 0 ? "Choisir un nouvel objectif" : "Modifier l'objectif"}
-      </Button>
     </Surface>
   );
 }
