@@ -105,10 +105,8 @@ function SettingGroups({ program }: { program: Program }) {
       </Section>
 
       {push !== "loading" && push !== "hidden" && (
-        <Section
-          title="Notifications"
-          footnote="Ta semaine le dimanche soir, une course déplacée quand un cours change, et un mot pour Reggie après chaque course."
-        >
+        // No group label: the row already says « Notifications ».
+        <Section footnote="Ta semaine le dimanche soir, une course déplacée quand un cours change, et un mot pour Reggie après chaque course.">
           <Group>
             <NotificationsRow />
           </Group>
