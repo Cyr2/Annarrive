@@ -48,6 +48,18 @@ describe("server", () => {
     expect(await response.text()).toContain("Annarrivé");
   });
 
+  it("answers a missing asset with a 404, never the app shell a phone would take for its module", async () => {
+    const webDist = await mkdtemp(join(tmpdir(), "annarrive-web-"));
+    await writeFile(join(webDist, "index.html"), "<!doctype html><title>Annarrivé</title>");
+    const { services } = setup();
+    const response = await createApp({ services, sessionSecret: SECRET, webDist }).request(
+      "/assets/WeekScreen-CePbBjmo.js",
+    );
+    expect(response.status).toBe(404);
+    expect(response.headers.get("content-type")).not.toContain("text/html");
+    expect(response.headers.get("cache-control")).toBe("no-cache");
+  });
+
   it("serves hashed assets compressed and cached for good", async () => {
     const webDist = await mkdtemp(join(tmpdir(), "annarrive-web-"));
     await mkdir(join(webDist, "assets"));

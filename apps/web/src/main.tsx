@@ -3,6 +3,7 @@ import { StrictMode, startTransition } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App.tsx";
 import { installJournal, renderError } from "./api/journal.ts";
+import { recoverStaleVersion } from "./features/staleVersion.ts";
 import { ChunkBoundary } from "./ui/ChunkBoundary.tsx";
 import { AppCrash } from "./ui/EmptyState.tsx";
 import "./styles/app.css";
@@ -16,6 +17,7 @@ if (!root) throw new Error("Élément #root introuvable");
 const journaled = (error: unknown, info: { componentStack?: string }) => {
   console.error(error);
   renderError(error, info.componentStack);
+  void recoverStaleVersion(error);
 };
 
 // A transition: React renders the first screen in short slices, so no single task holds the main thread.
