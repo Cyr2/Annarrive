@@ -511,7 +511,6 @@ export function toProgram({ program, profile, lastSyncAt, days, today, watch }: 
     timetableCheckedAt: lastSyncAt === undefined ? undefined : (lastSyncAt ?? ""),
     timetableUrl: profile.icsUrl,
     lastTime: program.declaredTime,
-    garmin: program.garmin,
     watch: {
       model: "vivoactive 4",
       connected: watch?.configured && !days.some((d) => d.sessions.some((s) => s.watch === "failed")),

@@ -82,6 +82,12 @@ export function longDate(iso: string): string {
   return `${dayName(iso).toLowerCase()} ${d === 1 ? "1er" : d} ${MONTHS[m - 1]}`;
 }
 
+/** "1er novembre", "19 novembre" */
+export function dayMonth(iso: string): string {
+  const [, m, d] = parts(iso);
+  return `${d === 1 ? "1er" : d} ${MONTHS[m - 1]}`;
+}
+
 /** French abbreviations: "juin", "juil.", "sept.". */
 const SHORT_MONTHS = [
   "janv.",

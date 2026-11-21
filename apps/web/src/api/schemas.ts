@@ -240,8 +240,6 @@ export const programSchema = z.object({
     .optional(),
   /** `connected` is absent when the server could not reach the watch's state. */
   watch: z.object({ model: z.string(), connected: z.boolean().optional(), lastSync: z.string().optional() }),
-  /** « Ta montre »: Garmin's VO2max, and how it reads next to her last race (algo.md F19). */
-  garmin: z.object({ vo2max: z.number(), versus: z.enum(["agrees", "above", "below"]).optional() }).optional(),
 });
 
 export const sessionPreviewSchema = z.object({

@@ -4,6 +4,7 @@ export * from "./dates.ts";
 export * from "./events.ts";
 export * from "./fitness.ts";
 export * from "./guards.ts";
+export * from "./level.ts";
 export * from "./maintenance.ts";
 export * from "./pace.ts";
 export * from "./placement.ts";

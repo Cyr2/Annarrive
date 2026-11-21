@@ -39,6 +39,7 @@ const LOADERS: { [K in Kind]: Loader<K> } = {
   timetable: () => import("../program/TimetableSheet.tsx"),
   target: () => import("../program/TargetSheet.tsx"),
   progression: () => import("../progression/ProgressionSheet.tsx"),
+  level: () => import("../level/LevelSheet.tsx"),
 };
 
 function chunks<K extends Kind>(kind: K) {
@@ -60,6 +61,7 @@ const SHEETS: { [K in Kind]: ComponentType<SheetProps<K>> & { preload: () => voi
   timetable: chunks("timetable"),
   target: chunks("target"),
   progression: chunks("progression"),
+  level: chunks("level"),
 };
 
 /** Fetches a sheet's file ahead of its first opening, so it rises at once. */
