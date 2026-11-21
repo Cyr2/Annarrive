@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { Settings } from "../../api/schemas.ts";
 import { Button, SegmentedControl } from "../../ui/controls.tsx";
 import { DayChips, toggled } from "../../ui/DayChips.tsx";
-import { Group, RowDuration, RowInput, Section, SectionTitle } from "../../ui/List.tsx";
+import { Group, RowDuration, RowInput, Section } from "../../ui/List.tsx";
 import { Sheet } from "../../ui/Sheet.tsx";
 import { TextButton } from "../../ui/TextButton.tsx";
 import { usePlan } from "../plan/store.ts";
@@ -24,19 +24,23 @@ const NOTES: Partial<Record<SettingKey, string>> = {
   travelMin: "Pour te doucher, te changer et y aller. Tes courses finissent assez tôt pour ça.",
 };
 
+/** No long-run day, or an hour she has not picked: on Automatique the hour shown is only a suggestion. */
+const nothingToSave = (key: SettingKey, draft: Settings, picked: boolean) =>
+  key === "longRunDays" ? draft.longRunDays.length === 0 : key === "preferredHour" && !(draft.preferredHour && picked);
+
 /** One training limit, picked with buttons or the iOS time wheel. Saving reorganizes this week and the next. */
 export default function SettingSheet({ spec, ...sheet }: SheetProps<"setting">) {
   const settings = usePlan((s) => s.program?.settings);
   const apply = usePlan((s) => s.apply);
-  // « Heure préférée » opens on the hour she usually runs at: Enregistrer as is makes it hers.
+  // On Automatique, « Heure préférée » opens on the hour she usually runs at (else the evening hour of the mockup,
+  // after her classes), as a suggestion: Enregistrer waits until she changes it.
   const [draft, setDraft] = useState<Settings | undefined>(
-    // Without either, the evening hour of the mockup: after her classes.
     settings && { ...settings, preferredHour: settings.preferredHour ?? settings.usualHour ?? "18:00" },
   );
+  const [picked, setPicked] = useState(Boolean(settings?.preferredHour));
   if (!draft) return null;
   const key = spec.key;
-  const empty =
-    key === "longRunDays" ? draft.longRunDays.length === 0 : key === "preferredHour" && !draft.preferredHour;
+  const empty = nothingToSave(key, draft, picked);
   const save = async (patch: Partial<Settings> = { [key]: draft[key] }) => {
     const done = await apply((api) => api.updateSettings(patch));
     if (done) sheet.onOpenChange(false);
@@ -78,22 +82,22 @@ export default function SettingSheet({ spec, ...sheet }: SheetProps<"setting">) 
             label={key === "preferredHour" ? "Heure" : SETTING_LABELS[key]}
             type="time"
             value={draft[key] ?? ""}
-            onChange={(v) => setDraft({ ...draft, [key]: v })}
+            onChange={(v) => {
+              setPicked(true);
+              setDraft({ ...draft, [key]: v });
+            }}
           />
         </Group>
       )}
       {key === "travelMin" && (
-        <>
-          <SectionTitle>Combien de temps te faut-il entre la fin d'une course et le début d'un cours ?</SectionTitle>
-          <Group>
-            <RowDuration
-              label="Temps"
-              minutes={draft.travelMin}
-              maxHours={2}
-              onChange={(travelMin) => setDraft({ ...draft, travelMin })}
-            />
-          </Group>
-        </>
+        <Group>
+          <RowDuration
+            label="Temps"
+            minutes={draft.travelMin}
+            maxHours={2}
+            onChange={(travelMin) => setDraft({ ...draft, travelMin })}
+          />
+        </Group>
       )}
       <p className="t-cap m-0 px-4">{NOTES[key] ?? REORGANIZED}</p>
     </Sheet>

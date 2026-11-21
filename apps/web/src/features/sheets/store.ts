@@ -10,7 +10,8 @@ export type SheetSpec =
   | { kind: "add"; date?: string }
   | { kind: "strength"; templateId?: string }
   | { kind: "setting"; key: SettingKey }
-  | { kind: "goal" }
+  /** `next`: a race after the one she just ran, so nothing of it is filled in. */
+  | { kind: "goal"; next?: true }
   | { kind: "lastTime" }
   | { kind: "watch" }
   | { kind: "timetable" }

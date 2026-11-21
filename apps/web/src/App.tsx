@@ -56,6 +56,9 @@ const SHEETS: SheetSpec["kind"][] = [
   "watch",
   "timetable",
   "target",
+  "lastTime",
+  "level",
+  "progression",
 ];
 
 const PRELOAD_DELAY_MS = 800;

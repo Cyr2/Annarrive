@@ -35,6 +35,8 @@ describe("today, details", () => {
 
   it("keeps French punctuation with its word", () => {
     expect(frenchSpaces("C'est grave ? Oui : non !")).toBe("C'est grave ? Oui : non !");
+    // Audit iPhone F3: in Reggie's words, a pace never leaves its unit for the next line.
+    expect(frenchSpaces("Vise 5'07 /km.")).toBe("Vise 5'07 /km.");
   });
 
   it("asks Reggie about the session with its day, its goal and its steps", () => {
@@ -67,7 +69,7 @@ describe("après la course objectif, en mots", () => {
   it("writes the time to the second and the pace as a runner does", () => {
     expect(raceClock(107 + 32 / 60)).toBe("1:47:32");
     expect(raceClock(24.1)).toBe("24:06");
-    expect(paceText(306.2)).toBe("5'06 /km");
+    expect(paceText(306.2)).toBe("5'06\u00a0/km");
   });
 
   it("says the gap to her target exactly, under or over, and never as an alarm (RR2)", () => {

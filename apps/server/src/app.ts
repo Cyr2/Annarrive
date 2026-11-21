@@ -45,6 +45,7 @@ export function fontFace(webDist: string | undefined): string {
 }
 
 export const VERSION = "0.1.0";
+const ENTRY_FILE = "/assets/app.js";
 // Sent as `__Host-annarrive_session`: https only, this host only, so a sibling subdomain cannot plant one.
 const SESSION_COOKIE = "annarrive_session";
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
@@ -400,13 +401,16 @@ export function createApp({ services, sessionSecret, webDist }: AppOptions): Hon
   if (webDist) {
     // Only the PWA's files: compressing the API would hold back Reggie's stream.
     app.use("/*", compress());
-    // Hashed names change with their content, so a phone never asks for them twice.
+    // Hashed names change with their content, so a phone never asks for them twice. The entry keeps its name
+    // (apps/web/vite.config.ts), so it revalidates like the shell.
     // Everything else (sw.js, the shell, the manifest) must revalidate: Cloudflare otherwise keeps sw.js for hours and the update never reaches the phone.
     app.use("/*", async (c, next) => {
       await next();
       c.header(
         "Cache-Control",
-        c.res.ok && c.req.path.startsWith("/assets/") ? "public, max-age=31536000, immutable" : "no-cache",
+        c.res.ok && c.req.path.startsWith("/assets/") && c.req.path !== ENTRY_FILE
+          ? "public, max-age=31536000, immutable"
+          : "no-cache",
       );
     });
     app.use("/*", serveStatic({ root: webDist }));

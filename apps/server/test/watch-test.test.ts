@@ -68,7 +68,7 @@ describe("watch test tool", () => {
     expect(calls).toEqual(["POST /workouts"]);
     expect(out).toContain("id 123");
     expect(out).toContain("Répéter");
-    expect(out).toMatch(/cible \d'\d\d \/km, zone \d'\d\d à \d'\d\d \/km \(\d\.\d\d à \d\.\d\d m\/s\)/);
+    expect(out).toMatch(/cible \d'\d\d\s\/km, zone \d'\d\d à \d'\d\d\s\/km \(\d\.\d\d à \d\.\d\d m\/s\)/);
     expect(out).toContain("delete 123");
   });
 
@@ -102,7 +102,7 @@ describe("watch test tool", () => {
     const { client, calls } = bridge();
     const out = (await runWatchTest(["activities", "--days", "7"], client, NOW)).join("\n");
     expect(out).toContain("2026-11-17 07:30  5.00 km  25:00");
-    expect(out).toContain("tour 1  1.00 km  5:00  5'00 /km  FC 175");
+    expect(out).toContain("tour 1  1.00 km  5:00  5'00\u00a0/km  FC 175");
     expect(out).toMatch(/Lecture F18[\s\S]*effort maximal \(race\)[\s\S]*VDOT/);
     expect(calls).toEqual(["GET /activities", "GET /activities/7/laps"]);
   });

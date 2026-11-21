@@ -42,6 +42,8 @@ test("Heure préférée : se règle au champ d'heure, puis revient à l'automati
   await row.click();
   const sheet = page.getByRole("dialog", { name: "Heure préférée" });
   await expect(sheet).toContainText("Reggie place tes courses autour de cette heure quand c'est possible.");
+  // Audit iPhone F9: on Automatique, the hour shown is a suggestion, Enregistrer waits until she changes it.
+  await expect(sheet.getByRole("button", { name: "Enregistrer" })).toBeDisabled();
   await sheet.getByLabel("Heure").fill("07:30");
   await sheet.getByRole("button", { name: "Enregistrer" }).click();
   await expect(sheet).toBeHidden();
@@ -90,7 +92,9 @@ test("Après une course, avant un cours : une course finit au moins ce temps ava
   const row = page.getByRole("button", { name: /^Après une course, avant un cours/ });
   await row.click();
   const sheet = page.getByRole("dialog", { name: "Après une course, avant un cours" });
-  await expect(sheet).toContainText("Combien de temps te faut-il entre la fin d'une course et le début d'un cours ?");
+  // Audit iPhone F8: the title is not asked again as a question under it.
+  await expect(sheet).not.toContainText("Combien de temps");
+  await expect(sheet).toContainText("Pour te doucher, te changer et y aller.");
   await sheet.getByLabel("Temps, heures et minutes").fill("01:00");
   await sheet.getByRole("button", { name: "Enregistrer" }).click();
   const saved = banner(page, "Réglages enregistrés");

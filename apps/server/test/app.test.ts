@@ -72,6 +72,15 @@ describe("server", () => {
     expect((await app.request("/semaine")).headers.get("cache-control")).toBe("no-cache");
   });
 
+  it("makes the entry file revalidate: it keeps its name from one build to the next", async () => {
+    const webDist = await mkdtemp(join(tmpdir(), "annarrive-web-"));
+    await mkdir(join(webDist, "assets"));
+    await writeFile(join(webDist, "assets", "app.js"), "console.log('Annarrivé');");
+    const { services } = setup();
+    const app = createApp({ services, sessionSecret: SECRET, webDist });
+    expect((await app.request("/assets/app.js")).headers.get("cache-control")).toBe("no-cache");
+  });
+
   it("makes the service worker and the shell revalidate, so a proxy never holds an old version", async () => {
     const webDist = await mkdtemp(join(tmpdir(), "annarrive-web-"));
     await writeFile(join(webDist, "sw.js"), "self.addEventListener('install', () => {});");

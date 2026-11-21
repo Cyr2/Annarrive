@@ -48,6 +48,9 @@ jobs:
           const r = require("./.lighthouseci/" + f), a = r.audits;
           console.log(`benchmarkIndex ${r.environment.benchmarkIndex}  performance ${r.categories.performance.score}
           TBT ${Math.round(a["total-blocking-time"].numericValue)} ms  LCP ${Math.round(a["largest-contentful-paint"].numericValue)} ms`) }'
+      # Last: it builds the app twice more, the second time with one word changed in Semaine.
+      - name: A one-label change renames only its own file
+        run: node apps/web/scripts/stable-chunks.mjs
 
   e2e:
     name: e2e ${{ matrix.shard }}/4

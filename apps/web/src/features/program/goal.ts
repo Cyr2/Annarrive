@@ -11,6 +11,13 @@ export const RACES = [
 /** The race as she calls it, else by its distance. */
 export const raceTitle = (r: { race: string; name?: string | undefined }) => r.name || r.race;
 
+/** After a race: the same distance as a suggestion, the rest of the race she ran left blank. */
+export const nextRaceDraft = (ran: GoalInput): GoalInput => ({ race: ran.race, distanceKm: ran.distanceKm, date: "" });
+
+/** A race to prepare is after today; a race set for today stays as it is while she edits something else. */
+export const goalDateOk = (date: string, today: string, current?: string) =>
+  date > today || (date !== "" && date === current);
+
 /** A race this close, set or removed, rebuilds the current week too (algo.md EV20). */
 const RACE_CONFLICT_DAYS = 7;
 

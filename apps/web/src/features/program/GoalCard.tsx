@@ -19,7 +19,7 @@ function Maintenance() {
       <div className="flex flex-col gap-1">
         <span className="t-cap">Sans objectif</span>
         <h2 className="t-large m-0">Mode entretien</h2>
-        <span className="t-sub">2 à 3 courses faciles par semaine, dont une un peu plus rythmée.</span>
+        <span className="t-sub">2 à 3 courses par semaine, dont une un peu plus rythmée.</span>
       </div>
       <Button variant="tinted" onClick={() => show({ kind: "goal" })}>
         Choisir un objectif

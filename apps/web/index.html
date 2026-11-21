@@ -72,8 +72,8 @@
         top: calc(44% - var(--w) * 1.1);
         width: calc(var(--w) * 2.2);
         height: calc(var(--w) * 2.2);
-        border-radius: 50%;
-        background: rgb(238 138 99 / 0.45);
+        /* A diffuse glow that fades into the sky, no edge: a hard disc read as a sun. */
+        background: radial-gradient(closest-side, rgb(238 138 99 / 0.3), rgb(238 138 99 / 0.1) 50%, rgb(238 138 99 / 0));
         opacity: 0;
         animation: sp-burst 0.7s 0.55s ease-out forwards;
       }

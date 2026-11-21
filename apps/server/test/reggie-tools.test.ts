@@ -66,7 +66,7 @@ describe("Reggie's tools", () => {
       { kind: "work" as const, durMin: 45, zone: "E" as const, target: { paceSKm: [360, 360] as [number, number] } },
     ];
     t.stores.plannedSession.put(session("tonight", "2026-11-16T18:00", { steps }));
-    expect((await t.call("get_today")).json.session.steps[0].target).toEqual({ paceSKm: "6'00 /km" });
+    expect((await t.call("get_today")).json.session.steps[0].target).toEqual({ paceSKm: "6'00\u00a0/km" });
   });
 
   it("gives every dated thing its day in words, so Reggie never counts days", async () => {

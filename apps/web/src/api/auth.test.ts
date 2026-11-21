@@ -70,11 +70,13 @@ describe("auth calls", () => {
     expect(fetcher.mock.calls[1]?.[0]).toBe("/api/passkeys");
   });
 
-  it("reads whether the account holds a passkey, and offers one when it cannot tell", async () => {
+  // Audit iPhone F5: an error offered « Activer Face ID » to an account that already had it.
+  it("reads whether the account holds a passkey, and says nothing when it cannot tell", async () => {
     expect(await hasPasskey(vi.fn<typeof fetch>(async () => json({ hasPasskey: true })))).toBe(true);
     expect(await hasPasskey(vi.fn<typeof fetch>(async () => json({ hasPasskey: false })))).toBe(false);
-    expect(await hasPasskey(vi.fn<typeof fetch>(async () => json({ nope: 1 })))).toBe(false);
-    expect(await hasPasskey(vi.fn<typeof fetch>(() => Promise.reject(new TypeError("offline"))))).toBe(false);
+    expect(await hasPasskey(vi.fn<typeof fetch>(async () => json({ nope: 1 })))).toBeNull();
+    expect(await hasPasskey(vi.fn<typeof fetch>(() => Promise.reject(new TypeError("offline"))))).toBeNull();
+    expect(await hasPasskey(vi.fn<typeof fetch>(async () => new Response("", { status: 500 })))).toBeNull();
   });
 
   it("refuses options it cannot read, before the browser prompts", async () => {

@@ -194,12 +194,14 @@ function StopRow({ race }: { race: string }) {
           Arrêter le programme
         </TextButton>
       </Group>
-      <p className="t-cap m-0 px-4">Tu passes en mode entretien : des courses faciles, sans objectif.</p>
+      <p className="t-cap m-0 px-4">
+        Tu passes en mode entretien : 2 à 3 courses par semaine, dont une un peu plus rythmée.
+      </p>
       <ConfirmDialog
         open={asking}
         onClose={() => setAsking(false)}
         title={`Arrêter ton plan ${race.toLowerCase()} ?`}
-        message="Tu passes en mode entretien : 2 à 3 courses faciles par semaine, dont une un peu plus rythmée."
+        message="Tu passes en mode entretien : 2 à 3 courses par semaine, dont une un peu plus rythmée."
         actions={[
           { label: "Arrêter le programme", onClick: () => void usePlan.getState().apply((api) => api.stopProgram()) },
         ]}

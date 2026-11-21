@@ -54,7 +54,7 @@ describe("GET /api/progression (algo.md M12)", () => {
       {
         date: "2026-11-12",
         start: false,
-        line: "Seuil et fractionné plus rapides que prévu : footing à 6'01 /km au lieu de 6'08 /km.",
+        line: "Seuil et fractionné plus rapides que prévu : footing à 6'01\u00a0/km au lieu de 6'08\u00a0/km.",
       },
       {
         date: "2026-11-01",

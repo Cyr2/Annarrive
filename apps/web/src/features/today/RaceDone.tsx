@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import type { RaceResult } from "../../api/schemas.ts";
 import { cx } from "../../lib/cx.ts";
 import { ChoiceCard } from "../../ui/ChoiceCard.tsx";
@@ -8,6 +9,7 @@ import { PaceValue } from "../../ui/PaceValue.tsx";
 import { Surface } from "../../ui/Surface.tsx";
 import { usePlan } from "../plan/store.ts";
 import { raceTitle } from "../program/goal.ts";
+import { preloadSheet } from "../sheets/SheetHost.tsx";
 import { useSheet } from "../sheets/store.ts";
 import { ReggieAvatar, ToneWash } from "./parts.tsx";
 import { paceText, raceClock, sinceLast, splitLabel, targetGap } from "./today.ts";
@@ -22,7 +24,9 @@ function Splits({ splits }: { splits: RaceResult["splits"] }) {
       {splits.map((s, i) => (
         <div key={s.toKm} className="flex min-w-0 flex-1 flex-col items-center gap-1">
           <span className="flex h-24 w-full flex-col items-center justify-end gap-1">
-            <span className="t-cap font-semibold text-ink tabular-nums">{paceText(s.paceSKm).replace(" /km", "")}</span>
+            <span className="t-cap font-semibold text-ink tabular-nums">
+              {paceText(s.paceSKm).replace(/\s\/km$/, "")}
+            </span>
             <span
               className="w-full rounded-tile bg-linear-to-b from-long to-long-deep"
               // The slowest part keeps 35 % of the height: every bar reads as a bar.
@@ -42,6 +46,8 @@ function Splits({ splits }: { splits: RaceResult["splits"] }) {
  */
 export function RaceDone({ race }: { race: RaceResult }) {
   const show = useSheet((s) => s.show);
+  // « Une nouvelle course » opens a sheet: its file is fetched now, so it rises at once.
+  useEffect(() => preloadSheet("goal"), []);
   const gap = race.gapMin === undefined ? undefined : targetGap(race.gapMin);
   const facts = [
     `${paceText((race.timeMin * 60) / race.distanceKm)} en moyenne`,
@@ -79,7 +85,7 @@ export function RaceDone({ race }: { race: RaceResult }) {
         <SectionTitle id="race-next">Et maintenant ?</SectionTitle>
         <p className="t-sub m-0">D'abord {race.recovery}, quelle que soit la suite.</p>
         <ChoiceGroup labelledBy="race-next" className="flex flex-col gap-2">
-          <ChoiceCard on={false} onClick={() => show({ kind: "goal" })}>
+          <ChoiceCard on={false} onClick={() => show({ kind: "goal", next: true })}>
             <span className="flex min-w-0 flex-col gap-0.5">
               <span className="t-strong">Une nouvelle course</span>
               <span className="t-sub">Choisis la distance et la date, Reggie refait un plan.</span>
@@ -88,7 +94,7 @@ export function RaceDone({ race }: { race: RaceResult }) {
           <ChoiceCard on={false} onClick={() => void usePlan.getState().apply((api) => api.keepFit())}>
             <span className="flex min-w-0 flex-col gap-0.5">
               <span className="t-strong">Garder la forme</span>
-              <span className="t-sub">Ensuite trois courses par semaine, sans objectif.</span>
+              <span className="t-sub">Ensuite 2 à 3 courses par semaine, dont une un peu plus rythmée.</span>
             </span>
           </ChoiceCard>
         </ChoiceGroup>
