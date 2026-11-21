@@ -325,6 +325,34 @@ export const healthStatusSchema = z.discriminatedUnion("kind", [
 ]);
 export type HealthStatus = z.infer<typeof healthStatusSchema>;
 
+/** Le bilan du dimanche (algo.md BR): Sunday evening and Monday, until she closes it. */
+export const weekReviewSchema = z.object({
+  /** The week reviewed, sent back to close it. */
+  week: isoWeekSchema,
+  monday: localDateSchema,
+  done: z.number().int().nonnegative(),
+  planned: z.number().int().nonnegative(),
+  minutes: z.number().nonnegative(),
+  highlight: z.object({ text: z.string(), type: runTypeSchema.optional() }).optional(),
+  reggie: z.string(),
+});
+export type WeekReview = z.infer<typeof weekReviewSchema>;
+/** POST /api/review/dismiss: « Fermer le bilan ». */
+export const dismissReviewInputSchema = z.object({ week: isoWeekSchema });
+
+/** The goal race as Garmin sent it (algo.md RR), until she picks what comes next. */
+export const raceResultSchema = z.object({
+  date: localDateSchema,
+  distanceM: z.number().positive(),
+  timeMin: z.number().positive(),
+  /** Minutes over her target time, negative under it; absent without a target. */
+  gapMin: z.number().optional(),
+  previous: z.object({ timeMin: z.number().positive(), date: localDateSchema.optional() }).optional(),
+  splits: z.array(z.object({ toKm: z.number().positive(), paceSKm: z.number().positive() })),
+  reggie: z.string(),
+});
+export type RaceResult = z.infer<typeof raceResultSchema>;
+
 export const todaySchema = z.object({
   date: localDateSchema,
   session: sessionViewSchema.nullable(),
@@ -339,6 +367,8 @@ export const todaySchema = z.object({
   health: healthStatusSchema,
   /** A session that is over with no run matched: the app asks « Tu l'as faite ? » (algo.md EV17, EV21). */
   toConfirm: sessionViewSchema.nullable().optional(),
+  review: weekReviewSchema.optional(),
+  race: raceResultSchema.optional(),
 });
 export type Today = z.infer<typeof todaySchema>;
 

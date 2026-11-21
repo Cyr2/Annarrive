@@ -84,6 +84,10 @@ export interface Api {
   /** « Ton dernier chrono »: her paces are recomputed with it. */
   updateLastTime(time: NonNullable<Program["lastTime"]>): Promise<ChangeResult>;
   stopProgram(): Promise<ChangeResult>;
+  /** « Fermer le bilan »: the server keeps it closed for that ISO week, on every device. */
+  dismissReview(week: string): Promise<void>;
+  /** « Garder la forme » after the goal race: no goal, two easy weeks, then maintenance. */
+  keepFit(): Promise<ChangeResult>;
   reconnectWatch(): Promise<void>;
   resendToWatch(sessionId: string): Promise<void>;
   logFeel(activityId: string, feel: Feel): Promise<void>;

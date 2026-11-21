@@ -319,6 +319,8 @@ export function createHttpApi(
     updateGoal: (goal) => change("PUT", "/program", { goal: toGoal(goal) }),
     updateLastTime: (declaredTime) => change("PUT", "/program", { declaredTime }),
     stopProgram: () => change("PUT", "/program", { goal: null }),
+    dismissReview: (week) => run("POST", "/review/dismiss", { week }),
+    keepFit: () => change("POST", "/race/keep-fit"),
     async reconnectWatch() {
       await run("POST", "/watch/sync");
       watch.drop();

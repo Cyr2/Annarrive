@@ -46,8 +46,9 @@ Reggie n'appelle que les fonctions de `events` et `readOnly` (lecture du plan, d
 | M6  | `guards` (charge et progression)                | séances prévues et réalisées                  | séances plafonnées, validation                      | `spikeCap`, `weeklyCaps`, `distributionCheck`, `validateWeek`                                                                                      |
 | M7  | `events` (actions des boutons)                  | état, action, `now`                           | nouvel état, changements, avertissements            | `moveSession`, `changeOptions`, `applyChange`, `reportUnavailable`, `feelBetter`, `updateSettings`, `onTimetableChange`, `detectMissed`, `confirmDone`, `skipSession`, `logFeel` |
 | M8  | `recalibration`                                 | activités, séances clés, propositions passées | `Proposal` ou rien                                  | `evaluateRace`, `evaluateKeySessions`, `evaluateFeels`, `evaluateTrends`, `acceptProposal`                                                         |
-| M9  | `maintenance` (mode entretien)                  | historique 8 sem., réglages                   | gabarit de semaine                                  | `maintenanceWeek`, `postRaceWeek`, `exitMaintenance`                                                                                               |
+| M9  | `maintenance` (mode entretien)                  | historique 8 sem., réglages                   | gabarit de semaine                                  | `maintenanceWeek`, `postRaceWeek`, `lastRaceDay`, `postRaceIndex`, `exitMaintenance`                                                               |
 | M10 | `adaptation` (le réalisé)                       | course synchronisée, séance rattachée, état   | lecture de la course, écart au plan, nouvel état    | `readRun`, `compareRun`, `paceRatio`, `feelLog`, `adaptToRun`                                                                                      |
+| M11 | `review` (bilan, course objectif)            | séances et courses de la semaine, objectif     | bilan, résultat de course                           | `weekReview`, `isGoalRace`, `previousRace`, `raceSplits`, `raceReport`                                                                             |
 
 ### 1.1 Types communs (abrégés)
 
@@ -255,7 +256,7 @@ planWeek(r: { monday; now; goal; planStart?; settings; history; fitness; cal; ke
 | P20 | Aucun chrono proposé (décision du 16/11/2026) : Anna choisit sa cible à l'onboarding ou dans Programme. L'app ne propose jamais de chrono cible. Elle affiche la classe de P19, sans jugement négatif (« ambitieux » plutôt que « irréaliste » dans l'interface) ; l'explication du verdict peut montrer son temps prédit aujourd'hui (`P0`), le gain que sa cible demande (`g`) et le gain habituel (`g_max`). Sans cible : objectif « finir », classe `sans-cible`, aucun calcul de g | | décision produit | DEC |
 | P21 | Les allures d'entraînement viennent du VDOT actuel, jamais de la cible. Les blocs à allure de course utilisent l'allure cible seulement si la cible est au plus ambitieuse                                                                                                                                                                                |                                         | Daniels                                    | CONS   |
 | P22 | Retirée le 18/11/2026, jamais appelée : la semaine suit le **réalisé** par G2, désormais lu sur la charge chronique (une semaine courte ne fait pas baisser la suivante, une charge durablement plus basse la plafonne). Bloquer la hausse après deux semaines incomplètes punissait les séances sautées, contre EV21 (TrainAsONE : « des données, pas des dettes » ; Runna : la suite ne change pas) | | banc d'essai, problème 4 | OP |
-| P23 | Après la course : 1 semaine à 45 % du volume habituel, footings seuls (20 min au moins), puis M9                                                                                                                                                                                                                                                                         | 45 % défaut à calibrer                  |                                            | OP     |
+| P23 | Après la course : 2 semaines de footings seuls (20 min au moins), à 45 puis 65 % du volume habituel, puis M9 (MA6)                                                                                                                                                                                                                                                                         | 45 et 65 % défaut à calibrer           | recherche 02 §12 (1 semaine) ; choix de Darius du 21/11/2026 (2 semaines) | OP     |
 | P25 | Aucune séance nouvelle aujourd'hui sans son geste : quand une semaine en cours est construite ou reconstruite (début du programme, réglages, objectif, premier niveau, course proche), rien de nouveau n'est placé aujourd'hui et la séance du jour, si elle existe, reste telle quelle ; une réparation (M4) n'amène jamais sur aujourd'hui une course d'un autre jour. Le jour où le programme commence, la première séance vient au plus tôt le lendemain. Une semaine commencée avec au moins un jour libre après ce jour compte comme la semaine 1 affichée (« Semaine 2 sur N » la suivante) | | audit besoin réel du 17/11/2026 (séance 30 min après l'onboarding) ; test d'Anna du 19/11/2026 (un chrono saisi ajoutait une séance le jour même) | OP |
 | P26 | Réévaluation : un niveau qui a 4 semaines au plus tard le dimanche de la semaine construite (dernier changement de niveau, ou dernier test ou course couru) est mesuré de nouveau : la première séance de qualité de la semaine devient un `TEST` (comme F10), hors affûtage. Le test lu propose le niveau (RC1, RC2). Sans lui, les allures restent celles du départ alors que la forme monte (banc : Anna reste à 41,0 de la semaine 1 à la course, 2,2 VDOT sous son niveau réel la semaine d'avant, allures 6,7 / 10) | 28 j | recherche 02 R23 (réévaluer `P0` à chaque course ou test, au minimum toutes les 4 semaines) ; Daniels 2014 (les allures suivent le VDOT du moment) | OP |
 | P24 | Semaine de la course (celle qui contient la date de l'objectif) : la course est une séance `RACE` le jour de la course (distance de l'objectif, allure cible sinon prédite F5), à son heure de départ (`startTime`, 09:00 sans réponse : la plupart des courses sur route partent le matin), quels que soient l'agenda et les jours sans course ; elle est gelée et remplace la sortie longue de la semaine. Course à moins d'une semaine complète (aucune semaine de plan pour elle) : gabarit d'affûtage (P13) au volume de la semaine de course de P18 (50 %, marathon 45 % de `V_pic`). Les Q qui n'ont plus de place sous H12 (une Q au plus un jour libre sur deux) deviennent des E de même durée. La course ne compte ni dans G1 ni dans P11. Une course `RACE` encore prévue à une autre date que l'objectif est supprimée | | Bosquet 2007 ; recherche 02 §6 | MA |
@@ -721,7 +722,9 @@ repaceRanges(st: State, now: string): Result   // C4 : une allure unique aux sé
 
 ```ts
 maintenanceWeek(history8w: number[], settings: Settings, weekIdx: number, fitness: Fitness): Session[]
-postRaceWeek(usualMin: number): Session[]
+postRaceWeek(usualMin: number, paces: Paces, runs?: number, week?: 1 | 2): Session[]
+lastRaceDay(goal: Goal, history: Activity[], monday: string): string | undefined
+postRaceIndex(raceDay: string, monday: string): 1 | 2 | null
 exitMaintenance(history4w: number[], goal: Goal, now: string): { v0: number; planStart: string }
 ```
 
@@ -734,7 +737,7 @@ exitMaintenance(history4w: number[], goal: Goal, now: string): { v0: number; pla
 | MA3 | 1 Q par semaine obligatoire, rotation T → I → FARTLEK ; strides 1×/sem                          |              | Hickson 1985 (l'intensité maintient la forme) | ECR    |
 | MA4 | L facultative, ≤ min(75, 0,40 × V)                                                              |              |                                               | OP     |
 | MA5 | Pas de décharge planifiée ; Z1 ≥ 75 %                                                           |              |                                               | OP     |
-| MA6 | Après la course : P23, puis MA1                                                                 |              |                                               | OP     |
+| MA6 | Après la course : P23, puis MA1. Les deux semaines faciles commencent le lundi qui suit la course (1 à 7 jours après : la première, 8 à 14 : la seconde) et se comptent depuis la date de l'objectif passé, ou, quand « Garder la forme » a retiré l'objectif, depuis la dernière course marquée comme course objectif (RR1) | 45 % ; 65 % ; 14 j | choix de Darius du 21/11/2026 (maquette « Après la course objectif ») | OP     |
 | MA7 | Objectif saisi : `V0` = moyenne des 4 semaines d'entretien, plan au lundi suivant (M2)          |              |                                               | OP     |
 | MA8 | Arrêter le programme (bouton) : MA1 à partir de la semaine suivante, semaine en cours inchangée |              | interactions.md                               | OP     |
 
@@ -749,6 +752,44 @@ exitMaintenance(history4w: number[], goal: Goal, now: string): { v0: number; pla
 | MA-5 | `postRaceWeek(180)`                                            | 81 min en footings, aucune Q        |
 | MA-7 | `postRaceWeek(0)` (aucune course connue)                       | 3 footings de 20 min                |
 | MA-6 | `exitMaintenance([100, 110, 95, 105], semi, lundi 2026-11-16)` | `v0` 102,5 ; `planStart` 2026-11-23 |
+| MA-8 | `postRaceWeek(180, P, 3, 2)`                                   | 117 min en footings, aucune Q       |
+| MA-9 | Course 1, 7, 8, 14, 15 jours avant le lundi                    | semaine 1, 1, 2, 2, entretien       |
+| MA-10 | Sans objectif, un 10 km marqué course 8 jours avant le lundi  | 3 footings, aucune Q                |
+
+---
+
+## M11. `review` : le bilan du dimanche et la course objectif
+
+### Signatures
+
+```ts
+weekReview(input: { sessions; runs; before; exams; next }): { done; planned; minutes; highlight?; reggie }
+isGoalRace(goal: Goal, run: Activity): boolean
+previousRace(goal: Goal, history: Activity[], declared?: DeclaredTime): { timeMin; date? } | undefined
+raceSplits(run: Activity, distanceM: number): { toKm; paceSKm }[]
+raceReport(goal: Goal, run: Activity, previous?): { timeMin; gapMin?; previous?; splits; reggie }
+```
+
+### Règles
+
+| Id  | Règle | Paramètres | Niveau |
+| --- | ----- | ---------- | ------ |
+| BR1 | Courses prévues : les séances de la semaine sauf celles annulées par le coach ; faites : celles au statut `done` (rattachées à une course Garmin ou « Oui, je l'ai faite ») | | DEC |
+| BR2 | Temps couru : la somme des courses Garmin de la semaine, rattachées ou non | | DEC |
+| BR3 | Fait marquant 1 : une séance de qualité (seuil, fractionné, vitesse, allure objectif, fartlek) dont les tours de travail (à 10 % de la cible au plus) vont 3 % plus vite que la cible (comme RC13). Jamais un footing plus rapide que prévu. La dernière de la semaine | 10 % ; 3 % | OP |
+| BR4 | Fait marquant 2, à défaut : la plus longue course de la semaine, si elle dépasse toutes celles des 8 semaines d'avant et qu'il y en a au moins 8 pour comparer. Sinon pas de fait marquant : on n'invente rien | 8 sem. ; 8 courses | OP |
+| BR5 | Phrase de Reggie, partie 1 : tout fait (« malgré tes examens » s'il y en a eu) ; une course manquée ; plusieurs (« sans rattraper ce qui manque », EV21) ; aucune | | DEC |
+| BR6 | Partie 2 : la semaine suivante contre celle-ci, en minutes (≥ 5 % « monte un peu », ≤ -15 % « plus légère », sinon « même volume ») et en nombre de courses ; « c'est ta course » si elle contient la course | 5 % ; 15 % | DEC |
+| BR7 | Affichage : le dimanche dès 18:00 (la tâche qui bâtit la semaine suivante et envoie « Ta semaine est prête ») et pas avant la fin de la dernière séance de la semaine, puis tout le lundi. « × » le ferme pour cette semaine, retenu par le serveur. Rien pour une semaine sans course prévue ni courue | 18:00 | DEC |
+| RR1 | La course objectif : une course du jour de l'objectif entre 90 et 120 % de sa distance (GPS, détours). Marquée `isRace` à la synchro. Son résultat reste sur Aujourd'hui tant que l'objectif ne change pas (nouvelle course, ou « Garder la forme » qui le retire) | 90 % ; 120 % | DEC |
+| RR2 | Écart au chrono visé, à la seconde, dans les deux sens ; aucun sans chrono visé | | DEC |
+| RR3 | Comparaison : sa dernière course marquée à cette distance, sinon son chrono déclaré à cette distance | | DEC |
+| RR4 | Allure par tranche, d'après les tours : 1 km sur un 5 km, 2 km sur un 10 km, 5 km sur un semi, 10 km sur un marathon ; un bout de moins de 300 m (montre arrêtée après la ligne) rejoint la tranche d'avant ; rien si les tours couvrent moins de 90 % de la course | 300 m ; 90 % | DEC |
+| RR5 | Phrase de Reggie : deuxième moitié plus rapide (de plus de 1 %), ou allure régulière (à 1 % près) ; fin la plus rapide ; puis « Bravo Anna. Repose-toi bien cette semaine. » | 1 % | DEC |
+
+### Tests
+
+`packages/coach/test/review.test.ts` : comptes et minutes (BR1, BR2), séance de qualité plus rapide et footing rapide ignoré (BR3), plus longue course et ses deux garde-fous (BR4), phrases (BR5, BR6), reconnaissance de la course (RR1), écarts (RR2), comparaison (RR3), tranches d'un semi et d'un 5 km (RR4), phrases de course (RR5), deux semaines faciles (MA-8 à MA-10).
 
 ---
 

@@ -275,6 +275,33 @@ describe("http client, reading", () => {
     expect((await api.today()).toConfirm).toMatchObject({ id: SESSION.id, title: "Fractionné" });
   });
 
+  it("maps the Monday review with this week's runs as its next week, and the race result", async () => {
+    const review = {
+      week: "2026-W46",
+      monday: "2026-11-09",
+      done: 3,
+      planned: 4,
+      minutes: 182,
+      highlight: { text: "Ton seuil de jeudi, plus rapide que prévu", type: "T" },
+      reggie: "Une seule course manquée, le reste est fait.",
+    };
+    const race = { date: "2026-11-15", distanceM: 10000, timeMin: 52, splits: [], reggie: "Bravo Anna." };
+    const { api, sent } = server({
+      ...reads,
+      "GET /api/today": { ...reads["GET /api/today"], review, race },
+      "POST /api/review/dismiss": null,
+      "POST /api/race/keep-fit": CHANGE,
+    });
+    const today = await api.today();
+    expect(today.review).toMatchObject({ done: 3, highlight: { intensity: "hard" } });
+    expect(today.review?.next.map((r) => r.id)).toEqual(["s1", "s2"]);
+    expect(today.race).toMatchObject({ race: "10 km", distanceKm: 10, timeMin: 52 });
+
+    await api.dismissReview("2026-W46");
+    expect(sent("POST /api/review/dismiss")).toEqual({ week: "2026-W46" });
+    expect((await api.keepFit()).changeId).toBe("c1");
+  });
+
   it("reads the first screen in one request at launch, then each route on its own", async () => {
     const paths = ["/today", "/program", "/proposals", "/timetable", "/weeks/2026-W47", "/weeks/2026-W48"];
     const first = Object.fromEntries(paths.map((p) => [p, reads[`GET /api${p}` as keyof typeof reads]]));

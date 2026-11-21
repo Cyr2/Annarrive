@@ -73,7 +73,7 @@ describe("notifications", () => {
 
     expect(t.send).toHaveBeenCalledWith(subscription, expect.any(String));
     expect(messages(t.send)).toEqual([
-      { title: "Ta semaine est prête", body: "Tes courses sont placées, jette un œil.", url: "/semaine" },
+      { title: "Ta semaine est prête", body: "Tes courses sont placées, jette un œil.", url: "/" },
     ]);
   });
 

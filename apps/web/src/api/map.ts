@@ -27,6 +27,7 @@ import type {
 } from "@annarrive/protocol";
 import { agreeWith, paceLabel, sessionNames, stepBlocks } from "@annarrive/protocol";
 import {
+  addDays,
   daysBetween,
   decimal,
   duration,
@@ -64,6 +65,7 @@ import type {
   Today,
   WatchStatus,
   Week,
+  WeekReview,
   Widget,
 } from "./schemas.ts";
 
@@ -355,6 +357,31 @@ export function toToday(
     unwellText: UNWELL[today.health.kind],
     toConfirm: today.toConfirm ? toRun(today.toConfirm) : undefined,
     adapted: today.adapted,
+    review: today.review && toReview(today.review, days),
+    race: today.race && {
+      ...today.race,
+      race: raceOf(today.race.distanceM),
+      distanceKm: today.race.distanceM / 1000,
+    },
+  };
+}
+
+/** The review as Aujourd'hui shows it, with the runs of the week after the one reviewed. */
+function toReview(review: NonNullable<ServerToday["review"]>, days: DayView[]): WeekReview {
+  const from = addDays(review.monday, 7);
+  const to = addDays(from, 7);
+  const { highlight, ...facts } = review;
+  return {
+    ...facts,
+    highlight: highlight && {
+      text: highlight.text,
+      intensity: highlight.type && intensityOf(highlight.type),
+    },
+    next: days
+      .filter((d) => d.date >= from && d.date < to)
+      .flatMap((d) => d.sessions)
+      .filter((s) => s.status !== "cancelled" && s.status !== "skipped")
+      .map(toRun),
   };
 }
 

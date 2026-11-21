@@ -47,7 +47,7 @@ const jobs = createJobs({
   syncActivities: () => services.garmin?.syncActivities(),
   syncRecovery: () => services.garmin?.syncRecovery(),
   morningDecision: () => services.plan.morningDecision(),
-  buildNextWeek: () => services.plan.buildNextWeek(),
+  buildNextWeek: () => services.plan.buildNextWeek(() => services.review.notice()),
   syncWatch: () => services.garmin?.syncWatch(),
   backup: () => {
     services.incidents.purge();

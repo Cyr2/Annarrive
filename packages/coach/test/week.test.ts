@@ -159,8 +159,8 @@ describe("planWeek (cycle 0.1 buildWeek)", () => {
     expect(sessions.every((s) => s.type === "E")).toBe(true);
   });
 
-  it("goes back to maintenance once the post-race week is over", () => {
-    const { sessions } = planWeek(request({ goal: { distanceM: 10000, date: addDays(MONDAY, -14) } }));
+  it("goes back to maintenance once the two post-race weeks are over (MA6)", () => {
+    const { sessions } = planWeek(request({ goal: { distanceM: 10000, date: addDays(MONDAY, -15) } }));
     expect(sessions.filter(isHard)).toHaveLength(1);
   });
 

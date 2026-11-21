@@ -79,6 +79,33 @@ export const activitySchema = z.object({
 /** A level change the coach proposes (new paces, a test, a new target), accepted or declined in one tap. */
 export const proposalSchema = z.object({ id: z.string(), text: z.string() });
 
+/** Le bilan du dimanche: the week in numbers, its highlight, Reggie's word, then the next week's runs. */
+export const weekReviewSchema = z.object({
+  /** The ISO week reviewed, sent back by « Fermer le bilan ». */
+  week: z.string(),
+  monday: isoDate,
+  done: z.number().int().nonnegative(),
+  planned: z.number().int().nonnegative(),
+  minutes: z.number().nonnegative(),
+  highlight: z.object({ text: z.string(), intensity: intensitySchema.optional() }).optional(),
+  reggie: z.string(),
+  next: z.array(runSchema),
+});
+
+/** The goal race as the watch sent it: shown in place of the day until she picks what comes next. */
+export const raceResultSchema = z.object({
+  /** « Semi-marathon ». */
+  race: z.string(),
+  date: isoDate,
+  distanceKm: z.number().positive(),
+  timeMin: z.number().positive(),
+  /** Minutes over her target time, negative under it; absent without a target. */
+  gapMin: z.number().optional(),
+  previous: z.object({ timeMin: z.number().positive(), date: isoDate.optional() }).optional(),
+  splits: z.array(z.object({ toKm: z.number().positive(), paceSKm: z.number().positive() })),
+  reggie: z.string(),
+});
+
 export const todaySchema = z.object({
   date: isoDate,
   /** Absent in maintenance mode: no race to count down to. */
@@ -95,6 +122,8 @@ export const todaySchema = z.object({
   toConfirm: runSchema.optional(),
   /** Reggie's line when he adapted the week to what she ran: « Ton footing de mardi ressemblait plutôt à un tempo… ». */
   adapted: z.string().optional(),
+  review: weekReviewSchema.optional(),
+  race: raceResultSchema.optional(),
 });
 
 export const weekSchema = z.object({
@@ -250,6 +279,8 @@ export type Item = z.infer<typeof itemSchema>;
 export type Activity = z.infer<typeof activitySchema>;
 export type Feel = NonNullable<Activity["feel"]>;
 export type Today = z.infer<typeof todaySchema>;
+export type WeekReview = z.infer<typeof weekReviewSchema>;
+export type RaceResult = z.infer<typeof raceResultSchema>;
 export type Proposal = z.infer<typeof proposalSchema>;
 export type Week = z.infer<typeof weekSchema>;
 export type Slot = z.infer<typeof slotSchema>;
