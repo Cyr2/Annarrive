@@ -181,16 +181,16 @@ describe("evaluateKeySessions by heart rate (RC14)", () => {
     evaluateKeySessions(keys, 40, lastChange, history, NOW, HR_MAX);
   const usual = [tRun(1, 170), tRun(8, 170)];
 
-  it("proposes what two runs at the same pace with a heart rate 3 bpm lower prove, one point at most (RC-24)", () => {
-    const lower = [...usual, tRun(17, 167), tRun(20, 167)];
-    // 3 bpm at T for HRmax 190 is 3.1 % of VO2max by Swain's slope: 1.2 point at VDOT 40, so one.
+  it("proposes what two runs at the same pace with a heart rate 5 bpm lower prove, one point at most (RC-24)", () => {
+    const lower = [...usual, tRun(17, 165), tRun(20, 165)];
+    // 5 bpm at T for HRmax 190 is 5.2 % of VO2max by Swain's slope: 2 points at VDOT 40, so one.
     expect(at(lower)).toMatchObject({ ruleId: "RC14", from: 40, to: 41, evidence: ["a17", "a20"] });
-    expect(evaluateKeySessions(lower, 30, addDays("2026-11-23", -30), [], NOW, HR_MAX)?.to).toBe(30.93);
+    expect(evaluateKeySessions(lower, 30, addDays("2026-11-23", -30), [], NOW, HR_MAX)?.to).toBe(31);
   });
 
   it("needs both runs clearly lower, 21 days apart at most, after a baseline (RC-25)", () => {
-    expect(at([...usual, tRun(17, 166), tRun(20, 168)])).toBeNull();
-    expect(at([...usual, tRun(17, 168), tRun(20, 168)])).toBeNull();
+    expect(at([...usual, tRun(17, 165), tRun(20, 167)])).toBeNull();
+    expect(at([...usual, tRun(17, 167), tRun(20, 167)])).toBeNull();
     expect(at([tRun(17, 166), tRun(20, 166)])).toBeNull();
     const farApart = [tRun(1, 170), tRun(2, 166), tRun(24, 166)];
     expect(at(farApart, "2026-10-01")).toBeNull();
@@ -208,10 +208,8 @@ describe("evaluateKeySessions by heart rate (RC14)", () => {
   });
 
   it("waits like RC3 and once per 14 days (RC-27)", () => {
-    const lower = [...usual, tRun(17, 167), tRun(20, 167)];
-    const level30 = (days: number) => evaluateKeySessions(lower, 30, addDays("2026-11-23", -days), [], NOW, HR_MAX);
-    // Under a point: 28 days after the last change; a full point: 14.
-    expect(level30(20)).toBeNull();
+    const lower = [...usual, tRun(17, 165), tRun(20, 165)];
+    // 4 bpm or more always prove a full point above VDOT 25: 14 days after the last change.
     expect(at(lower, addDays("2026-11-23", -10))).toBeNull();
     expect(at(lower, addDays("2026-11-23", -15))?.to).toBe(41);
     const past = (ruleId: string, decision: PastProposal["decision"]): PastProposal[] => [
@@ -226,6 +224,45 @@ describe("evaluateKeySessions by heart rate (RC14)", () => {
     // The runs before the change are her baseline; the pair must come after it.
     expect(at(lower, "2026-11-18")).toBeNull();
   });
+
+  const LTHR = 170;
+  const anchored = (keys: KeySession[], lastChange = addDays("2026-11-23", -30), history: PastProposal[] = []) =>
+    evaluateKeySessions(keys, 40, lastChange, history, NOW, HR_MAX, LTHR);
+
+  it("proposes a rise when two T runs at her pace sit 5 bpm under her threshold heart rate (RC-28, RC15)", () => {
+    // 5 bpm under LTHR at T pace for HRmax 190 is 1.9 point at VDOT 40 by Swain's slope: one, without any baseline.
+    const below = [tRun(17, 165), tRun(20, 164)];
+    expect(anchored(below)).toMatchObject({ ruleId: "RC15", from: 40, to: 41, evidence: ["a17", "a20"] });
+    // Waits like RC3: a full point 14 days after the last change.
+    expect(anchored(below, addDays("2026-11-23", -10))).toBeNull();
+    expect(anchored(below, addDays("2026-11-23", -15))?.to).toBe(41);
+    expect(anchored(below, undefined, [past40("RC15")])).toBeNull();
+  });
+
+  it("needs both runs 5 bpm under, 21 days apart at most, at her T pace, after the change (RC-29)", () => {
+    expect(anchored([tRun(17, 166), tRun(20, 165)])).toBeNull();
+    expect(anchored([tRun(1, 165), tRun(24, 165)], "2026-10-01")).toBeNull();
+    expect(evaluateKeySessions([tRun(17, 165), tRun(20, 165)], 40, undefined, [], NOW, HR_MAX)).toBeNull();
+    expect(anchored([tRun(17, 165), tRun(20, 165)], "2026-11-18")).toBeNull();
+    // 3 % slower than her T pace: a lower heart rate says nothing about the pace.
+    const slow = tRun(20, 165);
+    const laps = (slow.activity.laps ?? []).map((l, i) => (i === 1 ? { ...l, distM: 0.97 * l.distM } : l));
+    expect(anchored([tRun(17, 165), { ...slow, activity: { ...slow.activity, laps } }])).toBeNull();
+  });
+
+  it("never lowers the level, and a heart rate over her threshold stops a rise by heart rate (RC-30)", () => {
+    expect(anchored([tRun(17, 176), tRun(20, 176)])).toBeNull();
+    // RC14 sees 5 bpm under her usual 180, but both runs stay over her threshold heart rate: to review, not a rise.
+    const fading = [tRun(1, 180), tRun(8, 180), tRun(17, 175), tRun(20, 175)];
+    expect(at(fading)?.ruleId).toBe("RC14");
+    expect(anchored(fading)).toBeNull();
+  });
+});
+
+const past40 = (ruleId: string): PastProposal => ({
+  proposal: { kind: "vdot", from: 39, to: 40, ruleId, evidence: [], expiresOn: "2026-11-27" },
+  decision: "accepted",
+  on: "2026-11-13",
 });
 
 const recent = (ruleId: string, daysAgo: number): PastProposal[] => [

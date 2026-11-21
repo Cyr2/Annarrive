@@ -15,6 +15,7 @@ const REASONS: Record<string, string> = {
   "proposal:RC3": "Seuil et fractionné plus rapides que prévu",
   "proposal:RC4": "Seuil et fractionné plus lents que prévu",
   "proposal:RC14": "Même allure au seuil, cœur plus bas",
+  "proposal:RC15": "Allure seuil courue sous ta FC seuil",
   "proposal:F10": "Une course récente au-dessus de ton niveau",
 };
 

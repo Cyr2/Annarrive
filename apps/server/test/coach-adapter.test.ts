@@ -392,7 +392,7 @@ describe("coach adapter: Anna's actions", () => {
     expect(t.services.fitness.pending()).toMatchObject([{ kind: "test", ruleId: "RC5" }]);
   });
 
-  it("proposes a level when two synced tempos at the same pace run 3 bpm under her usual heart rate (RC14)", async () => {
+  it("proposes a level when two synced tempos at the same pace run 5 bpm under her usual heart rate (RC14)", async () => {
     const t = await ready();
     t.stores.fitnessEstimate.put({ id: "2026-10-01", date: "2026-10-01", vdot: 40, source: "test" });
     const tSpeed = 60_000 / P40.T;
@@ -408,8 +408,41 @@ describe("coach adapter: Anna's actions", () => {
     };
     tempo("2026-10-20", 170);
     tempo("2026-10-27", 170);
-    expect(tempo("2026-11-10", 167)).toBeNull();
-    expect(tempo("2026-11-13", 167)).toMatchObject({ kind: "vdot", ruleId: "RC14", from: 40, to: 41 });
+    expect(tempo("2026-11-10", 165)).toBeNull();
+    expect(tempo("2026-11-13", 165)).toMatchObject({ kind: "vdot", ruleId: "RC14", from: 40, to: 41 });
+  });
+
+  it("proposes a level when two synced tempos run 5 bpm under the threshold heart rate of her test (RC15)", async () => {
+    const t = await ready();
+    t.stores.fitnessEstimate.put({ id: "2026-10-01", date: "2026-10-01", vdot: 40, source: "test" });
+    // The app's test: 20 min all out at 180 bpm, a threshold heart rate of 171 (F14).
+    t.stores.plannedSession.put({ ...built("test", "TEST", "2026-10-25T18:00"), status: "done" });
+    const testLaps = [
+      { durMin: 10, distM: 1600, avgHr: 140 },
+      { durMin: 20, distM: 4800, avgHr: 180 },
+    ];
+    t.stores.activity.put({
+      id: "run-test",
+      start: "2026-10-25T18:05",
+      durMin: 30,
+      distM: 6400,
+      maxHr: 190,
+      laps: testLaps,
+      sessionId: "test",
+    });
+    const tSpeed = 60_000 / P40.T;
+    const tempo = (day: string, hr: number) => {
+      t.stores.plannedSession.put({ ...built(`t-${day}`, "T", `${day}T18:00`), status: "done" });
+      const laps = [
+        { durMin: 15, distM: 2400, avgHr: 135 },
+        { durMin: 20, distM: 20 * tSpeed, avgHr: hr },
+      ];
+      const run = { id: `run-${day}`, start: `${day}T18:05`, durMin: 35, distM: 2400 + 20 * tSpeed, maxHr: 190 };
+      t.stores.activity.put({ ...run, laps, sessionId: `t-${day}` });
+      return t.services.fitness.afterRun({ ...run, laps, sessionId: `t-${day}` });
+    };
+    expect(tempo("2026-11-10", 166)).toBeNull();
+    expect(tempo("2026-11-13", 166)).toMatchObject({ kind: "vdot", ruleId: "RC15", from: 40, to: 41 });
   });
 
   it("proposes a test when Garmin VO2max moved for 14 days, and accepting it puts the test in place of the next Q (RC7)", async () => {
