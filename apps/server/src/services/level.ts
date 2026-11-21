@@ -8,7 +8,7 @@ const EFFORT_DAYS = 84;
 const VO2MAX_DAYS = 30;
 const SHOWN = 8;
 
-const clock = (min: number): string => {
+export const clock = (min: number): string => {
   const s = Math.round(min * 60);
   const pad = (n: number) => String(n).padStart(2, "0");
   return s >= 3600

@@ -67,6 +67,8 @@ export type ProposalDraft = Omit<Proposal, "id" | "status" | "decidedOn">;
 export type ProgramPlan = {
   firstMonday: string;
   phases: { phase: Phase; weeks: number }[];
+  /** Each week from week 1 to the race, with the plan's minutes (P9, P10); none for a first week begun before it. */
+  weeks: { monday: string; volumeMin?: number }[];
   feasibility: FeasibilityClass;
   odds: TargetOdds;
 };

@@ -14,7 +14,8 @@ export type SheetSpec =
   | { kind: "lastTime" }
   | { kind: "watch" }
   | { kind: "timetable" }
-  | { kind: "target" };
+  | { kind: "target" }
+  | { kind: "progression" };
 
 export type SettingKey =
   | "runsPerWeek"

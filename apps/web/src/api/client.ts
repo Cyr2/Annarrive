@@ -1,4 +1,4 @@
-import type { ChatContext } from "@annarrive/protocol";
+import type { ChatContext, Progression } from "@annarrive/protocol";
 import type {
   CalendarEvent,
   ChangeOption,
@@ -58,6 +58,8 @@ export interface Api {
   today(): Promise<Today>;
   week(offset: number): Promise<Week>;
   program(): Promise<Program>;
+  /** Programme's Progression block (algo.md M12); null in maintenance mode or before her level is known. */
+  progression(): Promise<Progression>;
 
   addEvent(input: NewEvent): Promise<ChangeResult>;
   updateEvent(id: string, patch: EventPatch): Promise<ChangeResult>;

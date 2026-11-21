@@ -13,6 +13,7 @@ import {
 import type { Api } from "../client.ts";
 import type { Activity, CalendarEvent, ChangeRow, Item, Program, Proposal, RaceResult, Run } from "../schemas.ts";
 import { chatDay, type ReggieMemory, reggie } from "./chat.ts";
+import { seedProgression } from "./progression.ts";
 import { applyChange, blockedDays, changeOptions, isRun, proposeSlots } from "./rules.ts";
 import { seedProgram, seedWeek, strengthEvent } from "./seed.ts";
 import { applyUnavailable } from "./unavailable.ts";
@@ -187,6 +188,10 @@ export function createMockApi({
       };
     },
     program: async () => structuredClone(state.program),
+    async progression() {
+      await wait();
+      return state.program.maintenance ? null : seedProgression(monday, state.program.goal.date);
+    },
 
     addEvent: (input) =>
       commit(`Ajouté à ta semaine : ${input.title}, ${dayName(input.date).toLowerCase()} ${input.start}`, () => {
