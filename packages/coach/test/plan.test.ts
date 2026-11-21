@@ -46,6 +46,18 @@ describe("phaseSplit (P3 to P7)", () => {
   it("moves development weeks to base when the base is low (P-4)", () => {
     expect(phaseSplit(SEMI, 17, true)).toEqual({ base: 10, dev: 0, spe: 5, taper: 2, short: false });
   });
+
+  it("gives a regular runner two weeks of base, never more than the usual share (P-36)", () => {
+    expect(phaseSplit(SEMI, 19, false, true)).toEqual({ base: 2, dev: 9, spe: 6, taper: 2, short: false });
+    expect(phaseSplit({ distanceM: 5000 }, 4, false, true)).toEqual({ base: 1, dev: 0, spe: 2, taper: 1, short: true });
+    expect(phaseSplit(SEMI, 17, true, true)).toEqual({ base: 10, dev: 0, spe: 5, taper: 2, short: false });
+  });
+
+  it("calls regular 3 runs a week over the 8 weeks before, or before a recent race (P-37)", () => {
+    expect(startingVolume(runs(8, 4, 45), regular, NOW).regular).toBe(true);
+    expect(startingVolume(runs(8, 2, 75), regular, NOW).regular).toBe(false);
+    expect(startingVolume(runs(4, 3, 50, "2026-10-05"), regular, NOW).regular).toBe(false);
+  });
 });
 
 describe("peakVolume (P8)", () => {
@@ -112,17 +124,21 @@ describe("weekTemplate (P11 to P13)", () => {
     expect(t).toEqual(["E+strides", "E", "E+sprints", "L"]);
   });
 
-  it("closes the base with a fartlek and alternates I and T in development", () => {
+  it("closes the base with a fartlek, alternates I with T then CRUISE in development, strides in one E (P-34)", () => {
     expect(weekTemplate("base", 3, 10000, 4, true)).toEqual(["FARTLEK", "E+strides", "L"]);
     expect(weekTemplate("base", 5, 10000, 0)).toEqual(["E+strides", "E", "E+sprints", "RECUP", "L"]);
-    expect(weekTemplate("dev", 4, 21097.5, 0)).toEqual(["I", "E", "T", "L"]);
-    expect(weekTemplate("dev", 5, 21097.5, 1)).toEqual(["T", "E", "I", "RECUP", "L"]);
+    expect(weekTemplate("dev", 4, 21097.5, 0)).toEqual(["I", "E+strides", "T", "L"]);
+    expect(weekTemplate("dev", 5, 21097.5, 1)).toEqual(["CRUISE", "E+strides", "I", "RECUP", "L"]);
   });
 
-  it("puts the specific quality first in the specific phase", () => {
+  it("puts the specific quality first in the specific phase, a short I in the half's deload (P-35)", () => {
     expect(weekTemplate("spe", 3, 21097.5, 0)).toEqual(["SPE", "E+strides", "L"]);
-    expect(weekTemplate("spe", 4, 5000, 0)).toEqual(["I", "E", "T", "L"]);
-    expect(weekTemplate("taper", 4, 10000, 1)).toEqual(["T", "E", "I", "L"]);
+    expect(weekTemplate("spe", 4, 21097.5, 0)).toEqual(["SPE", "E+strides", "T", "L"]);
+    expect(weekTemplate("spe", 4, 21097.5, 1)).toEqual(["SPE", "E+strides", "CRUISE", "L"]);
+    expect(weekTemplate("spe", 4, 21097.5, 3, false, true)).toEqual(["SPE", "E+strides", "I", "L"]);
+    expect(weekTemplate("spe", 4, 42195, 3, false, true)).toEqual(["SPE", "E+strides", "CRUISE", "L"]);
+    expect(weekTemplate("spe", 4, 5000, 0)).toEqual(["I", "E+strides", "T", "L"]);
+    expect(weekTemplate("taper", 4, 10000, 1)).toEqual(["CRUISE", "E+strides", "I", "L"]);
   });
 });
 
@@ -186,6 +202,7 @@ describe("startingVolume (P2)", () => {
   it("reads her frequency on the 4 weeks before a race of the last 8 weeks, never the race as volume (P-29)", () => {
     const start = startingVolume(back, regular, "2026-11-21");
     expect(start.runsPerWeek).toBeGreaterThanOrEqual(3);
+    expect(start.regular).toBe(true);
     const recent = ["2026-10-19", "2026-10-26", "2026-11-02", "2026-11-09"].map(week);
     // The marathon week counts only its training runs; V0 is her best week since, at most 80 % of her usual volume.
     expect(recent[0]).toBeGreaterThan(300);
@@ -201,7 +218,9 @@ describe("startingVolume (P2)", () => {
       { vdot: 39 },
       "2026-11-21",
     );
-    expect(plan.split).toMatchObject({ base: 5, dev: 6, spe: 6, taper: 2 });
+    // P6: 4 runs a week in the 8 weeks before the marathon: a regular runner, two weeks of base.
+    expect(plan.split).toMatchObject({ base: 2, dev: 9, spe: 6, taper: 2 });
+    expect(plan.weeks[1]?.template[0]).toBe("FARTLEK");
     expect(plan.weeks[0]?.volumeMin).toBeLessThanOrEqual(1.1 * week("2026-11-09") + 1);
     expect(plan.weeks.some((w) => w.template.includes("I"))).toBe(true);
   });
@@ -242,7 +261,7 @@ describe("generatePlan (M2)", () => {
     expect(longs(plan).slice(-3)).toEqual([true, false, true]);
     const marathon = generatePlan({ distanceM: 42195, date: "2027-04-18" }, regular, runs(8, 4, 60), { vdot: 40 }, NOW);
     expect(longs(marathon).slice(-4)).toEqual([true, false, false, true]);
-    expect(plan.weeks.at(-2)?.template.filter((s) => s === "E")).toHaveLength(2);
+    expect(plan.weeks.at(-2)?.template.filter((s) => s === "E" || s === "E+strides")).toHaveLength(2);
   });
 
   it("warns about a short plan and a low peak", () => {

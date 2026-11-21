@@ -26,11 +26,11 @@ const st = (kind: Step["kind"], durMin: number, rpe: number, reps?: number): Ste
 });
 
 describe("buildSession (C1)", () => {
-  it("sizes a T to 15 continuous minutes for 200 min/week at VDOT 40 (C-1)", () => {
+  it("sizes a T to its 20 min floor for 200 min/week at VDOT 40, above Daniels' 16.6 (C-1)", () => {
     const t = buildSession("T", ctx);
-    expect(work(t).map((s) => s.durMin)).toEqual([15]);
+    expect(work(t).map((s) => s.durMin)).toEqual([20]);
     expect(t.steps.map((s) => s.kind)).toEqual(["warmup", "work", "cooldown"]);
-    expect(t.durMin).toBe(40);
+    expect(t.durMin).toBe(45);
   });
 
   it("builds sprints on the flat inside an easy run, in place of hill sprints (C-9)", () => {
@@ -55,11 +55,34 @@ describe("buildSession (C1)", () => {
     expect(i.steps.find((s) => s.kind === "recover")).toMatchObject({ reps: 3, durMin: 3 });
   });
 
-  it("progresses T to 20 min and CRUISE from 3 × 5 to 2 × 15", () => {
+  it("progresses T by 5 min a load week within Daniels' 10 %, CRUISE up to 40 min in a new format each week (C-12)", () => {
     const big = { ...ctx, weeklyMin: 400 };
-    expect(work(buildSession("T", { ...big, progressionStep: 2 }))[0]?.durMin).toBe(20);
-    expect(work(buildSession("CRUISE", big))[0]).toMatchObject({ reps: 3, durMin: 5 });
-    expect(work(buildSession("CRUISE", { ...big, progressionStep: 5 }))[0]).toMatchObject({ reps: 2, durMin: 15 });
+    // 400 min at E 6:08 = 65 km: 10 % at T 5:06 is 33 min.
+    expect(work(buildSession("T", { ...big, progressionStep: 2 }))[0]?.durMin).toBe(30);
+    expect(work(buildSession("T", { ...big, progressionStep: 6 }))[0]?.durMin).toBe(33);
+    expect(work(buildSession("CRUISE", big))[0]).toMatchObject({ reps: 4, durMin: 5 });
+    expect(buildSession("CRUISE", big).steps.find((s) => s.kind === "recover")).toMatchObject({ reps: 3, durMin: 1 });
+    expect(work(buildSession("CRUISE", { ...big, progressionStep: 1 }))[0]).toMatchObject({ reps: 3, durMin: 8 });
+    expect(work(buildSession("CRUISE", { ...big, progressionStep: 4 }))[0]).toMatchObject({ reps: 3, durMin: 12 });
+    expect(work(buildSession("CRUISE", { ...ctx, progressionStep: 7 }))[0]).toMatchObject({ reps: 4, durMin: 10 });
+  });
+
+  it("varies the I fractions 3, 4, 5 min across load weeks, 3 min in the specific phase (C-13)", () => {
+    const frac = (c: BuildCtx) => work(buildSession("I", c))[0]?.durMin;
+    expect([0, 1, 2, 3].map((k) => frac({ ...ctx, progressionStep: k }))).toEqual([3, 4, 5, 3]);
+    expect(frac({ ...ctx, phase: "spe", progressionStep: 2 })).toBe(3);
+  });
+
+  it("finishes one development long run in two at M, never a deload's; a deload's has no race-pace block (C-14)", () => {
+    const l = (c: Partial<BuildCtx>) => buildSession("L", { ...ctx, durMin: 80, ...c });
+    expect(work(l({ progressionStep: 1 })).map((s) => [s.zone, s.durMin])).toEqual([
+      ["E", 65],
+      ["M", 15],
+    ]);
+    expect(work(l({ progressionStep: 2 })).map((s) => s.zone)).toEqual(["E"]);
+    expect(work(l({ progressionStep: 1, deload: true })).map((s) => s.zone)).toEqual(["E"]);
+    expect(work(l({ phase: "spe", progressionStep: 0 })).map((s) => s.zone)).toEqual(["E", "race"]);
+    expect(work(l({ phase: "spe", progressionStep: 0, deload: true })).map((s) => s.zone)).toEqual(["E"]);
   });
 
   it("builds every type with a positive duration and the catalogue RPE", () => {

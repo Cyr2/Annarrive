@@ -25,7 +25,7 @@ import type {
   UnavailablePreview,
   WatchInfo,
 } from "@annarrive/protocol";
-import { agreeWith, paceLabel, sessionNames, sessionTitle, stepBlocks } from "@annarrive/protocol";
+import { agreeWith, paceLabel, sessionNames, sessionTitle, sessionWhy, stepBlocks } from "@annarrive/protocol";
 import {
   addDays,
   daysBetween,
@@ -74,20 +74,6 @@ import type {
 type RunType = PlannedSession["type"];
 
 const TITLES = sessionNames;
-
-const WHY: Record<RunType, string> = {
-  E: "Un footing tranquille : il construit ta base d'endurance sans te fatiguer.",
-  RECUP: "Garde les jambes en mouvement pour récupérer de la séance d'avant.",
-  L: "Habitue ton corps à durer, à allure facile.",
-  T: "Une allure soutenue mais tenable : tu repousses le moment où ça devient dur.",
-  CRUISE: "La même allure soutenue, coupée en morceaux pour la tenir plus facilement.",
-  I: "Des efforts courts et rapides : l'allure de ton objectif te paraîtra plus facile.",
-  R: "Des efforts très courts pour gagner en vitesse et en foulée.",
-  SPE: "Tu t'habitues à l'allure de ton objectif, pour qu'elle te paraisse naturelle le jour J.",
-  FARTLEK: "Tu accélères et tu ralentis au ressenti, sans regarder ta montre.",
-  TEST: "Un effort pour mesurer ta forme et régler tes allures.",
-  RACE: "Le jour J. Pars à ton allure, pas plus vite.",
-};
 
 const WATCH: Record<ServerWatch, WatchStatus> = { pending: "sending", sent: "synced", failed: "failed", off: "off" };
 /** As a Garmin workout names its steps; a work step is named by its length alone (« 8 min »). */
@@ -208,7 +194,7 @@ export function toRun(session: SessionView | PlannedSession): Run {
     mainSet: mainSetOf(session, work),
     pace: paced ? paceLabel(paced) : "",
     steps: toSteps(session.steps, session.type === "E"),
-    why: WHY[session.type],
+    why: sessionWhy(session),
     watch,
   };
 }

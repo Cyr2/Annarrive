@@ -1,4 +1,4 @@
-import { buildSession, MAX_E, scaleSession } from "./catalog.ts";
+import { buildSession, MAX_E, STRIDES_MIN, scaleSession } from "./catalog.ts";
 import { addDays, daysBetween, mondayOf, nextMonday } from "./dates.ts";
 import { predictTime } from "./fitness.ts";
 import { enforceDistribution, longShare, trimTo } from "./guards.ts";
@@ -69,12 +69,21 @@ export type Split = { base: number; dev: number; spe: number; taper: number; sho
 /** `round` of the spec: nearest, halves up. */
 const roundHalfUp = (x: number): number => Math.floor(x + 0.5);
 
+/** P6: a regular runner already has her base (Daniels shortens phase I): two weeks, the fartlek in the second. */
+const REGULAR_BASE = 2;
+
 /** P4 to P7. */
-export function phaseSplit(goal: { distanceM: GoalDistance }, weeksTotal: number, lowBase: boolean): Split {
+export function phaseSplit(
+  goal: { distanceM: GoalDistance },
+  weeksTotal: number,
+  lowBase: boolean,
+  regular = false,
+): Split {
   const d = goal.distanceM;
   const taper = d === 42195 && weeksTotal < 16 ? 2 : TAPER[d];
   const r = weeksTotal - taper;
-  let base = Math.max(2, roundHalfUp(0.3 * r));
+  const usual = Math.max(2, roundHalfUp(0.3 * r));
+  let base = regular && !lowBase ? Math.min(REGULAR_BASE, usual) : usual;
   let spe = Math.max(d === 42195 ? 4 : 3, roundHalfUp(0.35 * r));
   let dev = r - base - spe;
   if (dev < 0) {
@@ -152,29 +161,38 @@ export function volumeCurve(split: Split, v0: number, vPeak: number, cycle: Cycl
 
 export type TemplateSlot = RunType | "E+strides" | "E+sprints";
 
-function qualities(phase: Phase, distM: GoalDistance, weekIdx: number): [RunType, RunType] {
-  const alternate: [RunType, RunType] = weekIdx % 2 === 0 ? ["I", "T"] : ["T", "I"];
-  if (phase === "dev" || distM === 10000) return alternate;
-  if (distM === 5000) return ["I", "T"];
-  return ["SPE", "T"];
+/**
+ * P12: threshold continuous one week, in cruise intervals the next (Daniels, McMillan). In the half's specific
+ * phase, the deload's Q2 is a short I (Daniels phase IV keeps T and I; Pfitzinger: shorter VO2 work late), the load
+ * weeks keep threshold.
+ */
+function qualities(phase: Phase, distM: GoalDistance, weekIdx: number, deload: boolean): [RunType, RunType] {
+  const threshold: RunType = weekIdx % 2 === 0 ? "T" : "CRUISE";
+  if (phase === "dev" || distM === 10000) return weekIdx % 2 === 0 ? ["I", threshold] : [threshold, "I"];
+  if (distM === 5000) return ["I", threshold];
+  return ["SPE", distM === 21097.5 && phase === "spe" && deload ? "I" : threshold];
 }
 
-/** P11 to P13. In base, Q become E + strides and E + sprints on the flat, and a fartlek closes the phase. */
+/**
+ * P11 to P13. In base, Q become E + strides and E + sprints on the flat, and a fartlek closes the phase. After the
+ * base, one E a week keeps its strides (Daniels, Pfitzinger, Runna: strides all year).
+ */
 export function weekTemplate(
   phase: Phase,
   runsPerWeek: 3 | 4 | 5,
   distM: GoalDistance,
   weekIdx: number,
   lastOfPhase = false,
+  deload = false,
 ): TemplateSlot[] {
   if (phase === "base") {
     const first: TemplateSlot = lastOfPhase ? "FARTLEK" : runsPerWeek === 3 ? "E+sprints" : "E+strides";
     if (runsPerWeek === 3) return [first, "E+strides", "L"];
     return runsPerWeek === 4 ? [first, "E", "E+sprints", "L"] : [first, "E", "E+sprints", "RECUP", "L"];
   }
-  const [q1, q2] = qualities(phase, distM, weekIdx);
+  const [q1, q2] = qualities(phase, distM, weekIdx, deload);
   if (runsPerWeek === 3) return [q1, "E+strides", "L"];
-  return runsPerWeek === 4 ? [q1, "E", q2, "L"] : [q1, "E", q2, "RECUP", "L"];
+  return runsPerWeek === 4 ? [q1, "E+strides", q2, "L"] : [q1, "E+strides", q2, "RECUP", "L"];
 }
 
 /** P14. `keepLongest` (a load week): never shorter than her longest run of 30 days, up to Lmax. */
@@ -228,6 +246,9 @@ const mean = (xs: number[]): number => (xs.length ? xs.reduce((a, b) => a + b, 0
 /** P2, P7: a race of the last 8 weeks bends the weeks after it (MA6): they are read against the weeks before it. */
 const RACE_DAYS = 56;
 
+/** P6: at least 3 runs a week over the 8 weeks before, or before a race of the last 8 weeks (her race block). */
+const REGULAR_RUNS = 3;
+
 /** A race is a test of her level, not training volume (P2, P8, P14, G1). */
 export const training = (history: Activity[]): Activity[] => history.filter((a) => a.isRace !== true);
 
@@ -236,7 +257,7 @@ export function startingVolume(
   history: Activity[],
   profile: Profile,
   now: string,
-): { v0: number; provisional: boolean; runsPerWeek: number } {
+): { v0: number; provisional: boolean; runsPerWeek: number; regular: boolean } {
   const runs = training(history);
   const weeks = weekMinutes(runs);
   const last = history
@@ -249,8 +270,10 @@ export function startingVolume(
   if (stopped) mondays.unshift(anchor);
   const data = mondays.map((m) => weeks.get(m) ?? { min: 0, runs: 0 });
   const runsPerWeek = mean(data.map((d) => d.runs));
+  const regularBefore = (end: string): boolean =>
+    runs.filter((a) => a.start < end && daysBetween(a.start, end) < RACE_DAYS).length >= (REGULAR_RUNS * RACE_DAYS) / 7;
   if (data.filter((d) => d.runs > 0).length < 2) {
-    return { v0: Math.min(profile.declaredWeeklyMin ?? 150, 150), provisional: true, runsPerWeek };
+    return { v0: Math.min(profile.declaredWeeklyMin ?? 150, 150), provisional: true, runsPerWeek, regular: false };
   }
   const recent = data.slice(0, 4).map((d) => d.min);
   const avg = mean(recent);
@@ -260,7 +283,8 @@ export function startingVolume(
         .filter((a) => a.isRace && a.start < now && daysBetween(a.start, now) <= RACE_DAYS)
         .sort((a, b) => a.start.localeCompare(b.start))
         .at(-1);
-  if (!race) return { v0: stopped ? 0.5 * avg : avg, provisional: false, runsPerWeek };
+  if (!race)
+    return { v0: stopped ? 0.5 * avg : avg, provisional: false, runsPerWeek, regular: !stopped && regularBefore(now) };
   // The recovery weeks lower the mean: she resumes from her best week since, up to MA6's last easy week.
   const before = (days: number) => runs.filter((a) => a.start < race.start && daysBetween(a.start, race.start) < days);
   const usual = before(RACE_DAYS).reduce((s, a) => s + a.durMin, 0) / (RACE_DAYS / 7);
@@ -268,6 +292,7 @@ export function startingVolume(
     v0: Math.max(avg, Math.min(recoveryShare(race.distM) * usual, Math.max(...recent))),
     provisional: false,
     runsPerWeek: Math.max(runsPerWeek, before(28).length / 4),
+    regular: regularBefore(now) || regularBefore(race.start),
   };
 }
 
@@ -289,7 +314,7 @@ export function generatePlan(
   const start = startingVolume(history, profile, now);
   const sTot = totalWeeks(now, goal.date);
   const lowBase = start.v0 < 0.5 * PEAK[d][0] || start.runsPerWeek < 3;
-  const split = phaseSplit(goal, sTot, lowBase);
+  const split = phaseSplit(goal, sTot, lowBase, start.regular);
   const cycle = cycleFor(profile);
   const loadWeeks = [...Array(split.base + split.dev).keys()].filter((i) => !isDeload(i, cycle)).length;
   const peak = peakVolume(d, start.v0, loadWeeks, maxWeekly(history, now) || start.v0);
@@ -314,7 +339,7 @@ export function generatePlan(
       ] ?? 0;
     const loadsBefore = [...Array(i - phaseStart).keys()].filter((k) => !isDeload(phaseStart + k, cycle)).length;
     const lastOfPhase = phaseAt(split, i + 1) !== phase;
-    const template = weekTemplate(phase, profile.runsPerWeek, d, i - phaseStart, lastOfPhase);
+    const template = weekTemplate(phase, profile.runsPerWeek, d, i - phaseStart, lastOfPhase, isDeload(i, cycle));
     // P18: the last long run at D-14 (half) or D-21 (marathon): the weeks between it and the race week run an E.
     const noLong = i < curve.length - 1 && i >= curve.length - (LAST_LONG_WEEKS[d] ?? 0);
     return {
@@ -360,6 +385,7 @@ export function buildWeek(week: PlanWeek, ctx: WeekCtx): Session[] {
     phase: week.phase,
     progressionStep: week.progressionStep,
     distM: ctx.distM,
+    deload: week.deload,
   };
   // A test keeps its length whatever the week (F10).
   const qFactor = (slot: TemplateSlot): number =>
@@ -414,10 +440,10 @@ function easyFor(
   },
   id: string,
 ): Session {
-  // The strides (6 × 20 s) fit inside the catalogue's 75 min.
+  // The strides (6 × 20 s) fit inside the run's share of the week, under the catalogue's 75 min.
   const ctx = {
     ...c,
-    durMin: slot === "RECUP" ? c.recup : slot === "E+strides" ? Math.min(c.eMin, MAX_E - 2) : c.eMin,
+    durMin: slot === "RECUP" ? c.recup : slot === "E+strides" ? Math.min(c.eMin, MAX_E) - STRIDES_MIN : c.eMin,
   };
   if (slot === "RECUP") return { ...buildSession("RECUP", ctx), id };
   if (slot === "E+sprints") return { ...buildSession("E", { ...ctx, sprints: true }), id };

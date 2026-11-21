@@ -185,6 +185,47 @@ describe("distribution (P16)", () => {
     expect(dur(r, "e")).toBeGreaterThan(40);
   });
 
+  it("cuts the long run's race-pace block, then SPE, before threshold, and threshold under 20 min last (P-38)", () => {
+    const st = (
+      kind: "warmup" | "work" | "recover" | "cooldown",
+      durMin: number,
+      zone: "E" | "T" | "race",
+      rpe: number,
+      reps?: number,
+    ) => ({
+      kind,
+      durMin,
+      zone,
+      target: { rpe },
+      ...(reps ? { reps } : {}),
+    });
+    const t = makeSession("T", [st("warmup", 15, "E", 3), st("work", 25, "T", 7), st("cooldown", 10, "E", 3)], {
+      id: "t",
+    });
+    const spe = makeSession(
+      "SPE",
+      [st("warmup", 15, "E", 3), st("work", 20, "race", 6, 2), st("recover", 3, "E", 2), st("cooldown", 10, "E", 3)],
+      { id: "s" },
+    );
+    const l = makeSession("L", [st("work", 70, "E", 4), st("work", 25, "race", 6)], { id: "l" });
+    const e = makeSession("E", [st("work", 40, "E", 3)], { id: "e" });
+    const r = enforceDistribution([t, spe, l, e], "spe").week;
+    const work = (id: string, zone: string) =>
+      r.find((s) => s.id === id)?.steps.find((x) => x.kind === "work" && x.zone === zone);
+    expect(distributionCheck(r, "spe").ok).toBe(true);
+    expect(work("t", "T")?.durMin).toBe(25);
+    expect(work("l", "race")?.durMin).toBe(10);
+    expect(dur(r, "l")).toBe(95);
+    expect(work("s", "race")?.durMin).toBeLessThan(20);
+    // Nothing else to cut: threshold gives under its floor so that 75 % stays easy.
+    const alone = enforceDistribution(
+      [makeSession("T", [st("work", 22, "T", 7)], { id: "t" }), easy("e", "", 40)],
+      "dev",
+    );
+    expect(distributionCheck(alone.week, "dev").ok).toBe(true);
+    expect(dur(alone.week, "t")).toBeLessThan(20);
+  });
+
   it("leaves a test and the race out of the training distribution (P-26)", () => {
     const test = makeSession("TEST", [{ kind: "work", durMin: 20, zone: "race", target: { rpe: 9 } }], { id: "x" });
     expect(distributionCheck([test, long("l", "", 60), easy("e", "", 40)], "base").ok).toBe(true);

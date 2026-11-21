@@ -360,7 +360,11 @@ export const watchStatusSchema = z.enum(["pending", "sent", "failed", "off"]);
 export type WatchStatus = z.infer<typeof watchStatusSchema>;
 
 /** A session as the screens show it; `watch` is null outside the 7 days sent to the watch. */
-export const sessionViewSchema = plannedSessionSchema.extend({ watch: watchStatusSchema.nullable() });
+/** `why`: the line the app shows under the session, given to Reggie so both say the same (`sessionWhy`). */
+export const sessionViewSchema = plannedSessionSchema.extend({
+  watch: watchStatusSchema.nullable(),
+  why: z.string().optional(),
+});
 export type SessionView = z.infer<typeof sessionViewSchema>;
 
 export const dayViewSchema = z.object({
