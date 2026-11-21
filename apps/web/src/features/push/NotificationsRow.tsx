@@ -8,8 +8,8 @@ const HINTS: Partial<Record<PushStatus, string>> = {
   unsupported: "Ce navigateur ne reçoit pas de notifications.",
 };
 
-/** Programme > Notifications: a switch that asks permission on tap, or why it cannot. */
-export function NotificationsRow() {
+/** Programme > Notifications: a switch that asks permission on tap, or why it cannot. `detail`: what they bring. */
+export function NotificationsRow({ detail }: { detail?: string }) {
   const { status, busy, toggle } = usePush();
   if (status === "loading" || status === "hidden") return null;
   const hint = HINTS[status];
@@ -19,7 +19,7 @@ export function NotificationsRow() {
         <span id="h-push" className="t-body">
           Notifications
         </span>
-        {hint && <span className="t-cap">{hint}</span>}
+        {(hint ?? detail) && <span className="t-cap">{hint ?? detail}</span>}
       </span>
       {!hint && (
         <Switch checked={status === "on"} disabled={busy} labelledBy="h-push" onChange={(on) => void toggle(on)} />

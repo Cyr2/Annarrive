@@ -48,24 +48,21 @@ Barre d'onglets flottante : **Aujourd'hui**, **Semaine**, **Programme**, **Reggi
 | Programme : objectif, frise des phases, Ton niveau (dernière course, ce que dit la montre), progression | `design/Programme.dc.html`, puis la maquette validée le 21/11/2026 (section 1) |
 | Réglages, page poussée depuis la roue de Programme ; feuille « Ta dernière course » | Maquette validée le 21/11/2026 (sections 2 et 3) |
 | Reggie, conversation et widgets | `design/Assistant.dc.html`, `design/ReggieWidgets.dc.html` |
-| Onboarding | À maquetter |
+| Onboarding | Maquette validée (cinq questions) |
 
 ## Onboarding
 
-Fait par Anna, une seule fois, écrans courts (une question par écran), puis une visite guidée de 3 ou 4 bulles. La partie technique (connexion Garmin, lien de l'emploi du temps, installation sur l'écran d'accueil) est préparée par Darius avant.
+Fait par Anna, une seule fois : un écran de bienvenue où Reggie se présente, cinq questions (une par écran, Continuer épinglé en bas), puis « Ta semaine est prête » qui montre ses courses des sept jours suivants et mène à Aujourd'hui. La partie technique (connexion Garmin, lien de l'emploi du temps, installation sur l'écran d'accueil) est préparée par Darius avant.
 
 Ce qu'elle renseigne :
 
-1. Sa course : distance, date et heure de départ (9:00 proposé).
-2. Son dernier chrono, facultatif : distance, temps et quand (ou son temps estimé). Il règle ses allures dès la première semaine, mieux que la VO2max de la montre.
-3. Son chrono visé, facultatif. C'est elle qui le choisit : l'app ne propose pas de chrono, elle indique seulement s'il est atteignable ou ambitieux, sans jamais décourager. Sans chrono, l'objectif est de finir.
-4. Combien de courses par semaine, et les jours possibles pour sa sortie longue (samedi et dimanche proposés).
-5. Son heure de coucher habituelle.
-6. Ses limites : pas avant, pas après, jours sans course (valeurs proposées par défaut).
-7. Ses séances de muscu habituelles : nom, case « jambes », jour, heure (facultatif, faisable plus tard).
-8. Une douleur ou blessure en cours.
-9. Ses accords : sommeil et fréquence cardiaque.
-10. Les notifications.
+1. Ta course : distance, date, et son chrono visé, facultatif. C'est elle qui le choisit : l'app ne propose pas de chrono, elle indique seulement s'il est atteignable ou ambitieux, sans jamais décourager. Sans chrono, l'objectif est de finir. L'heure de départ prend 9:00.
+2. Ta dernière course, facultative (« Je n'en ai pas ») : distance, temps et il y a combien de temps. Une seule course, la plus récente. Elle règle ses allures dès la première semaine, mieux que la VO2max de la montre.
+3. Ta semaine : combien de courses par semaine, les jours possibles pour sa sortie longue (samedi et dimanche proposés), son heure préférée (automatique par défaut).
+4. Tes journées : le lien de son emploi du temps s'il n'est pas déjà relié, son heure de coucher, et le temps qu'il lui faut entre la fin d'une course et un cours (30 min proposées).
+5. Ta montre et tes accords : l'état de sa Garmin, sommeil et fréquence cardiaque, les notifications.
+
+Le reste prend sa valeur par défaut et se règle dans Réglages : pas avant 7:00, pas après 21:30, aucun jour sans course, pas de muscu, aucune douleur signalée.
 
 Le programme commence le lendemain : rien n'est placé le jour de l'onboarding.
 
@@ -81,6 +78,4 @@ Sa forme de départ est déduite de l'historique Garmin, tours compris (ses pass
 
 ## Questions encore ouvertes
 
-| Question | En attendant |
-|---|---|
-| Écran final de l'onboarding | À décider sur la maquette de l'onboarding |
+Aucune pour l'instant.

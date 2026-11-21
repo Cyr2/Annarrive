@@ -1,48 +1,33 @@
 import {
-  type CreateEventInput,
   DEFAULT_TRAVEL_MIN,
   type DeclaredTime,
   type FeasibilityInput,
   IMPLAUSIBLE_TIME,
   type Profile,
+  type ProfilePatch,
   type Program,
-  painSiteSchema,
   plausibleTime,
-  type Unavailable,
 } from "@annarrive/protocol";
-import { addDays, daysBetween, minutesOf, timeOf, weekday } from "../../lib/date.ts";
+import type { Item, Run } from "../../api/schemas.ts";
+import { addDays, daysBetween, minutesOf, timeOf } from "../../lib/date.ts";
 import { checkIcsUrl } from "../program/program.ts";
 
-/** The onboarding of docs/specs/produit.md as data and pure functions: a few questions per step, grouped. */
+/** The onboarding of docs/specs/produit.md as data and pure functions: one question per screen. */
 
-export const STEPS = [
-  "welcome",
-  "race",
-  "last",
-  "target",
-  "week",
-  "hours",
-  "strength",
-  "health",
-  "connect",
-  "summary",
-] as const;
+export const STEPS = ["welcome", "race", "last", "week", "days", "consent", "ready"] as const;
 export type Step = (typeof STEPS)[number];
 
+/** The screens she answers, one progress dot each. */
+export const QUESTIONS: Step[] = ["race", "last", "week", "days", "consent"];
+
 export const COPY: Record<Step, { title: string; lead?: string }> = {
-  welcome: { title: "Annarrivé", lead: "Ton coach de course à pied." },
-  race: { title: "Ton objectif" },
-  last: {
-    title: "Ton dernier chrono",
-    lead: "Facultatif. Un chrono récent, ou ton temps estimé, règle tes allures dès la première semaine.",
-  },
-  target: { title: "Ton chrono" },
+  welcome: { title: "Bienvenue, Anna", lead: "Cinq questions, puis ta première semaine." },
+  race: { title: "Ta course" },
+  last: { title: "Ta dernière course" },
   week: { title: "Ta semaine" },
-  hours: { title: "Tes horaires", lead: "Tes courses se placent dans cette plage, jamais trop près du coucher." },
-  strength: { title: "Ta muscu", lead: "Facultatif. Ajoute tes séances habituelles, tes courses se placent autour." },
-  health: { title: "Ta santé", lead: "Pour démarrer à la bonne intensité. Tout se change ensuite dans Programme." },
-  connect: { title: "Tes cours et tes notifications" },
-  summary: { title: "Tout est bon ?", lead: "Touche une ligne pour la changer, puis lance-toi." },
+  days: { title: "Tes journées" },
+  consent: { title: "Ta montre et tes accords" },
+  ready: { title: "Ta semaine est prête", lead: "Tes courses des sept prochains jours." },
 };
 
 export const DISTANCES = [
@@ -86,63 +71,45 @@ export function whenOf(date: string | undefined, today: string): LastWhen {
   return ago < 90 ? "recent" : ago < 182 ? "months" : "older";
 }
 
-export type StrengthDraft = { id: string; name: string; legs: boolean; day: number; start: string };
 export type Draft = {
   race?: Race;
   otherKm: string;
   date: string;
-  /** When the race starts: the race-day run is placed at this hour. */
-  startTime: string;
-  /** Her target in seconds, typed in the h and min boxes; 0 until she types one. */
+  /** Her target in seconds, typed in the h and min boxes; 0: no target, she runs to finish. */
   targetSec: number;
-  /** "Juste finir": no target time. */
-  finish: boolean;
-  /** « Ton dernier chrono »: its distance, its time in seconds (0: none given), and roughly when. */
+  /** « Ta dernière course »: its distance, its time in seconds (0: none given), and roughly when. */
   lastRace: DistanceM;
   lastSec: number;
   lastWhen: LastWhen;
   runsPerWeek: Profile["runsPerWeek"];
-  bedtime: string;
-  earliest: string;
-  latestEnd: string;
-  /** 1 = Monday to 7 = Sunday, as in the profile. */
-  noRunDays: number[];
   /** The days her long run may go on, 1 = Monday to 7 = Sunday. */
   longRunDays: number[];
-  strength: StrengthDraft[];
-  pain: boolean;
-  zone?: string;
-  level: number;
-  useSleepHr: boolean;
-  cycleTracking: boolean;
+  /** "" : automatic, the coach follows the hour she usually runs at. */
+  preferredHour: string;
+  bedtime: string;
   /** A timetable link she pastes when none is linked yet. */
   icsUrl: string;
+  /** Minutes between the end of a run and the start of a class: shower, change, get there. */
+  travelMin: number;
+  useSleepHr: boolean;
 };
 
-/** Defaults of algo.md section 4.2 (the server's `defaultProfile`). */
+/** Defaults of algo.md section 4.2; what she is not asked (hours, days off, muscu, pain) keeps the server's. */
 export const EMPTY: Draft = {
   otherKm: "",
   date: "",
-  // Most road races start in the morning (algo.md P24).
-  startTime: "9:00",
   targetSec: 0,
-  finish: false,
   lastRace: 21097.5,
   lastSec: 0,
   lastWhen: "recent",
   runsPerWeek: 3,
-  bedtime: "23:00",
-  earliest: "7:00",
-  latestEnd: "21:30",
-  noRunDays: [],
   // The weekend is when a student is free for her longest run (algo.md S8).
   longRunDays: [6, 7],
-  strength: [],
-  pain: false,
-  level: 2,
-  useSleepHr: true,
-  cycleTracking: false,
+  preferredHour: "",
+  bedtime: "23:00",
   icsUrl: "",
+  travelMin: DEFAULT_TRAVEL_MIN,
+  useSleepHr: true,
 };
 
 /** "Autre": the plan follows the closest of the four distances the coach knows. */
@@ -154,9 +121,9 @@ export function distanceOf(draft: Draft): DistanceM | undefined {
   return DISTANCES.map((d) => d.value).reduce<DistanceM>(closest, 5000);
 }
 
-/** Target in minutes; undefined for "Juste finir" or boxes left empty. */
+/** Target in minutes; undefined when the boxes are left empty. */
 export function targetOf(draft: Draft): number | undefined {
-  return draft.finish || draft.targetSec <= 0 ? undefined : draft.targetSec / 60;
+  return draft.race === "none" || draft.targetSec <= 0 ? undefined : draft.targetSec / 60;
 }
 
 export function feasibilityInput(draft: Draft, today: string): FeasibilityInput | undefined {
@@ -171,107 +138,63 @@ function raceIssue(draft: Draft, today: string): string | undefined {
   if (draft.race === "none") return undefined;
   if (draft.race === undefined) return "Choisis une distance, ou « Pas d'objectif ».";
   if (!distanceOf(draft)) return "Indique la distance en km.";
-  if (!draft.date || draft.date <= today) return "Choisis la date de ton objectif.";
+  if (!draft.date || draft.date <= today) return "Choisis la date de ta course.";
   return undefined;
 }
 
 /** Why "Continuer" is off on this step, or undefined when it can go on. */
 export function issue(step: Step, draft: Draft, today: string): string | undefined {
   if (step === "race") return raceIssue(draft, today);
-  if (step === "week" && 7 - draft.noRunDays.length < draft.runsPerWeek)
-    return `Garde au moins ${draft.runsPerWeek} jours pour courir.`;
-  if (step === "hours" && minutesOf(draft.latestEnd) <= minutesOf(draft.earliest))
-    return "L'heure de fin doit venir après l'heure de début.";
   if (step === "last" && draft.lastSec > 0 && !plausibleTime(draft.lastRace, draft.lastSec / 60))
     return IMPLAUSIBLE_TIME;
-  if (step === "target" && !draft.finish && draft.targetSec <= 0)
-    return "Écris ton chrono, ou choisis « Juste finir ».";
-  if (step === "strength" && draft.strength.some((s) => !s.name.trim())) return "Donne un nom à chaque séance.";
-  if (step === "health" && draft.pain && !draft.zone) return "Dis où tu as mal.";
-  if (step === "connect" && draft.icsUrl.trim() && !checkIcsUrl(draft.icsUrl).url)
-    return checkIcsUrl(draft.icsUrl).error;
+  if (step === "days" && draft.icsUrl.trim() && !checkIcsUrl(draft.icsUrl).url) return checkIcsUrl(draft.icsUrl).error;
   return undefined;
 }
 
-/** The steps she answers (welcome and summary aside), for the progress bar. */
-export function questionSteps(draft: Draft): Step[] {
-  return STEPS.filter((s) => s !== "welcome" && s !== "summary" && !(s === "target" && draft.race === "none"));
-}
-
-/** The target step only makes sense with a race. */
-export function nextStep(step: Step, draft: Draft, direction: 1 | -1): Step {
-  let i = STEPS.indexOf(step) + direction;
-  if (STEPS[i] === "target" && draft.race === "none") i += direction;
+/** The step before or after, kept inside the flow. */
+export function nextStep(step: Step, direction: 1 | -1): Step {
+  const i = STEPS.indexOf(step) + direction;
   return STEPS[Math.max(0, Math.min(i, STEPS.length - 1))] ?? step;
 }
 
-/** First date on or after `today` that falls on `day` (1 = Monday). */
-export function firstDay(today: string, day: number): string {
-  return addDays(today, (day - 1 - weekday(today) + 7) % 7);
+/** Her runs of the seven days after today, in order: the plan starts tomorrow (produit.md). */
+export function firstRuns(items: Item[], today: string): Run[] {
+  const end = addDays(today, 7);
+  return items
+    .filter((item): item is Run => item.kind === "run" && item.date > today && item.date <= end)
+    .sort((a, b) => `${a.date}${a.start.padStart(5, "0")}`.localeCompare(`${b.date}${b.start.padStart(5, "0")}`));
 }
 
-// shortcut: strength lasts 60 min, she can change it in Semaine; ask the duration if she often edits it.
-const STRENGTH_MIN = 60;
-const LAST_MINUTE = 23 * 60 + 59;
-
 /** "7:00" (how the app writes times) to "07:00" (what the server reads). */
-const hhmm = (minutes: number) => timeOf(minutes).padStart(5, "0");
-const padTime = (time: string) => hhmm(minutesOf(time));
+const padTime = (time: string) => timeOf(minutesOf(time)).padStart(5, "0");
 
 export type Payload = {
   /** Sent through the timetable route, which reads it: the profile patch does not carry it. */
   icsUrl?: string;
   program: Program;
-  events: CreateEventInput[];
-  pain?: Unavailable;
-  profile: Profile;
+  profile: ProfilePatch;
 };
 
-/** What "C'est parti" sends. The profile goes last: once stored, the server counts onboarding as done. */
+/** What "Préparer ma semaine" sends. The profile goes last: once stored, the server counts onboarding as done. */
 export function toPayload(draft: Draft, today: string): Payload {
   const distanceM = distanceOf(draft);
   const targetMin = targetOf(draft);
+  // No start time asked: the coach takes 9:00, when most road races start (algo.md P24).
   const goal =
-    draft.race === "none" || !distanceM
-      ? null
-      : {
-          distanceM,
-          date: draft.date,
-          startTime: padTime(draft.startTime),
-          ...(targetMin ? { targetMin } : {}),
-        };
-  const events = draft.strength.map((s): CreateEventInput => {
-    const date = firstDay(today, s.day);
-    const start = minutesOf(s.start);
-    return {
-      kind: "strength",
-      title: s.name.trim(),
-      start: `${date}T${hhmm(start)}`,
-      // A late session stops at midnight rather than ending the next day.
-      end: `${date}T${hhmm(Math.min(start + STRENGTH_MIN, LAST_MINUTE))}`,
-      legs: s.legs,
-      recurrence: "weekly",
-    };
-  });
+    draft.race === "none" || !distanceM ? null : { distanceM, date: draft.date, ...(targetMin ? { targetMin } : {}) };
   const declared = declaredTimeOf(draft, today);
-  const longDays = [...draft.longRunDays].filter((d) => !draft.noRunDays.includes(d)).sort((a, b) => a - b);
   const ics = draft.icsUrl.trim() ? checkIcsUrl(draft.icsUrl).url : undefined;
-  const site = painSiteSchema.safeParse(draft.zone?.toLowerCase());
   return {
     ...(ics ? { icsUrl: ics } : {}),
     program: { goal, ...(declared ? { declaredTime: declared } : {}) },
-    events,
-    pain: draft.pain && site.success ? { reason: "pain", where: site.data, walking0to10: draft.level } : undefined,
     profile: {
       runsPerWeek: draft.runsPerWeek,
-      earliest: padTime(draft.earliest),
-      latestEnd: padTime(draft.latestEnd),
-      noRunDays: [...draft.noRunDays].sort((a, b) => a - b),
-      // A long-run day she also keeps free of runs is dropped; none left: the coach's default (Sunday).
-      ...(longDays.length ? { preferredLongDays: longDays } : {}),
+      // None ticked: the coach's default (Sunday).
+      ...(draft.longRunDays.length ? { preferredLongDays: [...draft.longRunDays].sort((a, b) => a - b) } : {}),
+      ...(draft.preferredHour ? { preferredHour: padTime(draft.preferredHour) } : {}),
       bedtime: padTime(draft.bedtime),
+      travelMin: draft.travelMin,
       useSleepHr: draft.useSleepHr,
-      travelMin: DEFAULT_TRAVEL_MIN,
     },
   };
 }
