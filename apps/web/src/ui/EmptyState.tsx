@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { Button } from "./controls.tsx";
 import { Icon, type IconName } from "./Icon.tsx";
 import { SectionTitle } from "./List.tsx";
+import { Screen } from "./Screen.tsx";
+import { Sky } from "./Sky.tsx";
 import { Surface } from "./Surface.tsx";
 
 type Props = { icon: IconName; title: string; children?: ReactNode; action?: ReactNode };
@@ -34,5 +36,27 @@ export function LoadFailed({ title, what, onRetry }: { title: string; what: stri
     >
       Impossible de charger {what}. Réessaie dans un instant.
     </EmptyState>
+  );
+}
+
+/** The last resort, when a render error broke the whole app: calm, on the sky, one way forward. */
+export function AppCrash({ onReload }: { onReload: () => void }) {
+  return (
+    <>
+      <Sky />
+      <Screen>
+        <EmptyState
+          icon="info"
+          title="Quelque chose a coincé"
+          action={
+            <Button variant="filled" icon="change" onClick={onReload}>
+              Réessayer
+            </Button>
+          }
+        >
+          Ton plan n'a rien perdu.
+        </EmptyState>
+      </Screen>
+    </>
   );
 }
