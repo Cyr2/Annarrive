@@ -3,6 +3,8 @@ import { StrictMode, startTransition } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App.tsx";
 import { installJournal, renderError } from "./api/journal.ts";
+import { ChunkBoundary } from "./ui/ChunkBoundary.tsx";
+import { AppCrash } from "./ui/EmptyState.tsx";
 import "./styles/app.css";
 
 installJournal();
@@ -20,7 +22,9 @@ const journaled = (error: unknown, info: { componentStack?: string }) => {
 startTransition(() =>
   createRoot(root, { onCaughtError: journaled, onUncaughtError: journaled }).render(
     <StrictMode>
-      <App />
+      <ChunkBoundary fallback={() => <AppCrash onReload={() => location.reload()} />}>
+        <App />
+      </ChunkBoundary>
     </StrictMode>,
   ),
 );
