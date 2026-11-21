@@ -155,6 +155,7 @@ const inWeek = (monday: string) => (s: { start: string }) =>
 const RUN_DAYS: Record<number, number[]> = { 2: [2, 6], 3: [1, 3, 6], 4: [1, 3, 4, 6], 5: [0, 1, 3, 5, 6] };
 
 function preHistory(p: Persona): Activity[] {
+  if (p.runs) return p.runs;
   const eMid = paces(p.trueVdot).E;
   const days = RUN_DAYS[p.history.runsPerWeek] ?? [1, 3, 6];
   return [...Array(8).keys()].flatMap((k) => {
@@ -364,9 +365,17 @@ function keySession(s: Session, a: Activity): KeySession {
   return { session: s, activity: a, fractions };
 }
 
+/** F10's input as coach-adapter.ts builds it: her runs and her declared time; Garmin's VO2max for the first level. */
+const fitnessHistory = (p: Persona, activities: Activity[], vo2max?: number) => ({
+  activities,
+  ...(p.declared ? { declared: p.declared } : {}),
+  ...(vo2max ? { vo2maxGarmin: vo2max } : {}),
+  hr: { hrMax: p.hrMax },
+});
+
 function measuredNow(sim: Sim, now: string): InitialFitness | null {
   try {
-    return initialFitness({ activities: sim.activities, hr: { hrMax: sim.p.hrMax } }, now);
+    return initialFitness(fitnessHistory(sim.p, sim.activities), now);
   } catch {
     return null;
   }
@@ -585,15 +594,7 @@ function emptyLog(sim: Sim, w: number, pw: PlanWeek | undefined): WeekLog {
 export function simulate(p: Persona): RunLog {
   const history = preHistory(p);
   const startNow = at(PLAN_START, "18:00");
-  const initial = initialFitness(
-    {
-      activities: history,
-      ...(p.declared ? { declared: p.declared } : {}),
-      ...(p.vo2max ? { vo2maxGarmin: p.vo2max } : {}),
-      hr: { hrMax: p.hrMax },
-    },
-    startNow,
-  );
+  const initial = initialFitness(fitnessHistory(p, history, p.vo2max), startNow);
   const next = rng(p.id.length * 104729 + p.trueVdot);
   const pre = [...Array(28).keys()].map((k) => signalFor(addDays(PLAN_START, k - 27), {}, next));
   const sim: Sim = {

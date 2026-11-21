@@ -1,4 +1,4 @@
-import { buildSession, paces } from "@annarrive/coach";
+import { buildSession, detrainingFactor, paces, vdot } from "@annarrive/coach";
 import {
   changeResponseSchema,
   type GarminActivity,
@@ -10,6 +10,7 @@ import {
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { coachAdapter } from "../src/coach-adapter.ts";
+import { fitnessHistory } from "../src/coach-port.ts";
 import { toLaps } from "../src/services/garmin.ts";
 import { levelReport } from "../src/services/level.ts";
 import { fakeBridge, setup } from "./helpers.ts";
@@ -73,6 +74,9 @@ function annaRuns(): { runs: GarminActivity[]; laps: Map<number, GarminLap[]> } 
   return { runs, laps: new Map([[25045694091, tempo]]) };
 }
 
+/** Her half of 27/09 (VDOT 39.9) on 19/11, after a longest break of 6 days, since her last run (F11). */
+const HALF_NOW = vdot(21270, 112.1) * detrainingFactor(6);
+
 describe("Anna's level in service (F10, F11, RC11)", () => {
   const nov19 = new Date("2026-11-19T07:00:00Z");
 
@@ -85,9 +89,10 @@ describe("Anna's level in service (F10, F11, RC11)", () => {
     bridge.activityLaps.mockImplementation(async (id) => laps.get(id) ?? []);
     await t.services.garmin?.syncActivities();
 
+    // F10: the higher of her 11 km tempo (38.1) and her half of 27/09, detrained by her longest real break.
     const level = t.stores.fitnessEstimate.list().at(-1);
-    expect(level).toMatchObject({ source: "effort:garmin:25045694091", provisional: false });
-    expect(level?.vdot).toBeCloseTo(38.1, 1);
+    expect(level).toMatchObject({ source: "effort:garmin:24514776474:detrained", provisional: false });
+    expect(level?.vdot).toBeCloseTo(HALF_NOW, 1);
   });
 
   it("proposes the better reading over a stale detrained level, names the run, and accepting it is undoable (RC-21)", async () => {
@@ -102,9 +107,9 @@ describe("Anna's level in service (F10, F11, RC11)", () => {
     await t.services.garmin?.syncActivities();
 
     const [pending] = z.array(proposalSchema).parse((await t.call("GET", "/api/proposals")).json);
-    expect(pending).toMatchObject({ ruleId: "F10", from: 34.24, proof: { date: "2026-11-11", distanceM: 11010 } });
-    expect(pending?.to).toBeCloseTo(38.1, 1);
-    expect(pending?.proof?.thresholdSKm).toBeCloseTo(318, 0);
+    expect(pending).toMatchObject({ ruleId: "F10", from: 34.24, proof: { date: "2026-09-27", distanceM: 21270 } });
+    expect(pending?.to).toBeCloseTo(HALF_NOW, 1);
+    expect(pending?.proof?.thresholdSKm).toBeCloseTo(paces(pending?.to ?? 0).T, 6);
     expect(levelReport(t.stores, "2026-11-19T08:00")).toContain("Pourquoi l'écart : une proposition attend sa réponse");
 
     const accepted = changeResponseSchema.parse((await t.call("POST", `/api/proposals/${pending?.id}/accept`)).json);
@@ -128,6 +133,19 @@ describe("Anna's level in service (F10, F11, RC11)", () => {
     expect(levelReport(t.stores, "2026-11-19T08:00")).toMatch(
       /Pourquoi l'écart : calculé le 2026-11-17 sur un effort de 6 à 12 semaines.*La prochaine course synchronisée/,
     );
+  });
+});
+
+describe("HRmax of the year (F12)", () => {
+  it("reads it on the year in the CLI as in the app, a wrist spike left out", () => {
+    const t = setup();
+    const run = (id: string, start: string, maxHr: number) =>
+      t.stores.activity.put({ id, start, durMin: 40, distM: 7000, avgHr: 150, maxHr });
+    run("spring", "2026-04-12T09:00", 192);
+    run("summer", "2026-07-12T09:00", 190);
+    run("spike", "2026-11-10T18:00", 214);
+    expect(levelReport(t.stores, "2026-11-19T08:00")).toMatch(/FC max observée : 192/);
+    expect(fitnessHistory(t.stores.activity.list(), undefined, undefined).hr).toEqual({ hrMax: 192 });
   });
 });
 

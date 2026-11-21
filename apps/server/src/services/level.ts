@@ -4,7 +4,8 @@ import { fitnessHistory } from "../coach-port.ts";
 import type { Stores } from "../storage/stores.ts";
 import { addDays, dateOf } from "../time.ts";
 
-const EFFORT_DAYS = 84;
+/** The app's window (services/plan.ts): HRmax (F12) is read on the year, efforts on 12 weeks by F18 itself. */
+const HISTORY_DAYS = 365;
 const VO2MAX_DAYS = 30;
 const SHOWN = 8;
 
@@ -24,7 +25,7 @@ const KINDS = { race: "course/max", threshold: "seuil (FC)", training: "plancher
  */
 export function levelReport(stores: Stores, now: string): string {
   const today = dateOf(now);
-  const activities = stores.activity.overlapping(`${addDays(today, -EFFORT_DAYS)}T00:00`, now);
+  const activities = stores.activity.overlapping(`${addDays(today, -HISTORY_DAYS)}T00:00`, now);
   const vo2max = stores.dailySignal
     .overlapping(addDays(today, -VO2MAX_DAYS), addDays(today, 1))
     .findLast((d) => d.vo2max !== undefined)?.vo2max;
@@ -34,7 +35,7 @@ export function levelReport(stores: Stores, now: string): string {
   const stored = stores.fitnessEstimate.list().at(-1);
   const lines = [
     `Niveau calculé le ${today}`,
-    `Courses lues (12 semaines) : ${activities.length}, dont ${activities.filter((a) => a.laps?.length).length} avec leurs tours`,
+    `Courses lues (12 mois) : ${activities.length}, dont ${activities.filter((a) => a.laps?.length).length} avec leurs tours`,
     `FC max observée : ${history.hr?.hrMax ?? "inconnue"}`,
     `VO2max Garmin : ${vo2max ?? "aucune sur 30 jours"}`,
     `Chrono déclaré : ${declared ? `${km(declared.distanceM)} en ${clock(declared.minutes)}${declared.date ? ` (${declared.date})` : " (estimé)"}, VDOT ${coach.vdot(declared.distanceM, declared.minutes).toFixed(1)}` : "aucun"}`,

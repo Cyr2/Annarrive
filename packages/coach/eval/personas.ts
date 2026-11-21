@@ -1,5 +1,6 @@
-import type { CalEvent, Goal, PaceZone, Settings } from "../src/index.ts";
+import type { Activity, CalEvent, Goal, PaceZone, Settings } from "../src/index.ts";
 import { addDays, at, weekDates } from "../src/index.ts";
+import { marathonReturn } from "../test/marathon-return.ts";
 
 /** Monday the bench starts on; the programme starts the Sunday before, at the weekly build (algo.md §0.1). */
 export const START_MONDAY = "2026-11-23";
@@ -56,6 +57,8 @@ export type Persona = {
   vo2max?: number;
   /** 8 weeks of runs before the programme. `thresholdLaps`: two runs with 4 × 1 km at T heart rate (F-23). */
   history: { runsPerWeek: number; minPerWeek: number; thresholdLaps?: boolean };
+  /** Her real runs before the programme, in place of the 8 synthetic weeks of `history`. */
+  runs?: Activity[];
   weeks: number;
   timetable: "unistra" | "office" | "none";
   strength: Strength[];
@@ -182,6 +185,22 @@ export const PERSONAS: Persona[] = [
     weeks: 6,
     script: { cutLong: 0.65 },
   },
+  // Audit of 21/11/2026: a year of Garmin history, a 4:06 marathon 4 weeks ago, a new half in 19 weeks.
+  ...[true, false].map(
+    (lastTempo): Persona => ({
+      ...anna,
+      id: lastTempo ? "retour-marathon" : "retour-marathon-sans-seuil",
+      label: `Anna 4 semaines après un marathon en 4:06, semi en 1:48 visé${lastTempo ? "" : ", dernier seuil à 7 semaines"}`,
+      goal: { distanceM: 21097.5, date: "2027-04-04", targetMin: 108 },
+      trueVdot: 40.5,
+      declared: undefined,
+      vo2max: 45,
+      runs: marathonReturn({ lastTempo }),
+      weeks: 20,
+      revisionWeeks: [],
+      script: { oneShortNight: true },
+    }),
+  ),
 ];
 
 const ev = (

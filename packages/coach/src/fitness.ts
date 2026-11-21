@@ -1,4 +1,4 @@
-import { daysBetween } from "./dates.ts";
+import { dateOf, daysBetween } from "./dates.ts";
 import type { Activity, Lap, Paces, RunType } from "./types.ts";
 
 /** F1, v in m/min. */
@@ -70,12 +70,20 @@ const secondHalfHr = (a: Activity): number | undefined => {
   return half.reduce((x, y) => x + y, 0) / half.length;
 };
 
+/** F9: Riegel's range ends at 230 min; Daniels' table 5.1 covers the marathon down to VDOT 30, 4:49:17. */
+const EFFORT_MAX_MIN = 230;
+const MARATHON_MAX_MIN = 290;
+/** A GPS track runs a little long: a marathon measured up to 2 % over is still a marathon. */
+const GPS_SLACK = 1.02;
+
 /**
- * F9. Wind and surface are not in Activity, so only heat is checked.
+ * F9. Wind and surface are not in Activity, so only heat is checked. A marked race up to the marathon is read up to
+ * the slowest marathon of Daniels' table.
  * shortcut: any grade >= 1 % is refused, no Minetti correction; add it when elevation profiles are synced.
  */
 export function isEligibleEffort(a: Activity, ctx: { hrMax: number; lthr?: number }): Eligibility {
-  if (a.durMin < 3 || a.durMin > 230) return { ok: false, reason: "duration" };
+  const maxMin = a.isRace === true && a.distM <= GPS_SLACK * MARATHON_M ? MARATHON_MAX_MIN : EFFORT_MAX_MIN;
+  if (a.durMin < 3 || a.durMin > maxMin) return { ok: false, reason: "duration" };
   if ((a.elevGainM ?? 0) / a.distM >= 0.01) return { ok: false, reason: "grade" };
   const hr = secondHalfHr(a) ?? 0;
   const maximal =
@@ -178,13 +186,21 @@ function stretchesFrom(laps: Lap[]): Stretch[] {
   return out;
 }
 
+/** Past an hour, heart rate drifts up at a steady pace (Coyle and González-Alonso 2001): it no longer tells intensity. */
+const DRIFT_MIN = 60;
+
 /**
- * Every steady run of consecutive laps up to 60 min, with its time-weighted heart rate when every lap has one.
- * None for a planned interval session.
+ * Every steady run of consecutive laps up to 60 min, with its time-weighted heart rate when every lap has one and
+ * the stretch starts within the first hour. None for a planned interval session.
  */
 const lapWindows = (a: Activity): Stretch[] => {
   const laps = a.plannedType && INTERVALS.has(a.plannedType) ? [] : (a.laps ?? []);
-  return laps.flatMap((_, i) => stretchesFrom(laps.slice(i)));
+  let elapsed = 0;
+  return laps.flatMap((lap, i) => {
+    const drifted = elapsed >= DRIFT_MIN;
+    elapsed += lap.durMin;
+    return stretchesFrom(laps.slice(i)).map(({ hr, ...s }) => (drifted || hr === undefined ? s : { ...s, hr }));
+  });
 };
 
 type Read = Pick<EffortReading, "vdot" | "kind">;
@@ -204,20 +220,33 @@ function readStretch(s: Stretch, hrMax: number | undefined): Read | null {
 const better = (x: Read, y: Read): number =>
   Number(y.kind !== "training") - Number(x.kind !== "training") || y.vdot - x.vdot;
 
-/** F18: the best reading of each flat run of the last 12 weeks, whole run (F9) or consecutive laps. */
+const inRange = (r: Read | null): r is Read => r !== null && r.vdot >= VDOT_RANGE[0] && r.vdot <= VDOT_RANGE[1];
+
+/**
+ * F18: the best reading of each flat run of the last 12 weeks, whole run (F9) or consecutive laps. In a run read as a
+ * race, only maximal laps are read; no lap reading stands below the whole run (research 01 §4.2).
+ */
 export function effortReadings(h: FitnessHistory, now: string): EffortReading[] {
-  const hrMax = h.hr?.hrMax;
   return h.activities.flatMap((a) => {
     if (a.start > now || daysBetween(a.start, now) > EFFORT_DAYS || a.distM <= 0) return [];
     if ((a.elevGainM ?? 0) / a.distM >= 0.01) return [];
-    const whole: Read | null = isEligibleEffort(a, h.hr ?? { hrMax: Number.POSITIVE_INFINITY }).ok
-      ? { vdot: vdot(a.distM, a.durMin), kind: "race" }
-      : readStretch({ distM: a.distM, durMin: a.durMin, ...(a.avgHr === undefined ? {} : { hr: a.avgHr }) }, hrMax);
-    const best = [whole, ...lapWindows(a).map((w) => readStretch(w, hrMax))]
-      .filter((r): r is Read => r !== null && r.vdot >= VDOT_RANGE[0] && r.vdot <= VDOT_RANGE[1])
-      .sort(better)[0];
+    const best = bestReading(a, h.hr);
     return best ? [{ activityId: a.id, start: a.start, distM: a.distM, durMin: a.durMin, ...best }] : [];
   });
+}
+
+function bestReading(a: Activity, hr: FitnessHistory["hr"]): Read | undefined {
+  const hrMax = hr?.hrMax;
+  const whole: Read | null = isEligibleEffort(a, hr ?? { hrMax: Number.POSITIVE_INFINITY }).ok
+    ? { vdot: vdot(a.distM, a.durMin), kind: "race" }
+    : readStretch({ distM: a.distM, durMin: a.durMin, ...(a.avgHr === undefined ? {} : { hr: a.avgHr }) }, hrMax);
+  const run = inRange(whole) ? whole : undefined;
+  // Within a race, a stretch at threshold heart rate is race pace, not T pace; a faster maximal lap still counts.
+  const laps = lapWindows(a)
+    .map((w) => readStretch(w, hrMax))
+    .filter((r): r is Read => inRange(r) && (run?.kind !== "race" || r.kind === "race"))
+    .sort(better)[0];
+  return run && (!laps || laps.vdot < run.vdot) ? run : laps;
 }
 
 /** Longest gap in days between runs from `fromIso` up to now. */
@@ -236,16 +265,20 @@ type Candidate = { v: number; source: string };
 const highest = (xs: (Candidate | undefined)[]): Candidate | undefined =>
   xs.filter((c) => c !== undefined).sort((x, y) => y.v - x.v)[0];
 
-/** F10 (a, b): the best race or threshold reading of 6 weeks, else of 12 weeks detrained by the longest break. */
+/**
+ * F10 (a, b): the higher of the best race or threshold reading of 6 weeks and the best of 6 to 12 weeks, detrained
+ * by the longest break since.
+ */
 function measuredLevel(h: FitnessHistory, readings: EffortReading[], now: string): Candidate | undefined {
   const strong = readings.filter((r) => r.kind !== "training");
-  const pick = (rs: EffortReading[]) => highest(rs.map((r) => ({ v: r.vdot, source: `effort:${r.activityId}` })));
-  const recent = pick(strong.filter((r) => daysBetween(r.start, now) <= RECENT_DAYS));
-  if (recent) return recent;
-  const older = strong.sort((x, y) => y.vdot - x.vdot)[0];
-  if (!older) return undefined;
-  const factor = detrainingFactor(longestGap(h.activities, older.start, now));
-  return { v: older.vdot * factor, source: `effort:${older.activityId}:detrained` };
+  const isRecent = (r: EffortReading): boolean => daysBetween(r.start, now) <= RECENT_DAYS;
+  const recent = highest(strong.filter(isRecent).map((r) => ({ v: r.vdot, source: `effort:${r.activityId}` })));
+  const older = strong.filter((r) => !isRecent(r)).sort((x, y) => y.vdot - x.vdot)[0];
+  const detrained = older && {
+    v: older.vdot * detrainingFactor(longestGap(h.activities, older.start, now)),
+    source: `effort:${older.activityId}:detrained`,
+  };
+  return highest([recent, detrained]);
 }
 
 /**
@@ -258,7 +291,13 @@ export function initialFitness(h: FitnessHistory, now: string): InitialFitness {
   const measured = measuredLevel(h, readings, now);
   const d = h.declared;
   const declared = d && { v: vdot(d.distM, d.tMin), source: "declared" };
-  const fresh = d !== undefined && (d.date === undefined || daysBetween(d.date, now) <= DECLARED_DAYS);
+  // A test or race she ran since says more than her own word: the declared time then steps aside (Daniels).
+  const raced = (id: string): boolean =>
+    h.activities.some(
+      (a) => a.id === id && (a.isTest || a.isRace) && (d?.date === undefined || dateOf(a.start) > d.date),
+    );
+  const superseded = readings.some((r) => r.kind === "race" && raced(r.activityId));
+  const fresh = d !== undefined && !superseded && (d.date === undefined || daysBetween(d.date, now) <= DECLARED_DAYS);
   const weak = [h.vo2maxGarmin === undefined ? undefined : { v: h.vo2maxGarmin, source: "garmin_vo2max" }];
   if (!fresh) weak.push(declared);
   const prior =
@@ -289,6 +328,22 @@ export function vo2maxVersusRace(
   return gap > 0 ? "above" : "below";
 }
 
+/** F12: another run within 3 bpm confirms a maximum. */
+const HR_CONFIRM = 3;
+/** F12: a maximum reached in a run held at 85 % of it or more ends a hard effort, not a wrist spike in a footing. */
+const HARD_RUN = 0.85;
+
+/**
+ * F12 with what Garmin gives (one maximum per run, no second-by-second series): the highest maximum when another
+ * run confirms it within 3 bpm or its own run was hard, else the next one (a spike of the wrist sensor).
+ */
+export function observedHrMax(runs: { maxHr: number; avgHr?: number }[]): number | undefined {
+  const [top, next] = [...runs].sort((a, b) => b.maxHr - a.maxHr);
+  if (!top || !next) return top?.maxHr;
+  const credible = top.maxHr - next.maxHr <= HR_CONFIRM || (top.avgHr ?? 0) >= HARD_RUN * top.maxHr;
+  return credible ? top.maxHr : next.maxHr;
+}
+
 /** F12. Null when neither age nor heart rate is known: pilot by RPE. */
 export function hrMax(
   observedMax12m: number | undefined,
@@ -316,8 +371,17 @@ export function hrZones(max: number, rhr7: number, lthr?: number): Zones {
   return { method: "karvonen", E: [k(0.59), k(0.74)], T: [k(0.84), k(0.88)] };
 }
 
-/** F14, from an evenly sampled heart-rate series. Undefined when the effort does not qualify. */
+/** F14: the app's TEST is one 20 min lap all out; threshold heart rate is 95 % of its mean (Friel). */
+const TEST_LAP_MIN = 20;
+const TEST_LTHR_SHARE = 0.95;
+
+/**
+ * F14, from the 20 min lap of the app's test, else from an evenly sampled heart-rate series. Undefined when the
+ * effort does not qualify.
+ */
 export function lthrFromEffort(a: Activity): number | undefined {
+  const lap = a.isTest ? a.laps?.find((l) => Math.abs(l.durMin - TEST_LAP_MIN) <= 1) : undefined;
+  if (lap?.avgHr !== undefined) return TEST_LTHR_SHARE * lap.avgHr;
   const s = a.hrSeries;
   if (!s || s.length === 0) return undefined;
   const at = (min: number): number => Math.floor((min / a.durMin) * s.length);

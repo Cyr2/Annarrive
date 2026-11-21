@@ -9,7 +9,7 @@
     "sautees": 10,
     "affutage": 10,
     "stabilite": 10,
-    "structure": 9.7,
+    "structure": 9.8,
     "trajectoire": 10,
     "adaptation": 10
   },
@@ -30,7 +30,7 @@
   "marathon": {
     "volume": 10,
     "intensite": 10,
-    "sortie-longue": 9.6,
+    "sortie-longue": 10,
     "espacement": 10,
     "allures": 9,
     "sante": null,
@@ -58,7 +58,7 @@
   "sauteuse": {
     "volume": 9.7,
     "intensite": 10,
-    "sortie-longue": 9.5,
+    "sortie-longue": 9.9,
     "espacement": 10,
     "allures": 10,
     "sante": 10,
@@ -150,6 +150,34 @@
     "affutage": null,
     "stabilite": 10,
     "structure": 10,
+    "trajectoire": 10,
+    "adaptation": 10
+  },
+  "retour-marathon": {
+    "volume": 9.8,
+    "intensite": 10,
+    "sortie-longue": 10,
+    "espacement": 10,
+    "allures": 8.6,
+    "sante": 9.8,
+    "sautees": 10,
+    "affutage": 10,
+    "stabilite": 10,
+    "structure": 9.8,
+    "trajectoire": 10,
+    "adaptation": 10
+  },
+  "retour-marathon-sans-seuil": {
+    "volume": 9.8,
+    "intensite": 10,
+    "sortie-longue": 10,
+    "espacement": 10,
+    "allures": 8.9,
+    "sante": 9.5,
+    "sautees": 10,
+    "affutage": 10,
+    "stabilite": 10,
+    "structure": 9.8,
     "trajectoire": 10,
     "adaptation": 10
   }

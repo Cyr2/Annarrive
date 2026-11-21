@@ -6,6 +6,7 @@ import {
   dateOf,
   isHard,
   moveSession,
+  paces,
   planWeek,
   programPlan,
   slotAt,
@@ -240,6 +241,24 @@ describe("planWeek (cycle 0.1 buildWeek)", () => {
     const qs = sessions.filter((s) => isHard(s) && s.type !== "RACE");
     expect(qs).toHaveLength(1);
     expect(qs[0]?.steps.find((st) => st.kind === "work")).toMatchObject({ reps: 2, distM: 1000 });
+  });
+
+  it("never aims a half's race pace faster than her T pace of the week (P21, P-32)", () => {
+    const spe = (targetMin: number, vdot: number) =>
+      planWeek(
+        request({
+          monday: "2027-02-08",
+          now: "2027-02-07T18:00",
+          planStart: addDays(MONDAY, -1),
+          goal: { distanceM: 21097.5, date: "2027-03-21", targetMin },
+          fitness: { vdot },
+        }),
+      )
+        .sessions.flatMap((s) => s.steps)
+        .find((st) => st.zone === "race")?.target.paceSKm?.[0];
+    // 1:48 is 5:07 /km; VDOT 39 holds T at 5:12, VDOT 42 at 4:55.
+    expect(spe(108, 39)).toBeCloseTo(paces(39).T, 6);
+    expect(spe(108, 42)).toBeCloseTo((108 * 60) / 21.0975, 6);
   });
 
   it("aims SPE at the target race pace and plans from the declared start without history", () => {
