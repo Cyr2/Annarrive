@@ -39,6 +39,7 @@ export function toActivity(a: GarminActivity): Activity | null {
     feel: feelOf(a.feel),
     // Garmin stores RPE × 10.
     rpe: a.rpe === null ? undefined : a.rpe / 10,
+    isRace: a.eventType === "race" || undefined,
   };
 }
 
@@ -58,6 +59,14 @@ const stopsSync = (error: unknown) =>
   error instanceof BridgeUnreachableError || error instanceof GarminRateLimitError || error instanceof GarminAuthError;
 
 const LAST_SYNC = "watch.lastSyncAt";
+/** Where the history backfill stands: how many activities it has read, newest first, or "done". */
+export const BACKFILL = "garmin.backfill";
+/** A year of runs: P8 caps the peak by the biggest week of 12 months. */
+const BACKFILL_DAYS = 365;
+/** Laps of 12 weeks: F18 finds the best efforts in them. */
+const LAP_DAYS = 84;
+/** Small pages, read one after the other with a pause: Garmin publishes no rate limit. */
+const PAGE = 50;
 
 const errorName = (error: unknown) => (error instanceof Error ? error.message : "erreur inconnue");
 
@@ -70,8 +79,10 @@ export class GarminService {
   readonly #bridge: BridgeClient;
   readonly #clock: Clock;
   readonly #review: ReviewService | undefined;
+  readonly #pauseMs: number;
   #syncingWatch = false;
   #syncAgain = false;
+  #backfilling = false;
 
   constructor(
     stores: Stores,
@@ -81,6 +92,7 @@ export class GarminService {
     bridge: BridgeClient,
     clock: Clock,
     review?: ReviewService,
+    pauseMs = 2000,
   ) {
     this.#stores = stores;
     this.#plan = plan;
@@ -89,9 +101,13 @@ export class GarminService {
     this.#bridge = bridge;
     this.#clock = clock;
     this.#review = review;
+    this.#pauseMs = pauseMs;
   }
 
-  /** Stores recent runs, marks the planned session each one matches as done, invites a note for today's. */
+  /**
+   * Stores recent runs, marks the planned session each one matches as done, invites a note for today's.
+   * Then reads the year before, once (`#backfill`).
+   */
   async syncActivities(): Promise<void> {
     const today = dateOf(this.#now());
     const runs = (await this.#bridge.recentActivities())
@@ -100,24 +116,93 @@ export class GarminService {
       .filter((a) => a !== null)
       .sort((a, b) => a.start.localeCompare(b.start));
     this.#synced();
+    // A run from before the programme is history: no session to match, nothing to adapt (M10).
+    const since = this.#plan.program().startedOn;
+    const current = (run: Activity) => !since || dateOf(run.start) >= since;
+    const fresh = await this.#storeRecent(runs, current);
+    // Only once every run is stored: a first level read mid-sync took the runs not stored yet for a break (F11).
+    // Same for the year before: the first level waits for the backfill, whose end reads it.
+    const historyRead = this.#stores.meta.get(BACKFILL)?.value === "done";
+    for (const run of fresh) {
+      if (historyRead || this.#stores.fitnessEstimate.list().length > 0) this.#fitness.afterRun(run);
+      // M10: the week follows what she ran (a tempo on an easy day, a run she added).
+      if (current(run)) this.#plan.adaptToRun(run);
+      if (dateOf(run.start) === today) await this.#notifications.runSynced();
+    }
+    await this.#backfill();
+  }
+
+  /** The runs not stored before, with the session each one matched. */
+  async #storeRecent(runs: Activity[], current: (run: Activity) => boolean): Promise<Activity[]> {
     const fresh: Activity[] = [];
     for (const run of runs) {
       const stored = this.#stores.activity.get(run.id);
-      const sessionId = stored?.sessionId ?? this.#matchingSession(run)?.id;
+      const sessionId = stored?.sessionId ?? (current(run) ? this.#matchingSession(run)?.id : undefined);
       const laps = stored?.laps ?? (await this.#laps(run.id));
       // RR1: the goal race, marked once, so the easy weeks after it outlive the goal (MA6).
-      const isRace = stored?.isRace ?? (this.#review?.isGoalRace(run) || undefined);
+      const isRace = stored?.isRace ?? (run.isRace || this.#review?.isGoalRace(run) || undefined);
       this.#stores.activity.put({ ...run, answeredFeel: stored?.answeredFeel, sessionId, laps, isRace });
       if (sessionId && !stored?.sessionId) this.#plan.markDone(sessionId);
       if (!stored) fresh.push({ ...run, sessionId, laps, isRace });
     }
-    // Only once every run is stored: a first level read mid-sync took the runs not stored yet for a break (F11).
-    for (const run of fresh) {
-      this.#fitness.afterRun(run);
-      // M10: the week follows what she ran (a tempo on an easy day, a run she added).
-      this.#plan.adaptToRun(run);
-      if (dateOf(run.start) === today) await this.#notifications.runSynced();
+    return fresh;
+  }
+
+  /**
+   * Reads the runs of the last 12 months once, page by page, with laps for the last 12 weeks. Stored as history:
+   * no session matched, no adaptation, no note. Stopped by Garmin (429, down), it resumes at the page it was on.
+   * Its end reads the first level (F10).
+   */
+  async #backfill(): Promise<void> {
+    const cursor = this.#stores.meta.get(BACKFILL)?.value;
+    if (cursor === "done" || this.#backfilling) return;
+    this.#backfilling = true;
+    const today = dateOf(this.#now());
+    let next: number | null = Number(cursor ?? 0);
+    try {
+      while (next !== null) {
+        console.info(`Garmin : historique, lecture à partir de l'activité ${next}`);
+        next = await this.#readPage(next, today);
+        if (next !== null) await this.#pause();
+      }
+      this.#stores.meta.put({ id: BACKFILL, value: "done" });
+      console.info("Garmin : historique de 12 mois lu");
+      if (this.#stores.fitnessEstimate.list().length === 0) this.#plan.bootstrapFitness();
+    } catch (error) {
+      console.error(`Garmin : historique arrêté, repris à la prochaine synchro (${errorName(error)})`);
+    } finally {
+      this.#backfilling = false;
     }
+  }
+
+  /** Stores one page and moves the cursor past it. The next page's start, or null once a year back is reached. */
+  async #readPage(start: number, today: string): Promise<number | null> {
+    const from = addDays(today, -BACKFILL_DAYS);
+    const page = await this.#bridge.recentActivities(PAGE, start);
+    for (const run of page.filter(isRun).map(toActivity)) {
+      if (run && dateOf(run.start) >= from) await this.#storeHistory(run, addDays(today, -LAP_DAYS));
+    }
+    this.#stores.meta.put({ id: BACKFILL, value: String(start + page.length) });
+    const oldest = page.at(-1)?.startTimeLocal;
+    const done = page.length < PAGE || (oldest !== null && oldest !== undefined && oldest.slice(0, 10) < from);
+    return done ? null : start + page.length;
+  }
+
+  /** Never overwrites a stored run: it only adds the laps a recent one is missing. */
+  async #storeHistory(run: Activity, lapsFrom: string): Promise<void> {
+    const stored = this.#stores.activity.get(run.id);
+    const recent = dateOf(run.start) >= lapsFrom;
+    if (stored && (stored.laps || !recent)) return;
+    let laps: Activity["laps"];
+    if (recent) {
+      await this.#pause();
+      laps = await this.#laps(run.id);
+    }
+    this.#stores.activity.put({ ...run, ...stored, laps });
+  }
+
+  #pause(): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, this.#pauseMs));
   }
 
   /** A run's laps, read once; undefined when the bridge fails, so the next sync tries again. */

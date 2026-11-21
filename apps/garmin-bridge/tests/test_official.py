@@ -31,6 +31,7 @@ ACTIVITY = {
     "elevationGain": 12.0,
     "directWorkoutFeel": 50,
     "directWorkoutRpe": 30,
+    "eventType": {"typeKey": "race"},
 }
 
 
@@ -101,6 +102,8 @@ def test_activities_come_from_the_official_api_alone(setup):
     (activity,) = client.get("/activities?limit=5", headers=AUTH).json()
     assert activity["id"] == 42 and activity["avgPaceSPerKm"] == 400 and activity["rpe"] == 30
     assert garmin.requests[-1].url.params["limit"] == "5"
+    assert garmin.requests[-1].url.params["start"] == "0"
+    assert activity["eventType"] == "race"
     fake.get_activities.assert_not_called()
 
 

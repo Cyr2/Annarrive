@@ -89,6 +89,8 @@ class Activity(CamelModel):
     elevation_gain_m: float | None
     feel: float | None
     rpe: float | None
+    # "race" when she tagged the activity as one in Garmin Connect.
+    event_type: str | None
 
 
 class Lap(CamelModel):
@@ -130,6 +132,7 @@ def _to_activity(raw: dict[str, Any]) -> Activity:
         # Self-evaluation fields, absent when the watch does not ask (likely on vivoactive 4).
         feel=raw.get("directWorkoutFeel"),
         rpe=raw.get("directWorkoutRpe"),
+        event_type=(raw.get("eventType") or {}).get("typeKey"),
     )
 
 
@@ -167,16 +170,20 @@ def _with_fallback(
 
 @app.get("/activities", dependencies=protected)
 def recent_activities(
-    official: OfficialDep, garmin: LazyGarminDep, limit: Annotated[int, Query(ge=1, le=100)] = 20
+    official: OfficialDep,
+    garmin: LazyGarminDep,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    start: Annotated[int, Query(ge=0)] = 0,
 ) -> list[Activity]:
+    """Newest first; `start` skips that many, so the server reads the history one small page at a time."""
     raw = (
-        official.get("/activitylist-service/activities/search/activities", {"start": 0, "limit": limit})
+        official.get("/activitylist-service/activities/search/activities", {"start": start, "limit": limit})
         if official
         else None
     )
     primary = [_to_activity(a).model_dump() for a in raw] if isinstance(raw, list) else None
     rows = _with_fallback(
-        primary, lambda: [_to_activity(a).model_dump() for a in garmin().get_activities(0, limit)], "id"
+        primary, lambda: [_to_activity(a).model_dump() for a in garmin().get_activities(start, limit)], "id"
     )
     return [Activity(**row) for row in rows]
 

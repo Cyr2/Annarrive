@@ -77,6 +77,15 @@ def test_recent_activities_are_flattened(garmin):
     assert first["feel"] == 50
     assert first["rpe"] is None
     assert second["avgPaceSPerKm"] is None
+    assert second["eventType"] is None
+
+
+def test_older_activities_are_read_one_page_at_a_time(garmin):
+    garmin.get_activities.return_value = [{"activityId": 7, "eventType": {"typeKey": "race"}}]
+    (activity,) = client.get("/activities?start=100&limit=50", headers=AUTH).json()
+    garmin.get_activities.assert_called_once_with(100, 50)
+    assert activity["eventType"] == "race"
+    assert client.get("/activities?start=-1", headers=AUTH).status_code == 422
 
 
 def test_activity_limit_is_bounded(garmin):

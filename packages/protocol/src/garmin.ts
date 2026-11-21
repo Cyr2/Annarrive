@@ -17,6 +17,8 @@ export const garminActivitySchema = z.object({
   elevationGainM: optionalNumber,
   feel: optionalNumber,
   rpe: optionalNumber,
+  /** "race" when she tagged it as one in Garmin Connect. Optional: a bridge older than the server leaves it out. */
+  eventType: z.string().nullish(),
 });
 export type GarminActivity = z.infer<typeof garminActivitySchema>;
 
