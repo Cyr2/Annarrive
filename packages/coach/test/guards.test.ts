@@ -98,6 +98,13 @@ describe("weeklyCaps (G2 to G5)", () => {
     const hardCap = trimTo(w200, 120, "G3").week;
     expect([dur(hardCap, "e1"), dur(hardCap, "q"), dur(hardCap, "l")]).toEqual([20, 40, 40]);
   });
+
+  it("never takes a threshold block under its 20 min: the next Q gives instead (G2b, P16, G-12)", () => {
+    const w = [long("l", "", 70), hard("t", "", 24, { priority: 3 }), sixBy800("i"), easy("e", "", 30)];
+    const r = trimTo(w, 175, "G2").week;
+    expect(dur(r, "t")).toBe(20);
+    expect(r.find((s) => s.id === "i")?.steps.find((st) => st.kind === "work")?.reps).toBe(4);
+  });
 });
 
 describe("validateWeek (G8)", () => {
@@ -176,12 +183,13 @@ describe("distribution (P16)", () => {
   });
 
   it("shortens a continuous block and gives its minutes to an easy run (P-25)", () => {
-    // 45 min at threshold, 60 min of long run and 40 min of E: 72 % easy.
-    const w = [hard("t", "", 45), long("l", "", 60), easy("e", "", 40)];
+    // 50 min at threshold, 80 min of long run and 40 min of E: 71 % easy; the E stays under 3/4 of the long run.
+    const w = [hard("t", "", 50), long("l", "", 80), easy("e", "", 40)];
     expect(distributionCheck(w, "spe").ok).toBe(false);
     const r = enforceDistribution(w, "spe").week;
     expect(distributionCheck(r, "spe").ok).toBe(true);
-    expect(total(r)).toBeCloseTo(145);
+    expect(total(r)).toBeCloseTo(170);
+    expect(dur(r, "e")).toBeLessThanOrEqual(60);
     expect(dur(r, "e")).toBeGreaterThan(40);
   });
 

@@ -1,4 +1,4 @@
-import { buildSession, MAX_E, STRIDES_MIN, scaleSession } from "./catalog.ts";
+import { buildSession, EASY_TO_LONG, longBlock, MAX_E, STRIDES_MIN, scaleSession } from "./catalog.ts";
 import { addDays, daysBetween, mondayOf, nextMonday } from "./dates.ts";
 import { predictTime } from "./fitness.ts";
 import { enforceDistribution, longShare, trimTo } from "./guards.ts";
@@ -195,18 +195,34 @@ export function weekTemplate(
   return runsPerWeek === 4 ? [q1, "E+strides", q2, "L"] : [q1, "E+strides", q2, "RECUP", "L"];
 }
 
-/** P14. `keepLongest` (a load week): never shorter than her longest run of 30 days, up to Lmax. */
+/**
+ * P14. `keepLongest` (a load week): never shorter than her longest run of 30 days, up to Lmax. `spikeRefMin`: G1's
+ * reference, her longest of 30 days or what a race of the last 12 weeks leaves of her longest before it.
+ */
 export function longRunMin(
   runsPerWeek: 3 | 4 | 5,
   weeklyMin: number,
   distM: GoalDistance,
   longest30dMin: number,
   keepLongest = false,
+  spikeRefMin = longest30dMin,
 ): number {
   const pct = longShare(runsPerWeek);
   const lMax = distM === 42195 && weeklyMin >= 300 ? 180 : L_MAX[distM];
   const kept = keepLongest && Number.isFinite(longest30dMin) ? Math.min(longest30dMin, lMax) : 0;
-  return Math.max(kept, Math.min(pct * weeklyMin, lMax, 1.1 * longest30dMin));
+  return Math.max(kept, Math.min(pct * weeklyMin, lMax, 1.1 * spikeRefMin));
+}
+
+const QUALITY_SLOTS: TemplateSlot[] = ["T", "CRUISE", "I", "R", "SPE", "FARTLEK", "TEST"];
+
+/**
+ * P11: two hard runs a week at most, a long run with a race-pace block counted (Runna: 2 hard runs in 4 to 5; Campus
+ * Coach, McMillan). That week the long run is the race-pace session: SPE becomes an easy run with strides, the
+ * threshold stays (Pfitzinger: the half's key session).
+ */
+function atMostTwoHard(template: TemplateSlot[], longHasBlock: boolean): TemplateSlot[] {
+  const hard = template.filter((s) => QUALITY_SLOTS.includes(s)).length;
+  return longHasBlock && hard >= 2 ? template.map((s) => (s === "SPE" ? "E+strides" : s)) : template;
 }
 
 export type PlanWeek = {
@@ -339,7 +355,11 @@ export function generatePlan(
       ] ?? 0;
     const loadsBefore = [...Array(i - phaseStart).keys()].filter((k) => !isDeload(phaseStart + k, cycle)).length;
     const lastOfPhase = phaseAt(split, i + 1) !== phase;
-    const template = weekTemplate(phase, profile.runsPerWeek, d, i - phaseStart, lastOfPhase, isDeload(i, cycle));
+    const deload = isDeload(i, cycle);
+    const template = atMostTwoHard(
+      weekTemplate(phase, profile.runsPerWeek, d, i - phaseStart, lastOfPhase, deload),
+      longBlock({ phase, distM: d, progressionStep: loadsBefore, deload }),
+    );
     // P18: the last long run at D-14 (half) or D-21 (marathon): the weeks between it and the race week run an E.
     const noLong = i < curve.length - 1 && i >= curve.length - (LAST_LONG_WEEKS[d] ?? 0);
     return {
@@ -347,7 +367,7 @@ export function generatePlan(
       monday: addDays(first, 7 * i),
       phase,
       volumeMin,
-      deload: phase !== "taper" && isDeload(i, cycle),
+      deload: phase !== "taper" && deload,
       progressionStep: loadsBefore,
       template: noLong ? template.map((slot) => (slot === "L" ? "E" : slot)) : template,
     };
@@ -369,7 +389,16 @@ export function generatePlan(
   };
 }
 
-export type WeekCtx = { paces: Paces; distM: GoalDistance; longest30dMin: number; racePaceSKm?: number };
+export type WeekCtx = {
+  paces: Paces;
+  distM: GoalDistance;
+  longest30dMin: number;
+  /** G1's reference when a race lowered her last 30 days (P14); her longest of 30 days otherwise. */
+  spikeRefMin?: number;
+  /** Her usual footing: the lower quartile of her runs of 30 days (P15). */
+  usualRunMin?: number;
+  racePaceSKm?: number;
+};
 
 /**
  * buildWeek (§0.1): sizes the sessions of a plan week, unplaced. L and Q first, the rest of the volume in E (≥ 30 min)
@@ -393,7 +422,7 @@ export function buildWeek(week: PlanWeek, ctx: WeekCtx): Session[] {
   // P18's last Q at D-4 is H12; its last L at D-14/21 is the plan's template (generatePlan).
   // P9's L × 0.75 is already in a deload week's volume (× 0.75): applying it again would halve the long run.
   const load = !week.deload && week.phase !== "taper";
-  const lMin = longRunMin(runsPerWeek, week.volumeMin, ctx.distM, ctx.longest30dMin, load);
+  const lMin = longRunMin(runsPerWeek, week.volumeMin, ctx.distM, ctx.longest30dMin, load, ctx.spikeRefMin);
   let qCount = 0;
   const fixed = week.template.map((slot, i): Session | null => {
     const id = `${week.monday}-${i}`;
@@ -410,9 +439,13 @@ export function buildWeek(week: PlanWeek, ctx: WeekCtx): Session[] {
   const left = Math.max(0, week.volumeMin - fixed.reduce((sum, s) => sum + (s?.durMin ?? 0), 0));
   const share = easySlots.length ? left / easySlots.length : 0;
   const recup = Math.min(40, Math.max(20, Math.min(share, 0.6 * Math.max(30, share))));
-  // P15: E between 30 and 75 min; what is beyond is not run (no medium-long run in the catalogue).
+  // P15: E between 30 and 75 min, under 3/4 of the long run unless she already runs her usual footing longer
+  // (never past the long run); what is beyond is not run (no medium-long run in the catalogue).
+  const usual = Math.min(ctx.usualRunMin ?? 0, lMin);
+  const top = week.template.includes("L") ? Math.max(30, EASY_TO_LONG * lMin, usual) : MAX_E;
   const eMin = Math.min(
     MAX_E,
+    top,
     Math.max(30, easySlots.includes("RECUP") && easySlots.length > 1 ? (left - recup) / (easySlots.length - 1) : share),
   );
   const sessions = week.template.map(

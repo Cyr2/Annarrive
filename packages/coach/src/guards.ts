@@ -1,4 +1,4 @@
-import { isHard, MAX_E, sessionLoad, stepTotal, T_FLOOR, toEasy, withReps } from "./catalog.ts";
+import { EASY_TO_LONG, isHard, MAX_E, sessionLoad, stepTotal, T_FLOOR, toEasy, withReps } from "./catalog.ts";
 import { checkHard, slotOf } from "./placement.ts";
 import type { Change, Phase, Session, Step, WeekState } from "./types.ts";
 
@@ -92,7 +92,8 @@ const MIN_AROUND: Partial<Record<Step["kind"], number>> = { warmup: 10, cooldown
 
 /**
  * A Q shortened by `excess` minutes, never below 2/3 of itself (P9's cut): fractions first, else its warm-up and
- * cool-down down to 10 and 5 min, then a continuous block by a third at most. Two fractions stay whole minutes.
+ * cool-down down to 10 and 5 min, then a continuous block by a third at most, a threshold block never under its 20 min
+ * (P16: the next Q gives instead). Two fractions stay whole minutes.
  */
 function shortenQ(s: Session, excess: number): Session {
   const target = Math.floor(Math.max((2 / 3) * s.durMin, s.durMin - excess));
@@ -113,7 +114,8 @@ function shortenQ(s: Session, excess: number): Session {
   const warmed = { ...s, steps, durMin: steps.reduce((sum, st) => sum + stepTotal(st), 0) };
   if (reps > 1 || warmed.durMin <= target) return warmed;
   const work = steps.filter((st) => st.kind === "work").reduce((sum, st) => sum + stepTotal(st), 0);
-  return resize(warmed, Math.max(target, Math.ceil(warmed.durMin - work / 3)));
+  const cut = Math.min(work / 3, isThreshold(s) ? Math.max(0, work - T_FLOOR) : work);
+  return resize(warmed, Math.max(target, Math.ceil(warmed.durMin - cut)));
 }
 
 /** G2b's first step alone: easy runs, lowest priority first, down to the catalogue's floors (P15) until `cap` holds. */
@@ -203,9 +205,12 @@ export function distributionCheck(week: Session[], phase: Phase): { ok: boolean;
   return { ok: z1 >= (phase === "base" ? 0.9 : 0.75) && z3 <= 0.1, z1, z3 };
 }
 
-/** The minutes P16 takes off a Q go to the shortest easy run, up to 75 min (P15) and never past the long run. */
+/** The minutes P16 takes off a Q go to the shortest easy run, up to 75 min and 3/4 of the long run (P15). */
 function toEasiest(week: Session[], minutes: number): Session[] {
-  const top = Math.min(MAX_E, ...week.filter((s) => s.type === "L").map((s) => s.durMin));
+  const top = Math.min(
+    MAX_E,
+    ...week.filter((s) => s.type === "L").map((s) => Math.max(MIN_E, EASY_TO_LONG * s.durMin)),
+  );
   const e = week.filter((s) => s.type === "E" && s.durMin + minutes <= top).sort((a, b) => a.durMin - b.durMin)[0];
   return e ? week.map((s) => (s.id === e.id ? resize(e, e.durMin + minutes) : s)) : week;
 }

@@ -143,17 +143,19 @@ const FINISH_MIN = 10;
 const LONG_FINISH_MIN = 15;
 const FINISH_RPE = 5;
 
+/** P12: specific block every other week in the specific phase, semi and marathon only, never in a deload (P9). */
+export const longBlock = (c: Pick<BuildCtx, "phase" | "distM" | "progressionStep" | "deload">): boolean =>
+  c.distM >= 21097.5 && c.deload !== true && c.phase === "spe" && c.progressionStep % 2 === 0;
+
 function longRun(c: BuildCtx): Step[] {
   const dur = Math.floor(c.durMin ?? 90);
-  const odd = c.progressionStep % 2 === 1;
   if (c.distM < 21097.5 || c.deload) return easyRun("L", dur, c);
   // P12: in development, one long run in two finishes at marathon pace (fast finish, McMillan).
-  if (c.phase === "dev" && odd) {
+  if (c.phase === "dev" && c.progressionStep % 2 === 1) {
     const finish = dur >= 75 ? LONG_FINISH_MIN : FINISH_MIN;
     return [step("work", dur - finish, "E", c.paces, RPE.L), step("work", finish, "M", c.paces, FINISH_RPE)];
   }
-  // P12: specific block every other week in the specific phase, semi and marathon only, never in a deload (P9).
-  if (c.phase !== "spe" || odd) return easyRun("L", dur, c);
+  if (!longBlock(c)) return easyRun("L", dur, c);
   const block = Math.floor(dur / 4);
   return [
     step("work", dur - block, "E", c.paces, RPE.L),
@@ -165,41 +167,47 @@ function longRun(c: BuildCtx): Step[] {
 
 /**
  * P12: minutes at threshold in one session, +5 per load week of the phase (P17). 20 at least: Daniels' tempo, the
- * low end of McMillan (15 to 40) and Pfitzinger (20 to 40). Continuous, Daniels' 10 % of the week's distance above
- * that; in cruise intervals, 1 min of rest per 5 makes room for Pfitzinger's 40 (22 + 18).
+ * low end of McMillan (15 to 40) and Pfitzinger (20 to 40). Above that, continuous or in cruise intervals, Daniels'
+ * 10 % of the week's distance: Pfitzinger's 40 (22 + 18) comes with a week big enough for it.
  */
 export const T_FLOOR = 20;
 const T_MAX = 40;
-const thresholdTarget = (c: BuildCtx): number => Math.min(T_MAX, T_FLOOR + 5 * c.progressionStep);
+const thresholdTarget = (c: BuildCtx): number =>
+  Math.min(T_MAX, T_FLOOR + 5 * c.progressionStep, Math.max(T_FLOOR, minutesAt(0.1 * weeklyKm(c), c.paces.T)));
 
 function threshold(c: BuildCtx): Step[] {
-  const daniels = Math.max(T_FLOOR, minutesAt(0.1 * weeklyKm(c), c.paces.T));
-  return [step("work", Math.floor(Math.min(daniels, thresholdTarget(c))), "T", c.paces, RPE.T)];
+  return [step("work", Math.floor(thresholdTarget(c)), "T", c.paces, RPE.T)];
 }
 
 /** Cruise fractions by load week, so two weeks never repeat (G3); 1 min of rest per 5 min of work (Daniels). */
 const CRUISE_FRACTIONS = [5, 8, 10, 6, 12];
-/** Half-marathon blocks [km, reps]: 2×3 → 3×4 → 12 km. */
+/** Half-marathon blocks [km, reps]: 2×3 → 3×4, never one 12 km block (2 to 3 × 3 miles, 2 to 3 min jogged, X2, X3). */
 const HALF_PROGRESSION: [number, number][] = [
   [3, 2],
   [4, 3],
-  [12, 1],
 ];
 
 function cruise(c: BuildCtx): Step[] {
-  const frac = CRUISE_FRACTIONS[c.progressionStep % CRUISE_FRACTIONS.length] ?? 5;
+  // Two fractions at least within the session's threshold time (Daniels' 10 %).
+  const frac = Math.min(
+    CRUISE_FRACTIONS[c.progressionStep % CRUISE_FRACTIONS.length] ?? 5,
+    Math.floor(thresholdTarget(c) / 2),
+  );
   const reps = Math.max(Math.ceil(T_FLOOR / frac), Math.floor(thresholdTarget(c) / frac));
   return intervals(reps, frac, "T", c.paces, RPE.CRUISE, Math.round(frac / 5));
 }
 
 /**
  * Fractions of 3, 4 then 5 min, and again, so the format changes each load week (G3). In the specific phase, 3 min:
- * shorter and faster VO2 work late in the plan (Pfitzinger).
+ * shorter and faster VO2 work late in the plan (Pfitzinger). 12 min of I at least, Daniels' 8 % of a 30 km week:
+ * two fractions of 3 or 4 min are no VO2 session.
  */
+export const I_FLOOR = 12;
+
 function interval(c: BuildCtx): Step[] {
   const capMin = minutesAt(Math.min(0.08 * weeklyKm(c), 10), c.paces.I);
   const frac = c.phase === "spe" ? 3 : 3 + (c.progressionStep % 3);
-  return intervals(repsFor(capMin, frac), frac, "I", c.paces, RPE.I, frac);
+  return intervals(Math.max(repsFor(capMin, frac), Math.ceil(I_FLOOR / frac)), frac, "I", c.paces, RPE.I, frac);
 }
 
 function repetition(c: BuildCtx): Step[] {
@@ -210,13 +218,15 @@ function repetition(c: BuildCtx): Step[] {
 
 function specific(c: BuildCtx): Step[] {
   const race = c.racePaceSKm ?? c.paces.M;
+  // P9: a deload keeps the pace, not the volume: the race week's reminder (Runna, McMillan: hard runs cut first).
+  if (c.deload) return reminder(c.paces, race);
   const block = (km: number, reps: number): Step[] => {
     const steps = intervals(reps, minutesAt(km, race), "race", c.paces, RPE.SPE, 3, km * 1000);
     for (const s of steps) if (s.kind === "work") s.target.paceSKm = [race, race];
     return steps;
   };
   if (c.distM >= 42195) return block(Math.floor(Math.min(0.2 * weeklyKm(c), 29)), 1);
-  const [km, reps] = HALF_PROGRESSION[Math.min(c.progressionStep, 2)] ?? [3, 2];
+  const [km, reps] = HALF_PROGRESSION[Math.min(c.progressionStep, HALF_PROGRESSION.length - 1)] ?? [3, 2];
   return block(km, reps);
 }
 
@@ -298,12 +308,18 @@ const WRAPPED = new Set<RunType>(["T", "CRUISE", "I", "R", "SPE"]);
 /** Catalogue E: 75 min at most (P15). */
 export const MAX_E = 75;
 
-/** Race week (P18: the taper Q at its fewest fractions, same pace; Pfitzinger): 2 × 1 km at race pace, 2 min jog. */
-export function raceReminder(p: Paces, racePaceSKm: number): Session {
+/** P15, P12: an easy run is never as long as the week's long run (Runna, Pfitzinger: the long run is the long one). */
+export const EASY_TO_LONG = 0.75;
+
+/** 2 × 1 km at race pace, 2 min jog. */
+function reminder(p: Paces, racePaceSKm: number): Step[] {
   const body = intervals(2, minutesAt(1, racePaceSKm), "race", p, RPE.SPE, 2, 1000);
   for (const s of body) if (s.kind === "work") s.target.paceSKm = [racePaceSKm, racePaceSKm];
-  return quality("SPE", body, p);
+  return body;
 }
+
+/** Race week (P18: the taper Q at its fewest fractions, same pace; Pfitzinger): the reminder. */
+export const raceReminder = (p: Paces, racePaceSKm: number): Session => quality("SPE", reminder(p, racePaceSKm), p);
 
 /** M3 catalogue, sized by C1. */
 export function buildSession(type: RunType, ctx: BuildCtx): Session {

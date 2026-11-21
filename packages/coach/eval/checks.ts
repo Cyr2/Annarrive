@@ -50,6 +50,27 @@ function judge() {
 const longest30 = (acts: Activity[], now: string): number =>
   Math.max(0, ...acts.filter((a) => a.start < now && daysBetween(a.start, now) <= 30).map((a) => a.durMin));
 
+/** A race in the 84 days before `now` (P14, G1: the weeks after it are read against her longest before it). */
+/** Her usual footing: the lower quartile of her training runs of 30 days. */
+const usualRun = (acts: Activity[], now: string): number => {
+  const xs = acts
+    .filter((a) => !a.isRace && a.start < now && daysBetween(a.start, now) <= 30)
+    .map((a) => a.durMin)
+    .sort((a, b) => a - b);
+  return xs[Math.floor(xs.length / 4)] ?? 0;
+};
+
+const raceWithin84 = (acts: Activity[], now: string): boolean =>
+  acts.some((a) => a.isRace && a.start < now && daysBetween(a.start, now) <= 84);
+
+/** G1's reference: her longest of 30 days, or after a race of the last 12 weeks 60 % of her longest training run of them. */
+const spikeRef = (acts: Activity[], now: string): number => {
+  const l30 = longest30(acts, now);
+  if (!raceWithin84(acts, now)) return l30;
+  const runs84 = acts.filter((a) => !a.isRace && a.start < now && daysBetween(a.start, now) <= 84);
+  return Math.max(l30, 0.6 * Math.max(0, ...runs84.map((a) => a.durMin)));
+};
+
 const allRuns = (r: RunLog): Activity[] => [...r.history, ...r.weeks.flatMap((w) => w.activities)];
 
 /** K1: G1 (Frandsen 2025), G2 (Damsted 2019), P10 (Pfitzinger: back to load after a recovery week). */
@@ -58,12 +79,12 @@ function volume(r: RunLog): Criterion {
   const acts = allRuns(r);
   r.weeks.forEach((w, i) => {
     const buildAt = at(addDays(w.monday, -1), "18:00");
-    const cap = 1.1 * longest30(acts, buildAt);
+    const cap = 1.1 * spikeRef(acts, buildAt);
     for (const s of runs(w))
       j.check(s.durMin <= cap + 0.5, () => ({
         week: w.week,
         rule: "G1",
-        detail: `${s.type} de ${r0(s.durMin)} min > 1,10 × plus longue des 30 j (${r0(cap / 1.1)} min)`,
+        detail: `${s.type} de ${r0(s.durMin)} min > 1,10 × plus longue des 30 j, ou 60 % de celle des 12 sem. après une course (${r0(cap / 1.1)} min)`,
         severity: "majeure",
       }));
     const prev = r.weeks[i - 1];
@@ -121,6 +142,15 @@ function intensity(r: RunLog): Criterion {
       detail: `${q} séances dures hors sortie longue`,
       severity: "majeure",
     }));
+    // Runna (2 hard runs in 4 to 5), Campus Coach, McMillan: a long run with a race-pace block is one of them.
+    const hard = q + list.filter((s) => s.type === "L" && s.steps.some((st) => st.zone === "race")).length;
+    if (list.length <= 5)
+      j.check(hard <= 2, () => ({
+        week: w.week,
+        rule: "P11 (séances dures)",
+        detail: `${hard} séances dures en ${list.length} sorties, sortie longue à allure de course comprise`,
+        severity: "majeure",
+      }));
   }
   return {
     id: "intensite",
@@ -131,7 +161,37 @@ function intensity(r: RunLog): Criterion {
 }
 
 const MIN_LONG: Record<number, number> = { 21097.5: 60, 42195: 90 };
+const L_MAX: Record<number, number> = { 5000: 90, 10000: 105, 21097.5: 120, 42195: 150 };
 const LAST_LONG_DAYS: Record<number, number> = { 21097.5: 14, 42195: 21 };
+
+/** P15 (an easy run under 3/4 of the long run) and P14 after a race (the long run at its share). */
+function footingsAndRace(j: Judge, r: RunLog, w: WeekLog, l: Session, pct: number): void {
+  const list = runs(w);
+  // P15: an easy run stays under 3/4 of the long run (Runna, Pfitzinger), above it only for the catalogue's 30 min
+  // or the footing she already runs (the lower quartile of her runs of 30 days).
+  const buildAt = at(addDays(w.monday, -1), "18:00");
+  const top = Math.max(30, 0.75 * l.durMin, Math.min(l.durMin, usualRun(allRuns(r), buildAt)));
+  for (const e of list.filter((s) => s.type === "E"))
+    j.check(e.durMin <= top + 1, () => ({
+      week: w.week,
+      rule: "P15 (footing / sortie longue)",
+      detail: `footing de ${r0(e.durMin)} min pour une sortie longue de ${r0(l.durMin)} min (au plus 75 %)`,
+      severity: "majeure",
+    }));
+  // P14 after a race: the long run is not held to her short runs of the easy weeks (Pfitzinger, Daniels: 25 to
+  // 30 % of the week), within G1's reference and the 10 % of P10.
+  if (raceWithin84(allRuns(r), buildAt) && !w.phase.includes("décharge") && !isTaper(w) && !afterRace(r, w))
+    j.check(
+      l.durMin >=
+        Math.min(pct * minutes(list), L_MAX[r.persona.goal.distanceM] ?? 120, 1.1 * spikeRef(allRuns(r), buildAt)) - 5,
+      () => ({
+        week: w.week,
+        rule: "P14 (après une course)",
+        detail: `sortie longue de ${r0(l.durMin)} min, sous sa part de ${r0(pct * minutes(list))} min alors que son historique la permet`,
+        severity: "majeure",
+      }),
+    );
+}
 
 /** K3: P14 (share by runs per week), Daniels (the long run is the week's longest), S8 (her days), Pfitzinger/Hansons (length). */
 function longRun(r: RunLog): Criterion {
@@ -180,6 +240,8 @@ function longRun(r: RunLog): Criterion {
       detail: `sortie longue ${Math.round((100 * l.durMin) / minutes(list))} % du volume (plafond ${pct * 100} %, ou ${r0(held)} min déjà courues)`,
       severity: "mineure",
     }));
+    footingsAndRace(j, r, w, l, pct);
+    const buildAt = at(addDays(w.monday, -1), "18:00");
     const min = MIN_LONG[p.goal.distanceM];
     // G1 holds the long run to 1.10 × her longest of 30 days: when she cut the last one short, she set that limit.
     const before = r.weeks.find((x) => x.week === w.week - 1);
@@ -187,7 +249,7 @@ function longRun(r: RunLog): Criterion {
     const ranL = before?.activities.find((a) => a.id === `run-${lastL?.id}`);
     const cut = lastL !== undefined && ranL !== undefined && ranL.durMin < 0.9 * lastL.durMin;
     // Same with a short base (P6): the long run climbs from her longest of 30 days at G1's 10 % (Frandsen 2025).
-    const g1 = l.durMin >= Math.floor(1.1 * longest30(allRuns(r), at(addDays(w.monday, -1), "18:00"))) - 1;
+    const g1 = l.durMin >= Math.floor(1.1 * spikeRef(allRuns(r), buildAt)) - 1;
     if (min && !cut && !g1 && !w.phase.startsWith("base") && !w.phase.includes("décharge") && !isTaper(w))
       j.check(l.durMin >= min, () => ({
         week: w.week,
@@ -694,6 +756,13 @@ const workAt = (s: Session, zone: string): number =>
   sum(s.steps.filter((st) => st.kind === "work" && st.zone === zone).map((st) => st.durMin * (st.reps ?? 1)));
 /** Threshold minutes of a week (T and CRUISE work), printed by `--weeks`. */
 export const thresholdMin = (list: Session[]): number => sum(list.map((s) => workAt(s, "T")));
+/** A plan week above G2's cap (1.10 × her best of the 4 weeks run before): G2b may cut a Q. */
+const atG2Cap = (r: RunLog, w: WeekLog): boolean => {
+  const acts = allRuns(r);
+  const ranIn = (monday: string): number =>
+    sum(acts.filter((a) => a.start >= monday && a.start < addDays(monday, 7)).map((a) => a.durMin));
+  return w.planMin > 1.1 * Math.max(...[1, 2, 3, 4].map((k) => ranIn(addDays(w.monday, -7 * k))));
+};
 const isLoad = (w: WeekLog): boolean => /^(dev|spe)/.test(w.phase) && !w.phase.includes("décharge");
 const hardQ = (s: Session): boolean => isHard(s) && s.type !== "L" && s.type !== "TEST" && s.type !== "RACE";
 /** The week's quality sessions as their shape, to tell two weeks apart (G3). */
@@ -709,6 +778,49 @@ const regularBefore = (r: RunLog): boolean =>
   r.history.filter((a) => !a.isRace && a.start < PLAN_START && daysBetween(a.start, PLAN_START) < 56).length >= 24;
 const withStrides = (s: Session): boolean =>
   s.type === "E" && s.steps.some((st) => st.kind === "work") && s.steps.some((st) => st.kind === "strides");
+
+/** Daniels' doses: threshold at most 10 % of the week, I at least 12 min; P9: a deload's race pace a reminder. */
+function doses(j: Judge, r: RunLog, w: WeekLog, uncapped: boolean): void {
+  const p = daniels(w.vdotStart);
+  // Daniels: one threshold session at most 10 % of the week's distance, 20 min at least (P12 floor).
+  const tCap = Math.max(20, (0.1 * minutes(runs(w)) * p.E) / p.T);
+  for (const s of runs(w).filter((x) => x.type === "T" || x.type === "CRUISE"))
+    j.check(workAt(s, "T") <= tCap + 1, () => ({
+      week: w.week,
+      rule: "P12 (plafond du seuil)",
+      detail: `${s.type} de ${r0(workAt(s, "T"))} min au seuil, au-dessus des 10 % du volume (${r0(tCap)} min)`,
+      severity: "majeure",
+    }));
+  // Daniels: an I session is 8 % of the week, two 3 min fractions are no dose; a G2 cap may still cut it, and
+  // P16 when 12 min would take the week's hard time past 10 %.
+  const z3 = (x: Session): number =>
+    sum(x.steps.filter((st) => st.target.rpe >= 8).map((st) => st.durMin * (st.reps ?? 1)));
+  const training = runs(w).filter((x) => x.type !== "TEST");
+  if (uncapped && isLoad(w) && !atG2Cap(r, w))
+    for (const s of training.filter(
+      (x) => x.type === "I" && sum(training.map(z3)) - z3(x) + 12 <= 0.1 * minutes(training),
+    ))
+      j.check(workAt(s, "I") >= 12, () => ({
+        week: w.week,
+        rule: "P12 (dose de VO2)",
+        detail: `I de ${r0(workAt(s, "I"))} min (au moins 12)`,
+        severity: "majeure",
+      }));
+  // P9, Runna, McMillan: a deload cuts the hard work first, race pace included: a reminder at most.
+  if (w.phase.includes("décharge")) {
+    const race = sum(
+      runs(w)
+        .filter((s) => s.type !== "TEST")
+        .map((s) => workAt(s, "race")),
+    );
+    j.check(race <= 12, () => ({
+      week: w.week,
+      rule: "P9 (décharge)",
+      detail: `${r0(race)} min à allure de course dans une semaine de décharge (rappel de 2 × 1 km au plus)`,
+      severity: "majeure",
+    }));
+  }
+}
 
 /**
  * K13, what the weeks hold: P6 (a regular runner gets her first quality session in week 2: Daniels' phase I shortened,
@@ -743,6 +855,7 @@ function content(r: RunLog): Criterion {
         detail: `${s.type} de ${r0(workAt(s, "T"))} min au seuil (au moins 20)`,
         severity: "majeure",
       }));
+    doses(j, r, w, uncapped);
     if (/^(dev|spe)/.test(w.phase))
       j.check(runs(w).some(withStrides), () => ({
         week: w.week,

@@ -116,6 +116,12 @@ describe("longRunMin (P14)", () => {
     expect(longRunMin(4, 130, 21097.5, 150, true)).toBe(120);
     expect(longRunMin(4, 130, 21097.5, Number.POSITIVE_INFINITY, true)).toBeCloseTo(45.5, 6);
   });
+
+  it("follows its share after a race, from what the race left of her longest run, not her short footings (P-39)", () => {
+    expect(longRunMin(4, 190, 21097.5, 50, true)).toBeCloseTo(55, 6);
+    expect(longRunMin(4, 190, 21097.5, 50, true, 123)).toBeCloseTo(66.5, 6);
+    expect(longRunMin(4, 400, 21097.5, 50, true, 123)).toBe(120);
+  });
 });
 
 describe("weekTemplate (P11 to P13)", () => {
@@ -139,6 +145,36 @@ describe("weekTemplate (P11 to P13)", () => {
     expect(weekTemplate("spe", 4, 42195, 3, false, true)).toEqual(["SPE", "E+strides", "CRUISE", "L"]);
     expect(weekTemplate("spe", 4, 5000, 0)).toEqual(["I", "E+strides", "T", "L"]);
     expect(weekTemplate("taper", 4, 10000, 1)).toEqual(["CRUISE", "E+strides", "I", "L"]);
+  });
+});
+
+describe("two hard runs a week at most (P11, P-40)", () => {
+  const hardSlots = ["T", "CRUISE", "I", "R", "SPE", "FARTLEK", "TEST"];
+  const plan = generatePlan(SEMI, regular, runs(8, 4, 45), { vdot: 40 }, NOW);
+  const spe = plan.weeks.filter((w) => w.phase === "spe");
+
+  it("drops SPE for an easy run with strides when the long run carries the race-pace block, keeps the threshold", () => {
+    const block = spe.filter((w) => !w.deload && w.progressionStep % 2 === 0);
+    expect(block.length).toBeGreaterThan(0);
+    for (const w of block) {
+      expect(w.template).toEqual(["E+strides", "E+strides", w.template[2], "L"]);
+      expect(["T", "CRUISE"]).toContain(w.template[2]);
+    }
+    const other = spe.find((w) => !w.deload && w.progressionStep % 2 === 1);
+    expect(other?.template[0]).toBe("SPE");
+  });
+
+  it("never builds three hard runs, a long run with a race-pace block counted", () => {
+    for (const w of plan.weeks) {
+      const s = buildWeek(w, { paces: P40, distM: 21097.5, longest30dMin: 200, racePaceSKm: 313 });
+      const longBlock = s.some((x) => x.type === "L" && x.steps.some((st) => st.zone === "race"));
+      expect(w.template.filter((t) => hardSlots.includes(t)).length + Number(longBlock)).toBeLessThanOrEqual(2);
+    }
+  });
+
+  it("keeps two Q when a 3-run week's long run has no room for a third", () => {
+    const three = generatePlan(SEMI, { ...regular, runsPerWeek: 3 }, runs(8, 3, 60), { vdot: 40 }, NOW);
+    expect(three.weeks.filter((w) => w.phase === "spe" && !w.deload).every((w) => w.template[0] === "SPE")).toBe(true);
   });
 });
 
@@ -330,6 +366,23 @@ describe("buildWeek", () => {
     const s = buildWeek({ ...w, deload: true, template: ["TEST", "E", "E", "L"], volumeMin: 400 }, ctx);
     expect(s[0]?.steps.find((st) => st.kind === "work")?.durMin).toBe(20);
     expect(s.filter((x) => x.type === "E").every((x) => x.durMin >= 30 && x.durMin <= 75)).toBe(true);
+  });
+
+  it("keeps every footing under 3/4 of the long run, past it only for her usual footing (P15, P-41)", () => {
+    const dev = plan.weeks.find((w) => w.phase === "dev" && !w.deload);
+    if (!dev) throw new Error("no dev week");
+    const big = { ...dev, volumeMin: 300 };
+    const s = buildWeek(big, { ...ctx, spikeRefMin: 200 });
+    const l = s.find((x) => x.type === "L")?.durMin ?? 0;
+    expect(l).toBeCloseTo(0.35 * 300, 0);
+    expect(s.filter((x) => x.type === "E").every((x) => x.durMin <= 0.75 * l + 0.5)).toBe(true);
+    // A long run G1 holds at 49.5 min: the footings keep her 45 min, under the long run.
+    const base = plan.weeks[0];
+    if (!base) throw new Error("no week");
+    const held = (usualRunMin: number) =>
+      buildWeek({ ...base, volumeMin: 190 }, { ...ctx, longest30dMin: 45, usualRunMin }).filter((x) => x.type !== "L");
+    expect(held(45).map((x) => Math.round(x.durMin))).toEqual([45, 45, 45]);
+    expect(held(0).map((x) => Math.round(x.durMin))).toEqual([37, 37, 37]);
   });
 
   it("puts Q1 before the long run for a 10 km", () => {
