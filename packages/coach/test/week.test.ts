@@ -244,6 +244,34 @@ describe("planWeek (cycle 0.1 buildWeek)", () => {
     expect(total(request({ planStart, health: over }))).toBe(plain);
   });
 
+  it("after a race, lets the long run take its share, not 1.10 × her short footings since (P14, G1, W-7)", () => {
+    // 120 min long runs 7 to 12 weeks back, a race 6 weeks back, then 4 footings of 40 min a week.
+    const block = [...Array(6).keys()].flatMap((k): Activity[] => {
+      const m = addDays(MONDAY, -7 * (12 - k));
+      return [1, 3, 4]
+        .map((d) => ({ id: `b${k}${d}`, start: `${addDays(m, d)}T08:00`, durMin: 45, distM: 7200 }))
+        .concat({
+          id: `b${k}L`,
+          start: `${addDays(m, 6)}T08:00`,
+          durMin: 120,
+          distM: 19200,
+        });
+    });
+    const race: Activity = {
+      id: "race",
+      start: `${addDays(MONDAY, -36)}T09:00`,
+      durMin: 100,
+      distM: 21097.5,
+      isRace: true,
+    };
+    const footings = runs(5, 4, 40);
+    const long = (isRace: boolean) =>
+      planWeek(request({ history: [...block, { ...race, isRace }, ...footings] })).sessions.find((x) => x.type === "L")
+        ?.durMin ?? 0;
+    expect(long(false)).toBeLessThanOrEqual(44);
+    expect(long(true)).toBeGreaterThan(50);
+  });
+
   it("keeps one short race-pace Q in the race week (P18, W-5)", () => {
     const goal = { distanceM: 10000 as const, date: addDays(MONDAY, 6), targetMin: 50 };
     const { sessions } = planWeek(request({ goal, planStart: addDays(MONDAY, -60) }));

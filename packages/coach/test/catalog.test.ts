@@ -55,7 +55,7 @@ describe("buildSession (C1)", () => {
     expect(i.steps.find((s) => s.kind === "recover")).toMatchObject({ reps: 3, durMin: 3 });
   });
 
-  it("progresses T by 5 min a load week within Daniels' 10 %, CRUISE up to 40 min in a new format each week (C-12)", () => {
+  it("progresses T by 5 min a load week, CRUISE in a new format each week, both within Daniels' 10 % (C-12)", () => {
     const big = { ...ctx, weeklyMin: 400 };
     // 400 min at E 6:08 = 65 km: 10 % at T 5:06 is 33 min.
     expect(work(buildSession("T", { ...big, progressionStep: 2 }))[0]?.durMin).toBe(30);
@@ -63,8 +63,25 @@ describe("buildSession (C1)", () => {
     expect(work(buildSession("CRUISE", big))[0]).toMatchObject({ reps: 4, durMin: 5 });
     expect(buildSession("CRUISE", big).steps.find((s) => s.kind === "recover")).toMatchObject({ reps: 3, durMin: 1 });
     expect(work(buildSession("CRUISE", { ...big, progressionStep: 1 }))[0]).toMatchObject({ reps: 3, durMin: 8 });
-    expect(work(buildSession("CRUISE", { ...big, progressionStep: 4 }))[0]).toMatchObject({ reps: 3, durMin: 12 });
-    expect(work(buildSession("CRUISE", { ...ctx, progressionStep: 7 }))[0]).toMatchObject({ reps: 4, durMin: 10 });
+    expect(work(buildSession("CRUISE", { ...big, progressionStep: 4 }))[0]).toMatchObject({ reps: 2, durMin: 12 });
+    // 200 min: 10 % is 16.6 min, the 20 min floor holds; 35 min (7 × 5) is no longer possible.
+    expect(work(buildSession("CRUISE", { ...ctx, progressionStep: 7 }))[0]).toMatchObject({ reps: 2, durMin: 10 });
+    expect(work(buildSession("CRUISE", { ...ctx, progressionStep: 4 }))[0]).toMatchObject({ reps: 2, durMin: 10 });
+  });
+
+  it("keeps 12 min of I at least, whatever the week (C-15)", () => {
+    const i = (c: Partial<BuildCtx>) => work(buildSession("I", { ...ctx, weeklyMin: 150, ...c }))[0];
+    expect(i({})).toMatchObject({ reps: 4, durMin: 3 });
+    expect(i({ progressionStep: 1 })).toMatchObject({ reps: 3, durMin: 4 });
+    expect(i({ progressionStep: 2 })).toMatchObject({ reps: 3, durMin: 5 });
+  });
+
+  it("splits the half's race-pace work into blocks, and keeps a deload's to 2 × 1 km (C-16)", () => {
+    const spe = (c: Partial<BuildCtx>) =>
+      work(buildSession("SPE", { ...ctx, phase: "spe", racePaceSKm: 313, ...c }))[0];
+    expect(spe({ progressionStep: 2 })).toMatchObject({ reps: 3, distM: 4000 });
+    expect(spe({ progressionStep: 5 })).toMatchObject({ reps: 3, distM: 4000 });
+    expect(spe({ progressionStep: 2, deload: true })).toMatchObject({ reps: 2, distM: 1000 });
   });
 
   it("varies the I fractions 3, 4, 5 min across load weeks, 3 min in the specific phase (C-13)", () => {

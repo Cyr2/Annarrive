@@ -91,6 +91,31 @@ function longest30d(history: Activity[], now: string): number {
   return recent.length ? Math.max(...recent) : Number.POSITIVE_INFINITY;
 }
 
+/** P14, G1: a race of the last 12 weeks and the easy weeks after it; 60 % of her longest run before it still counts. */
+const RACE_LOOKBACK_DAYS = 84;
+const AFTER_RACE_LONG = 0.6;
+
+/**
+ * G1's reference: her longest run of 30 days; after a race of the last 12 weeks, at least 60 % of her longest
+ * training run of those weeks (Mujika and Padilla 2000: reduced training keeps endurance for weeks; Pfitzinger and
+ * Douglas: the long runs come back within the weeks after a marathon). P14's share and P10's 10 % still bound it.
+ */
+function spikeRef(history: Activity[], now: string): number {
+  const recent = history.filter((a) => a.start < now && daysBetween(a.start, now) <= RACE_LOOKBACK_DAYS);
+  const l30 = longest30d(history, now);
+  if (!recent.some((a) => a.isRace)) return l30;
+  return Math.max(l30, AFTER_RACE_LONG * Math.max(0, ...training(recent).map((a) => a.durMin)));
+}
+
+/** P15: her usual footing, the lower quartile of her training runs of 30 days (long runs and Q above it); 0 without. */
+function usualRun(history: Activity[], now: string): number {
+  const recent = training(history)
+    .filter((a) => a.start < now && daysBetween(a.start, now) <= 30)
+    .map((a) => a.durMin)
+    .sort((a, b) => a - b);
+  return recent[Math.floor(recent.length / 4)] ?? 0;
+}
+
 /** The programme `planWeek` follows: generated as of its start day, from the runs before it. */
 export function programPlan(
   r: Pick<WeekRequest, "now" | "planStart" | "settings" | "history" | "fitness"> & { goal: NonNullable<Goal> },
@@ -192,7 +217,14 @@ function content(r: WeekRequest, p: Paces): Content {
       (first && r.monday < first.monday ? first : raceWeek(plan, r.monday, r.settings.runsPerWeek));
     const week = adjusted(found, r);
     const racePace = goal.targetMin ? { racePaceSKm: targetPace(goal.targetMin, goal.distanceM, p) } : {};
-    const ctx = { paces: p, distM: goal.distanceM, longest30dMin: longest30d(r.history, r.now), ...racePace };
+    const ctx = {
+      paces: p,
+      distM: goal.distanceM,
+      longest30dMin: longest30d(r.history, r.now),
+      spikeRefMin: spikeRef(r.history, r.now),
+      usualRunMin: usualRun(r.history, r.now),
+      ...racePace,
+    };
     return { sessions: buildWeek(week, ctx), warnings: plan.warnings, phase: week.phase };
   }
   const weekIdx = Math.floor(daysBetween(EPOCH_MONDAY, r.monday) / 7) + 1;
@@ -344,7 +376,7 @@ function restAfterRace(r: WeekRequest): CalEvent[] {
 
 /** G1 and G2 to G4 on the new sessions against the weeks actually run, then P16 on what is left. */
 function capped(sessions: Session[], r: WeekRequest, phase: Phase): Session[] {
-  const spiked = capWeekSpikes(sessions, longest30d(r.history, r.now)).week;
+  const spiked = capWeekSpikes(sessions, spikeRef(r.history, r.now)).week;
   const prev = pastWeeks(r.history, r.monday, LOOKBACK_WEEKS);
   // Without any run in those weeks there is no reference: the plan's starting volume (P2) already applies.
   if (prev.every((m) => m === 0)) return spiked;
