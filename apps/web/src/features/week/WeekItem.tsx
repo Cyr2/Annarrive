@@ -126,6 +126,7 @@ export function DraggableItem({ item, disabled, past }: { item: Item; disabled: 
       ref={setNodeRef}
       type="button"
       data-row={item.id}
+      data-crumb="Ligne de la semaine"
       {...attributes}
       {...listeners}
       aria-roledescription={disabled ? undefined : "séance déplaçable"}

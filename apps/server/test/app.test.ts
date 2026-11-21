@@ -180,6 +180,28 @@ describe("hardening", () => {
     expect(await ip({ "x-forwarded-for": "104.21.3.4", "cf-connecting-ip": "not an ip" })).toBe("104.21.3.4");
   });
 
+  it("never lets a cache keep an API answer", async () => {
+    const t = setup({ reggie: async function* () {} });
+    await t.login();
+    expect((await t.request("GET", "/api/watch")).headers.get("cache-control")).toBe("no-store");
+    expect((await t.request("GET", "/api/nothing")).headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("caps watch syncs at 6 per minute", async () => {
+    const t = setup({ reggie: async function* () {} });
+    await t.login();
+    for (let i = 0; i < 6; i++) expect((await t.call("POST", "/api/watch/sync")).status).not.toBe(429);
+    expect((await t.call("POST", "/api/watch/sync")).status).toBe(429);
+  });
+
+  it("caps other writes with one shared counter", async () => {
+    const t = setup({ reggie: async function* () {} });
+    await t.login();
+    for (let i = 0; i < 300; i++) await t.call("POST", "/api/feel-better");
+    expect((await t.call("POST", "/api/feel-better")).status).toBe(429);
+    expect((await t.call("GET", "/api/watch")).status).toBe(200);
+  });
+
   it("caps Reggie at 30 messages per 10 minutes", async () => {
     const t = setup({ reggie: async function* () {} });
     await t.login();

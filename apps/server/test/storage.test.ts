@@ -172,6 +172,12 @@ describe("config", () => {
     expect(config.ICS_URL).toBeUndefined();
   });
 
+  it("requires a long BRIDGE_SECRET when set", () => {
+    const base = { SESSION_SECRET: "x".repeat(32) };
+    expect(() => loadConfig({ ...base, BRIDGE_SECRET: "court" })).toThrow(/BRIDGE_SECRET/);
+    expect(loadConfig({ ...base, BRIDGE_SECRET: "y".repeat(32) }).BRIDGE_SECRET).toHaveLength(32);
+  });
+
   it("sends to Garmin unless GARMIN_WRITE is off", () => {
     const secret = { SESSION_SECRET: "x".repeat(32) };
     expect(loadConfig(secret).GARMIN_WRITE).toBe(true);

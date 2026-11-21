@@ -20,6 +20,7 @@ export function DayAgenda({ items, date }: { items: Item[]; date: string }) {
           <li key={item.id}>
             <button
               type="button"
+              data-crumb="Ligne de la journée"
               onClick={() => show(sheetFor(item))}
               className="press block w-full rounded-row border-0 bg-transparent p-0 text-ink"
             >

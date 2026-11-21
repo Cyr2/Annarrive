@@ -11,7 +11,7 @@ from garmin_bridge.app import app, unofficial
 from garmin_bridge.official import TOKEN_PATH, OfficialApi, get_official
 
 client = TestClient(app)
-AUTH = {"x-bridge-secret": "s3cret"}
+AUTH = {"x-bridge-secret": "s3cret" + "0" * 30}
 KEY = "cle-secrete-anna"
 DAY = "2026-11-16"
 
@@ -52,7 +52,7 @@ class FakeGarmin:
 
 @pytest.fixture
 def setup(monkeypatch):
-    monkeypatch.setenv("BRIDGE_SECRET", "s3cret")
+    monkeypatch.setenv("BRIDGE_SECRET", "s3cret" + "0" * 30)
     fake = MagicMock()
     app.dependency_overrides[unofficial] = lambda: lambda: fake
 

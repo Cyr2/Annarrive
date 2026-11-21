@@ -41,7 +41,11 @@ export interface BridgeClientOptions {
   /** False: every request but a read is refused before it leaves the server. */
   write?: boolean;
   fetch?: typeof fetch;
+  now?: () => number;
 }
+
+/** After a refused Garmin login, nothing retries for an hour: each attempt is a login, and too many lock the account. */
+export const AUTH_PAUSE_MS = 3_600_000;
 
 /** What the server uses: it never lists workouts. */
 export type BridgeClient = Omit<OwnerBridgeClient, "listWorkouts">;
@@ -56,7 +60,11 @@ export function createBridgeClient(options: BridgeClientOptions = {}) {
   const write = options.write ?? true;
   if (!baseUrl || !secret) throw new BridgeError("BRIDGE_URL et BRIDGE_SECRET sont requis");
 
+  const now = options.now ?? Date.now;
+  let authPausedUntil = 0;
+
   async function request(path: string, init: RequestInit): Promise<Response> {
+    if (now() < authPausedUntil) throw new GarminAuthError("Connexion Garmin en pause", 401);
     let response: Response;
     try {
       response = await doFetch(new URL(path, baseUrl), {
@@ -68,7 +76,10 @@ export function createBridgeClient(options: BridgeClientOptions = {}) {
       throw new BridgeUnreachableError(`Bridge Garmin injoignable : ${String(error)}`);
     }
     if (response.ok) return response;
-    if (response.status === 401) throw new GarminAuthError("Connexion Garmin refusée", 401);
+    if (response.status === 401) {
+      authPausedUntil = now() + AUTH_PAUSE_MS;
+      throw new GarminAuthError("Connexion Garmin refusée", 401);
+    }
     if (response.status === 429) {
       const retryAfter = Number(response.headers.get("retry-after"));
       throw new GarminRateLimitError(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : null);

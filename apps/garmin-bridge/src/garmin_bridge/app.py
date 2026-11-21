@@ -35,11 +35,12 @@ RETRY_AFTER_SECONDS = 300
 def require_secret(x_bridge_secret: str = Header(default="")) -> None:
     expected = os.environ.get("BRIDGE_SECRET", "")
     # An unset secret must never let a request through.
-    if not expected or not hmac.compare_digest(x_bridge_secret, expected):
+    # Bytes, so a non-ASCII header is a 401, not a TypeError.
+    if len(expected) < 32 or not hmac.compare_digest(x_bridge_secret.encode(), expected.encode()):
         raise HTTPException(status_code=401, detail="Secret invalide")
 
 
-app = FastAPI(title="garmin-bridge", docs_url=None, redoc_url=None)
+app = FastAPI(title="garmin-bridge", docs_url=None, redoc_url=None, openapi_url=None)
 GarminDep = Annotated[Garmin, Depends(get_garmin)]
 OfficialDep = Annotated[OfficialApi | None, Depends(get_official)]
 

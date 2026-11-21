@@ -4,7 +4,7 @@ import { changeOptionSchema, localDateSchema, plannedSessionSchema, slotSchema }
 /** Where the conversation was opened from, so Reggie knows what "cette séance" means. */
 export const chatContextSchema = z.object({
   screen: z.enum(["today", "week", "program", "after_run", "session"]),
-  sessionId: z.string().min(1).optional(),
+  sessionId: z.string().min(1).max(100).optional(),
 });
 export type ChatContext = z.infer<typeof chatContextSchema>;
 

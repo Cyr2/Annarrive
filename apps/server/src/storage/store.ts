@@ -65,6 +65,15 @@ export class DocumentStore<T extends { id: string }> {
     this.#db.prepare(`DELETE FROM ${this.table} WHERE start_at < ?`).run(cutoff);
   }
 
+  /** Keeps only the `max` latest documents by start: a hard cap on a table a client can fill. */
+  keepLatest(max: number): void {
+    this.#db
+      .prepare(
+        `DELETE FROM ${this.table} WHERE id NOT IN (SELECT id FROM ${this.table} ORDER BY start_at DESC, id DESC LIMIT ?)`,
+      )
+      .run(max);
+  }
+
   delete(id: string): void {
     this.#db.prepare(`DELETE FROM ${this.table} WHERE id = ?`).run(id);
   }

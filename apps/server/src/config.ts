@@ -7,7 +7,10 @@ const configSchema = z.object({
   PUBLIC_URL: z.string().url().default("http://localhost:8787"),
   ICS_URL: z.string().url().optional(),
   BRIDGE_URL: z.string().url().optional(),
-  BRIDGE_SECRET: z.string().optional(),
+  BRIDGE_SECRET: z
+    .string()
+    .min(32, "BRIDGE_SECRET fait moins de 32 caractères : génère-le avec `openssl rand -hex 32`.")
+    .optional(),
   /** "off" on a test instance logged into Anna's account: reads only, nothing sent to her watch. */
   GARMIN_WRITE: z
     .enum(["on", "off"])

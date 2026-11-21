@@ -1,6 +1,6 @@
 import type { IncidentInput } from "@annarrive/protocol";
 import { describe, expect, it } from "vitest";
-import { formatIncident, sinceDate } from "../src/services/incidents.ts";
+import { formatIncident, MAX_INCIDENTS, sinceDate } from "../src/services/incidents.ts";
 import { MONDAY_8AM, setup } from "./helpers.ts";
 
 const incident: IncidentInput = {
@@ -84,6 +84,19 @@ describe("incident journal", () => {
     t.setNow(new Date(MONDAY_8AM.getTime() + 31 * DAY));
     t.services.incidents.purge();
     expect(t.services.incidents.list(new Date(0)).map((i) => i.message)).toEqual(["new"]);
+  });
+});
+
+describe("incident cap", () => {
+  it("keeps only the latest 500 rows", () => {
+    const t = setup();
+    for (let i = 0; i < MAX_INCIDENTS + 5; i++) {
+      t.setNow(new Date(MONDAY_8AM.getTime() + i * 1000));
+      t.services.incidents.record([{ ...incident, message: `m${i}` }], "anna");
+    }
+    const kept = t.services.incidents.list(new Date(0));
+    expect(kept).toHaveLength(MAX_INCIDENTS);
+    expect(kept[0]?.message).toBe(`m${MAX_INCIDENTS + 4}`);
   });
 });
 

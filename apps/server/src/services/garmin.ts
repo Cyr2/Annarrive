@@ -68,7 +68,7 @@ const LAP_DAYS = 84;
 /** Small pages, read one after the other with a pause: Garmin publishes no rate limit. */
 const PAGE = 50;
 
-const errorName = (error: unknown) => (error instanceof Error ? error.message : "erreur inconnue");
+const errorName = (error: unknown) => (error instanceof Error ? error.name : "erreur inconnue");
 
 /** The scheduled Garmin jobs: read runs and recovery, keep the watch calendar in step with the plan. */
 export class GarminService {
