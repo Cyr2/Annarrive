@@ -91,25 +91,38 @@ test.describe("onboarding", () => {
   test("6. le Retour du système revient à l'étape d'avant", async ({ page }) => {
     await page.goto("/?mock&onboarding");
     await page.getByRole("button", { name: "Commencer" }).click();
-    await page.getByRole("button", { name: "Semi-marathon", exact: true }).click();
+    await page.getByRole("button", { name: /^Semi-marathon/ }).click();
     await page.getByLabel("Date").fill("2027-03-14");
     await page.getByRole("button", { name: "Continuer", exact: true }).click();
-    await expect(page.getByRole("heading", { name: "Ton dernier chrono" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Ta dernière course" })).toBeVisible();
     await page.goBack();
-    await expect(page.getByRole("heading", { name: "Ton objectif" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Ton dernier chrono" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Ta course" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Ta dernière course" })).toHaveCount(0);
     expect(page.url()).toContain("onboarding");
+  });
+
+  test("« Je n'en ai pas » passe la dernière course sans garder le temps tapé", async ({ page }) => {
+    await page.goto("/?mock&onboarding");
+    await page.getByRole("button", { name: "Commencer" }).click();
+    await page.getByRole("button", { name: "Pas d'objectif" }).click();
+    await page.getByRole("button", { name: "Continuer", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Ta dernière course" })).toBeVisible();
+    await page.getByLabel("Minutes").last().fill("52");
+    await page.getByRole("button", { name: "Je n'en ai pas" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Ta semaine" })).toBeVisible();
+    await page.getByRole("button", { name: "Retour" }).click();
+    await expect(page.getByLabel("Minutes").last()).toHaveValue("");
   });
 
   test("8. deux appuis rapprochés sur Continuer n'avancent que d'une étape", async ({ page }) => {
     await page.goto("/?mock&onboarding");
     await page.getByRole("button", { name: "Commencer" }).click();
-    await page.getByRole("button", { name: "Semi-marathon", exact: true }).click();
+    await page.getByRole("button", { name: /^Semi-marathon/ }).click();
     await page.getByLabel("Date").fill("2027-03-14");
     await page.getByRole("button", { name: "Continuer", exact: true }).dblclick();
-    await expect(page.getByRole("heading", { name: "Ton dernier chrono" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Ta dernière course" })).toBeVisible();
     await page.waitForTimeout(800);
-    await expect(page.getByRole("heading", { name: "Ton dernier chrono" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Ta dernière course" })).toBeVisible();
   });
 });
 

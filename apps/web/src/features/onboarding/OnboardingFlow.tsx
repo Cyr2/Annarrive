@@ -5,36 +5,35 @@ import { SPRING_STEP } from "../../lib/motion.ts";
 import { Button, IconButton } from "../../ui/controls.tsx";
 import { LogoSlot } from "../../ui/LogoSlot.tsx";
 import { Sky } from "../../ui/Sky.tsx";
-import { ConnectStep, HealthStep } from "./CareSteps.tsx";
-import { COPY, type Draft, issue, type Step } from "./onboarding.ts";
+import { ReadyStep, WelcomeStep } from "./Bookends.tsx";
+import { ConsentStep } from "./CareSteps.tsx";
+import { COPY, issue, type Step } from "./onboarding.ts";
 import { Progress } from "./parts.tsx";
-import { LastStep, RaceStep, TargetStep } from "./RaceSteps.tsx";
-import { HoursStep, StrengthStep, WeekStep } from "./RoutineSteps.tsx";
-import { SummaryStep, WelcomeStep } from "./Summary.tsx";
+import { LastStep, RaceStep } from "./RaceSteps.tsx";
+import { DaysStep, WeekStep } from "./RoutineSteps.tsx";
 import { useOnboarding } from "./store.ts";
 
 const BODIES: Record<Step, () => ReactNode> = {
   welcome: WelcomeStep,
   race: RaceStep,
   last: LastStep,
-  target: TargetStep,
   week: WeekStep,
-  hours: HoursStep,
-  strength: StrengthStep,
-  health: HealthStep,
-  connect: ConnectStep,
-  summary: SummaryStep,
+  days: DaysStep,
+  consent: ConsentStep,
+  ready: ReadyStep,
 };
 
-/** The main button says what it does: an empty muscu step is skipped, not continued. */
-function primaryLabel(step: Step, draft: Draft, sending: boolean): string {
-  if (sending) return "Création de ton plan";
+/** The main button says what it does. */
+function primaryLabel(step: Step, sending: boolean): string {
+  if (sending) return "Préparation de ta semaine";
   if (step === "welcome") return "Commencer";
-  if (step === "summary") return "C'est parti";
-  if (step === "strength" && draft.strength.length === 0) return "Passer cette étape";
-  if (step === "last" && draft.lastSec <= 0) return "Passer cette étape";
+  if (step === "consent") return "Préparer ma semaine";
+  if (step === "ready") return "Voir aujourd'hui";
   return "Continuer";
 }
+
+/** Before the first question and once her week is built, there is nothing to go back to. */
+const bare = (step: Step) => step === "welcome" || step === "ready";
 
 // The new screen comes from the side she is heading to; under reduced motion MotionConfig keeps only the fade.
 const slide = {
@@ -53,7 +52,13 @@ function Title({ step }: { step: Step }) {
   useEffect(() => title.current?.focus({ preventScroll: true }), [step]);
   const welcome = step === "welcome";
   return (
-    <div className={cx("flex flex-col gap-2", welcome && "items-center pt-[8vh] pb-2 text-center")}>
+    <div
+      className={cx(
+        "flex flex-col gap-2",
+        welcome && "items-center pt-[8vh] pb-2 text-center",
+        step === "ready" && "pt-6",
+      )}
+    >
       {welcome && <LogoSlot size={96} className="mb-3" />}
       <h1
         ref={title}
@@ -81,29 +86,35 @@ const onboardingEntry = () => {
  */
 function useSystemBack(step: Step, back: () => void) {
   useEffect(() => {
-    if (step === "welcome") return;
+    if (bare(step)) return;
     if (!onboardingEntry()) history.pushState({ onboarding: true }, "");
     addEventListener("popstate", back);
     return () => removeEventListener("popstate", back);
   }, [step, back]);
 }
 
-/** A few grouped questions per screen, full screen over the app (no tab bar), sliding with a spring. */
+/** One question per screen, full screen over the app (no tab bar), sliding with a spring. */
 export function OnboardingFlow({ onDone }: { onDone: () => void }) {
-  const { step, direction, draft, today, sending } = useOnboarding();
-  const { next, back, submit } = useOnboarding.getState();
+  const { step, direction, draft, today, sending, error } = useOnboarding();
+  const { next, back, submit, skipLast, finish } = useOnboarding.getState();
   const blocked = issue(step, draft, today);
   const Body = BODIES[step];
 
   // A second tap while the next screen slides in would answer a question she has not seen yet.
   const [moving, setMoving] = useState(false);
-  const primary = async () => {
+  const go = (move: () => unknown) => {
     if (moving) return;
-    if (step !== "summary") {
-      setMoving(true);
-      return next();
+    setMoving(true);
+    move();
+  };
+  const primary = () => {
+    if (step === "ready") {
+      finish();
+      return onDone();
     }
-    if (await submit()) onDone();
+    // A send that fails stays on this screen: `sending`, not the slide, holds its button.
+    if (step === "consent") return void submit();
+    go(next);
   };
   useSystemBack(step, back);
 
@@ -116,14 +127,11 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
     >
       <Sky />
       <header
-        className={cx(
-          "relative mx-auto flex w-full max-w-xl items-center gap-2 px-2",
-          step === "welcome" && "invisible",
-        )}
+        className={cx("relative mx-auto flex w-full max-w-xl items-center gap-2 px-2", bare(step) && "invisible")}
         style={{ paddingTop: "max(12px, env(safe-area-inset-top))" }}
       >
         <IconButton icon="chevronLeft" label="Retour" onClick={back} />
-        {step === "summary" ? <span className="flex-1" /> : <Progress step={step} />}
+        {!bare(step) && <Progress step={step} />}
         <span className="size-11 flex-none" />
       </header>
       <MotionConfig reducedMotion="user">
@@ -152,18 +160,26 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
         className="relative mx-auto flex w-full max-w-xl flex-col gap-2 px-4 pt-2"
         style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}
       >
-        <p aria-live="polite" className="t-cap m-0 min-h-4.5 text-center">
-          {step === "welcome" ? "" : (blocked ?? "")}
+        <p aria-live="polite" className={cx("t-cap m-0 min-h-4.5 text-center", error && "text-warn-deep")}>
+          {step === "welcome" ? "" : (blocked ?? error ?? "")}
         </p>
-        <Button
-          variant="filled"
-          size="large"
-          disabled={Boolean(blocked) || sending}
-          aria-disabled={moving || undefined}
-          onClick={() => void primary()}
-        >
-          {primaryLabel(step, draft, sending)}
-        </Button>
+        {/* Each button as wide as its words needs, so « Je n'en ai pas » holds on one line at 320 px. */}
+        <div className="flex gap-2.5 *:flex-auto *:whitespace-nowrap">
+          {step === "last" && (
+            <Button size="large" aria-disabled={moving || undefined} onClick={() => go(skipLast)}>
+              Je n'en ai pas
+            </Button>
+          )}
+          <Button
+            variant="filled"
+            size="large"
+            disabled={Boolean(blocked) || sending}
+            aria-disabled={moving || undefined}
+            onClick={primary}
+          >
+            {primaryLabel(step, sending)}
+          </Button>
+        </div>
       </footer>
     </div>
   );

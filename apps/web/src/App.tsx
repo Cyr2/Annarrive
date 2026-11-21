@@ -150,7 +150,7 @@ export function App() {
     if (backToTabRoot())
       requestAnimationFrame(() => scrollTo({ top: 0, behavior: reducedMotion() ? "instant" : "smooth" }));
   };
-  // Once asked for, the gate stays mounted after the flow: the tour follows it over Aujourd'hui.
+  // Once asked for, the gate stays mounted until its flow hides itself, past « Voir aujourd'hui ».
   const gate = useRef(false);
   if (useOnboardingNeed((s) => s.need)) gate.current = true;
 

@@ -1,9 +1,8 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useId } from "react";
 import { cx } from "../../lib/cx.ts";
 import { ChoiceCard } from "../../ui/ChoiceCard.tsx";
 import { DayChips, toggled } from "../../ui/DayChips.tsx";
-import { Surface } from "../../ui/Surface.tsx";
-import { type Draft, questionSteps, type Step } from "./onboarding.ts";
+import { type Draft, QUESTIONS, type Step } from "./onboarding.ts";
 import { useOnboarding } from "./store.ts";
 
 /** Small pieces shared by the onboarding steps. */
@@ -17,14 +16,12 @@ type ChoiceProps = {
   label: ReactNode;
   detail?: string;
   className?: string;
-  /** A narrow tile of a grid: the check sits in its corner. */
-  tile?: boolean;
 };
 
 /** A big answer: the whole row is the target, a choice card. */
-export function BigChoice({ on, onClick, label, detail, className, tile }: ChoiceProps) {
+export function BigChoice({ on, onClick, label, detail, className }: ChoiceProps) {
   return (
-    <ChoiceCard on={on} onClick={onClick} layout={tile ? "tile" : "row"} className={cx("w-full", className)}>
+    <ChoiceCard on={on} onClick={onClick} className={cx("w-full", className)}>
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="t-strong">{label}</span>
         {detail && <span className="t-cap">{detail}</span>}
@@ -48,25 +45,44 @@ export function ProfileDays({
   );
 }
 
-/** A card holding one block of a step. */
-export function Card({ children, className }: { children: ReactNode; className?: string }) {
-  return <Surface className={cx("flex flex-col gap-3 p-4", className)}>{children}</Surface>;
+/** What an answer changes, in a line or two. */
+export function Help({ children }: { children: ReactNode }) {
+  return <p className="t-cap m-0 px-4">{children}</p>;
 }
 
-/** Progress: one short segment per step she answers, filled in the action blue up to the current one. */
+type AskProps = { question: string; help?: ReactNode; children: ReactNode };
+
+/** One question of a screen with its answer and what it changes; the answer's choices are named by the question. */
+export function Ask({ question, help, children }: AskProps) {
+  const id = useId();
+  return (
+    <section aria-labelledby={id} className="flex flex-col gap-2">
+      <h2 id={id} className="t-strong m-0 px-1">
+        {question}
+      </h2>
+      {children}
+      {help && <Help>{help}</Help>}
+    </section>
+  );
+}
+
+/** Progress: a dot per question, the current one stretched, those behind her tinted. */
 export function Progress({ step }: { step: Step }) {
-  const steps = questionSteps(useDraft());
-  const at = steps.indexOf(step);
+  const at = QUESTIONS.indexOf(step);
   return (
     <div
       role="img"
-      aria-label={`Étape ${at + 1} sur ${steps.length}`}
-      className="flex flex-1 justify-center gap-1.5 px-4"
+      aria-label={`Question ${at + 1} sur ${QUESTIONS.length}`}
+      className="flex flex-1 items-center justify-center gap-1.5"
     >
-      {steps.map((s, i) => (
+      {QUESTIONS.map((s, i) => (
         <span
           key={s}
-          className={cx("select-anim h-1.5 max-w-10 flex-1 rounded-full", i <= at ? "bg-action" : "bg-hairline-strong")}
+          className={cx(
+            "select-anim h-1.75 rounded-full",
+            i === at ? "w-5.5 bg-action" : "w-1.75",
+            i < at ? "bg-action/45" : i > at && "bg-hairline-strong",
+          )}
         />
       ))}
     </div>

@@ -1,14 +1,12 @@
 import {
-  type CreateEventInput,
   type Feasibility,
   type FeasibilityInput,
   feasibilitySchema,
   onboardingStatusSchema,
-  type Profile,
+  type ProfilePatch,
   type Program,
-  pushKeySchema,
   timetableStatusSchema,
-  type Unavailable,
+  watchInfoSchema,
 } from "@annarrive/protocol";
 import { api } from "./index.ts";
 
@@ -20,15 +18,13 @@ export interface OnboardingApi {
   done(): Promise<boolean>;
   feasibility(input: FeasibilityInput): Promise<Feasibility["verdict"]>;
   timetableLinked(): Promise<boolean>;
+  /** Whether the server reaches her Garmin (Darius links it before she starts). */
+  watchLinked(): Promise<boolean>;
   /** Saves and reads the link she pasted; a feed that cannot be read yet keeps the link, Programme says why. */
   linkTimetable(url: string): Promise<void>;
   saveProgram(program: Program): Promise<void>;
-  saveProfile(profile: Profile): Promise<void>;
-  addEvent(event: CreateEventInput): Promise<void>;
-  reportPain(pain: Unavailable): Promise<void>;
-  /** The VAPID key, null when the server sends no notifications. */
-  pushKey(): Promise<string | null>;
-  subscribe(subscription: PushSubscriptionJSON): Promise<void>;
+  /** What she answered; the rest keeps the server's defaults. */
+  saveProfile(profile: ProfilePatch): Promise<void>;
 }
 
 const request = (method: string, path: string, body?: unknown) =>
@@ -49,6 +45,7 @@ export const httpOnboardingApi: OnboardingApi = {
   done: async () => onboardingStatusSchema.parse(await send("GET", "/onboarding")).done,
   feasibility: async (input) => feasibilitySchema.parse(await send("POST", "/feasibility", input)).verdict,
   timetableLinked: async () => timetableStatusSchema.parse(await send("GET", "/timetable")).lastSyncAt !== null,
+  watchLinked: async () => watchInfoSchema.parse(await send("GET", "/watch")).configured,
   linkTimetable: async (url) => {
     const response = await request("PUT", "/timetable/url", { url });
     // 502: the link is stored, only its feed could not be read yet (Programme says why).
@@ -56,10 +53,6 @@ export const httpOnboardingApi: OnboardingApi = {
   },
   saveProgram: async (program) => void (await send("PUT", "/program", program)),
   saveProfile: async (profile) => void (await send("PATCH", "/profile", profile)),
-  addEvent: async (event) => void (await send("POST", "/events", event)),
-  reportPain: async (pain) => void (await send("POST", "/unavailable", pain)),
-  pushKey: async () => pushKeySchema.parse(await send("GET", "/push/key")).publicKey,
-  subscribe: async (subscription) => void (await send("POST", "/push/subscriptions", subscription)),
 };
 
 /** The mock shows onboarding only with `?onboarding`, so demos and Lighthouse land on Aujourd'hui. */
@@ -69,13 +62,10 @@ export function createMockOnboardingApi(search = ""): OnboardingApi {
     done: async () => !new URLSearchParams(search).has("onboarding"),
     feasibility: async ({ distanceM, targetMin }) => (targetMin < distanceM / 200 ? "ambitieux" : "atteignable"),
     timetableLinked: async () => true,
+    watchLinked: async () => true,
     linkTimetable: ok,
     saveProgram: ok,
     saveProfile: ok,
-    addEvent: ok,
-    reportPain: ok,
-    pushKey: async () => null,
-    subscribe: ok,
   };
 }
 

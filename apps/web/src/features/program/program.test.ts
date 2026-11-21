@@ -107,6 +107,6 @@ describe("onboarding timetable link", () => {
     const draft = { ...EMPTY, race: "none" as const, icsUrl: "webcal://ent.example.fr/agenda.ics" };
     expect(toPayload(draft, "2026-11-16").icsUrl).toBe("https://ent.example.fr/agenda.ics");
     expect(toPayload(EMPTY, "2026-11-16").icsUrl).toBeUndefined();
-    expect(issue("connect", { ...EMPTY, icsUrl: "pas un lien" }, "2026-11-16")).toBeDefined();
+    expect(issue("days", { ...EMPTY, icsUrl: "pas un lien" }, "2026-11-16")).toBeDefined();
   });
 });
