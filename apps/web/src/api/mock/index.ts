@@ -155,7 +155,10 @@ export function createMockApi({
       const next = runs.filter((r) => r.date > today).sort((a, b) => (a.date < b.date ? -1 : 1))[0];
       return {
         date: today,
-        goal: { label: goalLabel(state.program.goal.race), daysLeft: daysBetween(today, state.program.goal.date) },
+        goal: {
+          label: state.program.goal.name ?? goalLabel(state.program.goal.race),
+          daysLeft: daysBetween(today, state.program.goal.date),
+        },
         session,
         next,
         activity: state.activity,

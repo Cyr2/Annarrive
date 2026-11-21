@@ -6,6 +6,7 @@ import { Surface } from "../../ui/Surface.tsx";
 import { TextButton } from "../../ui/TextButton.tsx";
 import { useSheet } from "../sheets/store.ts";
 import { ToneWash } from "../today/parts.tsx";
+import { raceTitle } from "./goal.ts";
 import { raceClock, secondsOf } from "./program.ts";
 import { TargetTag } from "./TargetTag.tsx";
 
@@ -47,7 +48,7 @@ export function GoalCard({ program, today }: { program: Program; today: string }
           {daysBetween(today, goal.date) < 0 ? "Nouvel objectif" : "Modifier"}
         </TextButton>
       </div>
-      <h2 className="t-large relative m-0 mt-1">{goal.race}</h2>
+      <h2 className="t-large relative m-0 mt-1">{raceTitle(goal)}</h2>
       {week && <span className="t-body relative text-ink-2 tabular-nums">{week}</span>}
       <div className="hairline-top relative mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pt-4">
         <div className="flex flex-col">

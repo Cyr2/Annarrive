@@ -122,6 +122,18 @@ describe("après la course objectif (RR)", () => {
     expect(await race()).toBeUndefined();
   });
 
+  it("carries the name she gave the race, and nothing without one", async () => {
+    const t = setup();
+    t.stores.program.put({ id: "current", value: { goal: { ...SEMI, name: "Semi de Strasbourg" } } });
+    await t.login();
+    t.setNow(paris("2026-11-22T13:05"));
+    t.stores.activity.put(raceRun);
+    const race = async () => todaySchema.parse((await t.call("GET", "/api/today")).json).race;
+    expect(await race()).toMatchObject({ name: "Semi de Strasbourg" });
+    t.stores.program.put({ id: "current", value: { goal: SEMI } });
+    expect((await race())?.name).toBeUndefined();
+  });
+
   it("marks the goal race at the sync, and only it", async () => {
     const bridge = fakeBridge();
     const t = setup({ bridge });

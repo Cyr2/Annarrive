@@ -75,6 +75,8 @@ export type Draft = {
   race?: Race;
   otherKm: string;
   date: string;
+  /** Her own name for the race, optional. */
+  name: string;
   /** Her target in seconds, typed in the h and min boxes; 0: no target, she runs to finish. */
   targetSec: number;
   /** « Ta dernière course »: its distance, its time in seconds (0: none given), and roughly when. */
@@ -98,6 +100,7 @@ export type Draft = {
 export const EMPTY: Draft = {
   otherKm: "",
   date: "",
+  name: "",
   targetSec: 0,
   lastRace: 21097.5,
   lastSec: 0,
@@ -181,7 +184,14 @@ export function toPayload(draft: Draft, today: string): Payload {
   const targetMin = targetOf(draft);
   // No start time asked: the coach takes 9:00, when most road races start (algo.md P24).
   const goal =
-    draft.race === "none" || !distanceM ? null : { distanceM, date: draft.date, ...(targetMin ? { targetMin } : {}) };
+    draft.race === "none" || !distanceM
+      ? null
+      : {
+          distanceM,
+          date: draft.date,
+          ...(targetMin ? { targetMin } : {}),
+          ...(draft.name.trim() ? { name: draft.name.trim() } : {}),
+        };
   const declared = declaredTimeOf(draft, today);
   const ics = draft.icsUrl.trim() ? checkIcsUrl(draft.icsUrl).url : undefined;
   return {

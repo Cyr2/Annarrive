@@ -96,6 +96,8 @@ export const weekReviewSchema = z.object({
 export const raceResultSchema = z.object({
   /** « Semi-marathon ». */
   race: z.string(),
+  /** Her own name for the race, shown in place of `race`. */
+  name: z.string().optional(),
   date: isoDate,
   distanceKm: z.number().positive(),
   timeMin: z.number().positive(),
@@ -211,6 +213,7 @@ export const programSchema = z.object({
     targetTime: z.string().optional(),
     /** When the race starts, "9:00". */
     startTime: clock.optional(),
+    name: z.string().optional(),
     /** How her own target looks, never discouraging. The app never proposes a time. */
     targetTag: z.enum(["reachable", "ambitious"]).optional(),
     /** What the tag rests on, for its explanation: as the server's `plan.odds` (minutes, weeks, fractions). */

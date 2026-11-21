@@ -114,12 +114,21 @@ export const storedProfileSchema = z.preprocess((raw) => {
     : { ...rest, preferredLongDays: [preferredLongDay] };
 }, profileSchema);
 
+export const RACE_NAME_MAX = 40;
+const raceNameSchema = z
+  .string()
+  .trim()
+  .max(RACE_NAME_MAX)
+  .transform((name) => name || undefined);
+
 export const goalSchema = z.object({
   distanceM: z.union([z.literal(5000), z.literal(10000), z.literal(21097.5), z.literal(42195)]),
   date: localDateSchema,
   targetMin: z.number().positive().optional(),
   /** When the race starts; the coach takes 09:00 without it (algo.md P24). */
   startTime: timeOfDaySchema.optional(),
+  /** Her own name for the race (« Semi de Strasbourg »); empty means none. */
+  name: raceNameSchema.optional(),
 });
 
 /**
@@ -355,6 +364,7 @@ export const dismissReviewInputSchema = z.object({ week: isoWeekSchema });
 
 /** The goal race as Garmin sent it (algo.md RR), until she picks what comes next. */
 export const raceResultSchema = z.object({
+  name: raceNameSchema.optional(),
   date: localDateSchema,
   distanceM: z.number().positive(),
   timeMin: z.number().positive(),

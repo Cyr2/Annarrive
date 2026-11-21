@@ -8,6 +8,9 @@ export const RACES = [
   { race: "Marathon", km: 42.2 },
 ];
 
+/** The race as she calls it, else by its distance. */
+export const raceTitle = (r: { race: string; name?: string | undefined }) => r.name || r.race;
+
 /** A race this close, set or removed, rebuilds the current week too (algo.md EV20). */
 const RACE_CONFLICT_DAYS = 7;
 

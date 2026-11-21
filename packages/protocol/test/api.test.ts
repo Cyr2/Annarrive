@@ -37,6 +37,20 @@ describe("feasibility input", () => {
   });
 });
 
+describe("race name", () => {
+  const input = (name: string) =>
+    programInputSchema.safeParse({ goal: { distanceM: 10000, date: "2027-04-11", name } });
+  it("is trimmed, optional, and empty means none", () => {
+    expect(input("  Semi de Strasbourg ").data?.goal?.name).toBe("Semi de Strasbourg");
+    expect(input("   ").data?.goal?.name).toBeUndefined();
+    expect(programInputSchema.parse({ goal: { distanceM: 10000, date: "2027-04-11" } }).goal?.name).toBeUndefined();
+  });
+  it("refuses more than 40 characters", () => {
+    expect(input("x".repeat(41)).success).toBe(false);
+    expect(input("x".repeat(40)).success).toBe(true);
+  });
+});
+
 // Audit robustesse-2, 12: « Ton dernier chrono » took 0 h 05 for a half marathon.
 describe("declared time", () => {
   it("takes a time a runner can run on that distance, not a typo", () => {

@@ -1,3 +1,4 @@
+import { RACE_NAME_MAX } from "@annarrive/protocol";
 import { useEffect } from "react";
 import { addDays } from "../../lib/date.ts";
 import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
@@ -82,6 +83,13 @@ export function RaceStep() {
               min={addDays(today, 1)}
               value={draft.date}
               onChange={(date) => update({ date })}
+            />
+            <RowInput
+              label="Nom de la course"
+              placeholder="Semi de Strasbourg"
+              maxLength={RACE_NAME_MAX}
+              value={draft.name}
+              onChange={(name) => update({ name })}
             />
           </Group>
         </Ask>

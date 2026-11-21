@@ -2,6 +2,21 @@ import { banner, expect, onPlan, test } from "../support/test.ts";
 
 onPlan();
 
+test("Programme : nommer la course, puis Annuler la remet sans nom", async ({ page }) => {
+  await page.goto("/programme");
+  const card = page.getByRole("article", { name: "Ton objectif" });
+  await card.getByRole("button", { name: "Modifier l'objectif" }).click();
+  const sheet = page.getByRole("dialog", { name: "Ton objectif" });
+  await sheet.getByLabel("Nom de la course").fill("Semi de Strasbourg");
+  await sheet.getByRole("button", { name: "Valider" }).click();
+  const changed = banner(page, "Objectif modifié");
+  await expect(changed).toBeVisible();
+  await expect(card.getByRole("heading")).toHaveText("Semi de Strasbourg");
+
+  await changed.getByRole("button", { name: "Annuler" }).click();
+  await expect(card.getByRole("heading")).toHaveText("Semi-marathon");
+});
+
 test("Programme : changer de course recalcule le plan sans toucher la semaine en cours, puis Annuler le remet", async ({
   page,
 }) => {
