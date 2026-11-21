@@ -56,6 +56,7 @@ import {
   skipSession,
   speedForVo2,
   vdot,
+  vo2,
   weekDates,
 } from "../src/index.ts";
 import { calendar, type Persona, PLAN_START, rng, START_MONDAY } from "./personas.ts";
@@ -127,7 +128,9 @@ type Sim = {
 const HR_SHARE: Record<PaceZone, number> = { E: 0.72, M: 0.84, T: 0.89, I: 0.935, R: 0.9, race: 0.88 };
 /** Heart rate of a 20 min all-out effort: above Daniels' T band. */
 const ALL_OUT_HR = 0.94;
-const KEY_DAYS = 28;
+const HR_SLOPE = 0.6463;
+/** Like services/fitness.ts: the key sessions of the last 6 weeks, a retest's interval (P26). */
+const KEY_DAYS = 42;
 
 const state = (sim: Sim, monday: string): State => ({
   monday,
@@ -261,7 +264,10 @@ function stepLaps(sim: Sim, st: Step, day: string, allOut: boolean, own?: PaceZo
   const can = allOut ? speedForVo2(eff * fractionF(st.durMin)) : trueSpeed(p, zone, eff);
   const eager = allOut || own ? 1 : (p.script.eagerness ?? 0.2);
   const v = (can < target ? can : target + eager * (can - target)) * (1 + (sim.next() - 0.5) * 0.02);
-  const hr = (allOut ? ALL_OUT_HR : HR_SHARE[zone] + (overreaching(p, day) ? 0.02 : 0)) * p.hrMax;
+  // Her heart rate follows her true level: slower than what she can hold in the zone, it sits under the zone's share
+  // by Swain's slope (%HRmax = 0.6463 %VO2max + 37.2), so a fitter runner at the same pace has a lower one (RC14).
+  const under = HR_SLOPE * ((vo2(v) - vo2(can)) / eff);
+  const hr = (allOut ? ALL_OUT_HR : HR_SHARE[zone] + under + (overreaching(p, day) ? 0.02 : 0)) * p.hrMax;
   const laps = [...Array(st.reps ?? 1).keys()].map(() => ({ durMin: st.durMin, distM: v * st.durMin, avgHr: hr }));
   return { laps, ratio: can / target };
 }
@@ -396,7 +402,7 @@ function proposalAfterRun(sim: Sim, run: Activity, now: string): Proposal | null
     const a = sim.activities.find((x) => x.id === `run-${s.id}`);
     return a && daysBetween(a.start, now) <= KEY_DAYS ? [keySession(s, a)] : [];
   });
-  return evaluateKeySessions(done, sim.vdot, sim.vdotChangedOn, sim.answered, now);
+  return evaluateKeySessions(done, sim.vdot, sim.vdotChangedOn, sim.answered, now, sim.p.hrMax);
 }
 
 /** RC5 as services/fitness.ts calls it: feels after the last change, fatigue confirmed by the mornings left out. */

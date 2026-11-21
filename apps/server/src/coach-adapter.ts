@@ -481,7 +481,8 @@ export const coachAdapter: CoachPort = {
   evaluateKeySessions(st, done, past, now) {
     if (!st.fitness || st.fitness.provisional) return null;
     const keys = done.map(({ session, activity }) => keySession(session, activity));
-    return coach.evaluateKeySessions(keys, st.fitness.vdot, st.fitness.date, answered(past), now);
+    const hrMax = hrMaxOf(st.activities);
+    return coach.evaluateKeySessions(keys, st.fitness.vdot, st.fitness.date, answered(past), now, hrMax);
   },
 
   evaluateFeels(st, past, now) {

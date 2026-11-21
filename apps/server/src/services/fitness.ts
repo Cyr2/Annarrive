@@ -9,7 +9,8 @@ import { levelOf } from "./fitness-level.ts";
 import type { PlanService } from "./plan.ts";
 import { progressionOf } from "./progression.ts";
 
-const KEY_DAYS = 28;
+/** Key sessions of the last 6 weeks, a retest's interval (P26): RC14 reads her usual heart rate in the earlier ones. */
+const KEY_DAYS = 42;
 
 /** Level proposals (algo.md M8): raised after each run, accepted or declined in one tap, both undoable. */
 export class FitnessService {
@@ -59,7 +60,7 @@ export class FitnessService {
     return draft && !known ? this.#stores.proposal.put({ ...draft, id: randomUUID(), status: "pending" }) : null;
   }
 
-  /** Runs of the last 4 weeks matched to a planned session (the coach keeps those after the last level change). */
+  /** Runs of the last 6 weeks matched to a planned session (the coach keeps those after the last level change). */
   #doneSessions(): { session: PlannedSession; activity: Activity }[] {
     const now = this.#now();
     return this.#stores.activity.overlapping(`${addDays(dateOf(now), -KEY_DAYS)}T00:00`, now).flatMap((activity) => {

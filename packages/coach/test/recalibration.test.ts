@@ -160,6 +160,74 @@ describe("evaluateKeySessions (RC3, RC4, RC8)", () => {
   });
 });
 
+describe("evaluateKeySessions by heart rate (RC14)", () => {
+  const HR_MAX = 190;
+  const tSpeed = 60_000 / paces(40).T;
+  /** 15 min easy, then a T run at its target with that heart rate, as Garmin laps a structured workout. */
+  const tRun = (day: number, hr: number, extra: Partial<KeySession> = {}, work = [20]): KeySession => {
+    const start = `2026-11-${String(day).padStart(2, "0")}T18:00`;
+    const laps = [
+      { durMin: 15, distM: 15 * 160, avgHr: 135 },
+      ...work.map((durMin) => ({ durMin, distM: durMin * tSpeed, avgHr: hr })),
+    ];
+    return {
+      session: hard(`t${day}`, start, 20),
+      activity: { id: `a${day}`, start, durMin: 45, distM: 2400 + 20 * tSpeed, laps, tempC: 12 },
+      fractions: laps.map((l) => l.distM / l.durMin / tSpeed),
+      ...extra,
+    };
+  };
+  const at = (keys: KeySession[], lastChange = addDays("2026-11-23", -30), history: PastProposal[] = []) =>
+    evaluateKeySessions(keys, 40, lastChange, history, NOW, HR_MAX);
+  const usual = [tRun(1, 170), tRun(8, 170)];
+
+  it("proposes what two runs at the same pace with a heart rate 3 bpm lower prove, one point at most (RC-24)", () => {
+    const lower = [...usual, tRun(17, 167), tRun(20, 167)];
+    // 3 bpm at T for HRmax 190 is 3.1 % of VO2max by Swain's slope: 1.2 point at VDOT 40, so one.
+    expect(at(lower)).toMatchObject({ ruleId: "RC14", from: 40, to: 41, evidence: ["a17", "a20"] });
+    expect(evaluateKeySessions(lower, 30, addDays("2026-11-23", -30), [], NOW, HR_MAX)?.to).toBe(30.93);
+  });
+
+  it("needs both runs clearly lower, 21 days apart at most, after a baseline (RC-25)", () => {
+    expect(at([...usual, tRun(17, 166), tRun(20, 168)])).toBeNull();
+    expect(at([...usual, tRun(17, 168), tRun(20, 168)])).toBeNull();
+    expect(at([tRun(17, 166), tRun(20, 166)])).toBeNull();
+    const farApart = [tRun(1, 170), tRun(2, 166), tRun(24, 166)];
+    expect(at(farApart, "2026-10-01")).toBeNull();
+  });
+
+  it("never lowers the level and reads no hot, hilly or short-rep run (RC-26)", () => {
+    expect(at([...usual, tRun(17, 176), tRun(20, 176)])).toBeNull();
+    expect(evaluateKeySessions([...usual, tRun(17, 166), tRun(20, 166)], 40, undefined, [], NOW)).toBeNull();
+    const hot = tRun(20, 166, {});
+    expect(at([...usual, tRun(17, 166), { ...hot, activity: { ...hot.activity, tempC: 25 } }])).toBeNull();
+    const hilly = { ...hot, activity: { ...hot.activity, elevGainM: 150 } };
+    expect(at([...usual, tRun(17, 166), hilly])).toBeNull();
+    expect(at([...usual, tRun(17, 166), tRun(20, 166, {}, [5, 5, 5, 5])])).toBeNull();
+    expect(at([...usual, tRun(17, 166), tRun(20, 166, { externalFactor: true })])).toBeNull();
+  });
+
+  it("waits like RC3 and once per 14 days (RC-27)", () => {
+    const lower = [...usual, tRun(17, 167), tRun(20, 167)];
+    const level30 = (days: number) => evaluateKeySessions(lower, 30, addDays("2026-11-23", -days), [], NOW, HR_MAX);
+    // Under a point: 28 days after the last change; a full point: 14.
+    expect(level30(20)).toBeNull();
+    expect(at(lower, addDays("2026-11-23", -10))).toBeNull();
+    expect(at(lower, addDays("2026-11-23", -15))?.to).toBe(41);
+    const past = (ruleId: string, decision: PastProposal["decision"]): PastProposal[] => [
+      {
+        proposal: { kind: "vdot", from: 39, to: 40, ruleId, evidence: [], expiresOn: "2026-11-27" },
+        decision,
+        on: addDays("2026-11-23", -10),
+      },
+    ];
+    expect(at(lower, undefined, past("RC14", "accepted"))).toBeNull();
+    expect(at(lower, undefined, past("RC3", "refused"))).toBeNull();
+    // The runs before the change are her baseline; the pair must come after it.
+    expect(at(lower, "2026-11-18")).toBeNull();
+  });
+});
+
 const recent = (ruleId: string, daysAgo: number): PastProposal[] => [
   {
     proposal: { kind: "test", from: 40, to: 40, ruleId, evidence: [], expiresOn: "2026-12-01" },
