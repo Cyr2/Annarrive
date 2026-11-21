@@ -5,7 +5,7 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { predictTime } from "../src/index.ts";
-import { CRITERIA, type Criterion, score } from "./checks.ts";
+import { CRITERIA, type Criterion, score, thresholdMin } from "./checks.ts";
 import { PERSONAS } from "./personas.ts";
 import { type RunLog, simulate } from "./sim.ts";
 
@@ -68,7 +68,7 @@ function weeks(r: RunLog): string {
       const d = r.persona.goal.distanceM;
       const race = `prédit ${clock(predictTime(w.vdotEnd, d))} (réel ${clock(predictTime(w.trueVdot, d))})`;
       const adapted = w.adaptations.length ? ` · adapté : ${w.adaptations.join(", ")}` : "";
-      return `S${w.week} ${w.phase} · plan ${r0(w.planMin)} · construit ${r0(w.built.reduce((a, s) => a + s.durMin, 0))} · couru ${ran} · VDOT ${w.vdotEnd.toFixed(1)} (réel ${w.trueVdot.toFixed(1)}) · ${race} · ${built}${decided.length ? ` · matin : ${decided.join(", ")}` : ""}${props.length ? ` · propositions : ${props.join(", ")}` : ""}${adapted}`;
+      return `S${w.week} ${w.phase} · plan ${r0(w.planMin)} · construit ${r0(w.built.reduce((a, s) => a + s.durMin, 0))} · couru ${ran} · VDOT ${w.vdotEnd.toFixed(1)} (réel ${w.trueVdot.toFixed(1)}) · ${race} · seuil ${r0(thresholdMin(w.built))} min · ${built}${decided.length ? ` · matin : ${decided.join(", ")}` : ""}${props.length ? ` · propositions : ${props.join(", ")}` : ""}${adapted}`;
     })
     .join("\n");
 }

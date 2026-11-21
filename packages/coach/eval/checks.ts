@@ -19,6 +19,7 @@ import {
   taperShares,
   weekday,
 } from "../src/index.ts";
+import { PLAN_START } from "./personas.ts";
 import type { RunLog, WeekLog } from "./sim.ts";
 
 export type Severity = "critique" | "majeure" | "mineure";
@@ -185,7 +186,9 @@ function longRun(r: RunLog): Criterion {
     const lastL = before?.final.find((s) => s.type === "L");
     const ranL = before?.activities.find((a) => a.id === `run-${lastL?.id}`);
     const cut = lastL !== undefined && ranL !== undefined && ranL.durMin < 0.9 * lastL.durMin;
-    if (min && !cut && !w.phase.startsWith("base") && !w.phase.includes("décharge") && !isTaper(w))
+    // Same with a short base (P6): the long run climbs from her longest of 30 days at G1's 10 % (Frandsen 2025).
+    const g1 = l.durMin >= Math.floor(1.1 * longest30(allRuns(r), at(addDays(w.monday, -1), "18:00"))) - 1;
+    if (min && !cut && !g1 && !w.phase.startsWith("base") && !w.phase.includes("décharge") && !isTaper(w))
       j.check(l.durMin >= min, () => ({
         week: w.week,
         rule: "P14 / G2",
@@ -578,7 +581,7 @@ function pacesOfWeek(j: Judge, r: RunLog, w: WeekLog): void {
 }
 
 /**
- * K11, does the programme lead to the goal: research 02 R23 (her level re-estimated every 4 weeks, so the paces
+ * K11, does the programme lead to the goal: research 02 R23 and Daniels (her level re-estimated every 4 to 6 weeks, so the paces
  * follow her progress), P11 and Muñoz 2014 (a build week she follows carries a quality session: no stimulus, no
  * progression), P21 (paces from her level, race pace from the goal only when it is at most ambitious) and P10 (never
  * more than the periodised plan asks: too aggressive). Her level rises with what she runs (sim.ts `progress`).
@@ -588,8 +591,9 @@ function trajectory(r: RunLog): Criterion {
   const acts = allRuns(r);
   r.weeks.forEach((w, i) => {
     if (afterRace(r, w) || isRaceWeek(r, w)) return;
-    if (w.week >= 5) {
-      const recent = lastWeeks(r, w, 28);
+    // P26: Daniels re-sets the VDOT every 4 to 6 weeks, on a race or on sessions; a test after 6 weeks without.
+    if (w.week >= 7 && !isTaper(w)) {
+      const recent = lastWeeks(r, w, 42);
       const from = recent[0]?.monday ?? w.monday;
       const tested = acts.some(
         (a) => (a.isTest || a.isRace) && dateOf(a.start) >= from && dateOf(a.start) < addDays(w.monday, 7),
@@ -598,8 +602,8 @@ function trajectory(r: RunLog): Criterion {
       const planned = recent.some((x) => x.built.some((s) => s.type === "TEST"));
       j.check(tested || planned || recent.some((x) => x.proposals.length > 0), () => ({
         week: w.week,
-        rule: "R23",
-        detail: `niveau ni testé ni réévalué depuis 4 semaines (app ${w.vdotEnd.toFixed(1)}, réel ${w.trueVdot.toFixed(1)})`,
+        rule: "R23 / P26",
+        detail: `niveau ni testé ni réévalué depuis 6 semaines (app ${w.vdotEnd.toFixed(1)}, réel ${w.trueVdot.toFixed(1)})`,
         severity: "majeure",
       }));
     }
@@ -623,7 +627,7 @@ function trajectory(r: RunLog): Criterion {
   return {
     id: "trajectoire",
     label: "Trajectoire vers l'objectif",
-    source: "R23 recherche 02 ; P11, Muñoz 2014 ; P21 Daniels ; P10",
+    source: "R23 recherche 02, P26 Daniels ; P11, Muñoz 2014 ; P21 Daniels ; P10",
     ...j.done(),
   };
 }
@@ -685,6 +689,106 @@ function adaptation(r: RunLog): Criterion {
   };
 }
 
+const QUALITY = ["FARTLEK", "T", "CRUISE", "I", "R", "SPE", "TEST"];
+const workAt = (s: Session, zone: string): number =>
+  sum(s.steps.filter((st) => st.kind === "work" && st.zone === zone).map((st) => st.durMin * (st.reps ?? 1)));
+/** Threshold minutes of a week (T and CRUISE work), printed by `--weeks`. */
+export const thresholdMin = (list: Session[]): number => sum(list.map((s) => workAt(s, "T")));
+const isLoad = (w: WeekLog): boolean => /^(dev|spe)/.test(w.phase) && !w.phase.includes("décharge");
+const hardQ = (s: Session): boolean => isHard(s) && s.type !== "L" && s.type !== "TEST" && s.type !== "RACE";
+/** The week's quality sessions as their shape, to tell two weeks apart (G3). */
+const shape = (w: WeekLog): string =>
+  runs(w)
+    .filter((s) => QUALITY.includes(s.type))
+    .map((s) => `${s.type}:${s.steps.map((st) => `${st.reps ?? 1}×${Math.round(st.durMin)}`).join()}`)
+    .sort()
+    .join("|");
+
+/** P6: at least 3 runs a week over the 8 weeks before the day the programme starts (its runs come after). */
+const regularBefore = (r: RunLog): boolean =>
+  r.history.filter((a) => !a.isRace && a.start < PLAN_START && daysBetween(a.start, PLAN_START) < 56).length >= 24;
+const withStrides = (s: Session): boolean =>
+  s.type === "E" && s.steps.some((st) => st.kind === "work") && s.steps.some((st) => st.kind === "strides");
+
+/**
+ * K13, what the weeks hold: P6 (a regular runner gets her first quality session in week 2: Daniels' phase I shortened,
+ * Runna and Campus Coach), P12 (threshold at 20 min at least: Daniels, McMillan, Pfitzinger; strides each week:
+ * Daniels, Pfitzinger, Runna; no three identical load weeks: Runna, Nike), P26 (a test at most every 6 weeks, never
+ * her first hard run, never next to another Q in a deload: Daniels, Runna).
+ */
+function content(r: RunLog): Criterion {
+  const j = judge();
+  const weeks = r.weeks.filter((w) => !afterRace(r, w) && !isRaceWeek(r, w));
+  const firstQ = weeks.find((w) => runs(w).some((s) => QUALITY.includes(s.type)));
+  if (regularBefore(r) && r.planWeeks >= 10)
+    j.check((firstQ?.week ?? 99) <= 2, () => ({
+      week: firstQ?.week ?? 0,
+      rule: "P6",
+      detail: `première séance de qualité en semaine ${firstQ?.week ?? "aucune"} pour une coureuse régulière`,
+      severity: "majeure",
+    }));
+  weeks.forEach((w, i) => {
+    // P16 keeps the floor; a G2 to G4 cap (a week she did not fully run) may still shorten a Q (trimTo).
+    const prev = weeks[i - 1];
+    const uncapped = prev !== undefined && done(prev) >= 0.9 * minutes(runs(prev));
+    // With no other quality or race-pace block to cut first, P16 lets the threshold give.
+    const others = (x: Session): boolean =>
+      runs(w).some((o) => o !== x && (QUALITY.includes(o.type) || o.steps.some((st) => st.zone === "race")));
+    for (const s of runs(w).filter(
+      (x) => uncapped && isLoad(w) && (x.type === "T" || x.type === "CRUISE") && others(x),
+    ))
+      j.check(workAt(s, "T") >= 19.5, () => ({
+        week: w.week,
+        rule: "P12 / P16",
+        detail: `${s.type} de ${r0(workAt(s, "T"))} min au seuil (au moins 20)`,
+        severity: "majeure",
+      }));
+    if (/^(dev|spe)/.test(w.phase))
+      j.check(runs(w).some(withStrides), () => ({
+        week: w.week,
+        rule: "P12",
+        detail: "aucune ligne droite dans la semaine",
+        severity: "mineure",
+      }));
+    const test = runs(w).find((s) => s.type === "TEST");
+    if (test && w.phase.includes("décharge"))
+      j.check(!runs(w).some(hardQ), () => ({
+        week: w.week,
+        rule: "P26 / P9",
+        detail: "test dans une semaine de décharge avec une autre séance dure",
+        severity: "majeure",
+      }));
+    // F10 tests a provisional level in weeks 2 to 4 on purpose.
+    if (test && r.initial.status !== "provisional")
+      j.check(
+        weeks.slice(0, i).some((x) => runs(x).some(hardQ)),
+        () => ({ week: w.week, rule: "P26", detail: "test comme première séance dure", severity: "majeure" }),
+      );
+    const [a, b] = [weeks[i - 2], weeks[i - 1]];
+    if (a && b && [a, b, w].every(isLoad) && shape(w) !== "")
+      j.check(!(shape(a) === shape(b) && shape(b) === shape(w)), () => ({
+        week: w.week,
+        rule: "P12 (variété)",
+        detail: "trois semaines de charge avec les mêmes séances de qualité",
+        severity: "mineure",
+      }));
+  });
+  const tests = weeks.filter((w) => runs(w).some((s) => s.type === "TEST")).length;
+  if (r.initial.status !== "provisional")
+    j.check(tests <= Math.ceil(weeks.length / 6), () => ({
+      week: 0,
+      rule: "P26",
+      detail: `${tests} tests en ${weeks.length} semaines (au plus un toutes les 6)`,
+      severity: "majeure",
+    }));
+  return {
+    id: "contenu",
+    label: "Contenu des séances",
+    source: "P6 Daniels, Runna ; P12 Daniels, McMillan, Pfitzinger ; P26 Daniels",
+    ...j.done(),
+  };
+}
+
 export const CRITERIA = [
   volume,
   intensity,
@@ -698,6 +802,7 @@ export const CRITERIA = [
   structure,
   trajectory,
   adaptation,
+  content,
 ];
 
 const WEIGHT: Record<Severity, number> = { critique: 3, majeure: 1, mineure: 0.3 };

@@ -64,8 +64,13 @@ const LOOKBACK_WEEKS = 8;
 const FATIGUE_DAYS = 3;
 /** F10: programme weeks 2 to 4 (index 1 to 3) carry a test while the level is provisional. */
 const TEST_WEEKS: [number, number] = [1, 3];
-/** P26: research 02 R23 re-estimates the level at each race or test, or every 4 weeks. */
-const RETEST_DAYS = 28;
+/**
+ * P26: Daniels sets the VDOT on a race or on sessions every 4 to 6 weeks; her sessions already move it when they
+ * prove it (RC3, like Runna): a test only when nothing measured her for 6 weeks.
+ */
+const RETEST_DAYS = 42;
+/** Hard sessions: the programme's first one is never a test (P26). */
+const KEY_TYPES: TemplateSlot[] = ["T", "CRUISE", "I", "R", "SPE", "TEST", "RACE"];
 
 const mean = (xs: number[]): number => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
 
@@ -113,14 +118,19 @@ function tiredLastWeek(r: WeekRequest): number {
 const deloaded = (w: PlanWeek): PlanWeek =>
   w.deload || w.phase === "taper" ? w : { ...w, deload: true, volumeMin: 0.75 * w.volumeMin };
 
-/** F10: the week's first quality slot (sprints or fartlek in base) becomes the test. */
+/**
+ * F10: the week's first quality slot (sprints or fartlek in base) becomes the test. In a deload the other Q becomes
+ * an E: the test is the week's one hard run (P9).
+ */
 function withTest(w: PlanWeek): PlanWeek {
   const easy: TemplateSlot[] = ["L", "E", "RECUP", "E+strides"];
   const i = w.template.findIndex((slot) => !easy.includes(slot));
-  return i < 0 ? w : { ...w, template: w.template.map((slot, k) => (k === i ? "TEST" : slot)) };
+  const other = (slot: TemplateSlot): TemplateSlot =>
+    w.deload && slot !== "E+sprints" && !easy.includes(slot) ? "E" : slot;
+  return i < 0 ? w : { ...w, template: w.template.map((slot, k) => (k === i ? "TEST" : other(slot))) };
 }
 
-/** Last time her level was measured: a level change, or a test or race she ran (R23). */
+/** Last time her level was measured: a level change (a race, a test or her sessions, RC3), or a test or race she ran. */
 function lastMeasure(r: WeekRequest): string | undefined {
   const runs = r.history
     .filter((a) => a.isTest || a.isRace || a.plannedType === "TEST" || a.plannedType === "RACE")
@@ -131,10 +141,22 @@ function lastMeasure(r: WeekRequest): string | undefined {
     .at(-1);
 }
 
-/** P26 (research 02 R23): a level that turns 4 weeks old within the week is measured again, by a test, outside the taper. */
+/**
+ * P26: a level unread for 6 weeks within the week is measured again, by a test, outside the taper, and never as the
+ * first hard run of the programme: she has run a key session since it started.
+ */
 function retestDue(w: PlanWeek, r: WeekRequest): boolean {
   const last = lastMeasure(r);
-  return w.phase !== "taper" && last !== undefined && daysBetween(last, addDays(r.monday, 6)) >= RETEST_DAYS;
+  const start = r.planStart ?? r.now;
+  const hardSinceStart = r.history.some(
+    (a) => a.start >= start && a.plannedType !== undefined && KEY_TYPES.includes(a.plannedType),
+  );
+  return (
+    w.phase !== "taper" &&
+    hardSinceStart &&
+    last !== undefined &&
+    daysBetween(last, addDays(r.monday, 6)) >= RETEST_DAYS
+  );
 }
 
 /** The plan week to build: P9 on confirmed fatigue, F10's test while the level is provisional, P26's every 4 weeks. */

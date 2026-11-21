@@ -1,4 +1,4 @@
-import { isHard, MAX_E, sessionLoad, stepTotal, toEasy, withReps } from "./catalog.ts";
+import { isHard, MAX_E, sessionLoad, stepTotal, T_FLOOR, toEasy, withReps } from "./catalog.ts";
 import { checkHard, slotOf } from "./placement.ts";
 import type { Change, Phase, Session, Step, WeekState } from "./types.ts";
 
@@ -19,9 +19,13 @@ const isContinuous = (s: Session): boolean =>
 /** Sets the duration of a run by resizing its main step; a distance step keeps its pace (the watch ends on distance). */
 function resize(s: Session, durMin: number): Session {
   const delta = durMin - s.durMin;
+  // The longest work step; a footing with sprints has none and its warm-up takes the change.
   const main = s.steps.reduce(
     (best, st, i) => (st.kind === "work" && st.durMin > (s.steps[best]?.durMin ?? 0) ? i : best),
-    0,
+    Math.max(
+      0,
+      s.steps.findIndex((st) => st.kind === "work"),
+    ),
   );
   const sized = (st: Step): Step => {
     const dur = Math.max(1, st.durMin + delta / (st.reps ?? 1));
@@ -83,14 +87,33 @@ const isQ = (s: Session): boolean => s.type !== "L" && s.type !== "RACE" && s.ty
 /** Catalogue floors (P15): RECUP 20 min, E 30 min. */
 const easyFloor = (s: Session): number => (s.type === "RECUP" ? MIN_EASY : MIN_E);
 
-/** A Q shortened by `excess` minutes, never below 2/3 of itself (P9's cut): fractions first, else its main block. */
+/** Warm-up and cool-down keep 10 and 5 min, as around a test (catalogue TEST). */
+const MIN_AROUND: Partial<Record<Step["kind"], number>> = { warmup: 10, cooldown: 5 };
+
+/**
+ * A Q shortened by `excess` minutes, never below 2/3 of itself (P9's cut): fractions first, else its warm-up and
+ * cool-down down to 10 and 5 min, then a continuous block by a third at most. Two fractions stay whole minutes.
+ */
 function shortenQ(s: Session, excess: number): Session {
-  const target = Math.max((2 / 3) * s.durMin, s.durMin - excess);
+  const target = Math.floor(Math.max((2 / 3) * s.durMin, s.durMin - excess));
   const reps = s.steps.find((st) => st.kind === "work")?.reps ?? 1;
-  if (reps <= 2) return resize(s, Math.ceil(target));
-  let out = s;
-  for (let n = reps - 1; n >= 2 && out.durMin > target; n--) out = withReps(s, n);
-  return out;
+  if (reps > 2) {
+    let out = s;
+    for (let n = reps - 1; n >= 2 && out.durMin > target; n--) out = withReps(s, n);
+    return out;
+  }
+  let left = s.durMin - target;
+  const steps = s.steps.map((st) => {
+    const floor = MIN_AROUND[st.kind];
+    if (floor === undefined) return st;
+    const cut = Math.max(0, Math.min(left, st.durMin - floor));
+    left -= cut;
+    return { ...st, durMin: st.durMin - cut };
+  });
+  const warmed = { ...s, steps, durMin: steps.reduce((sum, st) => sum + stepTotal(st), 0) };
+  if (reps > 1 || warmed.durMin <= target) return warmed;
+  const work = steps.filter((st) => st.kind === "work").reduce((sum, st) => sum + stepTotal(st), 0);
+  return resize(warmed, Math.max(target, Math.ceil(warmed.durMin - work / 3)));
 }
 
 /** G2b's first step alone: easy runs, lowest priority first, down to the catalogue's floors (P15) until `cap` holds. */
@@ -194,26 +217,75 @@ const workReps = (s: Session): number => s.steps.find((st) => st.kind === "work"
 const mainBlock = (s: Session): number =>
   Math.max(0, ...s.steps.filter((st) => st.kind === "work" && st.zone !== "E").map((st) => st.durMin));
 
-/** P16's next cut on a Q: a fraction less, else its main block 10 % shorter. Null when it cannot shrink. */
-function cutQ(s: Session): Session | null {
+const isThreshold = (s: Session): boolean => s.type === "T" || s.type === "CRUISE";
+const thresholdWork = (s: Session): number =>
+  s.steps.filter((st) => st.kind === "work" && st.zone === "T").reduce((sum, st) => sum + stepTotal(st), 0);
+
+/** The long run's race-pace block 10 % shorter, its minutes run easy in the same long run; none under 10 min. */
+function cutLongBlock(s: Session): Session | null {
+  const i = s.steps.findIndex((st) => st.kind === "work" && st.zone === "race");
+  const block = s.steps[i];
+  if (s.type !== "L" || !block || block.durMin <= MIN_BLOCK) return null;
+  const cut = Math.min(Math.max(1, 0.1 * block.durMin), block.durMin - MIN_BLOCK);
+  const steps = s.steps.map((st, k) =>
+    k === i
+      ? { ...st, durMin: st.durMin - cut }
+      : st.kind === "work" && st.zone === "E"
+        ? { ...st, durMin: st.durMin + cut }
+        : st,
+  );
+  return { ...s, steps };
+}
+
+/**
+ * P16's next cut on a Q: a fraction less, else its main block 10 % shorter. Null when it cannot shrink, or when
+ * `keepFloor` and the cut would take a threshold session under its floor (T_FLOOR).
+ */
+function cutQ(s: Session, keepFloor: boolean): Session | null {
+  if (s.type === "L") return cutLongBlock(s);
   if (!isQ(s)) return null;
-  if (workReps(s) > 2) return withReps(s, workReps(s) - 1);
+  const after = workReps(s) > 2 ? withReps(s, workReps(s) - 1) : cutBlock(s);
+  return after && keepFloor && isThreshold(s) && thresholdWork(after) < T_FLOOR ? null : after;
+}
+
+function cutBlock(s: Session): Session | null {
   const block = mainBlock(s);
   const cut = Math.min(Math.max(1, 0.1 * block), block - MIN_BLOCK);
   return block > MIN_BLOCK ? resize(s, s.durMin - workReps(s) * cut) : null;
 }
 
+/** Race-pace work first (the long run's block, then SPE), threshold last: the half's key session (Pfitzinger). */
+const raceFirst = (s: Session): number => (s.type === "L" ? 0 : s.type === "SPE" ? 1 : 2);
+
+/** The Q P16 cuts next: by intensity when too much is hard (Z3), else race pace before threshold, at its floor first. */
+function nextCut(week: Session[], tooHard: boolean): { q: Session; after: Session } | null {
+  for (const keepFloor of [true, false]) {
+    const cuts = week.flatMap((q) => {
+      const after = cutQ(q, keepFloor);
+      return after ? [{ q, after }] : [];
+    });
+    const order = (s: Session): number => (tooHard ? 0 : raceFirst(s));
+    cuts.sort((a, b) => order(a.q) - order(b.q) || b.q.rpeTarget - a.q.rpeTarget);
+    const first = cuts.find((c) => !tooHard || c.q.rpeTarget >= 8) ?? cuts[0];
+    if (first) return first;
+  }
+  return null;
+}
+
 /**
- * P16: shortens the most intense Q until the distribution holds: fractions first, then continuous threshold and
- * race-pace blocks (Seiler 2010, Rosenblat 2025: easy time stays at 75 % or more). The week keeps its volume: the
- * minutes move to an easy run (P15).
+ * P16: shortens a Q until the distribution holds: fractions first, then continuous blocks (Seiler 2010, Rosenblat
+ * 2025: easy time stays at 75 % or more). Race-pace blocks go before threshold, which keeps its 20 min while anything
+ * else can give. The week keeps its volume: the minutes move to an easy run (P15).
  */
 export function enforceDistribution(week: Session[], phase: Phase): { week: Session[]; changes: Change[] } {
   let out = week;
   const changes: Change[] = [];
-  for (let guard = 0; guard < 50 && !distributionCheck(out, phase).ok; guard++) {
-    const q = out.filter((s) => cutQ(s) !== null).sort((a, b) => b.rpeTarget - a.rpeTarget)[0];
-    const after = q && cutQ(q);
+  for (let guard = 0; guard < 50; guard++) {
+    const check = distributionCheck(out, phase);
+    if (check.ok) break;
+    const next = nextCut(out, check.z3 > 0.1);
+    const q = next?.q;
+    const after = next?.after;
     if (!q || !after) break;
     out = toEasiest(
       out.map((x) => (x.id === q.id ? after : x)),

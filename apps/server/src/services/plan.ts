@@ -27,7 +27,7 @@ import type {
   UpdateEventInput,
   Week,
 } from "@annarrive/protocol";
-import { agreeWith, DEFAULT_TRAVEL_MIN, sessionNames } from "@annarrive/protocol";
+import { agreeWith, DEFAULT_TRAVEL_MIN, sessionNames, sessionWhy } from "@annarrive/protocol";
 import { type CoachPort, type CoachResult, type CoachState, type DailyDecisionResult, slotFor } from "../coach-port.ts";
 import { InvalidInputError, NotFoundError, ReadOnlyError } from "../errors.ts";
 import { WATCH_FAILING_SINCE, watchLink, watchStatus } from "../garmin/workout.ts";
@@ -273,7 +273,7 @@ export class PlanService {
       .overlapping(`${from}T00:00`, now)
       .filter((s) => s.status === "planned" && addMinutes(s.start, s.durMin) <= now && !matched.has(s.id))
       .at(-1);
-    return over ? { ...over, watch: null } : null;
+    return over ? { ...over, watch: null, why: sessionWhy(over) } : null;
   }
 
   /** Pas dispo's summary: the coach's answer on the current state, never written. */
@@ -828,9 +828,11 @@ export class PlanService {
     const today = dateOf(this.#now());
     const failingSince = this.#stores.meta.get(WATCH_FAILING_SINCE)?.value;
     const link = watchLink(this.#watchConfigured, failingSince, this.#clock());
-    const sessions = this.#stores.plannedSession
-      .overlapping(`${from}T00:00`, `${to}T00:00`)
-      .map((s) => ({ ...s, watch: watchStatus(s, this.#stores.watchSync.get(s.id), today, link) }));
+    const sessions = this.#stores.plannedSession.overlapping(`${from}T00:00`, `${to}T00:00`).map((s) => ({
+      ...s,
+      watch: watchStatus(s, this.#stores.watchSync.get(s.id), today, link),
+      why: sessionWhy(s),
+    }));
     const events = this.#stores.calendarEvent
       .overlapping(`${from}T00:00`, `${to}T00:00`)
       .flatMap((e) => occurrences(e, from, to))

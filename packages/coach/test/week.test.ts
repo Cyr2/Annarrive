@@ -114,8 +114,8 @@ describe("planWeek (cycle 0.1 buildWeek)", () => {
     const spe = (kept: WeekRequest["kept"]) =>
       request({ monday: "2027-02-08", now: "2027-02-07T18:00", planStart: addDays(MONDAY, -1), kept });
 
-    expect(types(spe([]))).toEqual(["E", "L", "SPE", "T"]);
-    expect(types(spe([test("2027-02-08")]))).toEqual(["E", "L", "T", "TEST"]);
+    expect(types(spe([]))).toEqual(["E", "I", "L", "SPE"]);
+    expect(types(spe([test("2027-02-08")]))).toEqual(["E", "I", "L", "TEST"]);
     expect(types(request())).toEqual(["E", "E", "E", "L"]);
     expect(types(request({ kept: [test(MONDAY)] }))).toEqual(["E", "E", "L", "TEST"]);
 
@@ -192,18 +192,27 @@ describe("planWeek (cycle 0.1 buildWeek)", () => {
     expect(types(addDays(MONDAY, 28), true)).not.toContain("TEST");
   });
 
-  it("tests a level again when it turns 4 weeks old within the week, outside the taper (P26, W-6)", () => {
+  it("tests a level unmeasured for 6 weeks, never as the first hard run, alone in a deload, outside the taper (P26, W-6)", () => {
+    const planStart = addDays(MONDAY, -1);
+    // Her first interval session of the programme, run.
+    const ran: Activity = { id: "q", start: `${addDays(MONDAY, 2)}T07:00`, durMin: 45, distM: 9000, plannedType: "I" };
+    const types = (monday: string, fitness: WeekRequest["fitness"], history = [...runs(8, 4, 45), ran]) =>
+      planWeek(request({ monday, now: `${addDays(monday, -1)}T18:00`, planStart, fitness, history })).sessions.map(
+        (s) => s.type,
+      );
     const monday = addDays(MONDAY, 14);
-    const types = (fitness: WeekRequest["fitness"], history = runs(8, 4, 45)) =>
-      planWeek(
-        request({ monday, now: `${addDays(monday, -1)}T18:00`, planStart: addDays(MONDAY, -1), fitness, history }),
-      ).sessions.map((s) => s.type);
-    expect(types({ vdot: 40, measuredOn: addDays(monday, -22) })).toContain("TEST");
-    expect(types({ vdot: 40, measuredOn: addDays(monday, -21) })).not.toContain("TEST");
-    expect(types({ vdot: 40 })).not.toContain("TEST");
+    expect(types(monday, { vdot: 40, measuredOn: addDays(monday, -36) })).toContain("TEST");
+    expect(types(monday, { vdot: 40, measuredOn: addDays(monday, -35) })).not.toContain("TEST");
+    expect(types(monday, { vdot: 40, measuredOn: addDays(monday, -36) }, runs(8, 4, 45))).not.toContain("TEST");
+    expect(types(monday, { vdot: 40 })).not.toContain("TEST");
     // A test or a race she ran measures her too.
     const tested: Activity = { id: "t", start: `${addDays(monday, -10)}T08:00`, durMin: 35, distM: 7000, isTest: true };
-    expect(types({ vdot: 40, measuredOn: addDays(monday, -60) }, [...runs(8, 4, 45), tested])).not.toContain("TEST");
+    const measured = { vdot: 40, measuredOn: addDays(monday, -60) };
+    expect(types(monday, measured, [...runs(8, 4, 45), ran, tested])).not.toContain("TEST");
+    // The 4th week is a deload (P9): the test is its one hard run.
+    const deload = types(addDays(MONDAY, 21), { vdot: 40, measuredOn: addDays(MONDAY, -40) });
+    expect(deload).toContain("TEST");
+    expect(deload.filter((t) => ["T", "CRUISE", "I", "SPE"].includes(t))).toEqual([]);
     const race = request({
       monday: "2027-03-15",
       now: "2027-03-14T18:00",

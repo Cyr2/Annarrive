@@ -4,14 +4,15 @@
     "intensite": 10,
     "sortie-longue": 10,
     "espacement": 10,
-    "allures": 10,
-    "sante": 9.5,
+    "allures": 8.2,
+    "sante": 9.6,
     "sautees": 10,
     "affutage": 10,
     "stabilite": 10,
     "structure": 9.8,
     "trajectoire": 10,
-    "adaptation": 10
+    "adaptation": 10,
+    "contenu": 10
   },
   "debutant-10k": {
     "volume": 10,
@@ -25,21 +26,23 @@
     "stabilite": 10,
     "structure": 9.2,
     "trajectoire": 10,
-    "adaptation": 10
+    "adaptation": 10,
+    "contenu": 10
   },
   "marathon": {
     "volume": 10,
     "intensite": 10,
     "sortie-longue": 10,
     "espacement": 10,
-    "allures": 9,
+    "allures": 8.8,
     "sante": null,
     "sautees": 10,
     "affutage": null,
     "stabilite": 10,
     "structure": 10,
     "trajectoire": 10,
-    "adaptation": 10
+    "adaptation": 10,
+    "contenu": 10
   },
   "malade": {
     "volume": 9.7,
@@ -53,7 +56,8 @@
     "stabilite": 10,
     "structure": 10,
     "trajectoire": 10,
-    "adaptation": 10
+    "adaptation": 10,
+    "contenu": 10
   },
   "sauteuse": {
     "volume": 9.7,
@@ -67,7 +71,8 @@
     "stabilite": 10,
     "structure": 10,
     "trajectoire": 10,
-    "adaptation": 10
+    "adaptation": 10,
+    "contenu": 10
   },
   "plus-forte": {
     "volume": 10,
@@ -81,7 +86,8 @@
     "stabilite": 10,
     "structure": 10,
     "trajectoire": 10,
-    "adaptation": 10
+    "adaptation": 10,
+    "contenu": 10
   },
   "surmenage": {
     "volume": 9.7,
@@ -95,7 +101,8 @@
     "stabilite": 10,
     "structure": 10,
     "trajectoire": 10,
-    "adaptation": 10
+    "adaptation": 10,
+    "contenu": 10
   },
   "trop-vite": {
     "volume": 10,
@@ -109,7 +116,8 @@
     "stabilite": 10,
     "structure": 10,
     "trajectoire": 10,
-    "adaptation": 10
+    "adaptation": 10,
+    "contenu": 10
   },
   "en-plus": {
     "volume": 10,
@@ -123,7 +131,8 @@
     "stabilite": 10,
     "structure": 10,
     "trajectoire": 10,
-    "adaptation": 9.9
+    "adaptation": 9.9,
+    "contenu": 10
   },
   "tempo": {
     "volume": 10,
@@ -137,7 +146,8 @@
     "stabilite": 10,
     "structure": 10,
     "trajectoire": 10,
-    "adaptation": 10
+    "adaptation": 10,
+    "contenu": 10
   },
   "longue-coupee": {
     "volume": 10,
@@ -151,34 +161,37 @@
     "stabilite": 10,
     "structure": 10,
     "trajectoire": 10,
-    "adaptation": 10
+    "adaptation": 10,
+    "contenu": 10
   },
   "retour-marathon": {
-    "volume": 9.8,
+    "volume": 10,
     "intensite": 10,
     "sortie-longue": 10,
     "espacement": 10,
-    "allures": 8.5,
-    "sante": 9.6,
-    "sautees": 10,
-    "affutage": 10,
-    "stabilite": 10,
-    "structure": 9.8,
-    "trajectoire": 10,
-    "adaptation": 10
-  },
-  "retour-marathon-sans-seuil": {
-    "volume": 9.8,
-    "intensite": 10,
-    "sortie-longue": 10,
-    "espacement": 10,
-    "allures": 8.9,
+    "allures": 6.4,
     "sante": 9.5,
     "sautees": 10,
     "affutage": 10,
     "stabilite": 10,
-    "structure": 9.8,
+    "structure": 9.9,
     "trajectoire": 10,
-    "adaptation": 10
+    "adaptation": 10,
+    "contenu": 10
+  },
+  "retour-marathon-sans-seuil": {
+    "volume": 10,
+    "intensite": 10,
+    "sortie-longue": 10,
+    "espacement": 10,
+    "allures": 8.1,
+    "sante": 9.6,
+    "sautees": 10,
+    "affutage": 10,
+    "stabilite": 10,
+    "structure": 9.9,
+    "trajectoire": 10,
+    "adaptation": 10,
+    "contenu": 10
   }
 }

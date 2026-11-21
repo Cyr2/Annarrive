@@ -45,6 +45,8 @@ export type BuildCtx = {
   sprints?: boolean;
   /** Race-pace target for SPE (P21); defaults to M. */
   racePaceSKm?: number;
+  /** A deload week (P9): its long run stays easy (P12). */
+  deload?: boolean;
 };
 
 export const stepTotal = (s: Step): number => s.durMin * (s.reps ?? 1);
@@ -129,14 +131,29 @@ function easyRun(type: "E" | "RECUP" | "L", durMin: number, c: BuildCtx): Step[]
   if (c.sprints) return sprints(durMin, c);
   const work = step("work", Math.floor(durMin), "E", c.paces, RPE[type]);
   const steps = [type === "RECUP" ? recovery(work) : work];
-  if (c.strides) steps.push(step("strides", 1 / 3, "R", c.paces, 3, { reps: 6 }));
+  if (c.strides) steps.push(step("strides", STRIDES_MIN / 6, "R", c.paces, 3, { reps: 6 }));
   return steps;
 }
 
+/** 6 strides of 20 s at the end of a footing. */
+export const STRIDES_MIN = 2;
+
+/** P12: the fast finish of a development long run, at marathon pace (McMillan: 10 to 15 min; Runna: progression). */
+const FINISH_MIN = 10;
+const LONG_FINISH_MIN = 15;
+const FINISH_RPE = 5;
+
 function longRun(c: BuildCtx): Step[] {
   const dur = Math.floor(c.durMin ?? 90);
-  // P12: specific block every other week in the specific phase, semi and marathon only.
-  if (c.phase !== "spe" || c.distM < 21097.5 || c.progressionStep % 2 === 1) return easyRun("L", dur, c);
+  const odd = c.progressionStep % 2 === 1;
+  if (c.distM < 21097.5 || c.deload) return easyRun("L", dur, c);
+  // P12: in development, one long run in two finishes at marathon pace (fast finish, McMillan).
+  if (c.phase === "dev" && odd) {
+    const finish = dur >= 75 ? LONG_FINISH_MIN : FINISH_MIN;
+    return [step("work", dur - finish, "E", c.paces, RPE.L), step("work", finish, "M", c.paces, FINISH_RPE)];
+  }
+  // P12: specific block every other week in the specific phase, semi and marathon only, never in a deload (P9).
+  if (c.phase !== "spe" || odd) return easyRun("L", dur, c);
   const block = Math.floor(dur / 4);
   return [
     step("work", dur - block, "E", c.paces, RPE.L),
@@ -146,17 +163,22 @@ function longRun(c: BuildCtx): Step[] {
   ];
 }
 
+/**
+ * P12: minutes at threshold in one session, +5 per load week of the phase (P17). 20 at least: Daniels' tempo, the
+ * low end of McMillan (15 to 40) and Pfitzinger (20 to 40). Continuous, Daniels' 10 % of the week's distance above
+ * that; in cruise intervals, 1 min of rest per 5 makes room for Pfitzinger's 40 (22 + 18).
+ */
+export const T_FLOOR = 20;
+const T_MAX = 40;
+const thresholdTarget = (c: BuildCtx): number => Math.min(T_MAX, T_FLOOR + 5 * c.progressionStep);
+
 function threshold(c: BuildCtx): Step[] {
-  const capMin = minutesAt(0.1 * weeklyKm(c), c.paces.T);
-  return [step("work", Math.floor(Math.min(capMin, 15 + 5 * c.progressionStep, 20)), "T", c.paces, RPE.T)];
+  const daniels = Math.max(T_FLOOR, minutesAt(0.1 * weeklyKm(c), c.paces.T));
+  return [step("work", Math.floor(Math.min(daniels, thresholdTarget(c))), "T", c.paces, RPE.T)];
 }
 
-/** [reps, minutes]: 3×5 → 3×10 → 2×15. */
-const CRUISE_PROGRESSION: [number, number][] = [
-  [3, 5],
-  [3, 10],
-  [2, 15],
-];
+/** Cruise fractions by load week, so two weeks never repeat (G3); 1 min of rest per 5 min of work (Daniels). */
+const CRUISE_FRACTIONS = [5, 8, 10, 6, 12];
 /** Half-marathon blocks [km, reps]: 2×3 → 3×4 → 12 km. */
 const HALF_PROGRESSION: [number, number][] = [
   [3, 2],
@@ -165,14 +187,18 @@ const HALF_PROGRESSION: [number, number][] = [
 ];
 
 function cruise(c: BuildCtx): Step[] {
-  const capMin = minutesAt(0.1 * weeklyKm(c), c.paces.T);
-  const [reps, frac] = CRUISE_PROGRESSION[Math.min(c.progressionStep, 2)] ?? [3, 5];
-  return intervals(Math.min(reps, repsFor(capMin, frac)), frac, "T", c.paces, RPE.CRUISE, Math.round(frac / 5));
+  const frac = CRUISE_FRACTIONS[c.progressionStep % CRUISE_FRACTIONS.length] ?? 5;
+  const reps = Math.max(Math.ceil(T_FLOOR / frac), Math.floor(thresholdTarget(c) / frac));
+  return intervals(reps, frac, "T", c.paces, RPE.CRUISE, Math.round(frac / 5));
 }
 
+/**
+ * Fractions of 3, 4 then 5 min, and again, so the format changes each load week (G3). In the specific phase, 3 min:
+ * shorter and faster VO2 work late in the plan (Pfitzinger).
+ */
 function interval(c: BuildCtx): Step[] {
   const capMin = minutesAt(Math.min(0.08 * weeklyKm(c), 10), c.paces.I);
-  const frac = 3 + Math.min(c.progressionStep, 2);
+  const frac = c.phase === "spe" ? 3 : 3 + (c.progressionStep % 3);
   return intervals(repsFor(capMin, frac), frac, "I", c.paces, RPE.I, frac);
 }
 
