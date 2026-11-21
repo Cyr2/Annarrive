@@ -53,6 +53,7 @@ export const RACE: Omit<RaceResult, "date"> = {
   ],
   reggie:
     "Plus rapide sur la deuxième moitié que sur la première. Ta fin a été ta portion la plus rapide. Bravo Anna. Repose-toi bien cette semaine.",
+  recovery: "deux semaines de footings faciles",
 };
 
 export const RACE_ACTIVITY: Activity = {
@@ -82,7 +83,7 @@ export const LONG_ACTIVITY: Activity = {
   intensity: "long",
 };
 
-/** « Garder la forme »: next week's runs become easy footings (algo.md MA6). */
+/** « Garder la forme »: next week's runs become easy footings, the first of the easy weeks (algo.md MA6). */
 export function recoveryWeek(items: Item[]): Item[] {
   return items.map((item) => {
     if (!isRun(item)) return item;

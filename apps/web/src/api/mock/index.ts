@@ -354,7 +354,7 @@ export function createMockApi({
       dismissReview(week);
     },
     keepFit: () =>
-      commit("Mode entretien : deux semaines faciles pour commencer", () => {
+      commit("Mode entretien : footings faciles pour commencer", () => {
         state.program.maintenance = true;
         state.race = undefined;
         const next = addDays(mondayOf(today), 7);

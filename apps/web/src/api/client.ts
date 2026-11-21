@@ -94,7 +94,7 @@ export interface Api {
   stopProgram(): Promise<ChangeResult>;
   /** « Fermer le bilan »: the server keeps it closed for that ISO week, on every device. */
   dismissReview(week: string): Promise<void>;
-  /** « Garder la forme » after the goal race: no goal, two easy weeks, then maintenance. */
+  /** « Garder la forme » after the goal race: no goal, the easy weeks after the race, then maintenance. */
   keepFit(): Promise<ChangeResult>;
   reconnectWatch(): Promise<void>;
   resendToWatch(sessionId: string): Promise<void>;

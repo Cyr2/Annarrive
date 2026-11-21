@@ -3,7 +3,7 @@ import { addDays, at, dateOf, daysBetween, weekDates } from "./dates.ts";
 import { adaptForHealth, MODERATE_DAYS, sickDays } from "./events.ts";
 import { paces, predictTime } from "./fitness.ts";
 import { capWeekSpikes, enforceDistribution, resumeWeek, weeklyCaps } from "./guards.ts";
-import { lastRaceDay, maintenanceWeek, postRaceIndex, postRaceWeek } from "./maintenance.ts";
+import { lastRace, maintenanceWeek, postRaceIndex, postRaceWeek, recoveryRestDays } from "./maintenance.ts";
 import { nearRace, placeWeek } from "./placement.ts";
 import {
   buildWeek,
@@ -143,10 +143,20 @@ function adjusted(w: PlanWeek, r: WeekRequest): PlanWeek {
 
 type Content = WeekPlan & { phase: Phase };
 
-/** The unplaced sessions the week calls for: plan week (M2), post-race weeks (P23, MA6) or maintenance (M9). */
+/**
+ * The unplaced sessions the week calls for: post-race weeks (P23, MA6), before a new plan too (its base weeks absorb
+ * them, research 06 §4.2), else the plan week (M2) or maintenance (M9).
+ */
 function content(r: WeekRequest, p: Paces): Content {
   const goal = r.goal;
   const history8w = pastWeeks(r.history, r.monday, LOOKBACK_WEEKS);
+  const race = lastRace(goal, r.history, r.monday);
+  const afterRace = race && postRaceIndex(race, r.monday);
+  if (race && afterRace) {
+    // The weeks up to race day: the reference stays put from one easy week to the next.
+    const usual = mean(pastWeeks(r.history, addDays(race.day, 1), LOOKBACK_WEEKS));
+    return { sessions: postRaceWeek(usual, p, race.distM, afterRace), warnings: [], phase: "base" };
+  }
   if (goal && goal.date >= r.monday) {
     const plan = programPlan({ ...r, goal });
     const first = plan.weeks[0];
@@ -159,9 +169,6 @@ function content(r: WeekRequest, p: Paces): Content {
     const ctx = { paces: p, distM: goal.distanceM, longest30dMin: longest30d(r.history, r.now), ...racePace };
     return { sessions: buildWeek(week, ctx), warnings: plan.warnings, phase: week.phase };
   }
-  const raceDay = lastRaceDay(goal, r.history, r.monday);
-  const afterRace = raceDay && postRaceIndex(raceDay, r.monday);
-  if (afterRace) return { sessions: postRaceWeek(mean(history8w), p, 3, afterRace), warnings: [], phase: "base" };
   const weekIdx = Math.floor(daysBetween(EPOCH_MONDAY, r.monday) / 7) + 1;
   return { sessions: maintenanceWeek(history8w, r.settings, weekIdx, { paces: p }), warnings: [], phase: "dev" };
 }
@@ -280,6 +287,24 @@ function returning(sessions: Session[], r: WeekRequest): Session[] {
 const whileUnwell = (s: Session, r: WeekRequest, p: Paces): Session =>
   r.health?.kind === "cold" || r.health?.kind === "easy" ? adaptForHealth(s, r.health, dateOf(s.start), p) : s;
 
+/** MA6: the days off right after the race (goal or last goal race) that fall in or before the week, as unavailable. */
+function restAfterRace(r: WeekRequest): CalEvent[] {
+  const race = lastRace(r.goal, r.history, addDays(r.monday, 7));
+  if (!race) return [];
+  const end = addDays(race.day, 1 + recoveryRestDays(race.distM));
+  return end > r.monday
+    ? [
+        {
+          id: "race-rest",
+          kind: "unavailable",
+          start: `${addDays(race.day, 1)}T00:00`,
+          end: `${end}T00:00`,
+          manual: true,
+        },
+      ]
+    : [];
+}
+
 /** G1 and G2 to G4 on the new sessions against the weeks actually run, then P16 on what is left. */
 function capped(sessions: Session[], r: WeekRequest, phase: Phase): Session[] {
   const spiked = capWeekSpikes(sessions, longest30d(r.history, r.now)).week;
@@ -314,7 +339,7 @@ export function planWeek(r: WeekRequest): WeekPlan {
     pastEnd > `${r.monday}T00:00`
       ? [{ id: "past", kind: "unavailable", start: `${r.monday}T00:00`, end: pastEnd, manual: true }]
       : [];
-  const cal = [...r.cal, ...past];
+  const cal = [...r.cal, ...past, ...restAfterRace(r)];
   const race = raceSession(r, p);
   const raceThisWeek = race !== null && dateOf(race.start) < addDays(r.monday, 7);
   // P24: the race replaces the week's long run, and is never capped like a planned rise.

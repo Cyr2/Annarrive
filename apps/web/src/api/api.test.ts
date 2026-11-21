@@ -284,7 +284,14 @@ describe("http client, reading", () => {
       highlight: { text: "Ton seuil de jeudi, plus rapide que prévu", type: "T" },
       reggie: "Une seule course manquée, le reste est fait.",
     };
-    const race = { date: "2026-11-15", distanceM: 10000, timeMin: 52, splits: [], reggie: "Bravo Anna." };
+    const race = {
+      date: "2026-11-15",
+      distanceM: 10000,
+      timeMin: 52,
+      splits: [],
+      reggie: "Bravo Anna.",
+      recovery: "une semaine de footings faciles",
+    };
     const { api, sent } = server({
       ...reads,
       "GET /api/today": { ...reads["GET /api/today"], review, race },

@@ -36,6 +36,8 @@ test("Après la course objectif, le résultat remplace la journée jusqu'à « G
   await expect(result).toContainText("28 s sous ton objectif");
   await expect(result).toContainText("de mieux qu'en décembre");
   await expect(page.getByRole("img", { name: /Allure par tranche/ })).toBeVisible();
+  // The easy weeks come first whatever she picks: said once, above the two choices (algo.md MA6).
+  await expect(page.getByText("D'abord deux semaines de footings faciles, quelle que soit la suite.")).toBeVisible();
 
   await page.getByRole("button", { name: /Garder la forme/ }).click();
   await expect(banner(page, "Mode entretien")).toBeVisible();

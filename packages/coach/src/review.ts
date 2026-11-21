@@ -1,6 +1,7 @@
 import { FAST_RATIO } from "./adaptation.ts";
 import { isHard } from "./catalog.ts";
 import { DAY_NAMES, dateOf, weekday } from "./dates.ts";
+import { recoveryText } from "./maintenance.ts";
 import type { Activity, Goal, RunType, Session } from "./types.ts";
 
 // ---------- BR. Le bilan du dimanche ----------
@@ -224,6 +225,8 @@ export type RaceReport = {
   previous?: RaceTime;
   splits: RaceSplit[];
   reggie: string;
+  /** MA6: the easy weeks that come first, whatever she picks next: « deux semaines de footings faciles ». */
+  recovery: string;
 };
 
 /** RR2 to RR5: the result, against her target and her last race, split by split, with Reggie's word. */
@@ -235,5 +238,6 @@ export function raceReport(goal: NonNullable<Goal>, run: Activity, previous?: Ra
     ...(previous ? { previous } : {}),
     splits,
     reggie: raceLine(splits),
+    recovery: recoveryText(goal.distanceM),
   };
 }

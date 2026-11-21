@@ -43,14 +43,8 @@ describe("maintenance (M9)", () => {
     expect(maintenanceWeek([200], { ...SETTINGS, runsPerWeek: 5 }, 1, fitness)).toHaveLength(3);
   });
 
-  it("gives 81 min of easy runs and no Q after a race (MA-5)", () => {
-    const w = postRaceWeek(180, P40);
-    expect(w.reduce((s, x) => s + x.durMin, 0)).toBe(81);
-    expect(w.every((s) => s.type === "E")).toBe(true);
-  });
-
   it("keeps 20 min footings after a race when no run is known (MA-7)", () => {
-    expect(postRaceWeek(0, P40).map((s) => s.durMin)).toEqual([20, 20, 20]);
+    expect(postRaceWeek(0, P40, 21097.5).map((s) => s.durMin)).toEqual([20, 20, 20]);
   });
 
   it("starts the plan next Monday from the maintenance mean (MA-6)", () => {

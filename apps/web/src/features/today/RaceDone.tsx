@@ -77,6 +77,7 @@ export function RaceDone({ race }: { race: RaceResult }) {
 
       <section className="flex flex-col gap-2" aria-labelledby="race-next">
         <SectionTitle id="race-next">Et maintenant ?</SectionTitle>
+        <p className="t-sub m-0">D'abord {race.recovery}, quelle que soit la suite.</p>
         <ChoiceGroup labelledBy="race-next" className="flex flex-col gap-2">
           <ChoiceCard on={false} onClick={() => show({ kind: "goal" })}>
             <span className="flex min-w-0 flex-col gap-0.5">
@@ -87,9 +88,7 @@ export function RaceDone({ race }: { race: RaceResult }) {
           <ChoiceCard on={false} onClick={() => void usePlan.getState().apply((api) => api.keepFit())}>
             <span className="flex min-w-0 flex-col gap-0.5">
               <span className="t-strong">Garder la forme</span>
-              <span className="t-sub">
-                Deux semaines de footings faciles, puis trois courses par semaine sans objectif.
-              </span>
+              <span className="t-sub">Ensuite trois courses par semaine, sans objectif.</span>
             </span>
           </ChoiceCard>
         </ChoiceGroup>
