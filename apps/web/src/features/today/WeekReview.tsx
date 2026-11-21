@@ -60,13 +60,13 @@ export function WeekReview({ review, onClose }: { review: Review; onClose: () =>
         <dl className="m-0 flex flex-wrap gap-x-7 gap-y-3">
           {/* The label reads after its figure, as on the mockup; VoiceOver reads it first. */}
           <div className="flex flex-col-reverse">
-            <dt className="t-sub">{review.planned > 1 ? "courses" : "course"}</dt>
+            <dt className="t-sub">{review.planned > 1 ? "séances tenues" : "séance tenue"}</dt>
             <dd className="m-0">
               <PaceValue value={String(review.done)} unit={`sur ${review.planned}`} size="figure" />
             </dd>
           </div>
           <div className="flex flex-col-reverse">
-            <dt className="t-sub">de course</dt>
+            <dt className="t-sub">courues</dt>
             <dd className="m-0">
               <PaceValue value={duration(Math.round(review.minutes))} size="figure" />
             </dd>

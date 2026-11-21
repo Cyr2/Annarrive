@@ -6,7 +6,7 @@ import { usePlan } from "../plan/store.ts";
 import type { SheetProps } from "../sheets/SheetHost.tsx";
 import { checkIcsUrl } from "./program.ts";
 
-/** The ICS link in a sheet: a full-width field, checked when she saves, the error under it. */
+/** The timetable link (ICS) in a sheet: a full-width field, checked when she saves, the error under it. */
 export default function TimetableSheet(sheet: SheetProps<"timetable">) {
   const saved = usePlan((s) => s.program?.timetableUrl) ?? "";
   const run = usePlan((s) => s.run);
@@ -36,7 +36,7 @@ export default function TimetableSheet(sheet: SheetProps<"timetable">) {
     >
       <Group>
         <label htmlFor={id} className="row field-ring">
-          <span className="sr-only-label">Lien ICS</span>
+          <span className="sr-only-label">Lien de ton emploi du temps</span>
           <input
             id={id}
             type="url"

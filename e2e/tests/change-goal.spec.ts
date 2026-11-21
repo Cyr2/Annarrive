@@ -22,7 +22,7 @@ test("Programme : changer de course recalcule le plan sans toucher la semaine en
 }) => {
   await page.goto("/semaine");
   const today = page.locator("#day-2026-11-17");
-  await expect(today).toContainText("6 × 10 s");
+  await expect(today).toContainText("6 accélérations de 10 s");
   const week = page.locator([16, 17, 18, 19, 20, 21, 22].map((d) => `#day-2026-11-${d}`).join(", "));
   const thisWeek = await week.allInnerTexts();
 
@@ -40,7 +40,7 @@ test("Programme : changer de course recalcule le plan sans toucher la semaine en
   await expect(card.getByRole("heading")).toHaveText("10 km");
 
   await page.getByRole("link", { name: "Semaine" }).click();
-  await expect(today).toContainText("6 × 10 s");
+  await expect(today).toContainText("6 accélérations de 10 s");
   expect(await week.allInnerTexts()).toEqual(thisWeek);
 
   await changed.getByRole("button", { name: "Annuler" }).click();

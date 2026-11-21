@@ -12,6 +12,14 @@ const HR_FROM = {
   laps: () => "Tes 2 séances au seuil",
 } as const;
 
+const OWN_RACE: Record<number, string> = {
+  5000: "ton 5 km",
+  10000: "ton 10 km",
+  21097.5: "ton semi",
+  42195: "ton marathon",
+};
+const raceName = (distanceM?: number) => (distanceM && OWN_RACE[distanceM]) || "ta course";
+
 /** « Ton niveau »: VO2max (only when her watch gave one), threshold pace, threshold heart rate, each with its source. */
 export function figures(d: Data): Figure[] {
   const [pace = "", unit] = paceLabel(d.thresholdPace).split(/\s/);
@@ -19,8 +27,10 @@ export function figures(d: Data): Figure[] {
   const vo2max = d.vo2max && {
     label: "VO2max",
     value: String(Math.round(d.vo2max.value)),
-    // F19: what her watch says next to her race, when she gave one.
-    detail: d.vo2max.versus ? `Garmin, ${VERSUS[d.vo2max.versus]} ta course` : `Garmin, le ${dayMonth(d.vo2max.date)}`,
+    // F19: what her watch says next to the race she gave, named: her level may come from a training run (N-F1).
+    detail: d.vo2max.versus
+      ? `Garmin, ${VERSUS[d.vo2max.versus]} ${raceName(d.vo2max.raceDistanceM)}`
+      : `Garmin, le ${dayMonth(d.vo2max.date)}`,
   };
   return [
     ...(vo2max ? [vo2max] : []),

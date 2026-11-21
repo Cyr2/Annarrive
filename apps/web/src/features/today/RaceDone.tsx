@@ -28,7 +28,7 @@ function Splits({ splits }: { splits: RaceResult["splits"] }) {
               {paceText(s.paceSKm).replace(/\s\/km$/, "")}
             </span>
             <span
-              className="w-full rounded-tile bg-linear-to-b from-long to-long-deep"
+              className="w-full rounded-tile bg-linear-to-b from-long to-long-wash"
               // The slowest part keeps 35 % of the height: every bar reads as a bar.
               style={{ height: `${35 + (slow > fast ? (45 * (slow - s.paceSKm)) / (slow - fast) : 45)}%` }}
             />

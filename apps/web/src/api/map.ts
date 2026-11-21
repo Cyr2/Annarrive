@@ -25,7 +25,7 @@ import type {
   UnavailablePreview,
   WatchInfo,
 } from "@annarrive/protocol";
-import { agreeWith, paceLabel, sessionNames, stepBlocks } from "@annarrive/protocol";
+import { agreeWith, paceLabel, sessionNames, sessionTitle, stepBlocks } from "@annarrive/protocol";
 import {
   addDays,
   daysBetween,
@@ -161,10 +161,16 @@ function toneOf(step: ServerStep): StepLine["tone"] {
   return step.kind === "work" && step.zone !== "E" ? "hard" : "plain";
 }
 
-function toLine(step: ServerStep): StepLine {
+/** In a footing, the easy part before the strides is the footing itself, not a warm-up (G5). */
+function labelOf(step: ServerStep, footing: boolean): string | undefined {
+  const easy = step.kind === "warmup" || (step.kind === "work" && step.zone === "E");
+  return footing && easy ? "Footing" : STEP_LABELS[step.kind];
+}
+
+function toLine(step: ServerStep, footing = false): StepLine {
   const { paceSKm } = step.target;
   return {
-    label: [STEP_LABELS[step.kind], size(step)].filter(Boolean).join(" · "),
+    label: [labelOf(step, footing), size(step)].filter(Boolean).join(" · "),
     pace: paceSKm ? paceLabel(paceSKm) : "",
     tone: toneOf(step),
     ...(step.durMin ? { minutes: step.durMin } : {}),
@@ -172,16 +178,23 @@ function toLine(step: ServerStep): StepLine {
 }
 
 /** The steps as the watch gets them (`stepBlocks`): lines, and « Répéter n fois » groups. */
-export function toSteps(steps: ServerStep[]): Step[] {
+export function toSteps(steps: ServerStep[], footing = false): Step[] {
+  const line = (step: ServerStep) => toLine(step, footing);
   return stepBlocks(steps).map((b) =>
-    b.kind === "step" ? toLine(b.step) : { repeat: b.times, steps: b.steps.map(toLine) },
+    b.kind === "step" ? line(b.step) : { repeat: b.times, steps: b.steps.map(line) },
   );
+}
+
+/** « 6 × 800 m »; a footing's strides say what they are: « 6 accélérations de 10 s ». */
+function mainSetOf(session: SessionView | PlannedSession, work: ServerStep | undefined): string | undefined {
+  const strides = session.steps.find((s) => s.kind === "strides");
+  if (session.type === "E" && strides) return `${strides.reps ?? 1} accélérations de ${size(strides)}`;
+  const main = work ?? strides;
+  return main?.reps ? amount(main) : undefined;
 }
 
 export function toRun(session: SessionView | PlannedSession): Run {
   const work = session.steps.find((s) => s.kind === "work");
-  // An easy run with sprints on the flat names them as its main set; its pace stays the easy one.
-  const main = work ?? session.steps.find((s) => s.kind === "strides");
   const paced = work?.target.paceSKm ?? session.steps.find((s) => s.target.paceSKm)?.target.paceSKm;
   const watch = "watch" in session && session.watch ? WATCH[session.watch] : undefined;
   return {
@@ -190,11 +203,11 @@ export function toRun(session: SessionView | PlannedSession): Run {
     date: dateOf(session.start),
     start: clockOf(session.start),
     durationMin: Math.max(1, Math.round(session.durMin)),
-    title: TITLES[session.type],
+    title: sessionTitle(session),
     intensity: intensityOf(session.type),
-    mainSet: main?.reps ? amount(main) : undefined,
+    mainSet: mainSetOf(session, work),
     pace: paced ? paceLabel(paced) : "",
-    steps: toSteps(session.steps),
+    steps: toSteps(session.steps, session.type === "E"),
     why: WHY[session.type],
     watch,
   };
@@ -519,9 +532,16 @@ export function toProgram({ program, profile, lastSyncAt, days, today, watch }: 
   };
 }
 
+/** The banner's one line: the change and its first warning; the others are counted, never listed (audit N-G1). */
+export function changeMessage(summary: string, warnings: string[]): string {
+  const [first, ...rest] = warnings;
+  const more = rest.length === 0 ? undefined : rest.length === 1 ? "1 autre point" : `${rest.length} autres points`;
+  return [summary, first, more].filter(Boolean).join(" · ");
+}
+
 export function toChange(response: ChangeResponse): ChangeResult {
   const summary = response.change?.summary ?? "Rien n'a changé";
-  return { changeId: response.change?.id ?? "", message: [summary, ...response.warnings].join(" · "), rows: [] };
+  return { changeId: response.change?.id ?? "", message: changeMessage(summary, response.warnings), rows: [] };
 }
 
 export function toEventInput(event: NewEvent): CreateEventInput {
@@ -641,7 +661,7 @@ function toWidget(widget: ChatWidget, question: string): Widget | undefined {
         sessionId: widget.sessionId,
         optionId: widget.option === "jog30" ? "jog" : widget.option,
         session: {
-          title: TITLES[widget.session.type],
+          title: sessionTitle(widget.session),
           detail: detail(widget.session),
           intensity: intensityOf(widget.session.type),
         },
@@ -650,7 +670,7 @@ function toWidget(widget: ChatWidget, question: string): Widget | undefined {
     case "change":
       return {
         type: "change",
-        change: { changeId: widget.changeId, message: [widget.summary, ...widget.warnings].join(" · "), rows: [] },
+        change: { changeId: widget.changeId, message: changeMessage(widget.summary, widget.warnings), rows: [] },
       };
     default:
       // "checking" only says Reggie is searching: the stream turns it into a status.

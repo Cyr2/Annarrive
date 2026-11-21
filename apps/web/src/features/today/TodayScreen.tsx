@@ -13,7 +13,7 @@ import { preloadSheet } from "../sheets/SheetHost.tsx";
 import { useSheet } from "../sheets/store.ts";
 import { useGo } from "../useGo.ts";
 import { changeOptions, moveOptions } from "../useLoad.ts";
-import { RefreshRow, refreshTimetable } from "../week/RefreshRow.tsx";
+import { refreshTimetable } from "../week/RefreshRow.tsx";
 import { AfterRun } from "./AfterRun.tsx";
 import { DayAgenda } from "./DayAgenda.tsx";
 import { DidYouRun, FeelAfterConfirm } from "./DidYouRun.tsx";
@@ -48,13 +48,12 @@ function useBelowCard(ready: boolean) {
   return shown;
 }
 
-/** Under the card: the week and « Ma journée » (not after the run), then when the timetable was last read. */
-function BelowCard({ week, date, day }: { week: Week; date: string; day: boolean }) {
+/** Under the card: the week and « Ma journée ». The timetable reads itself; its line lives on Semaine. */
+function BelowCard({ week, date }: { week: Week; date: string }) {
   return (
     <>
-      {day && <ThisWeek week={week} today={date} />}
-      {day && <DayAgenda items={week.items} date={date} />}
-      <RefreshRow checkedAt={week.timetableCheckedAt} change={week.timetableChange} />
+      <ThisWeek week={week} today={date} />
+      <DayAgenda items={week.items} date={date} />
     </>
   );
 }
@@ -129,6 +128,8 @@ export function TodayScreen() {
       {!activity && !session && toConfirm && <h1 className="sr-only-label">Aujourd'hui</h1>}
       {/* Settled once what sits under the card is drawn: the first screen's later frames arrive without motion. */}
       <Presence settled={belowCard}>
+        {/* The run she just finished comes first: how it felt is the one thing asked of her tonight. */}
+        {activity && <AfterRun key="after" activity={activity} next={notInReview(review, next)} today={date} />}
         {review && <WeekReview key="review" review={review} onClose={closeReview} />}
         {unwellText && <Unwell text={unwellText} />}
         {/* What Reggie changed because of what she ran (algo.md M10): one line, until the session it moved. */}
@@ -137,15 +138,13 @@ export function TodayScreen() {
         {!activity && !toConfirm && confirmed && (
           <FeelAfterConfirm key="feel" run={confirmed} onClose={() => setConfirmed(undefined)} />
         )}
-        {activity && <AfterRun activity={activity} next={notInReview(review, next)} today={date} />}
         {!activity && session && (
           <Fragment key="session">
             <RunCard run={session} today={date} />
             <div data-tour="actions" className="flex flex-col gap-4">
               <ReggieNote text={session.why} onClick={askReggie} />
-              {/* The four round actions were chosen by the owner: Reggie first, filled in his green. */}
+              {/* Reggie is reached by his note just above and by his tab: three round actions, all above the tab bar. */}
               <div className="grid grid-cols-[repeat(auto-fit,minmax(3.5rem,1fr))] gap-2">
-                <RoundAction label="Reggie" icon="reggie" reggie onClick={askReggie} />
                 <RoundAction
                   label="Déplacer"
                   icon="move"
@@ -181,7 +180,7 @@ export function TodayScreen() {
           <ProposalCard key={p.id} proposal={p} />
         ))}
 
-        {belowCard && <BelowCard key="below" week={week} date={date} day={!activity} />}
+        {belowCard && !activity && <BelowCard key="below" week={week} date={date} />}
       </Presence>
     </Screen>
   );

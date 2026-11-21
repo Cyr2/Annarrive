@@ -18,7 +18,13 @@ export type ReviewInput = {
   exams: number;
   /** Next week's sessions, for BR6. */
   next: Session[];
+  /** BR7: read on Monday, the week it closes is last week and the next one is this week. */
+  monday?: boolean;
 };
+
+/** « lundi » read on Sunday, « lundi dernier » read on Monday (BR7). */
+const dayOf = (input: ReviewInput, start: string): string =>
+  `${DAY_NAMES[weekday(start)]}${input.monday ? " dernier" : ""}`;
 
 export type Highlight = { text: string; type?: RunType };
 export type WeekReview = { done: number; planned: number; minutes: number; highlight?: Highlight; reggie: string };
@@ -63,7 +69,7 @@ function faster(input: ReviewInput): Highlight | undefined {
   const s = run && input.sessions.find((x) => x.id === run.sessionId);
   const name = s && Q_NAMES[s.type];
   return run && s && name
-    ? { text: `${name} de ${DAY_NAMES[weekday(run.start)]}, plus rapide que prévu`, type: s.type }
+    ? { text: `${name} de ${dayOf(input, run.start)}, plus rapide que prévu`, type: s.type }
     : undefined;
 }
 
@@ -73,7 +79,7 @@ function longest(input: ReviewInput): Highlight | undefined {
   if (input.before.some((a) => a.distM >= run.distM)) return undefined;
   const type = input.sessions.find((s) => s.id === run.sessionId)?.type;
   return {
-    text: `${km(run.distM)} km ${DAY_NAMES[weekday(run.start)]}, ta plus longue course depuis deux mois`,
+    text: `${km(run.distM)} km ${dayOf(input, run.start)}, ta plus longue course depuis deux mois`,
     ...(type ? { type } : {}),
   };
 }
@@ -87,23 +93,25 @@ function doneLine(done: number, planned: number, exams: number): string {
   return "Tu repars de là, sans rattraper ce qui manque.";
 }
 
+/** « , avec une course de plus », « , avec 2 courses de moins », or nothing. */
+function runsText(more: number): string {
+  if (more === 0) return "";
+  const n = Math.abs(more);
+  return `, avec ${n === 1 ? "une course" : `${n} courses`} de ${more > 0 ? "plus" : "moins"}`;
+}
+
 /** BR6: next week against this one, in volume and in runs. */
 function nextLine(input: ReviewInput, plannedMin: number, planned: number): string {
   const next = input.next.filter((s) => s.status !== "cancelled" && s.status !== "skipped");
-  if (next.some((s) => s.type === "RACE")) return "La semaine prochaine, c'est ta course.";
+  const week = input.monday ? "Cette semaine" : "La semaine prochaine";
+  if (next.some((s) => s.type === "RACE")) return `${week}, c'est ta course.`;
   const nextMin = sum(next.map((s) => s.durMin));
   if (nextMin === 0 || plannedMin === 0) return "";
   const ratio = nextMin / plannedMin;
-  const more = next.length - planned;
-  const runs =
-    more === 0
-      ? ""
-      : more > 0
-        ? `, avec ${more === 1 ? "une course" : `${more} courses`} de plus`
-        : `, avec ${more === -1 ? "une course" : `${-more} courses`} de moins`;
-  if (ratio >= 1.05) return `La semaine prochaine monte un peu${runs || ", sans course de plus"}.`;
-  if (ratio <= 0.85) return `La semaine prochaine est plus légère${runs}.`;
-  return `La semaine prochaine garde le même volume${runs}.`;
+  const runs = runsText(next.length - planned);
+  if (ratio >= 1.05) return `${week} monte un peu${runs || ", sans course de plus"}.`;
+  if (ratio <= 0.85) return `${week} est plus légère${runs}.`;
+  return `${week} garde le même volume${runs}.`;
 }
 
 /**

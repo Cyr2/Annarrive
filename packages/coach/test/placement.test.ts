@@ -330,6 +330,15 @@ describe("proposeMoveSlots (A6)", () => {
     expect(slotReason(e2, slotAt(e2, "2026-11-26T17:00"), week([e2], [course]))).toBe("après tes cours");
     expect(slotReason(e2, slotAt(e2, "2026-11-26T07:00"), week([e2], [course]))).toBe("avant tes cours");
     expect(slotReason(e2, slotAt(e2, "2026-11-26T07:00"), week([e2], []))).toBe("journée sans cours");
+    // Said once: on a second slot the legs session tells nothing apart, her classes do (audit UX F2).
+    const said = new Set(["ta muscu jambes est mardi soir, l'écart est bon"]);
+    expect(slotReason(q2, thursday, week([q2], [LEGS, course]), said)).toBe("après tes cours");
+  });
+
+  it("never gives two slots the same legs reason (PL-17)", () => {
+    const r = proposeMoveSlots("q", week([hard("q", "2026-11-27T19:00")]), "2026-11-23T08:00");
+    const legs = r.best.filter((b) => b.reason.startsWith("ta muscu jambes"));
+    expect(legs.length).toBeLessThanOrEqual(1);
   });
 
   it("offers a jog tonight or skipping when nothing fits (PL-11)", () => {
@@ -446,6 +455,67 @@ describe("week spread (S8, S10, S13)", () => {
     // At most one pair of days in a row (4 runs in 7 days), never three, and no more than two empty days.
     expect(d.filter((x, i) => i > 0 && x - (d[i - 1] ?? 0) === 1).length).toBeLessThanOrEqual(1);
     expect([-1, ...d, 7].every((x, i, all) => i === 0 || x - (all[i - 1] ?? 0) <= 3)).toBe(true);
+  });
+
+  // Audit parcours réel 2 N-G3: Mon, Tue, Wed at 18:30 then nothing until Saturday, Thursday and Friday evenings free.
+  it("never puts three runs on three days in a row when the week has room, whatever last week did (PL-25)", () => {
+    const anna = { ...SETTINGS, runsPerWeek: 4 as const, preferredHour: "18:30", preferredLongDays: [5, 6] };
+    const prev = [
+      easy("p1", "2026-11-16T18:30", 48),
+      easy("p2", "2026-11-17T18:30", 45),
+      easy("p3", "2026-11-18T18:30", 45),
+      long("p4", "2026-11-21T09:30", 60),
+    ];
+    const runs = [long("l", "", 60), easy("e1", "", 48), easy("e2", "", 45), easy("e3", "", 45)];
+    const d = days(placeWeek(runs, classes, anna, MONDAY, prev).week.sessions);
+    expect(d).toHaveLength(4);
+    expect(d.some((x, i) => i > 1 && x - (d[i - 2] ?? 0) === 2)).toBe(false);
+    // Only when nothing else fits do three days in a row come back: Thursday to Sunday taken all day.
+    const busy = [3, 4, 5, 6].map((i) => {
+      const day = weekDates(MONDAY)[i] ?? "";
+      return block(`busy-${i}`, `${day}T06:00`, `${day}T23:30`);
+    });
+    const tight = placeWeek(runs.slice(1), [...classes, ...busy], anna, MONDAY, prev).week.sessions;
+    expect(days(tight)).toEqual([0, 1, 2]);
+  });
+
+  it("spreads the week of 30 November of the audit, her classes as they are (PL-25)", () => {
+    const monday = "2026-11-30";
+    const at = (day: number, from: string, to: string) => {
+      const d = weekDates(monday)[day] ?? "";
+      return block(`c${day}${from}`, `${d}T${from}`, `${d}T${to}`, "class");
+    };
+    const cal = [
+      at(0, "08:15", "10:15"),
+      at(0, "13:30", "16:30"),
+      at(1, "10:15", "12:15"),
+      at(1, "14:00", "17:00"),
+      at(2, "08:15", "12:15"),
+      at(3, "09:00", "12:00"),
+      at(3, "14:00", "18:00"),
+      at(4, "08:15", "10:15"),
+    ];
+    const anna = {
+      ...SETTINGS,
+      runsPerWeek: 4 as const,
+      latestEnd: "21:30",
+      bedtime: "23:30",
+      travelMin: 30,
+      preferredLongDays: [5, 6],
+      usualHours: { weekday: "18:30", weekend: "09:30", long: "09:30" },
+    };
+    const done = { status: "done" as const };
+    const prev = [
+      easy("p1", "2026-11-24T18:30", 33, done),
+      easy("p0", "2026-11-25T18:30", 34, done),
+      easy("p2", "2026-11-27T18:30", 33, done),
+      long("p3", "2026-11-28T09:30", 60, done),
+    ];
+    const runs = [easy("w-0", "", 35), easy("w-1", "", 33), easy("w-2", "", 33), long("w-3", "", 60)];
+    const placed = placeWeek(runs, cal, anna, monday, prev).week.sessions;
+    const d = placed.map((s) => weekDates(monday).indexOf(s.start.slice(0, 10))).sort((a, b) => a - b);
+    expect(d).toHaveLength(4);
+    expect(d.some((x, i) => i > 1 && x - (d[i - 2] ?? 0) === 2)).toBe(false);
   });
 
   it("places four runs without two days in a row when the week has room (PL-15)", () => {

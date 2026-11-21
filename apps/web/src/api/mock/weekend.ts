@@ -23,7 +23,7 @@ export function dismissReview(week: string): void {
 }
 
 /** Sunday evening of the seeded week: every run done, Monday's intervals faster than planned. */
-export function mockReview(monday: string, items: Item[], next: Item[]): WeekReview {
+export function mockReview(monday: string, items: Item[], next: Item[], readOnMonday = false): WeekReview {
   const runs = items.filter(isRun);
   return {
     week: isoWeek(monday),
@@ -31,8 +31,11 @@ export function mockReview(monday: string, items: Item[], next: Item[]): WeekRev
     done: runs.length,
     planned: runs.length,
     minutes: runs.reduce((sum, r) => sum + r.durationMin, 0),
-    highlight: { text: "Ton fractionné de lundi, plus rapide que prévu", intensity: "hard" },
-    reggie: "Tu as fait toutes tes courses. La semaine prochaine garde le même volume.",
+    highlight: {
+      text: `Ton fractionné de lundi${readOnMonday ? " dernier" : ""}, plus rapide que prévu`,
+      intensity: "hard",
+    },
+    reggie: `Tu as fait toutes tes courses. ${readOnMonday ? "Cette semaine" : "La semaine prochaine"} garde le même volume.`,
     next: next.filter(isRun),
   };
 }

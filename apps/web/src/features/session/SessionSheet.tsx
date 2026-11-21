@@ -68,8 +68,8 @@ export default function SessionSheet({ spec, ...sheet }: SheetProps<"session">) 
         </div>
         <SessionShape steps={run.steps} tone={run.intensity} className="relative h-11" />
         {run.lightened && (
-          <div className="relative flex flex-col items-start rounded-row bg-warn-wash px-3 pt-2">
-            <p className="t-cap m-0 text-warn-deep">{run.lightened}</p>
+          <div className="relative flex flex-col items-start rounded-row bg-reggie-wash px-3 pt-2">
+            <p className="t-cap m-0 text-reggie">{run.lightened}</p>
             <TalkLink context={context} about={about} onGo={close} question="Pourquoi ma séance est allégée ?" />
           </div>
         )}

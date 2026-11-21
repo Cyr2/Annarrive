@@ -46,7 +46,7 @@ export type ChatState = {
 const WELCOME: Entry = {
   id: "welcome",
   role: "reggie",
-  text: "Salut. Pose-moi une question sur ton plan, ou dis-moi ce qui change aujourd'hui.",
+  text: "Salut Anna ! Une question sur ton plan, ou un changement aujourd'hui ?",
 };
 const CANNOT_ANSWER = "Je n'arrive pas à répondre pour l'instant. Réessaie dans un moment.";
 

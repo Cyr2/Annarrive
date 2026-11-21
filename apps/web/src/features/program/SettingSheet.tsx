@@ -24,6 +24,11 @@ const NOTES: Partial<Record<SettingKey, string>> = {
   travelMin: "Pour te doucher, te changer et y aller. Tes courses finissent assez tôt pour ça.",
 };
 
+/** At 0 min there is no time to leave room for (audit N6). */
+const NO_TRAVEL = "Sans temps prévu, une course peut finir juste avant un cours.";
+const noteOf = (key: SettingKey, draft: Settings) =>
+  key === "travelMin" && draft.travelMin === 0 ? NO_TRAVEL : (NOTES[key] ?? REORGANIZED);
+
 /** No long-run day, or an hour she has not picked: on Automatique the hour shown is only a suggestion. */
 const nothingToSave = (key: SettingKey, draft: Settings, picked: boolean) =>
   key === "longRunDays" ? draft.longRunDays.length === 0 : key === "preferredHour" && !(draft.preferredHour && picked);
@@ -82,6 +87,8 @@ export default function SettingSheet({ spec, ...sheet }: SheetProps<"setting">) 
             label={key === "preferredHour" ? "Heure" : SETTING_LABELS[key]}
             type="time"
             value={draft[key] ?? ""}
+            // On Automatique the field only opens on the suggested hour; the row says it is not a set one (F9).
+            {...(key === "preferredHour" && !picked && { display: `Automatique · vers ${draft.preferredHour}` })}
             onChange={(v) => {
               setPicked(true);
               setDraft({ ...draft, [key]: v });
@@ -99,7 +106,7 @@ export default function SettingSheet({ spec, ...sheet }: SheetProps<"setting">) 
           />
         </Group>
       )}
-      <p className="t-cap m-0 px-4">{NOTES[key] ?? REORGANIZED}</p>
+      <p className="t-cap m-0 px-4">{noteOf(key, draft)}</p>
     </Sheet>
   );
 }

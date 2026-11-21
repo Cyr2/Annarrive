@@ -94,8 +94,10 @@ test("Après une course, avant un cours : une course finit au moins ce temps ava
   const sheet = page.getByRole("dialog", { name: "Après une course, avant un cours" });
   // Audit iPhone F8: the title is not asked again as a question under it.
   await expect(sheet).not.toContainText("Combien de temps");
-  await expect(sheet).toContainText("Pour te doucher, te changer et y aller.");
+  // At 0 min there is no time to make room for (audit iPhone N6).
+  await expect(sheet).toContainText("Sans temps prévu");
   await sheet.getByLabel("Temps, heures et minutes").fill("01:00");
+  await expect(sheet).toContainText("Pour te doucher, te changer et y aller.");
   await sheet.getByRole("button", { name: "Enregistrer" }).click();
   const saved = banner(page, "Réglages enregistrés");
   await expect(saved).toBeVisible();

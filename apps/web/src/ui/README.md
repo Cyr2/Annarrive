@@ -111,7 +111,7 @@ Other utilities: `.row` (grouped list row with hairlines between rows), `.hairli
 - **`Input`** `id, value, onChange, placeholder, action?`. A free text field in glass, `action` (the send button) drawn inside it at the trailing end (Reggie's composer, "Dis-le à Reggie"). Form rows use `RowInput`.
 - **`TabBar`** `tabs, active, onNavigate`. iOS 26 floating bar; the current tab in the action blue, Reggie's in his green. Real links.
 - **`TextButton`** `tone?: "action" | "danger" | "ink"`, `icon?`. Text only, no glass: sheet header actions, "Actualiser", "Placer", destructive rows inside a `Group` (`className="min-h-13 w-full"`).
-- **`RoundAction`** `label, icon, reggie?, onPrepare?`. The 60 px actions under the day's session; only Reggie's is filled. `onPrepare` runs as the finger lands (the sheet's slots start loading).
+- **`RoundAction`** `label, icon, onPrepare?`. The 60 px glass actions under the day's session (Déplacer, Changer, Pas dispo). `onPrepare` runs as the finger lands (the sheet's slots start loading).
 - **`ChoiceGroup`** a fieldset with a hidden legend, so VoiceOver reads the question before the choices.
 
 ### One input per kind of value

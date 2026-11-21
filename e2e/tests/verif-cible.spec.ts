@@ -11,7 +11,7 @@ const box = async (locator: ReturnType<Page["locator"]>) => {
 test("Réglages : le retour du système ferme la feuille du lien ICS et reste sur Réglages", async ({ page }) => {
   await page.goto("/programme/reglages");
   const sheet = page.getByRole("dialog", { name: "Emploi du temps" });
-  await page.getByRole("button", { name: /^Lien ICS/ }).click();
+  await page.getByRole("button", { name: /^Lien de ton emploi du temps/ }).click();
   await expect(sheet).toBeVisible();
   await page.goBack();
   await expect(sheet).toBeHidden();

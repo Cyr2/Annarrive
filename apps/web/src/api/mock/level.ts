@@ -7,7 +7,7 @@ export function seedLevel(monday: string): NonNullable<Level> {
     provisional: false,
     since: addDays(monday, -4),
     // VO2max 45 against a VDOT of 40: 5 points, so « au-dessus » (F19).
-    vo2max: { value: 45, date: addDays(monday, -1), versus: "above" },
+    vo2max: { value: 45, date: addDays(monday, -1), versus: "above", raceDistanceM: 21097.5 },
     thresholdPace: 305,
     thresholdHr: { bpm: 172, from: "laps", date: addDays(monday, -5) },
     predictions: [

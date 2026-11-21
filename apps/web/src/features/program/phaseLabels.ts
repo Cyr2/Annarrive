@@ -21,20 +21,27 @@ export type Label = { x: number; text: string } | null;
  * Each phase name under its own segment (mockup programme-v2, B): the current one whole and bold from its segment's
  * start, right-aligned when it would run past the end; each other from its segment's start, at least 8 px after the
  * previous label, inside its segment, the last right-aligned to the end; the short form when the full one does not
- * fit, and none on screen when even that does not (VoiceOver still reads them all). A name left out takes the short
- * form of the one before it when that makes room for both (« Spé. Affût. » rather than « Spécifique » alone).
+ * fit, and none on screen when even that does not (VoiceOver still reads them all). A name left out, or cut short
+ * for want of room, takes the short form of the one before it when that makes room for it whole (« Spé. Affûtage »
+ * rather than « Spécifique Affût. »): whatever the width, the earlier phase is the one shortened (audit N7).
  */
 export function phaseLabels(input: LabelInput): Label[] {
   const short = new Set<number>();
   let labels = layout(input, short);
+  const seen = new Set<number>();
   for (;;) {
-    const missing = labels.findIndex((l, i) => !l && i > 0);
+    const cramped = labels.findIndex(
+      (l, i) => i > 0 && !seen.has(i) && (!l || (l.text !== input.names[i] && !short.has(i))),
+    );
+    if (cramped < 0) return labels;
+    seen.add(cramped);
     const before = labels
-      .slice(0, Math.max(missing, 0))
+      .slice(0, cramped)
       .findLastIndex((l, i) => l && i !== input.current && !short.has(i) && SHORT[l.text]);
-    if (missing < 0 || before < 0) return labels;
+    if (before < 0) continue;
     const tried = layout(input, new Set([...short, before]));
-    if (!tried[missing]) return labels;
+    const now = tried[cramped];
+    if (!now || (labels[cramped] && now.text !== input.names[cramped])) continue;
     short.add(before);
     labels = tried;
   }

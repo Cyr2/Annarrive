@@ -83,7 +83,7 @@ describe("phaseLabels (mockup programme-v2, B)", () => {
       320,
       [12, 0, 6, 2],
       0,
-      ["0 Base", null, "192.8 Spécifique", "278 Affût."],
+      ["0 Base", null, "192.8 Spé.", "264 Affûtage"],
     ],
     // Audit iPhone F4: « Spécifique » whole left no room for the taper's name; « Spé. Affût. » both fit.
     [
@@ -93,6 +93,9 @@ describe("phaseLabels (mockup programme-v2, B)", () => {
       1,
       [null, "23.3 Développement", "200.5 Spé.", "264 Affûtage"],
     ],
+    // Audit iPhone N7: « Spécifique Affût. » at one width, « Spé. Affûtage » at another; the earlier one is shortened.
+    ["base, 6 6 6 2, 320 px", 320, [6, 6, 6, 2], 0, ["0 Base", "96.4 Développement", "195.4 Spé.", "264 Affûtage"]],
+    ["base, 6 6 6 2, 288 px", 288, [6, 6, 6, 2], 0, ["0 Base", "86.8 Dév.", "173.6 Spé.", "232 Affûtage"]],
   ])("%s", (_, width, weeks, current, expected) => {
     expect(layout(width, weeks, current)).toEqual(expected);
   });

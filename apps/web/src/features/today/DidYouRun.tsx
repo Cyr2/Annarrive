@@ -2,7 +2,6 @@ import type { Run } from "../../api/schemas.ts";
 import { pastMoment } from "../../lib/date.ts";
 import { Button } from "../../ui/controls.tsx";
 import { SectionTitle } from "../../ui/List.tsx";
-import { SessionChip } from "../../ui/SessionShape.tsx";
 import { Surface } from "../../ui/Surface.tsx";
 import { TextButton } from "../../ui/TextButton.tsx";
 import { usePlan } from "../plan/store.ts";
@@ -20,8 +19,7 @@ export function DidYouRun({ run, today, onDone }: { run: Run; today: string; onD
   return (
     <Surface as="section" aria-labelledby="did-you-run" className="flex flex-col gap-4 px-5 py-4">
       <div className="flex flex-col gap-1.5">
-        <SessionChip tone={run.intensity} title={run.title} />
-        <SectionTitle id="did-you-run" className="px-0">
+        <SectionTitle id="did-you-run" flush>
           Tu l'as faite ?
         </SectionTitle>
         <p className="t-sub m-0">

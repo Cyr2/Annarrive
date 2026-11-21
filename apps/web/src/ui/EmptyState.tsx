@@ -22,7 +22,7 @@ export function EmptyState({ icon, title, children, action, page = false }: Prop
       <span className="flex size-12 items-center justify-center rounded-full bg-action-wash text-action">
         <Icon name={icon} />
       </span>
-      {page ? <h1 className="t-title px-0">{title}</h1> : <SectionTitle className="px-0">{title}</SectionTitle>}
+      {page ? <h1 className="t-title px-0">{title}</h1> : <SectionTitle flush>{title}</SectionTitle>}
       {children && <p className="t-sub m-0 max-w-[32ch]">{children}</p>}
       {action}
     </Surface>

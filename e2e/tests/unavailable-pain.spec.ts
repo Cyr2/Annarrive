@@ -19,7 +19,7 @@ async function reportCalfPain(page: Page, level: number) {
 test("douleur au mollet à 3 sur 10 : la séance du jour devient un footing facile", async ({ page }) => {
   await page.goto("/");
   const card = page.getByRole("article").first();
-  await expect(card).toContainText("6 × 10 s");
+  await expect(card).toContainText("6 accélérations de 10 s");
 
   const sheet = await reportCalfPain(page, 3);
   await expect(sheet).toContainText("Pas de fractionné : footing tranquille ou vélo.");
@@ -29,17 +29,17 @@ test("douleur au mollet à 3 sur 10 : la séance du jour devient un footing faci
 
   const changed = banner(page, "Douleur notée");
   await expect(changed).toBeVisible();
-  await expect(card).not.toContainText("6 × 10 s");
+  await expect(card).not.toContainText("6 accélérations de 10 s");
   await expect(card).toContainText(/Footing/);
 
   await changed.getByRole("button", { name: "Annuler" }).click();
-  await expect(card).toContainText("6 × 10 s");
+  await expect(card).toContainText("6 accélérations de 10 s");
 });
 
 test("douleur au mollet à 6 sur 10 : repos conseillé, mais rien n'est bloqué", async ({ page }) => {
   await page.goto("/");
   const card = page.getByRole("article").first();
-  await expect(card).toContainText("6 × 10 s");
+  await expect(card).toContainText("6 accélérations de 10 s");
 
   const sheet = await reportCalfPain(page, 6);
   await expect(sheet).toContainText("Repos ou vélo conseillé");
@@ -55,5 +55,5 @@ test("douleur au mollet à 6 sur 10 : repos conseillé, mais rien n'est bloqué"
   }
 
   await changed.getByRole("button", { name: "Annuler" }).click();
-  await expect(card).toContainText("6 × 10 s");
+  await expect(card).toContainText("6 accélérations de 10 s");
 });

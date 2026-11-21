@@ -39,7 +39,7 @@ describe("GET /api/level (algo.md M13)", () => {
       provisional: false,
       since: "2026-11-01",
       // 45 against a half in 1:51 (VDOT 40.0): 5 points, « au-dessus », never « en accord ».
-      vo2max: { value: 45, date: "2026-11-15", versus: "above" },
+      vo2max: { value: 45, date: "2026-11-15", versus: "above", raceDistanceM: HALF },
       goalDistanceM: HALF,
     });
     expect(level?.thresholdPace).toBeCloseTo(T);

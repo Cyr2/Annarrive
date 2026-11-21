@@ -23,8 +23,8 @@ export default function Toast() {
         unstyled: true,
         classNames: {
           toast:
-            "ui-glass ui-toast flex items-center gap-2 rounded-full min-h-13 py-1 pl-5 pr-5 has-[button]:pr-1.5 t-label text-ink font-normal",
-          title: "flex-1",
+            "ui-glass ui-toast flex items-center gap-2 rounded-toast min-h-13 py-1 pl-5 pr-5 has-[button]:pr-1.5 t-label text-ink font-normal",
+          title: "flex-1 line-clamp-3",
           actionButton:
             "press min-h-11 shrink-0 whitespace-nowrap rounded-full border-0 bg-transparent px-3 t-strong text-action",
         },

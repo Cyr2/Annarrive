@@ -69,7 +69,7 @@ test("onboarding d'une base vide jusqu'à Aujourd'hui, sans séance le premier j
   await expect(page.locator("#day-2026-11-19")).toContainText("Biochimie");
   await page.getByRole("link", { name: "Programme" }).click();
   await page.getByRole("button", { name: "Réglages" }).click();
-  await expect(page.getByRole("button", { name: /^Lien ICS/ })).toContainText("ics.e2e.test");
+  await expect(page.getByRole("button", { name: /^Lien de ton emploi du temps/ })).toContainText("ics.e2e.test");
 
   // Neither on the next launch, nor once Safari has dropped its storage: the server knows it is done.
   for (const forget of [false, true]) {

@@ -183,7 +183,7 @@ export function createMockApi({
         toConfirm: scenario === "didyourun" ? runs.findLast((r) => r.date < today) : undefined,
         review:
           reviewed && !reviewDismissed(isoWeek(reviewed))
-            ? mockReview(reviewed, week(reviewed), week(addDays(reviewed, 7)))
+            ? mockReview(reviewed, week(reviewed), week(addDays(reviewed, 7)), scenario === "lundi")
             : undefined,
         race: state.race,
       };

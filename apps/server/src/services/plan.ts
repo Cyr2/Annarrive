@@ -488,8 +488,8 @@ export class PlanService {
       JSON.stringify(input.declaredTime) !== JSON.stringify(before.program.declaredTime);
     const write: PlanWrite = { table: "program", id: CURRENT, after: { id: CURRENT, value: program } };
     const emptyWeek = !before.sessions.some((s) => dateOf(s.start) < this.#nextMonday());
-    const raceSoon = (goal: Program["goal"]): boolean =>
-      goal !== null && goal.date >= today && goal.date <= addDays(today, RACE_CONFLICT_DAYS);
+    const raceSoon = (goal: Program["goal"], from = today): boolean =>
+      goal !== null && goal.date >= from && goal.date <= addDays(today, RACE_CONFLICT_DAYS);
     // A new time changes her paces, not her weeks: the sessions ahead take the new paces (RC9), none moves or is
     // added; the Sunday job builds the next weeks with the new level. Her first level builds the weeks it was missing.
     if (input.goal === undefined && before.fitness) {
@@ -504,7 +504,11 @@ export class PlanService {
       [write],
       { ...before, program, fitness },
       before,
-      declaredChanged || (program.goal !== null && emptyWeek) || raceSoon(program.goal) || raceSoon(old),
+      // A race removed on its own day is run or about to be: nothing of its week is left to rebuild (audit N-G1).
+      declaredChanged ||
+        (program.goal !== null && emptyWeek) ||
+        raceSoon(program.goal) ||
+        raceSoon(old, addDays(today, 1)),
     );
   }
 

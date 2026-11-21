@@ -4,7 +4,7 @@ onPlan();
 
 test("Réglages : Signaler un souci envoie ses derniers gestes et sa phrase, puis le dit", async ({ page }) => {
   await page.goto("/programme/reglages");
-  await page.getByRole("button", { name: /^Lien ICS/ }).waitFor();
+  await page.getByRole("button", { name: /^Lien de ton emploi du temps/ }).waitFor();
   await page.getByRole("textbox", { name: "Signaler un souci" }).fill("La semaine ne s'affiche pas");
   const sent = page.waitForRequest("/api/incidents");
   const answered = page.waitForResponse("/api/incidents");

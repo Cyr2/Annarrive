@@ -202,7 +202,8 @@ test("Semaine : glisser vers la gauche montre la semaine suivante, vers la droit
   await expect(page.locator("[data-neighbour]")).toHaveCount(0);
   await expect(range).toHaveText("16 au 22 novembre");
   // A vertical move stays a scroll, never a turn.
-  await pull(page, page.locator("#day-2026-11-18"), 10, 160);
+  // From the top of the day: its middle can sit under the tab bar once a title wraps.
+  await pull(page, page.locator("#day-2026-11-18"), 10, 160, 10);
   await expect(range).toHaveText("16 au 22 novembre");
 });
 

@@ -8,7 +8,7 @@ import {
   useRef,
 } from "react";
 import { cx } from "../lib/cx.ts";
-import { reducedMotion, SLIDE_CARD, slideFrom } from "../lib/motion.ts";
+import { reducedMotion, SHEET_PAGE_REDUCED, SLIDE_CARD, slideFrom } from "../lib/motion.ts";
 
 const keyOf = (element: ReactElement) => element.key ?? "";
 
@@ -30,8 +30,48 @@ function place(box: HTMLElement | null, tops: Map<string, number>, out: Set<stri
 }
 
 /**
+ * A card that goes folds its height and the gap under it on the cards' spring, so the page shortens with it instead
+ * of dropping hundreds of pixels at once. Under reduced motion it only fades, then the page closes up.
+ */
+function collapse(card: HTMLElement, done: () => void) {
+  const gap = getComputedStyle(card.parentElement ?? card).rowGap;
+  const motion = !reducedMotion();
+  const frames = motion
+    ? [
+        { height: `${card.offsetHeight}px`, marginBottom: "0px" },
+        { height: "0px", marginBottom: `-${gap}` },
+      ]
+    : [{ opacity: 1 }, { opacity: 0 }];
+  card.animate(frames, { ...(motion ? SLIDE_CARD : SHEET_PAGE_REDUCED), fill: "forwards" }).finished.then(done, done);
+}
+
+/** Starts folding each card that goes, once; a card back before it finished unfolds at once. */
+function fold(
+  box: HTMLElement | null,
+  kept: Set<string>,
+  out: Set<string>,
+  folding: Set<string>,
+  done: (key: string) => void,
+) {
+  const cardOf = (key: string) => box?.querySelector<HTMLElement>(`:scope > [data-key="${CSS.escape(key)}"]`);
+  for (const key of kept) {
+    if (!folding.has(key)) continue;
+    for (const animation of cardOf(key)?.getAnimations() ?? []) animation.cancel();
+  }
+  for (const key of out) {
+    const card = cardOf(key);
+    if (!card || folding.has(key)) continue;
+    folding.add(key);
+    collapse(card, () => {
+      folding.delete(key);
+      done(key);
+    });
+  }
+}
+
+/**
  * A column of cards that come and go (Aujourd'hui): a new card rises 8 px, a card that goes fades and shrinks to 97 %
- * where it was, and the cards around it close the gap on a spring. Nothing moves on the first render, nor while
+ * while its place folds away, and the cards around it close the gap on a spring. Nothing moves on the first render, nor while
  * `settled` is false (what the first screen adds in its next frames arrives still). Plain CSS and WAAPI, no Motion:
  * it sits on the first screen, whose file stays small. Everything it remembers is written at commit only, so a
  * render React throws away (deferred, interrupted) changes nothing.
@@ -44,6 +84,7 @@ export function Presence({ children, settled = true }: { children: ReactNode; se
   const finished = useRef(new Set<string>());
   const born = useRef(new Set<string>());
   const tops = useRef(new Map<string, number>());
+  const folding = useRef(new Set<string>());
 
   const now = Children.toArray(children).filter(isValidElement);
   const keys = new Set(now.map(keyOf));
@@ -65,6 +106,10 @@ export function Presence({ children, settled = true }: { children: ReactNode; se
     born.current = rising;
     for (const key of keys) finished.current.delete(key);
     tops.current = place(box.current, tops.current, out, slide);
+    fold(box.current, keys, out, folding.current, (key) => {
+      finished.current.add(key);
+      rerender();
+    });
   });
 
   return (
@@ -81,14 +126,8 @@ export function Presence({ children, settled = true }: { children: ReactNode; se
             className={cx(
               "flex flex-col gap-6 empty:hidden",
               rising.has(key) && "rise",
-              going && "card-out absolute inset-x-0",
+              going && "card-out overflow-hidden",
             )}
-            style={going ? { top: tops.current.get(key) } : undefined}
-            onAnimationEnd={(event) => {
-              if (!going || event.target !== event.currentTarget) return;
-              finished.current.add(key);
-              rerender();
-            }}
           >
             {element}
           </div>

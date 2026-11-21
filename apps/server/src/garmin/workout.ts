@@ -1,7 +1,7 @@
 import {
   type PlannedSession,
   plannedSessionSchema,
-  sessionNames,
+  sessionTitle,
   stepBlocks,
   type WatchStatus,
   type WorkoutRequest,
@@ -53,7 +53,7 @@ export function toWorkoutRequest(session: PlannedSession): WorkoutRequest {
       : { kind: "repeat", iterations: b.times, steps: b.steps.map(toGarminStep) },
   );
   if (steps.length === 0) steps.push({ kind: "interval", durationS: session.durMin * 60 });
-  return { name: sessionNames[session.type], date: dateOf(session.start), steps };
+  return { name: sessionTitle(session), date: dateOf(session.start), steps };
 }
 
 /** What makes an upload stale: the watch shows the day and the steps, not the hour. */

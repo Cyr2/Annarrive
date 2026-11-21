@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { seedProgram } from "../../api/mock/seed.ts";
 import { EMPTY, issue, toPayload } from "../onboarding/onboarding.ts";
 import { runWindow } from "./DayWindow.tsx";
-import { goalDateOk, nextRaceDraft, raceTitle } from "./goal.ts";
+import { goalDateOk, nextRaceDraft, nextRaceSummary, raceTitle } from "./goal.ts";
 import { clock, lastRaceLine, RACE_AGO, raceAgoOf, raceClock, raceDateOf, secondsOf, settingValue } from "./program.ts";
 import { skyPhase } from "./sky.ts";
 import { targetReasons } from "./TargetTag.tsx";
@@ -107,6 +107,15 @@ describe("a new race after the one she ran", () => {
   };
   it("keeps only the distance as a suggestion: no name, date, start or chrono of the race she ran", () => {
     expect(nextRaceDraft(ran)).toEqual({ race: "Semi-marathon", distanceKm: 21.1, date: "" });
+  });
+  it("counts the new race from today, not from the race she ran (audit N4)", () => {
+    const next = { race: "Semi-marathon", distanceKm: 21.1, date: "2027-04-11" };
+    expect(nextRaceSummary(next, "2026-11-22")).toBe(
+      "Semi-marathon dans 20 semaines, objectif finir. Ton plan est construit jusque-là.",
+    );
+    expect(nextRaceSummary({ ...next, name: "Semi de Nantes", targetTime: "1:48:00" }, "2026-11-22")).toMatch(
+      /^Semi de Nantes dans 20 semaines, chrono visé 1:48:00\./,
+    );
   });
   it("takes a date after today, never today or before", () => {
     expect(goalDateOk("2026-11-23", "2026-11-22")).toBe(true);

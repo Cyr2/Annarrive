@@ -63,6 +63,23 @@ test("Après la course objectif, le résultat remplace la journée jusqu'à « G
   await expect(page.locator('[data-tour="next"]')).not.toContainText("Demain");
 });
 
+// Audit iPhone N1: tapped before the idle preloads read the program, the sheet stayed shut for good.
+test("« Une nouvelle course » s'ouvre même touchée avant que le programme soit lu", async ({ page }) => {
+  // The idle preloads (the program among them) never come: only the sheet itself can read the program.
+  await page.addInitScript(() => {
+    window.requestIdleCallback = () => 0;
+  });
+  await page.goto("/?mock=course");
+  await page.getByRole("button", { name: /Une nouvelle course/ }).click();
+  const sheet = page.getByRole("dialog", { name: "Ton objectif" });
+  await expect(sheet.getByLabel("Date")).toHaveValue("");
+  // No chrono yet: « Juste finir » is what the summary says, and Valider only waits for a date (audit N-G2).
+  await expect(sheet.getByRole("radio", { name: "Juste finir" })).toBeChecked();
+  await sheet.getByLabel("Date").fill("2099-03-01");
+  await expect(sheet.getByRole("button", { name: "Valider" })).toBeEnabled();
+  await expect(sheet).not.toContainText("de plus");
+});
+
 // Audit iPhone G1: « Une nouvelle course » reopened the race she had just run, dated today, ready to be validated.
 test("« Une nouvelle course » ouvre un objectif vierge, qui refuse une date passée", async ({ page }) => {
   await page.goto("/?mock=course");
