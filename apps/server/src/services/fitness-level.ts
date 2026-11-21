@@ -40,7 +40,10 @@ export function levelOf(stores: Stores, plan: PlanService, port: CoachPort, now:
       vo2max: {
         value: vo2max.vo2max,
         date: vo2max.id,
-        ...(declared && { versus: port.vo2maxVersusRace(vo2max.vo2max, declared) }),
+        ...(declared && {
+          versus: port.vo2maxVersusRace(vo2max.vo2max, declared),
+          raceDistanceM: declared.distanceM,
+        }),
       },
     }),
     thresholdPace: tPace,

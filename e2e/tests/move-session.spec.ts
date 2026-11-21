@@ -6,7 +6,7 @@ test("déplacer la séance du jour vers un créneau proposé, puis Annuler la re
   await page.goto("/");
   const card = page.getByRole("article").first();
   await expect(card).toContainText("Ce soir · 17:00");
-  await expect(card).toContainText("6 × 10 s");
+  await expect(card).toContainText("6 accélérations de 10 s");
 
   await page.getByRole("button", { name: "Déplacer", exact: true }).click();
   const sheet = page.getByRole("dialog", { name: "Déplacer" });
@@ -23,13 +23,13 @@ test("déplacer la séance du jour vers un créneau proposé, puis Annuler la re
 
   await moved.getByRole("button", { name: "Annuler" }).click();
   await expect(card).toContainText("Ce soir · 17:00");
-  await expect(card).toContainText("6 × 10 s");
+  await expect(card).toContainText("6 accélérations de 10 s");
 });
 
 test("passer la séance du jour : elle part sans être rattrapée, puis Annuler la remet", async ({ page }) => {
   await page.goto("/");
   const card = page.getByRole("article").first();
-  await expect(card).toContainText("6 × 10 s");
+  await expect(card).toContainText("6 accélérations de 10 s");
 
   await page.getByRole("button", { name: "Déplacer", exact: true }).click();
   const sheet = page.getByRole("dialog", { name: "Déplacer" });
@@ -41,8 +41,8 @@ test("passer la séance du jour : elle part sans être rattrapée, puis Annuler 
 
   const skipped = banner(page, "Séance sautée");
   await expect(skipped).toBeVisible();
-  await expect(card).not.toContainText("6 × 10 s");
+  await expect(card).not.toContainText("6 accélérations de 10 s");
 
   await skipped.getByRole("button", { name: "Annuler" }).click();
-  await expect(card).toContainText("6 × 10 s");
+  await expect(card).toContainText("6 accélérations de 10 s");
 });

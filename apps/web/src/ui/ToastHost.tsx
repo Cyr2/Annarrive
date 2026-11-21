@@ -38,7 +38,7 @@ function PlainToast() {
     >
       <div
         role="status"
-        className="ui-glass ui-toast pointer-events-auto flex min-h-13 w-fit max-w-full items-center gap-2 rounded-full py-1 pr-5 pl-5 t-label text-ink has-[button]:pr-1.5"
+        className="ui-glass ui-toast pointer-events-auto flex min-h-13 w-fit max-w-full items-center gap-2 rounded-toast py-1 pr-5 pl-5 t-label text-ink has-[button]:pr-1.5"
       >
         <span className="flex-1">{message}</span>
         {action && (

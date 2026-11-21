@@ -260,6 +260,27 @@ describe("coach adapter: a new goal (EV14)", () => {
     expect(sessions().some((s) => s.type === "RACE")).toBe(false);
     expect(sessions()).toContainEqual(moved);
   });
+
+  it("after the race, a new goal leaves the finished week alone and warns about nothing in it (audit N-G1)", async () => {
+    const t = await ready({ onboarded: true });
+    t.setNow(WEDNESDAY);
+    history(t, "2026-11-16");
+    t.stores.fitnessEstimate.put({ id: "2026-11-01", date: "2026-11-01", vdot: 40, source: "test" });
+    await t.call("PUT", "/api/program", { goal: { distanceM: 10000, date: "2027-03-14" } });
+    await change(t, "PUT", "/api/program", { goal: { distanceM: 10000, date: "2026-11-22" } });
+    // Race day, the race run: what is left of the week is this Sunday, its race already run.
+    t.setNow(new Date("2026-11-22T12:00:00Z"));
+    const race = t.services.plan.coachState().sessions.find((s) => s.type === "RACE");
+    if (race) t.stores.plannedSession.put({ ...race, status: "done" });
+    const thisWeek = () => t.services.plan.coachState().sessions.filter((s) => s.start < NEXT_MONDAY);
+    const before = thisWeek();
+
+    const saved = await change(t, "PUT", "/api/program", { goal: { distanceM: 21097.5, date: "2027-04-11" } });
+
+    expect(saved.status).toBe(200);
+    expect(thisWeek()).toEqual(before);
+    expect(saved.warnings).toEqual([]);
+  });
 });
 
 describe("coach adapter: Anna's actions", () => {

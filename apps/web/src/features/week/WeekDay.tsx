@@ -24,7 +24,7 @@ export function WeekDay({ day, readOnly, dragging, target }: Props) {
       className={cx("flex scroll-mt-6 flex-col gap-2", !held && "week-dim", held && target.blocked && "week-blocked")}
     >
       <div className="flex min-h-7 flex-wrap items-baseline gap-x-2 px-1">
-        <SectionTitle id={`title-${day.date}`} className={cx("px-0 whitespace-nowrap", day.past && "text-ink-2")}>
+        <SectionTitle id={`title-${day.date}`} flush className={cx("whitespace-nowrap", day.past && "text-ink-2")}>
           {day.title}
         </SectionTitle>
         {day.note && <Note text={day.note} today={day.today} />}

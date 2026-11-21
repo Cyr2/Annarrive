@@ -28,6 +28,8 @@ test("l'emploi du temps ou Garmin en panne laissent le plan s'afficher, seule le
   await page.route("**/api/first-screen", (route) => route.fulfill({ status: 404, body: "" }));
   await page.goto("/");
   await expect(page.getByRole("article").first()).toBeVisible();
+  // The timetable's line lives on Semaine: Aujourd'hui has none (audit UX G2).
+  await page.getByRole("link", { name: "Semaine" }).click();
   await expect(page.getByText("Injoignable pour l'instant")).toBeVisible();
   await page.getByRole("link", { name: "Programme" }).click();
   await page.getByRole("button", { name: "Réglages" }).click();

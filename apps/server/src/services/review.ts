@@ -44,7 +44,7 @@ export class ReviewService {
     if (this.#stores.meta.get(DISMISSED)?.value === week) return undefined;
     const startedOn = this.#stores.program.get(CURRENT)?.value.startedOn;
     if (!startedOn || startedOn > addDays(monday, 6)) return undefined;
-    const facts = this.#facts(monday);
+    const facts = this.#facts(monday, day === 1);
     if (facts.planned === 0) return undefined;
     if (day === 7) {
       const sessions = this.#sessions(monday).filter((s) => s.status !== "cancelled");
@@ -92,7 +92,7 @@ export class ReviewService {
     return Boolean(goal && coach.isGoalRace(goal, run));
   }
 
-  #facts(monday: string): Omit<WeekReview, "week" | "monday"> {
+  #facts(monday: string, readOnMonday = false): Omit<WeekReview, "week" | "monday"> {
     const next = addDays(monday, 7);
     const exams = this.#stores.calendarEvent
       .overlapping(`${monday}T00:00`, `${next}T00:00`)
@@ -104,6 +104,7 @@ export class ReviewService {
       before: this.#runs(addDays(monday, -BEFORE_DAYS), monday),
       exams,
       next: this.#sessions(next).map(toSession),
+      monday: readOnMonday,
     });
   }
 

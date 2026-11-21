@@ -1,5 +1,5 @@
 import { RACE_NAME_MAX } from "@annarrive/protocol";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { GoalInput } from "../../api/client.ts";
 import { addDays } from "../../lib/date.ts";
 import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
@@ -11,7 +11,7 @@ import { TimeBoxes } from "../../ui/TimeBoxes.tsx";
 import { todayOf } from "../plan/selectors.ts";
 import { usePlan } from "../plan/store.ts";
 import type { SheetProps } from "../sheets/SheetHost.tsx";
-import { goalDateOk, goalSummary, nextRaceDraft, RACES } from "./goal.ts";
+import { changeText, goalDateOk, nextRaceDraft, RACES } from "./goal.ts";
 import { secondsOf } from "./program.ts";
 
 const MODES = [
@@ -30,13 +30,21 @@ export default function GoalSheet(sheet: SheetProps<"goal">) {
   const plan = usePlan();
   const goal = plan.program?.goal;
   const next = sheet.spec.next === true;
-  const [draft, setDraft] = useState<GoalInput | undefined>(goal && (next ? nextRaceDraft(goal) : { ...goal }));
-  const [finish, setFinish] = useState(!next && !goal?.targetTime);
-  if (!goal || !draft) return null;
+  // Opened before the program was read (audit N1): it is read now, and the draft starts from it once it is there.
+  useEffect(() => {
+    if (!usePlan.getState().program) void usePlan.getState().loadProgram();
+  }, []);
+  const [edited, setDraft] = useState<GoalInput>();
+  const [chosenFinish, setFinish] = useState<boolean>();
+  if (!goal) return null;
+  const draft = edited ?? (next ? nextRaceDraft(goal) : { ...goal });
+  // No chrono to show: « Juste finir » is what she sees, as the summary says (audit N-G2).
+  const finish = chosenFinish ?? !draft.targetTime;
   const today = todayOf(plan);
   const set = (patch: Partial<GoalInput>) => setDraft({ ...draft, ...patch });
   const seconds = secondsOf(draft.targetTime);
-  const input = { ...draft, targetTime: finish || seconds === 0 ? undefined : draft.targetTime };
+  const noTime = !finish && seconds === 0;
+  const input = { ...draft, targetTime: finish || noTime ? undefined : draft.targetTime };
   const save = async () => {
     if (await plan.apply((api) => api.updateGoal(input))) sheet.onOpenChange(false);
   };
@@ -48,7 +56,7 @@ export default function GoalSheet(sheet: SheetProps<"goal">) {
         <Button
           variant="filled"
           size="large"
-          disabled={!goalDateOk(draft.date, today, next ? undefined : goal.date) || (!finish && seconds === 0)}
+          disabled={!goalDateOk(draft.date, today, next ? undefined : goal.date) || noTime}
           onClick={() => void save()}
         >
           Valider
@@ -101,7 +109,7 @@ export default function GoalSheet(sheet: SheetProps<"goal">) {
       {draft.date && (
         <Section title="Ce qui change">
           <Surface variant="inset" className="p-4">
-            <span className="t-body">{goalSummary(goal, input, today)}</span>
+            <span className="t-body">{changeText(goal, input, today, { next, noTime })}</span>
           </Surface>
         </Section>
       )}

@@ -4,6 +4,7 @@ import { ApiError, errorMessage } from "./errors.ts";
 import { createHttpApi, isHealthy, sse } from "./http.ts";
 import { mockRequest, pickApi } from "./index.ts";
 import {
+  changeMessage,
   planWeek,
   stepDuration,
   toGoal,
@@ -527,10 +528,11 @@ describe("http client, reading", () => {
       ]),
     );
     expect(sprints.intensity).toBe("easy");
-    expect(sprints.mainSet).toBe("6 × 10 s");
+    expect(sprints.title).toBe("Footing et accélérations");
+    expect(sprints.mainSet).toBe("6 accélérations de 10 s");
     // As the watch runs it: a « Répéter 6 fois » group around the sprint and its jog back, every line with a pace.
     expect(sprints.steps).toEqual([
-      { label: "Échauffement · 29 min", pace: "5'25 à 6'29\u00a0/km", tone: "plain", minutes: 29 },
+      { label: "Footing · 29 min", pace: "5'25 à 6'29\u00a0/km", tone: "plain", minutes: 29 },
       {
         repeat: 6,
         steps: [
@@ -547,8 +549,10 @@ describe("http client, reading", () => {
         { kind: "strides", durMin: 1 / 3, reps: 6, zone: "R", target: { paceSKm: [265, 265], rpe: 3 } },
       ]),
     );
+    expect(strides.title).toBe("Footing et accélérations");
+    expect(strides.mainSet).toBe("6 accélérations de 20 s");
     expect(strides.steps).toEqual([
-      { label: "45 min", pace: "5'25 à 6'29\u00a0/km", tone: "plain", minutes: 45 },
+      { label: "Footing · 45 min", pace: "5'25 à 6'29\u00a0/km", tone: "plain", minutes: 45 },
       { repeat: 6, steps: [{ label: "Accélération · 20 s", pace: "4'25\u00a0/km", tone: "hard", minutes: 1 / 3 }] },
     ]);
     const race = { paceSKm: [313, 313] as [number, number], rpe: 6 };
@@ -733,6 +737,13 @@ describe("http client, changes", () => {
     const rows = await api.previewUnavailable({ sessionId: "s1", reason: "sick", fever: true });
     expect(sent("POST /api/unavailable/preview")).toEqual({ reason: "sick", feverOrChest: true });
     expect(rows).toEqual([{ day: "Conseil", label: "Repos conseillé tant que tu as de la fièvre", tone: "other" }]);
+  });
+
+  it("keeps the banner to the change and one warning, the others counted (audit N-G1)", () => {
+    expect(changeMessage("Objectif modifié", [])).toBe("Objectif modifié");
+    expect(changeMessage("Objectif modifié", ["A"])).toBe("Objectif modifié · A");
+    expect(changeMessage("Objectif modifié", ["A", "B"])).toBe("Objectif modifié · A · 1 autre point");
+    expect(changeMessage("Objectif modifié", ["A", "B", "C", "D"])).toBe("Objectif modifié · A · 3 autres points");
   });
 });
 

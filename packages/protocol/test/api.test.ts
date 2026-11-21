@@ -12,6 +12,7 @@ import {
   programInputSchema,
   runTypeSchema,
   sessionNames,
+  sessionTitle,
   updateEventInputSchema,
 } from "../src/index.ts";
 
@@ -20,6 +21,15 @@ describe("session names", () => {
     const names = runTypeSchema.options.map((type) => sessionNames[type]);
     expect(new Set(names).size).toBe(names.length);
     expect(names.join(" ")).not.toMatch(/endurance fondamentale|VO2|Ta course/);
+  });
+
+  it("titles a footing with strides the same whatever their form (G5, N-F4)", () => {
+    const sprints = [{ kind: "warmup" }, { kind: "strides" }, { kind: "recover" }, { kind: "cooldown" }];
+    const strides = [{ kind: "work" }, { kind: "strides" }];
+    expect(sessionTitle({ type: "E", steps: sprints })).toBe("Footing et accélérations");
+    expect(sessionTitle({ type: "E", steps: strides })).toBe("Footing et accélérations");
+    expect(sessionTitle({ type: "E", steps: [{ kind: "work" }] })).toBe("Footing");
+    expect(sessionTitle({ type: "R", steps: strides })).toBe("Vitesse");
   });
 
   it("agrees « passé » and « fait » with the name", () => {

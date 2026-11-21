@@ -9,9 +9,9 @@ test("Réglages : changer le lien de l'emploi du temps le relit, puis Actualiser
 
   await page.getByRole("link", { name: "Programme" }).click();
   await page.getByRole("button", { name: "Réglages" }).click();
-  const row = page.getByRole("button", { name: /^Lien ICS/ });
+  const row = page.getByRole("button", { name: /^Lien de ton emploi du temps/ });
   const sheet = page.getByRole("dialog", { name: "Emploi du temps" });
-  const link = sheet.getByRole("textbox", { name: "Lien ICS" });
+  const link = sheet.getByRole("textbox", { name: "Lien de ton emploi du temps" });
   const save = sheet.getByRole("button", { name: "Enregistrer" });
   await row.click();
   await expect(link).toHaveValue(icsUrl("timetable.ics"));

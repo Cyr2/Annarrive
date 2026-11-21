@@ -33,7 +33,7 @@ export function TimetableRows({ program }: { program: Program }) {
         {button}
       </div>
       <RowButton
-        label="Lien ICS"
+        label="Lien de ton emploi du temps"
         // A link it cannot read stays on one line, cut short: never a long string across the row.
         value={saved ? <span className="block truncate">{host(saved)}</span> : "Ajouter"}
         onClick={() => show({ kind: "timetable" })}

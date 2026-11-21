@@ -6,7 +6,7 @@ import { Icon } from "../../ui/Icon.tsx";
 import { Surface } from "../../ui/Surface.tsx";
 import { TextButton } from "../../ui/TextButton.tsx";
 import { usePlan } from "../plan/store.ts";
-import { refreshLine } from "./week.ts";
+import { refreshLine, runsOnly } from "./week.ts";
 
 /** What the timetable's line says: "" before its first read, undefined when the server could not say. */
 export function checkedLine(checkedAt: string | undefined, never: string): string {
@@ -15,7 +15,7 @@ export function checkedLine(checkedAt: string | undefined, never: string): strin
 }
 
 /** One read at a time, whether it came from Actualiser or from pulling the page down. */
-const useTimetableRead = create<{ reading?: boolean; result?: string }>(() => ({}));
+const useTimetableRead = create<{ reading?: boolean; result?: string; summary?: string }>(() => ({}));
 
 /** Reads the timetable again, then the whole plan on screen. A second call while one runs waits for nothing. */
 export async function refreshTimetable() {
@@ -25,7 +25,11 @@ export async function refreshTimetable() {
   const ok = await usePlan.getState().run(async (client) => {
     summary = (await client.refreshTimetable()).summary;
   });
-  useTimetableRead.setState({ reading: false, result: ok ? refreshLine(summary) : undefined });
+  useTimetableRead.setState({
+    reading: false,
+    result: ok ? refreshLine(summary) : undefined,
+    summary: ok ? (summary ?? "") : undefined,
+  });
 }
 
 /**
@@ -47,18 +51,22 @@ export function useTimetableRefresh() {
       Actualiser
     </TextButton>
   );
-  return { reading: Boolean(state.reading), result: state.result, button };
+  return { reading: Boolean(state.reading), result: state.result, summary: state.summary, button };
 }
 
 /**
- * At the foot of the week and of Aujourd'hui: when the timetable was last read, and Actualiser. It reads itself
- * on its own; what such a read changed today stays written here, and after a manual read its result does.
+ * At the foot of the week: when the timetable was last read, and Actualiser. It reads itself on its own; what such
+ * a read did to her runs today stays written here in one short line, and after a manual read its result does.
  */
 export function RefreshRow({ checkedAt, change }: { checkedAt?: string; change?: string }) {
-  const { reading, result, button } = useTimetableRefresh();
+  const { reading, result, summary, button } = useTimetableRefresh();
   const line = reading
     ? "Lecture en cours…"
-    : (result ?? change ?? checkedLine(checkedAt, "Relu automatiquement plusieurs fois par jour"));
+    : summary !== undefined
+      ? refreshLine(summary && runsOnly(summary))
+      : change
+        ? runsOnly(change)
+        : checkedLine(checkedAt, "Relu automatiquement plusieurs fois par jour");
   return (
     <Surface variant="inset" className="flex min-h-14 flex-wrap items-center gap-2 py-1 pr-1 pl-4">
       <Icon name={result ? "checkCircle" : "class"} size={18} className="flex-none text-ink-2" />

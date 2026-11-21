@@ -51,11 +51,13 @@ function consequence(date: string, run: Run, items: Item[], today: string) {
   return `Ton ${other.title.toLowerCase()} de ${relativeDay(other.date, today).toLowerCase()} passe à ${relativeDay(run.date, today).toLowerCase()} ${other.start}.`;
 }
 
-function why(date: string, run: Run, items: Item[], today: string) {
+/** As the server (algo.md A6): the legs session is said once among the slots, a second time it tells nothing apart. */
+function why(date: string, run: Run, items: Item[], today: string, said: ProposedSlot[] = []) {
   if (date === run.date) return "Même jour, une heure et demie plus tard";
   const legs = items.find((i) => i.kind === "strength" && i.legs && i.date > date);
-  if (legs && isDemanding(run) && date < legs.date)
-    return `Ta muscu jambes est ${dayName(legs.date).toLowerCase()}, l'écart est bon`;
+  const legsWord = legs && `Ta muscu jambes est ${dayName(legs.date).toLowerCase()}, l'écart est bon`;
+  if (legs && legsWord && isDemanding(run) && date < legs.date && !said.some((s) => s.why === legsWord))
+    return legsWord;
   if (minutesOf(run.start) < 12 * 60 || date === addDays(today, 1)) return "Le plus tôt possible après ce soir";
   return "Un créneau libre, loin de tes séances dures";
 }
@@ -78,7 +80,7 @@ export function proposeSlots(run: Run, items: Item[], settings: Settings, today:
     slots.push({
       date,
       start: run.start,
-      why: why(date, run, items, today),
+      why: why(date, run, items, today, slots),
       consequence: consequence(date, run, items, today),
     });
   }

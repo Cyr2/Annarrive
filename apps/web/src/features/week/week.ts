@@ -221,3 +221,16 @@ export function changedIds(before: Week, after: Week): string[] {
 export function refreshLine(summary: string | undefined): string {
   return summary ? `Relu à l'instant : ${summary}` : "Relu à l'instant, rien n'a changé";
 }
+
+const CLASS_CHANGE = /^\d+ cours (annulé|ajouté|modifié)/;
+
+/**
+ * On Semaine, a timetable change says only what it did to her runs (« 2 courses déplacées : … »): the class by
+ * class detail stays in Réglages. Any other change reads as it is.
+ */
+export function runsOnly(summary: string): string {
+  const parts = summary.split(" · ");
+  const runs = parts.filter((part) => !CLASS_CHANGE.test(part));
+  if (runs.length === parts.length) return summary;
+  return runs.length > 0 ? runs.join(" · ") : "Cours mis à jour, tes courses restent en place";
+}

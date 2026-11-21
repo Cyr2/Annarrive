@@ -439,7 +439,7 @@ function Panel({
           // Focusable, so a Bluetooth keyboard or Switch Control can scroll it (axe scrollable-region-focusable).
           // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must take the focus to scroll by keys.
           tabIndex={0}
-          className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain focus-visible:-outline-offset-2"
         >
           {/* Its own box, at the content's natural height: a push inside the sheet follows it (sheetHandoff.ts). */}
           <div

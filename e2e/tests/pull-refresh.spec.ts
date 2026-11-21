@@ -20,7 +20,7 @@ async function pull(page: Page, distance: number) {
 }
 
 test("tirer la page vers le bas relit l'emploi du temps, un petit tirage ne fait rien", async ({ page }) => {
-  for (const path of ["/semaine", "/", "/programme/reglages"]) {
+  for (const path of ["/semaine", "/programme/reglages"]) {
     await page.goto(path);
     // The page is drawn once Actualiser, the same read for VoiceOver, is there.
     await expect(page.getByRole("button", { name: "Actualiser" })).toBeVisible();
@@ -30,4 +30,13 @@ test("tirer la page vers le bas relit l'emploi du temps, un petit tirage ne fait
     await pull(page, 160);
     await expect(page.getByText(/Relu à l'instant/).first()).toBeVisible();
   }
+});
+
+test("Aujourd'hui n'a pas de ligne d'emploi du temps, mais tirer la page le relit", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("link", { name: "Tout voir" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Actualiser" })).toHaveCount(0);
+  const read = page.waitForRequest((r) => r.url().endsWith("/api/timetable/refresh") && r.method() === "POST");
+  await pull(page, 160);
+  await read;
 });

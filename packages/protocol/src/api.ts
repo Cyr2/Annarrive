@@ -25,6 +25,16 @@ export const sessionNames: Record<z.infer<typeof runTypeSchema>, string> = {
   RACE: "Jour J",
 };
 
+/**
+ * A session's title, on the watch as in the app: its type's name, except a footing with strides, which says so
+ * whatever the strides' form (with or without a jog between them).
+ */
+export function sessionTitle(session: { type: z.infer<typeof runTypeSchema>; steps: { kind: string }[] }): string {
+  return session.type === "E" && session.steps.some((s) => s.kind === "strides")
+    ? "Footing et accélérations"
+    : sessionNames[session.type];
+}
+
 /** « passé », « fait » agreed with the session's name: « Sortie longue passée », « Footing fait ». */
 export function agreeWith(type: z.infer<typeof runTypeSchema>, participle: string): string {
   return ["L", "R", "SPE"].includes(type) ? `${participle}e` : participle;
@@ -227,6 +237,8 @@ export const levelSchema = z
         value: z.number().positive(),
         date: localDateSchema,
         versus: z.enum(["agrees", "above", "below"]).optional(),
+        /** The distance of the race it is read against: her level may come from a training run, not from it. */
+        raceDistanceM: z.number().positive().optional(),
       })
       .optional(),
     /** The app's T pace (F7), s/km. */

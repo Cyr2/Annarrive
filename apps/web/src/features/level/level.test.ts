@@ -7,7 +7,7 @@ const anna = seedLevel("2026-11-16");
 describe("Ton niveau", () => {
   it("shows VO2max with F19's reading, the threshold pace and heart rate with their source", () => {
     expect(figures(anna)).toEqual([
-      { label: "VO2max", value: "45", detail: "Garmin, au-dessus de ta course" },
+      { label: "VO2max", value: "45", detail: "Garmin, au-dessus de ton semi" },
       { label: "Allure seuil", value: "5'05", unit: "/km", detail: "Calculée le 12 novembre" },
       { label: "FC seuil", value: "172", unit: "bpm", detail: "Tes 2 séances au seuil" },
     ]);

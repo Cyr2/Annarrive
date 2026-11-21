@@ -29,6 +29,17 @@ function weekNote(before: GoalInput, after: GoalInput, today: string): string {
   return "Les semaines à venir sont recalculées, ta semaine en cours ne change pas.";
 }
 
+/**
+ * After a race, the one she ran is no base to count from (audit N4): the new race is counted from today.
+ * « Semi de Strasbourg dans 20 semaines, objectif finir. »
+ */
+export function nextRaceSummary(after: GoalInput, today: string): string {
+  const weeks = Math.round(daysBetween(today, after.date) / 7);
+  const when = weeks > 1 ? `dans ${weeks} semaines` : weeks === 1 ? "dans 1 semaine" : "dans quelques jours";
+  const aim = after.targetTime ? `chrono visé ${after.targetTime}` : "objectif finir";
+  return `${raceTitle(after)} ${when}, ${aim}. Ton plan est construit jusque-là.`;
+}
+
 /** "2 semaines de plus, les semaines à venir sont recalculées." Shown before she confirms a new goal. */
 export function goalSummary(before: GoalInput, after: GoalInput, today: string): string {
   const weeks = Math.round(daysBetween(before.date, after.date) / 7);
@@ -42,4 +53,15 @@ export function goalSummary(before: GoalInput, after: GoalInput, today: string):
   if (parts.length === 0) return "Rien ne change pour l'instant.";
   const text = parts.join(", ");
   return `${text.charAt(0).toUpperCase()}${text.slice(1)}. ${weekNote(before, after, today)}`;
+}
+
+/** « Ce qui change »: why Valider waits when the chrono is missing, else the new race, else what changes. */
+export function changeText(
+  before: GoalInput,
+  after: GoalInput,
+  today: string,
+  { next, noTime }: { next: boolean; noTime: boolean },
+): string {
+  if (noTime) return "Écris ton chrono, ou choisis « Juste finir ».";
+  return next ? nextRaceSummary(after, today) : goalSummary(before, after, today);
 }

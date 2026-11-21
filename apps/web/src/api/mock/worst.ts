@@ -73,10 +73,11 @@ export function worstProgram(program: Program): Program {
     ...program,
     goal: {
       ...program.goal,
-      race: "Marathon de La Rochelle",
-      targetTime: "3:59:59",
+      // A semi, as the progression and the level of the demo: a long name, never another distance (audit UX F8).
+      name: "Semi-marathon international de La Rochelle",
+      targetTime: "1:48:00",
       targetTag: "ambitious",
-      targetWhy: { currentMin: 268, weeks: 14, gain: 0.105, gainMax: 0.049 },
+      targetWhy: { currentMin: 111, weeks: 14, gain: 0.027, gainMax: 0.02 },
     },
     settings: { ...program.settings, noRunDays: [0, 2, 5, 6] },
     strength: program.strength.map((t) =>

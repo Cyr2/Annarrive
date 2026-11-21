@@ -46,8 +46,8 @@ export function RunCard({ run, today }: { run: Run; today: string }) {
             {sub && <span className="t-sub">{tidy(sub)}</span>}
           </div>
           {run.lightened && (
-            <div className="flex flex-col items-start rounded-row bg-warn-wash px-3 pt-2">
-              <p className="t-cap m-0 text-warn-deep">{run.lightened}</p>
+            <div className="flex flex-col items-start rounded-row bg-reggie-wash px-3 pt-2">
+              <p className="t-cap m-0 text-reggie">{run.lightened}</p>
               <TalkLink
                 context={sessionDetail(run, today)}
                 about={{ screen: "today", sessionId: run.id }}

@@ -92,6 +92,17 @@ describe("le bilan du dimanche (BR)", () => {
     expect(weekReview(input({ next: [] })).reggie).toBe("Tu as fait toutes tes courses.");
   });
 
+  it("read on Monday, speaks of last week and of this one (BR7, audit N-F2)", () => {
+    const quick = run("r2", at(3), 60, 12000, { sessionId: "q", laps: [...laps(2, 420), ...laps(8, P40.T - 12)] });
+    const r = weekReview(input({ runs: [quick], monday: true }));
+    expect(r.highlight?.text).toBe("Ton seuil de jeudi dernier, plus rapide que prévu");
+    expect(weekReview(input({ monday: true })).reggie).toBe(
+      "Tu as fait toutes tes courses. Cette semaine garde le même volume.",
+    );
+    const race = [{ ...hard("race", at(13, "09:00")), type: "RACE" as const }];
+    expect(weekReview(input({ next: race, monday: true })).reggie).toMatch(/Cette semaine, c'est ta course\.$/);
+  });
+
   it("never makes up for a missed run in its words (BR5)", () => {
     const missed = (n: number) => input().sessions.map((s, i) => (i < n ? { ...s, status: "skipped" as const } : s));
     expect(weekReview(input({ sessions: missed(1) })).reggie).toMatch(/^Une seule course manquée/);

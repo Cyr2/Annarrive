@@ -87,7 +87,7 @@ export function FeelPicker({ id, feel, onPick }: { id: string; feel?: Feel; onPi
   return (
     <section className="flex flex-col gap-2" data-feel-for={id}>
       <div className="flex flex-col gap-0.5 px-1">
-        <SectionTitle id={`feel-${id}`} className="px-0">
+        <SectionTitle id={`feel-${id}`} flush>
           {FEEL_QUESTION}
         </SectionTitle>
         <span className="t-cap" aria-live="polite">

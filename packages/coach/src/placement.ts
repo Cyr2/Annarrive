@@ -300,10 +300,17 @@ function cost(session: Session, slot: Slot, week: WeekState, relaxH4: boolean): 
   return softPenalty(session, slot, week).total + H4_RELAXED_PTS * (hard.length - blocking.length);
 }
 
+/** A1b: `day` would be the third run day in a row, counting the runs already in the week. */
+function thirdInARow(day: string, week: WeekState): boolean {
+  const runDays = new Set([day, ...week.sessions.filter(isRun).map((s) => dateOf(s.start))]);
+  return [-2, -1, 0].some((from) => [0, 1, 2].every((i) => runDays.has(addDays(day, from + i))));
+}
+
 /** Best slot of each day (lowest cost, then earliest), sorted. Other slots of a day never change feasibility. */
-function dayCandidates(session: Session, week: WeekState, relaxH4: boolean): Candidate[] {
+function dayCandidates(session: Session, week: WeekState, relaxH4: boolean, spread: boolean): Candidate[] {
   const out: Candidate[] = [];
   for (const day of weekDates(week.monday)) {
+    if (spread && thirdInARow(day, week)) continue;
     let best: Candidate | null = null;
     for (const slot of grid(day, week.settings, session.durMin)) {
       const pts = cost(session, slot, week, relaxH4);
@@ -315,7 +322,7 @@ function dayCandidates(session: Session, week: WeekState, relaxH4: boolean): Can
 }
 
 /** A1, A2: depth-first search with branch and bound; the first solution among equals wins, so the result is stable. */
-function search(order: Session[], week: WeekState, relaxH4: boolean): Session[] | null {
+function search(order: Session[], week: WeekState, relaxH4: boolean, spread = false): Session[] | null {
   const found: { cost: number; placed: Session[] }[] = [];
   const visit = (i: number, placed: Session[], total: number): void => {
     const best = found[0];
@@ -326,7 +333,7 @@ function search(order: Session[], week: WeekState, relaxH4: boolean): Session[] 
       return;
     }
     const w = { ...week, sessions: [...week.sessions, ...placed] };
-    for (const c of dayCandidates(s, w, relaxH4))
+    for (const c of dayCandidates(s, w, relaxH4, spread))
       visit(i + 1, [...placed, { ...s, start: c.slot.start }], total + c.pts);
   };
   visit(0, [], 0);
@@ -387,7 +394,8 @@ export function placeWeek(
   const fixed = sessions.filter(isFixed);
   const base: WeekState = { monday, sessions: fixed, cal, settings: s, ...(prev ? { prev } : {}) };
   let todo = sessions.filter((x) => !isFixed(x)).sort(byPriority);
-  let placed = search(todo, base, false);
+  // A1b: three run days in a row only when no spread week fits.
+  let placed = search(todo, base, false, true) ?? search(todo, base, false);
   const relaxations: string[] = [];
   const warnings: Warning[] = [];
   for (const r of RELAXATIONS) {
@@ -518,9 +526,12 @@ export function proposeMoveSlots(sessionId: string, week: WeekState, now: string
     if (top.length < 3) top.push(morning);
     else top[top[2] === nextDay ? 1 : 2] = morning;
   }
-  const best = top
-    .sort(byCost)
-    .map((c): SlotWithReason => ({ slot: c.slot, penalty: c.pts, reason: slotReason(s, c.slot, week) }));
+  const said = new Set<string>();
+  const best = top.sort(byCost).map((c): SlotWithReason => {
+    const reason = slotReason(s, c.slot, week, said);
+    said.add(reason);
+    return { slot: c.slot, penalty: c.pts, reason };
+  });
   return best.length > 0 ? { best, forbidden } : { best, forbidden, fallback: ["jog_tonight", "skip"] };
 }
 
@@ -592,8 +603,11 @@ function gapText(min: number): string {
   return m === 0 ? `${h} h` : `${h} h ${String(m).padStart(2, "0")}`;
 }
 
-/** A6: a short reason for a proposed slot, never empty: same day, its cost, the legs session, then her classes. */
-export function slotReason(s: Session, slot: Slot, week: WeekState): string {
+/**
+ * A6: a short reason for a proposed slot, never empty: same day, its cost, the legs session, then her classes. The
+ * legs session is said once: on a second slot it tells nothing apart, her classes do (audit UX F2).
+ */
+export function slotReason(s: Session, slot: Slot, week: WeekState, said = new Set<string>()): string {
   const shift = toMin(slot.start) - toMin(s.start);
   if (dateOf(slot.start) === dateOf(s.start))
     return `même jour, ${gapText(Math.abs(shift))} plus ${shift > 0 ? "tard" : "tôt"}`;
@@ -608,8 +622,9 @@ export function slotReason(s: Session, slot: Slot, week: WeekState): string {
   const legs = week.cal
     .filter((e) => isLegs(e) && Math.abs(toMin(e.start) - start) < 3 * DAY_MIN)
     .sort((a, b) => Math.abs(toMin(a.start) - start) - Math.abs(toMin(b.start) - start))[0];
-  if (legs && isHard(s))
-    return `ta muscu jambes est ${DAY_NAMES[weekday(legs.start)]} ${dayPart(legs.start)}, l'écart est bon`;
+  const legsWord =
+    legs && `ta muscu jambes est ${DAY_NAMES[weekday(legs.start)]} ${dayPart(legs.start)}, l'écart est bon`;
+  if (legsWord && isHard(s) && !said.has(legsWord)) return legsWord;
   const sameDay = week.cal
     .filter((e) => e.kind === "class" || e.kind === "exam")
     .filter((e) => dateOf(e.start) === dateOf(slot.start));

@@ -130,6 +130,8 @@
   --radius-bubble: 22px;
   --radius-tail: 6px;
   --radius-sheet: 32px;
+  /* Half the toast's 52 px: a pill on one line, a rounded block (never an oval) when it wraps. */
+  --radius-toast: 26px;
   --radius-pill: 999px;
 
   /* ---- Type: Outfit (app.css), the system font while it loads ---- */

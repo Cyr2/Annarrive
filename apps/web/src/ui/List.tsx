@@ -6,10 +6,20 @@ import { Surface } from "./Surface.tsx";
 
 /** iOS grouped list pieces: an inset surface, rows with hairlines, a caption header and a footnote. */
 
-/** Role 1, the title of a section of a screen or of a sheet step: 20 px bold. */
-export function SectionTitle({ id, className, children }: { id?: string; className?: string; children: ReactNode }) {
+/** Role 1, the title of a section of a screen or of a sheet step: 20 px bold. `flush` drops the inset, inside a card. */
+export function SectionTitle({
+  id,
+  className,
+  flush = false,
+  children,
+}: {
+  id?: string;
+  className?: string;
+  flush?: boolean;
+  children: ReactNode;
+}) {
   return (
-    <h2 id={id} className={cx("t-title px-1", className)}>
+    <h2 id={id} className={cx("t-title", !flush && "px-1", className)}>
       {children}
     </h2>
   );
