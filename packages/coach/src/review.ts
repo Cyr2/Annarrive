@@ -80,6 +80,7 @@ function longest(input: ReviewInput): Highlight | undefined {
 
 /** BR5: what she did, said once, kindly and without making up for anything. */
 function doneLine(done: number, planned: number, exams: number): string {
+  if (planned === 0) return "";
   if (done >= planned) return exams > 0 ? "Tu as tout tenu malgré tes examens." : "Tu as fait toutes tes courses.";
   if (done === 0) return "Pas de course cette semaine, ça arrive.";
   if (planned - done === 1) return "Une seule course manquée, le reste est fait.";

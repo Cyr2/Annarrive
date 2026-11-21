@@ -97,7 +97,7 @@ describe("Anna's level in service (F10, F11, RC11)", () => {
 
   it("proposes the better reading over a stale detrained level, names the run, and accepting it is undoable (RC-21)", async () => {
     const bridge = fakeBridge();
-    const t = await ready({ bridge });
+    const t = await ready({ bridge, onboarded: true });
     t.setNow(nov19);
     const { runs, laps } = annaRuns();
     bridge.activityLaps.mockImplementation(async (id) => laps.get(id) ?? []);

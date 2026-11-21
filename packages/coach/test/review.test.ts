@@ -98,6 +98,11 @@ describe("le bilan du dimanche (BR)", () => {
     expect(weekReview(input({ sessions: missed(2) })).reggie).toMatch(/^Tu repars de là, sans rattraper/);
     expect(weekReview(input({ sessions: missed(3) })).reggie).toMatch(/^Pas de course cette semaine/);
   });
+
+  it("never says she did all her runs when none was planned (BR5)", () => {
+    // Audit parcours réel B1: « 0 sur 0 course… Tu as fait toutes tes courses » for the week before the app.
+    expect(weekReview(input({ sessions: [], next: [] })).reggie).toBe("");
+  });
 });
 
 const SEMI = { distanceM: 21097.5 as const, date: addDays(MONDAY, 6), targetMin: 108 };

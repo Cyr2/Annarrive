@@ -53,6 +53,9 @@ export type CalEvent = {
   manual: boolean;
 };
 
+/** S7: her usual start on weekdays, at the weekend and for her long run, "HH:mm". */
+export type UsualHours = { weekday?: string; weekend?: string; long?: string };
+
 /** Days are numbered 0 = Monday to 6 = Sunday. Times are "HH:mm". */
 export type Settings = {
   runsPerWeek: 3 | 4 | 5;
@@ -63,6 +66,8 @@ export type Settings = {
   /** Days the long run may go on (S8), 0 = Monday. */
   preferredLongDays?: number[];
   preferredHour?: string;
+  /** S7 without a stated hour: the hours she usually runs at, read from her runs (`usualHours`). */
+  usualHours?: UsualHours;
   useSleepHr: boolean;
   travelMin: number;
 };

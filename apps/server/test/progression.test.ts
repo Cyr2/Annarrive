@@ -24,6 +24,7 @@ async function anna(goal: typeof GOAL | null = GOAL) {
   t.stores.activity.put({ id: "r1", start: "2026-11-03T18:02", durMin: 48, distM: 8000, sessionId: "a" });
   t.stores.activity.put({ id: "r2", start: "2026-11-05T18:00", durMin: 30, distM: 5000, sessionId: "b" });
   t.stores.activity.put({ id: "r3", start: "2026-11-11T07:00", durMin: 35, distM: 6000 });
+  t.stores.activity.put({ id: "a1", start: "2026-10-14T18:30", durMin: 50, distM: 9500 });
   return t;
 }
 
@@ -58,7 +59,8 @@ describe("GET /api/progression (algo.md M12)", () => {
       {
         date: "2026-11-01",
         start: true,
-        line: "Ta meilleure course récente, moins la coupure : temps estimé 1:50:54.",
+        // Audit parcours réel F1: a tempo, not « Ta meilleure course », which she took for her marathon.
+        line: "Ta sortie du 14 octobre, moins la coupure : temps estimé 1:50:54.",
       },
     ]);
   });

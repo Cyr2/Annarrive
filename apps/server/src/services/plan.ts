@@ -115,6 +115,8 @@ const MORNING_NOTE = "morning.note";
 const ADAPT_NOTE = "adapt.note";
 /** The timetable link pasted at onboarding, until the profile is stored. */
 const ONBOARDING_ICS = "onboarding.icsUrl";
+/** « 2026-11-30 »: the week « Ta semaine est prête » was last sent for. */
+const WEEK_READY_SENT = "notify.weekReady";
 const morningNotes: Partial<Record<DailyDecisionResult["action"], string>> = {
   easier: "Allégée",
   shorter: "Raccourcie",
@@ -429,8 +431,15 @@ export class PlanService {
     const reshaped =
       settings.runsPerWeek !== before.settings.runsPerWeek ||
       JSON.stringify(settings.preferredLongDays) !== JSON.stringify(before.settings.preferredLongDays);
+    // A session from before onboarding was never hers (B2): onboarding starts from an empty plan.
     if (onboarded || reshaped)
-      return this.#rebuild("Reggie a réorganisé ta semaine", [write], { ...before, settings }, before, true);
+      return this.#rebuild(
+        "Reggie a réorganisé ta semaine",
+        [write],
+        { ...before, settings, ...(onboarded ? { sessions: [] } : {}) },
+        before,
+        true,
+      );
     return this.#commit(
       "Réglages enregistrés",
       [write],
@@ -508,20 +517,40 @@ export class PlanService {
     return kept ? state.fitness : (this.#estimate(state) ?? state.fitness);
   }
 
-  /** After a run, when no level was known yet: estimates it and builds the weeks it was missing. */
-  bootstrapFitness(): ChangeResponse | null {
+  /**
+   * After a run, when no level was known yet: estimates it and builds the weeks it was missing. `reread`, at the end
+   * of the history read: the level onboarding read mid-read is read again with the whole year (F10), new paces only.
+   * Before onboarding, the level alone: no week is built, so nothing reaches her watch (audit parcours réel B2).
+   */
+  bootstrapFitness(reread = false): ChangeResponse | null {
     const before = this.coachState();
-    const fitness = before.fitness ? null : this.#estimate(before);
-    return (
-      fitness &&
-      this.#rebuild(
-        "Tes allures sont calculées d'après tes dernières courses",
-        [],
-        { ...before, fitness },
-        before,
-        true,
-      )
-    );
+    const onboarded = this.onboarding().done;
+    const { startedOn } = before.program;
+    // Read before onboarding, or by onboarding itself: it saw part of the history. A later level stays (RC-21).
+    const partial = !onboarded || (startedOn !== undefined && (before.fitness?.date ?? "") >= startedOn);
+    if (before.fitness && !(reread && partial)) return null;
+    const fitness = this.#estimate({ ...before, fitness: null });
+    if (!fitness) return null;
+    const summary = "Tes allures sont calculées d'après tes dernières courses";
+    const state = { ...before, fitness };
+    if (!onboarded) return this.#commit(summary, [], before, { state, changes: [], warnings: [] });
+    if (before.fitness) return this.#commit(summary, [], before, this.#coach.repace(state, this.#now()));
+    return this.#rebuild(summary, [], state, before, true);
+  }
+
+  /**
+   * Run at each start (audit parcours réel B2): sessions built before onboarding are removed, so the next watch sync
+   * deletes the workouts the app sent for them. Once onboarding is done, or with nothing stored, it records nothing.
+   */
+  repairPreOnboarding(): ChangeResponse | null {
+    if (this.onboarding().done) return null;
+    const sessions = this.#stores.plannedSession.list();
+    if (sessions.length === 0) return null;
+    const writes = sessions.map((s): PlanWrite => ({ table: "planned_session", id: s.id, after: null }));
+    const removed = sessions.map((s) => `${sessionNames[s.type]} ${s.start}`).join(", ");
+    console.info(`Démarrage : séances d'avant l'onboarding retirées (${removed})`);
+    const entry = this.#changes.record("Séances d'avant ton programme retirées", writes);
+    return { change: entry && { id: entry.id, summary: entry.summary }, warnings: [] };
   }
 
   /**
@@ -568,6 +597,8 @@ export class PlanService {
 
   /** Sunday 18:00 job (algo.md cycle 0.1); `notice` is the notification's text, the week in numbers (BR7). */
   async buildNextWeek(notice?: () => string): Promise<ChangeResponse> {
+    // B2: before onboarding there is no plan to build.
+    if (!this.onboarding().done) return { change: null, warnings: [] };
     const before = this.coachState();
     const response = this.#commit(
       "Ta semaine est prête",
@@ -575,7 +606,12 @@ export class PlanService {
       before,
       this.#coach.buildWeek(before, this.#nextMonday(), this.#now()),
     );
-    if (response.change) await this.#notifications.weekReady(notice?.());
+    // Once a week, even when a change earlier in the week had already built it (audit parcours réel G3).
+    const week = this.#nextMonday();
+    if (this.#stores.meta.get(WEEK_READY_SENT)?.value !== week) {
+      this.#stores.meta.put({ id: WEEK_READY_SENT, value: week });
+      await this.#notifications.weekReady(notice?.());
+    }
     return response;
   }
 

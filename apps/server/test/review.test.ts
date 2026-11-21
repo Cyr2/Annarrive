@@ -8,6 +8,7 @@ const paris = (local: string) => new Date(`${local}:00+01:00`);
 /** Anna's week of 16 to 22 November: three runs planned, two done, one run on Thursday. */
 function weekSetup() {
   const t = setup();
+  t.stores.program.put({ id: "current", value: { goal: null, startedOn: "2026-11-09" } });
   t.stores.plannedSession.put(session("tue", "2026-11-17T18:00", { status: "done" }));
   t.stores.plannedSession.put(session("thu", "2026-11-19T18:00", { status: "done", durMin: 60 }));
   t.stores.plannedSession.put(session("sun", "2026-11-22T09:30", { status: "skipped", type: "L", durMin: 90 }));
@@ -68,6 +69,24 @@ describe("le bilan du dimanche (BR7)", () => {
     expect((await t.call("POST", "/api/review/dismiss", { week: "W48" })).status).toBe(400);
   });
 
+  // Audit parcours réel B1: onboarding on Monday showed « 0 sur 0 course, 2 h 25, Tu as fait toutes tes courses ».
+  it("says nothing on an onboarding Monday, nor for a week she only ran", async () => {
+    const t = setup();
+    t.stores.activity.put({ id: "r1", start: "2026-11-17T18:02", durMin: 46, distM: 7600 });
+    t.stores.activity.put({ id: "r2", start: "2026-11-22T09:30", durMin: 99, distM: 16000 });
+    await t.login();
+    t.setNow(paris("2026-11-23T20:30"));
+    t.stores.program.put({ id: "current", value: { goal: null, startedOn: "2026-11-23" } });
+    expect(await review(t)).toBeUndefined();
+    // Even started earlier, a week with no session planned has nothing to count.
+    t.stores.program.put({ id: "current", value: { goal: null, startedOn: "2026-11-16" } });
+    expect(await review(t)).toBeUndefined();
+    // A pre-onboarding session (B2) does not make a week of the programme either.
+    t.stores.plannedSession.put(session("old", "2026-11-17T18:00"));
+    t.stores.program.put({ id: "current", value: { goal: null, startedOn: "2026-11-23" } });
+    expect(await review(t)).toBeUndefined();
+  });
+
   it("says nothing for a week with nothing planned and nothing run", async () => {
     const t = setup();
     await t.login();
@@ -77,7 +96,7 @@ describe("le bilan du dimanche (BR7)", () => {
 
   it("puts the week in numbers in the Sunday notification and opens Aujourd'hui", async () => {
     const send = vi.fn(async () => undefined);
-    const t = setup({ push: { send, publicKey: "key" } });
+    const t = setup({ push: { send, publicKey: "key" }, onboarded: true });
     t.stores.plannedSession.put(session("tue", "2026-11-17T18:00", { status: "done" }));
     t.stores.plannedSession.put(session("thu", "2026-11-19T18:00"));
     t.services.notifications.subscribe({ endpoint: "https://web.push.apple.com/a", keys: { p256dh: "p", auth: "a" } });
@@ -88,6 +107,9 @@ describe("le bilan du dimanche (BR7)", () => {
       body: "1 course sur 2 cette semaine. La suivante est prête.",
       url: "/",
     });
+    // Once a week: a second pass, which changes nothing, sends nothing more.
+    await t.services.plan.buildNextWeek(() => t.services.review.notice());
+    expect(send).toHaveBeenCalledOnce();
     t.stores.plannedSession.delete("tue");
     t.stores.plannedSession.delete("thu");
     expect(t.services.review.notice()).toBe("Ta semaine prochaine est prête.");

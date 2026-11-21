@@ -35,10 +35,10 @@ const services = createServices({
 // A failed repair must not keep the app from starting: the sessions keep their range until the next start.
 try {
   services.plan.repairPaceRanges();
+  // A plan built before onboarding goes; the change it records takes its workouts off the watch (B2).
+  services.plan.repairPreOnboarding();
 } catch (error) {
-  console.error(
-    `Allures : réparation au démarrage en échec (${error instanceof Error ? error.message : "erreur inconnue"})`,
-  );
+  console.error(`Réparation au démarrage en échec (${error instanceof Error ? error.message : "erreur inconnue"})`);
 }
 const app = createApp({ services, sessionSecret: config.SESSION_SECRET, webDist: config.WEB_DIST });
 

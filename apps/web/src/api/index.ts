@@ -5,9 +5,20 @@ import { signOut } from "./session.ts";
 
 export type { Api } from "./client.ts";
 
-const SCENARIOS: Scenario[] = ["run", "rest", "done", "light", "worst", "didyourun", "proposal", "bilan", "course"];
+const SCENARIOS: Scenario[] = [
+  "run",
+  "rest",
+  "done",
+  "light",
+  "worst",
+  "didyourun",
+  "proposal",
+  "bilan",
+  "lundi",
+  "course",
+];
 
-/** `?mock`, `?mock=rest`, `?mock=done`, `?mock=light`, `?mock=worst`, `?mock=didyourun`, `?mock=proposal`, `?mock=bilan`, `?mock=course`: forces the mock and picks its "today". */
+/** `?mock`, `?mock=rest`, `?mock=done`, `?mock=light`, `?mock=worst`, `?mock=didyourun`, `?mock=proposal`, `?mock=bilan`, `?mock=lundi`, `?mock=course`: forces the mock and picks its "today". */
 export function mockRequest(search: string, envFlag: string | undefined): Scenario | undefined {
   const value = new URLSearchParams(search).get("mock");
   if (value === null) return envFlag === "1" ? "run" : undefined;

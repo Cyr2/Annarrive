@@ -32,7 +32,7 @@ export function figures(d: Data): Figure[] {
     },
     hr
       ? { label: "FC seuil", value: String(hr.bpm), unit: "bpm", detail: HR_FROM[hr.from](hr.date) }
-      : { label: "FC seuil", value: "À mesurer", detail: "À ta prochaine séance au seuil", pending: true },
+      : { label: "FC seuil", value: "À mesurer", detail: "Se lit sur une séance au seuil", pending: true },
   ];
 }
 

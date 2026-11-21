@@ -17,15 +17,27 @@ const REASONS: Record<string, string> = {
   "proposal:F10": "Une course récente au-dessus de ton niveau",
 };
 
-function reason(source: string): string {
-  if (source.endsWith(":detrained")) return "Ta meilleure course récente, moins la coupure";
-  if (source.startsWith("effort:") || source.startsWith("floor:")) return "Ta meilleure course récente";
-  return REASONS[source] ?? "Niveau mis à jour";
+/** « 14 octobre ». */
+const dayMonth = (date: string) =>
+  new Date(`${date}T12:00:00Z`).toLocaleDateString("fr-FR", { day: "numeric", month: "long", timeZone: "UTC" });
+
+/**
+ * The run a measured level was read on, by its day: « Ta sortie du 14 octobre » for a training run (a tempo's laps),
+ * « Ta compétition du 12 avril » for a race, so she never takes it for her last race (audit parcours réel F1).
+ */
+function reason(stores: Stores, source: string): string {
+  const effort = /^(?:effort|floor):(.+?)(:detrained)?$/.exec(source);
+  if (!effort) return REASONS[source] ?? "Niveau mis à jour";
+  const run = stores.activity.get(effort[1] ?? "");
+  const what = run
+    ? `${run.isRace ? "Ta compétition" : "Ta sortie"} du ${dayMonth(dateOf(run.start))}`
+    : "Une sortie récente";
+  return effort[2] ? `${what}, moins la coupure` : what;
 }
 
 /** « Ton dernier chrono : temps estimé 1:53:30. », « Seuil et fractionné plus rapides que prévu : footing à 6'01 /km au lieu de 6'08 /km. » */
-function line(change: coach.LevelChange): string {
-  const why = reason(change.source);
+function line(stores: Stores, change: coach.LevelChange): string {
+  const why = reason(stores, change.source);
   if (change.easyFrom === undefined) return `${why} : temps estimé ${clock(change.predictedMin)}.`;
   const [from, to] = [paceLabel(change.easyFrom), paceLabel(change.easyTo)];
   return from === to ? `${why}.` : `${why} : footing à ${to} au lieu de ${from}.`;
@@ -60,7 +72,7 @@ export function progressionOf(stores: Stores, plan: PlanService, port: CoachPort
     kept: coach.keptRuns(sessions, runs, from),
     changes: coach
       .levelChanges(levels, from, goal.distanceM)
-      .map((c) => ({ date: c.date, start: c.easyFrom === undefined, line: line(c) }))
+      .map((c) => ({ date: c.date, start: c.easyFrom === undefined, line: line(stores, c) }))
       .reverse(),
   };
 }

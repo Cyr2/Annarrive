@@ -31,10 +31,10 @@ function garminRun(id: number, startTimeLocal: string, over: Partial<GarminActiv
   };
 }
 
-function garminSetup(coach: CoachPort = fakeCoach) {
+function garminSetup(coach: CoachPort = fakeCoach, onboarded = true) {
   const bridge = fakeBridge();
   const send = vi.fn(async () => undefined);
-  const t = setup({ bridge, coach, push: { send, publicKey: "key" } });
+  const t = setup({ bridge, coach, push: { send, publicKey: "key" }, onboarded });
   t.services.notifications.subscribe({ endpoint: "https://push.test/anna", keys: { p256dh: "p", auth: "a" } });
   const garmin = t.services.garmin;
   if (!garmin) throw new Error("garmin service missing");
@@ -80,6 +80,18 @@ describe("Garmin activities", () => {
     expect(t.stores.plannedSession.get("evening")?.status).toBe("done");
     expect(t.stores.plannedSession.get("morning")?.status).toBe("planned");
     expect(t.stores.plannedSession.get("monday")?.status).toBe("planned");
+  });
+
+  // Audit parcours réel G1: a long run planned at 18:30 and run at 9:30 the same day is the session, not an extra run.
+  it("matches a run of the same day whatever its hour", async () => {
+    const t = garminSetup();
+    t.stores.plannedSession.put(session("long", "2026-11-15T18:30", { type: "L", durMin: 65 }));
+    t.bridge.recentActivities.mockResolvedValue([garminRun(1, "2026-11-15 09:30:00")]);
+
+    await t.garmin.syncActivities();
+
+    expect(t.stores.activity.get("garmin:1")?.sessionId).toBe("long");
+    expect(t.stores.plannedSession.get("long")?.status).toBe("done");
   });
 
   it("records the match as a change, so Annuler reopens the session", async () => {
@@ -369,6 +381,131 @@ describe("Garmin recovery and morning decision", () => {
     const t = setup();
     expect(t.services.plan.morningDecision()).toBeNull();
     expect(t.stores.changeLog.list()).toEqual([]);
+  });
+});
+
+/** Audit parcours réel B2: Garmin linked days before onboarding sent a default plan, a « Fractionné », to her watch. */
+describe("before onboarding", () => {
+  /** A level that grows with the runs it reads, so a second reading shows. */
+  const levelCoach: CoachPort = {
+    ...fakeCoach,
+    estimateFitness: (st) => ({ vdot: 30 + st.activities.length / 10, source: "test", provisional: false }),
+  };
+  const history = (n: number) =>
+    [...Array(n).keys()].map((k) => garminRun(100 + k, `${addDays("2026-11-15", -2 * k)} 18:00:00`));
+
+  it("reads her level at the end of the history read, but builds no week and sends nothing to the watch", async () => {
+    const t = garminSetup(levelCoach, false);
+    const runs = history(30);
+    t.bridge.recentActivities.mockImplementation(async (limit = 20, start = 0) => runs.slice(start, start + limit));
+
+    await t.garmin.syncActivities();
+    await t.services.plan.buildNextWeek();
+    await t.garmin.syncWatch();
+
+    expect(t.stores.fitnessEstimate.list().at(-1)?.vdot).toBe(33);
+    expect(t.stores.plannedSession.list()).toEqual([]);
+    expect(t.bridge.createWorkout).not.toHaveBeenCalled();
+    expect(t.send).not.toHaveBeenCalled();
+  });
+
+  it("at start, removes a plan built before onboarding and deletes only the workouts the app sent for it", async () => {
+    const t = garminSetup(fakeCoach, false);
+    t.stores.plannedSession.put(session("q", "2026-11-17T18:00", { type: "I" }));
+    t.stores.plannedSession.put(session("e", "2026-11-19T18:00"));
+    t.stores.watchSync.put({ id: "q", status: "sent", hash: "h1", workoutId: 701 });
+    t.stores.watchSync.put({ id: "e", status: "sent", hash: "h2", workoutId: 702 });
+
+    // The change it records takes the workouts off the watch at once.
+    expect(t.services.plan.repairPreOnboarding()?.change?.summary).toBe("Séances d'avant ton programme retirées");
+    await vi.waitFor(() => expect(t.stores.watchSync.list()).toEqual([]));
+
+    expect(t.stores.plannedSession.list()).toEqual([]);
+    expect(t.bridge.deleteWorkout.mock.calls.map(([id]) => id).sort()).toEqual([701, 702]);
+    expect(t.bridge.createWorkout).not.toHaveBeenCalled();
+    // A second start finds nothing to do.
+    expect(t.services.plan.repairPreOnboarding()).toBeNull();
+    expect(t.stores.changeLog.list()).toHaveLength(1);
+  });
+
+  // The exact set found in her Garmin calendar on 21/11, before any onboarding.
+  it("removes her pre-onboarding workouts of 17 to 25 November, past ones too, and waits while writing is off", async () => {
+    const t = garminSetup(fakeCoach, false);
+    t.setNow(new Date("2026-11-21T10:00:00Z"));
+    const pushed = [
+      ["seuil", "2026-11-17T18:00", "T", 801],
+      ["foot18", "2026-11-18T18:00", "E", 802],
+      ["foot19", "2026-11-19T18:00", "E", 803],
+      ["fract", "2026-11-23T18:00", "I", 804],
+      ["foot24", "2026-11-24T18:00", "E", 805],
+      ["foot25", "2026-11-25T18:00", "E", 806],
+    ] as const;
+    for (const [id, start, type, workoutId] of pushed) {
+      t.stores.plannedSession.put(session(id, start, { type }));
+      t.stores.watchSync.put({ id, status: "sent", hash: id, workoutId });
+    }
+    const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
+    t.bridge.deleteWorkout.mockRejectedValue(new GarminWriteOffError("Envoi vers Garmin coupé"));
+
+    // The change it records starts a watch sync at once.
+    expect(t.services.plan.repairPreOnboarding()).not.toBeNull();
+    await vi.waitFor(() => expect(t.bridge.deleteWorkout).toHaveBeenCalled());
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    // Writing off: nothing deleted, every workout still tracked for later.
+    expect(t.stores.plannedSession.list()).toEqual([]);
+    expect(t.stores.watchSync.list()).toHaveLength(6);
+
+    t.bridge.deleteWorkout.mockReset();
+    t.bridge.deleteWorkout.mockResolvedValue(undefined);
+    await t.garmin.syncWatch();
+    await vi.waitFor(() => expect(t.stores.watchSync.list()).toEqual([]));
+    expect(t.bridge.deleteWorkout.mock.calls.map(([id]) => id).sort()).toEqual([801, 802, 803, 804, 805, 806]);
+    expect(t.bridge.createWorkout).not.toHaveBeenCalled();
+    const logged = info.mock.calls.map(([line]) => String(line));
+    expect(logged.some((l) => l.includes("Seuil 2026-11-17T18:00") && l.includes("Fractionné 2026-11-23T18:00"))).toBe(
+      true,
+    );
+    expect(logged.filter((l) => l.startsWith("Montre : entraînement"))).toHaveLength(6);
+  });
+
+  it("leaves the plan alone once onboarding is done", () => {
+    const t = garminSetup();
+    t.stores.plannedSession.put(session("e", "2026-11-19T18:00"));
+    expect(t.services.plan.repairPreOnboarding()).toBeNull();
+    expect(t.stores.plannedSession.get("e")).toBeDefined();
+  });
+
+  it("replaces a plan built before onboarding when it ends, and its workouts leave the watch", async () => {
+    const t = garminSetup(fakeCoach, false);
+    await t.login();
+    t.stores.fitnessEstimate.put({ id: "2026-11-01", date: "2026-11-01", vdot: 40, source: "test" });
+    t.stores.plannedSession.put(session("old", "2026-11-17T18:00", { type: "I" }));
+    t.stores.watchSync.put({ id: "old", status: "sent", hash: "h", workoutId: 701 });
+    await t.call("PUT", "/api/program", { goal: { distanceM: 21097.5, date: "2027-04-11" } });
+    await t.call("PATCH", "/api/profile", { runsPerWeek: 4 });
+    await t.garmin.syncWatch();
+
+    expect(t.stores.plannedSession.get("old")).toBeUndefined();
+    expect(t.bridge.deleteWorkout).toHaveBeenCalledWith(701);
+    expect(t.bridge.createWorkout).toHaveBeenCalled();
+  });
+
+  it("reads again with the whole year a level onboarding read while the history was still coming (F10)", async () => {
+    const t = garminSetup(levelCoach, false);
+    await t.login();
+    const runs = history(80);
+    t.bridge.recentActivities.mockImplementationOnce(async () => runs.slice(0, 20));
+    t.bridge.recentActivities.mockImplementationOnce(async () => runs.slice(0, 50));
+    t.bridge.recentActivities.mockRejectedValueOnce(new GarminRateLimitError(300));
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    await t.garmin.syncActivities();
+    await t.call("PUT", "/api/program", { goal: { distanceM: 21097.5, date: "2027-04-11" } });
+    await t.call("PATCH", "/api/profile", { runsPerWeek: 4 });
+    expect(t.stores.fitnessEstimate.list().at(-1)?.vdot).toBe(35);
+
+    t.bridge.recentActivities.mockImplementation(async (limit = 20, start = 0) => runs.slice(start, start + limit));
+    await t.garmin.syncActivities();
+    expect(t.stores.fitnessEstimate.list().at(-1)?.vdot).toBe(38);
   });
 });
 

@@ -94,14 +94,14 @@ Garde **le moment**, change **le contenu**. Ne propose jamais une séance plus d
 
 ## Le bilan du dimanche
 
-Une carte en haut d'Aujourd'hui, au-dessus du contenu habituel du jour (algo.md BR7). Elle apparaît le dimanche dès 18:00, ou à la fin de la dernière séance de la semaine si elle finit plus tard, reste tout le lundi et disparaît le mardi. Rien pour une semaine sans course prévue ni courue.
+Une carte en haut d'Aujourd'hui, au-dessus du contenu habituel du jour (algo.md BR7). Elle apparaît le dimanche dès 18:00, ou à la fin de la dernière séance de la semaine si elle finit plus tard, reste tout le lundi et disparaît le mardi. Rien pour une semaine sans séance prévue ni pour une semaine finie avant le début du programme : le lundi de l'onboarding n'a pas de bilan. Le lundi, le bilan s'arrête à la phrase de Reggie : la semaine qui commence est déjà sous les yeux, la carte du jour reste juste en dessous.
 
 | Élément | Au tap | Ce qui se passe |
 |---|---|---|
 | Notification « Ta semaine est prête » (dimanche 18:00) | Ouvre Aujourd'hui, la carte du bilan en haut | « 4 courses sur 4 cette semaine. La suivante est prête. » |
 | Carte « Ta semaine, 16 au 22 novembre » | Rien : elle informe. Courses faites sur prévues, temps couru, un fait marquant s'il y en a un, la phrase de Reggie | Rien ne change |
 | « × » (Fermer le bilan) | La carte disparaît aussitôt | Retenu par le serveur pour cette semaine : elle ne revient ni à la réouverture ni sur un autre appareil |
-| Ligne de « La semaine prochaine » | Rien : les lignes de Semaine, une par course de la semaine suivante | « Demain » n'est pas répété sous la carte quand sa course y figure déjà |
+| Ligne de « La semaine prochaine » (dimanche seulement) | Rien : les lignes de Semaine, une par course de la semaine suivante | « Demain » n'est pas répété sous la carte quand sa course y figure déjà |
 | Voir la semaine | Ouvre Semaine sur la semaine suivante | Rien ne change |
 
 ## Après la course objectif

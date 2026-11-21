@@ -93,7 +93,7 @@ export function TodayScreen() {
   const week = weeks[0];
   // After « Oui, je l'ai faite » the question is gone: how it felt is asked where it was.
   const [confirmed, setConfirmed] = useState<Run>();
-  const [review, closeReview] = useReview(today?.review);
+  const [review, closeReview] = useReview(today?.review, today?.date);
   const onboarding = waitsForOnboarding(
     useOnboardingNeed((s) => s.need),
     today,

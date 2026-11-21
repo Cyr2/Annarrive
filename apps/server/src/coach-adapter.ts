@@ -52,9 +52,9 @@ const toCalEvent = (e: CalendarEvent): CalEvent => ({
 /** The app numbers days 1 (Monday) to 7, the coach 0 to 6. */
 const toDay = (d: number): number => d - 1;
 
-/** S7: without a stated hour, the hour she usually runs at, read from her Garmin runs. */
-export function toSettings(p: Profile, runs: { start: string }[]): Settings {
-  const preferredHour = p.preferredHour ?? coach.usualHour(runs);
+/** S7: without a stated hour, the hours she usually runs at (weekday, weekend, long run), read from her Garmin runs. */
+export function toSettings(p: Profile, runs: { start: string; durMin: number }[]): Settings {
+  const { preferredHour } = p;
   return {
     runsPerWeek: p.runsPerWeek,
     earliest: p.earliest,
@@ -64,7 +64,7 @@ export function toSettings(p: Profile, runs: { start: string }[]): Settings {
     useSleepHr: p.useSleepHr,
     travelMin: p.travelMin,
     ...(p.preferredLongDays === undefined ? {} : { preferredLongDays: p.preferredLongDays.map(toDay) }),
-    ...(preferredHour === undefined ? {} : { preferredHour }),
+    ...(preferredHour === undefined ? { usualHours: coach.usualHours(runs) } : { preferredHour }),
   };
 }
 

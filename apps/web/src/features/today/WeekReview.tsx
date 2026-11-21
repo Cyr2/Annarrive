@@ -13,15 +13,20 @@ import { useGo } from "../useGo.ts";
 import { ItemRow } from "../week/WeekItem.tsx";
 import { ReggieAvatar } from "./parts.tsx";
 
-/** The review still open, and « × »: hidden at once, kept closed by the server for the next reads and devices. */
-export function useReview(review: Review | undefined): [Review | undefined, () => void] {
+/**
+ * The review still open, and « × »: hidden at once, kept closed by the server for the next reads and devices.
+ * On Monday its next week is the one starting today, already on the screen: the review keeps to the week it closes
+ * and stays short above today's card (algo.md BR7).
+ */
+export function useReview(review: Review | undefined, today = ""): [Review | undefined, () => void] {
   const [closed, setClosed] = useState<string>();
   const close = () => {
     if (!review) return;
     setClosed(review.week);
     void usePlan.getState().run((api) => api.dismissReview(review.week));
   };
-  return [review?.week === closed ? undefined : review, close];
+  if (!review || review.week === closed) return [undefined, close];
+  return [today >= addDays(review.monday, 7) ? { ...review, next: [] } : review, close];
 }
 
 /** The next run, or null once the review's rows already show it: an information is said once per screen. */

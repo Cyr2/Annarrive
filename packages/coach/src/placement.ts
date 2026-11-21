@@ -22,6 +22,7 @@ import type {
   Settings,
   Slot,
   SlotWithReason,
+  UsualHours,
   Violation,
   Warning,
   WeekState,
@@ -98,7 +99,16 @@ export const nearRace = (day: string, raceDay: string): boolean =>
 const h12 = (slot: Slot, runs: Session[]): Violation | null =>
   runs.some((r) => r.type === "RACE" && nearRace(slot.start, r.start)) ? v("H12", "Trop près du jour J") : null;
 
-/** H1 to H7 and H12 for `session` at `slot`; [] means valid. H8 holds by construction (a session is one block). */
+/** H13: Christmas Eve and Day, New Year's Eve and Day, as « MM-DD ». */
+const HOLIDAYS = ["12-24", "12-25", "12-31", "01-01"];
+
+/** H13: no quality session and no test on a holiday; a long run or a footing may stay. */
+const h13 = (session: Session, slot: Slot): Violation | null =>
+  session.type !== "L" && session.type !== "RACE" && HOLIDAYS.includes(dateOf(slot.start).slice(5))
+    ? v("H13", "Jour de fête")
+    : null;
+
+/** H1 to H7, H12 and H13 for `session` at `slot`; [] means valid. H8 holds by construction (a session is one block). */
 export function checkHard(session: Session, slot: Slot, week: WeekState): Violation[] {
   const runs = runsBut(week, session.id);
   const s = week.settings;
@@ -112,6 +122,7 @@ export function checkHard(session: Session, slot: Slot, week: WeekState): Violat
     hard ? h6(slot, week.cal) : null,
     h7(slot, s),
     hard ? h12(slot, runs) : null,
+    hard ? h13(session, slot) : null,
   ].filter((x) => x !== null);
 }
 
@@ -191,11 +202,40 @@ export function usualHour(runs: { start: string }[]): string | undefined {
   return toIso(Math.round(median / GRID_MIN) * GRID_MIN).slice(11, 16);
 }
 
+/**
+ * S7: her usual hours, each by `usualHour`: weekday runs, weekend runs, and the longest run of each week she ran
+ * (her long run, whatever its day).
+ */
+export function usualHours(runs: { start: string; durMin: number }[]): UsualHours {
+  const weekend = (r: { start: string }) => weekday(r.start) >= SATURDAY;
+  const longest = new Map<string, { start: string; durMin: number }>();
+  for (const r of runs) {
+    const monday = mondayOf(r.start);
+    if ((longest.get(monday)?.durMin ?? -1) < r.durMin) longest.set(monday, r);
+  }
+  const hours: UsualHours = {
+    weekday: usualHour(runs.filter((r) => !weekend(r))),
+    weekend: usualHour(runs.filter(weekend)),
+    long: usualHour([...longest.values()]),
+  };
+  return Object.fromEntries(Object.entries(hours).filter(([, h]) => h !== undefined));
+}
+
+/** S7: the stated hour, else her long-run hour for a long run, else her hour for that kind of day. */
+function habitHour(session: Session, slot: Slot, s: Settings): string | undefined {
+  if (s.preferredHour !== undefined) return s.preferredHour;
+  const u = s.usualHours;
+  if (!u) return undefined;
+  if (session.type === "L" && u.long) return u.long;
+  return weekday(slot.start) >= SATURDAY ? (u.weekend ?? u.weekday) : (u.weekday ?? u.weekend);
+}
+
 function habitPenalties(session: Session, slot: Slot, week: WeekState): Item[] {
   const s = week.settings;
   const items: Item[] = [];
-  if (s.preferredHour !== undefined) {
-    const offH = Math.abs(toMin(slot.start) - dayStart(slot.start) - clockMin(s.preferredHour)) / 60;
+  const hour = habitHour(session, slot, s);
+  if (hour !== undefined) {
+    const offH = Math.abs(toMin(slot.start) - dayStart(slot.start) - clockMin(hour)) / 60;
     if (offH > 0) items.push({ id: "S7", pts: Math.min(20, 5 * offH) });
   }
   if (session.type === "L") {
@@ -470,6 +510,14 @@ export function proposeMoveSlots(sessionId: string, week: WeekState, now: string
   // A6: the day after is the move she asks for most, so its best slot is always offered when allowed.
   const nextDay = perDay.find((c) => dateOf(c.slot.start) === addDays(dateOf(s.start), 1));
   if (nextDay && !top.includes(nextDay)) top[2] = nextDay;
+  // A6: a morning when one is free, so an evening habit never hides it (audit parcours réel, G1).
+  const morning = weekDates(week.monday)
+    .flatMap((day) => bestOfDay(s, day, week, now, [], isMorning))
+    .sort(byCost)[0];
+  if (morning && !top.some((c) => isMorning(c.slot))) {
+    if (top.length < 3) top.push(morning);
+    else top[top[2] === nextDay ? 1 : 2] = morning;
+  }
   const best = top
     .sort(byCost)
     .map((c): SlotWithReason => ({ slot: c.slot, penalty: c.pts, reason: slotReason(s, c.slot, week) }));
@@ -486,6 +534,9 @@ export function bestSlotFrom(s: Session, week: WeekState, now: string, from: str
   return best?.slot ?? null;
 }
 
+const NOON_MIN = 12 * 60;
+const isMorning = (slot: Slot): boolean => toMin(slot.start) - dayStart(slot.start) < NOON_MIN;
+
 /** Best valid future slot of a day; forbidden ones are collected with their first violation. */
 function bestOfDay(
   s: Session,
@@ -493,10 +544,11 @@ function bestOfDay(
   week: WeekState,
   now: string,
   forbidden: MoveSlots["forbidden"],
+  keep: (slot: Slot) => boolean = () => true,
 ): Candidate[] {
   let best: Candidate | null = null;
   for (const slot of grid(day, week.settings, s.durMin)) {
-    if (slot.start <= now || slot.start === s.start) continue;
+    if (slot.start <= now || slot.start === s.start || !keep(slot)) continue;
     const first = checkHard(s, slot, week)[0];
     if (first) {
       forbidden.push({ slot, reason: first.message });

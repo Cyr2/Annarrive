@@ -400,7 +400,7 @@ describe("settings", () => {
   });
 
   it("builds next week on Sunday through the coach", async () => {
-    const t = setup();
+    const t = setup({ onboarded: true });
     expect((await t.services.plan.buildNextWeek()).change?.summary).toBe("Ta semaine est prête");
   });
 });
