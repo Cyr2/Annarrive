@@ -1,6 +1,7 @@
 import { IMPLAUSIBLE_TIME } from "@annarrive/protocol";
 import { describe, expect, it } from "vitest";
 import type { Item } from "../../api/schemas.ts";
+import { raceDateOf } from "../program/program.ts";
 import {
   COPY,
   declaredTimeOf,
@@ -22,10 +23,10 @@ describe("« Ta dernière course »", () => {
     expect(toPayload({ ...EMPTY, race: "none" }, today).program).toEqual({ goal: null });
   });
 
-  it("dates a recent time roughly, and leaves an estimate undated", () => {
-    const draft = { ...EMPTY, lastSec: 110 * 60 };
-    expect(declaredTimeOf(draft, today)).toEqual({ distanceM: 21097.5, minutes: 110, date: "2026-10-04" });
-    expect(declaredTimeOf({ ...draft, lastWhen: "estimate" }, today)).toEqual({ distanceM: 21097.5, minutes: 110 });
+  it("dates her time with the same conversion as Réglages", () => {
+    const draft = { ...EMPTY, lastSec: 110 * 60, lastAgo: "2" };
+    expect(declaredTimeOf(draft, today)).toEqual({ distanceM: 21097.5, minutes: 110, date: raceDateOf("2", today) });
+    expect(declaredTimeOf(EMPTY, today)).toBeUndefined();
   });
 
   it("feeds the level estimate of the programme and of the target's verdict", () => {

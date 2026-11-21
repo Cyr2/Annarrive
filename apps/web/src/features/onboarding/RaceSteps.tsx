@@ -4,8 +4,9 @@ import { ChoiceGroup } from "../../ui/ChoiceGroup.tsx";
 import { Chip } from "../../ui/controls.tsx";
 import { Group, RowInput, RowSelect } from "../../ui/List.tsx";
 import { TimeBoxes } from "../../ui/TimeBoxes.tsx";
+import { RACE_AGO, RACE_DISTANCES } from "../program/program.ts";
 import { TargetTag, VERDICT_KIND } from "../program/TargetTag.tsx";
-import { DISTANCES, distanceOf, LAST_WHEN, type Race } from "./onboarding.ts";
+import { DISTANCES, distanceOf, type Race } from "./onboarding.ts";
 import { Ask, BigChoice, update, useDraft } from "./parts.tsx";
 import { useOnboarding } from "./store.ts";
 
@@ -103,7 +104,7 @@ export function LastStep() {
     <>
       <Ask question="Quelle distance ?">
         <ChoiceGroup label="Distance" className="flex flex-wrap gap-2">
-          {DISTANCES.map((d) => (
+          {RACE_DISTANCES.map((d) => (
             <Chip key={d.label} selected={draft.lastRace === d.value} onClick={() => update({ lastRace: d.value })}>
               {d.label}
             </Chip>
@@ -116,10 +117,10 @@ export function LastStep() {
       <Ask question="Il y a combien de temps ?" help="Une seule course : la plus récente. Tes allures en découlent.">
         <Group>
           <RowSelect
-            label="Quand"
-            value={draft.lastWhen}
-            options={LAST_WHEN.map((w) => ({ value: w.value, label: w.label }))}
-            onChange={(lastWhen) => update({ lastWhen })}
+            label="Il y a"
+            value={draft.lastAgo}
+            options={RACE_AGO}
+            onChange={(lastAgo) => update({ lastAgo })}
           />
         </Group>
       </Ask>
