@@ -87,7 +87,8 @@ const proposedRecently = (history: PastProposal[], ruleId: string, now: string):
   history.some((h) => h.proposal.ruleId === ruleId && daysBetween(h.on, now) < PROPOSAL_DAYS);
 
 /** F7's share of VDOT for the pace a key session aims at. */
-const ZONE_FRACTION: Partial<Record<Session["type"], number>> = { T: 0.88, CRUISE: 0.88, I: 0.975 };
+const T_FRACTION = 0.88;
+const ZONE_FRACTION: Partial<Record<Session["type"], number>> = { T: T_FRACTION, CRUISE: T_FRACTION, I: 0.975 };
 /** RC3: a pattern clearly faster than the targets (Runna Pace Insights), not the noise around them. */
 const UP_RATIO = 1.02;
 const SETTLE_DAYS = 28;
@@ -113,8 +114,8 @@ const SWAIN = { slope: 0.6463, base: 0.37182 };
 const HR_LAP_MIN = 8;
 const HR_WORK_MIN = 20;
 const HOT_C = 20;
-/** RC14: each of the two sessions 3 bpm or more under her own baseline: past the ~2 to 3 % noise of exercise HR (Buchheit 2014). */
-const HR_DROP = 3;
+/** RC14: each of the two sessions 4 bpm under her own baseline: at 3, half its rises overshot her level under the bench noise. */
+const HR_DROP = 4;
 const PAIR_DAYS = 21;
 const HR_RISE_MIN = 0.5;
 
@@ -152,19 +153,22 @@ function hrRead(k: KeySession, hrMax: number): HrRead | null {
 
 /**
  * RC14: the same pace with a clearly lower heart rate. The last two readable T or CRUISE runs, 21 days apart at most
- * and run since the last change, each 3 bpm under what her earlier runs predict at their speed; the smaller gain
+ * and run since the last change, each 4 bpm under what her earlier runs predict at their speed; the smaller gain
  * (Swain), one point at most, never down. Waits like RC3.
  */
+const hrReads = (done: KeySession[], hrMax: number): HrRead[] =>
+  done
+    .filter((k) => k.session.type === "T" || k.session.type === "CRUISE")
+    .sort((a, b) => a.activity.start.localeCompare(b.activity.start))
+    .flatMap((k) => hrRead(k, hrMax) ?? []);
+
 function hrRise(
   done: KeySession[],
   current: number,
   lastChange: string | undefined,
   hrMax: number,
 ): { gain: number; evidence: string[] } | null {
-  const reads = done
-    .filter((k) => k.session.type === "T" || k.session.type === "CRUISE")
-    .sort((a, b) => a.activity.start.localeCompare(b.activity.start))
-    .flatMap((k) => hrRead(k, hrMax) ?? []);
+  const reads = hrReads(done, hrMax);
   const pair = reads.slice(-2);
   const base = reads.slice(0, -2);
   const [first, last] = pair;
@@ -179,10 +183,47 @@ function hrRise(
   return gain >= HR_RISE_MIN ? { gain, evidence: pair.map((r) => r.k.activity.id) } : null;
 }
 
+/** RC15: one typical error of exercise HR (3 %, Buchheit 2014) over the anchor: at 4, the bench noise made false rises. */
+const LTHR_GAP = 5;
+/** RC15: run at her current T pace or faster (the 2 % RC3 and RC4 leave as noise). */
+const T_HELD = 0.98;
+
+type LthrRead = { gain: number; evidence: string[]; above: boolean };
+
+/**
+ * RC15: the last two readable T or CRUISE runs since the last change, 21 days apart at most, at her current T pace or
+ * faster, against her threshold heart rate (F14, NV3). Both 5 bpm under it: the VDOT whose T pace she would run at
+ * LTHR, by Swain's slope from her own run, the smaller of the two. Both 5 bpm over it: `above`, never a decrease.
+ */
+function lthrRead(
+  done: KeySession[],
+  current: number,
+  lastChange: string | undefined,
+  hrMax: number,
+  lthr: number,
+): LthrRead | null {
+  const tSpeed = speedForVo2(T_FRACTION * current);
+  const pair = hrReads(done, hrMax)
+    .filter((r) => lastChange === undefined || dateOf(r.k.activity.start) > lastChange)
+    .slice(-2);
+  const [first, last] = pair;
+  if (!first || !last || daysBetween(first.k.activity.start, last.k.activity.start) > PAIR_DAYS) return null;
+  if (!pair.every((r) => r.v >= T_HELD * tSpeed)) return null;
+  // Swain: each share of HRmax is 0.6463 share of VO2max, her current level standing for VO2max (low if she is fitter).
+  const atLthr = (r: HrRead): number => (vo2(r.v) + ((lthr - r.hr) / hrMax / SWAIN.slope) * current) / T_FRACTION;
+  const below = pair.every((r) => lthr - r.hr >= LTHR_GAP);
+  return {
+    gain: below ? Math.min(...pair.map(atLthr)) - current : 0,
+    evidence: pair.map((r) => r.k.activity.id),
+    above: pair.every((r) => r.hr - lthr >= LTHR_GAP),
+  };
+}
+
 /**
  * RC3 and RC4 from T, CRUISE and I sessions run after the last level change. Up: at least two sessions 2 % faster
  * than their targets with a supporting sign; the proven VDOT, one point at most (research 02 R23), 28 days after the
- * last change, or 14 when the sessions prove a full point. Else RC14 from her heart rate when `hrMax` is known.
+ * last change, or 14 when the sessions prove a full point. Else RC15 against her threshold heart rate `lthr`, then
+ * RC14 from her heart rate when `hrMax` is known; a heart rate over `lthr` at T pace stops both (to review, not a drop).
  */
 export function evaluateKeySessions(
   done: KeySession[],
@@ -191,6 +232,7 @@ export function evaluateKeySessions(
   history: PastProposal[],
   now: string,
   hrMax?: number,
+  lthr?: number,
 ): Proposal | null {
   const keys = done
     .filter((k) => ZONE_FRACTION[k.session.type] !== undefined)
@@ -207,10 +249,15 @@ export function evaluateKeySessions(
   if (up.length >= 2 && settled && proven >= current + 0.5 && quiet) {
     return proposal("vdot", current, Math.min(proven, current + 1), "RC3", evidence(up), now);
   }
-  const byHr = hrMax === undefined ? null : hrRise(done, current, lastChange, hrMax);
-  const hrSettled = byHr !== null && (days >= SETTLE_DAYS || (days >= PROPOSAL_DAYS && byHr.gain >= 1));
-  if (byHr && hrSettled && !refusedRecently(history, true, now) && !proposedRecently(history, "RC14", now))
-    return proposal("vdot", current, current + Math.min(byHr.gain, 1), "RC14", byHr.evidence, now);
+  const byHeart = (ruleId: string, r: { gain: number; evidence: string[] } | null): Proposal | null => {
+    const due = r && r.gain >= HR_RISE_MIN && (days >= SETTLE_DAYS || (days >= PROPOSAL_DAYS && r.gain >= 1));
+    if (!due || refusedRecently(history, true, now) || proposedRecently(history, ruleId, now)) return null;
+    return proposal("vdot", current, current + Math.min(r.gain, 1), ruleId, r.evidence, now);
+  };
+  const anchor = hrMax === undefined || lthr === undefined ? null : lthrRead(done, current, lastChange, hrMax, lthr);
+  const relative = hrMax === undefined || anchor?.above ? null : hrRise(done, current, lastChange, hrMax);
+  const rise = byHeart("RC15", anchor) ?? byHeart("RC14", relative);
+  if (rise) return rise;
   const lastTwo = keys.slice(-2);
   const slow = lastTwo.length === 2 && lastTwo.every((k) => (ratio(k) ?? 1) < 0.97 && !k.externalFactor);
   if (slow && !refusedRecently(history, false, now) && !proposedRecently(history, "RC4", now))

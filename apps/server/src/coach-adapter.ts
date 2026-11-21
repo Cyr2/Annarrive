@@ -482,7 +482,11 @@ export const coachAdapter: CoachPort = {
     if (!st.fitness || st.fitness.provisional) return null;
     const keys = done.map(({ session, activity }) => keySession(session, activity));
     const hrMax = hrMaxOf(st.activities);
-    return coach.evaluateKeySessions(keys, st.fitness.vdot, st.fitness.date, answered(past), now, hrMax);
+    // RC15: her threshold heart rate as « Ton niveau » reads it (NV3), a run on a planned TEST being the app's test.
+    const tests = new Set(done.filter((d) => d.session.type === "TEST").map((d) => d.activity.id));
+    const runs = st.activities.map((a) => (tests.has(a.id) ? { ...a, isTest: true } : a));
+    const lthr = coach.thresholdHr(runs, coach.paces(st.fitness.vdot).T, now)?.bpm;
+    return coach.evaluateKeySessions(keys, st.fitness.vdot, st.fitness.date, answered(past), now, hrMax, lthr);
   },
 
   evaluateFeels(st, past, now) {

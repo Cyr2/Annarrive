@@ -55,6 +55,7 @@ import {
   sickDays,
   skipSession,
   speedForVo2,
+  thresholdHr,
   vdot,
   vo2,
   weekDates,
@@ -119,6 +120,8 @@ type Sim = {
   answered: PastProposal[];
   signals: DailySignal[];
   next: () => number;
+  /** Day-to-day heart-rate noise, on its own stream so the other draws stay the same. */
+  hrNoise: () => number;
   /** Her real level today: it rises with the training she does (`progress`). */
   truth: number;
   /** Script deviations already done, by "kind-week": one tempo and one extra run a week at most. */
@@ -131,6 +134,8 @@ const ALL_OUT_HR = 0.94;
 const HR_SLOPE = 0.6463;
 /** Like services/fitness.ts: the key sessions of the last 6 weeks, a retest's interval (P26). */
 const KEY_DAYS = 42;
+/** Day-to-day noise of her heart rate at a given pace, ± 2.5 bpm (Buchheit 2014: 1 to 3 % for exercise HR). */
+const HR_NOISE = 2.5;
 
 const state = (sim: Sim, monday: string): State => ({
   monday,
@@ -314,6 +319,8 @@ function runSession(sim: Sim, s: Session): Activity {
     if (st.target.rpe > hardest.rpe && st.kind === "work") hardest = { ratio: out.ratio, rpe: st.target.rpe };
   });
   const dur = laps.reduce((a, l) => a + l.durMin, 0);
+  const shift = (sim.hrNoise() - 0.5) * 2 * HR_NOISE;
+  for (const l of laps) l.avgHr = (l.avgHr ?? 0) + shift;
   return {
     id: `run-${s.id}`,
     start: s.start,
@@ -402,7 +409,9 @@ function proposalAfterRun(sim: Sim, run: Activity, now: string): Proposal | null
     const a = sim.activities.find((x) => x.id === `run-${s.id}`);
     return a && daysBetween(a.start, now) <= KEY_DAYS ? [keySession(s, a)] : [];
   });
-  return evaluateKeySessions(done, sim.vdot, sim.vdotChangedOn, sim.answered, now, sim.p.hrMax);
+  // Like coach-adapter.ts: her threshold heart rate from her latest test or race, else her T laps (F14, NV3).
+  const lthr = thresholdHr(sim.activities, paces(sim.vdot).T, now)?.bpm;
+  return evaluateKeySessions(done, sim.vdot, sim.vdotChangedOn, sim.answered, now, sim.p.hrMax, lthr);
 }
 
 /** RC5 as services/fitness.ts calls it: feels after the last change, fatigue confirmed by the mornings left out. */
@@ -615,6 +624,7 @@ export function simulate(p: Persona): RunLog {
     answered: [],
     signals: pre,
     next,
+    hrNoise: rng(p.id.length * 7907 + p.hrMax),
     truth: p.trueVdot,
     deviated: new Set(),
   };

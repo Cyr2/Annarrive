@@ -341,6 +341,13 @@ function paces(r: RunLog): Criterion {
         detail: `proposition ${pr.from} → ${pr.to} le ${pr.on}, qui s'éloigne du niveau réel (${truth})`,
         severity: Math.abs(pr.to - truth) > 2 ? "critique" : "majeure",
       }));
+      // No false rise: a rise lands at her real level, within the 0.5 a test reads as noise (RC1).
+      j.check(pr.to <= pr.from || pr.to <= truth + 0.5, () => ({
+        week: w.week,
+        rule: `${pr.ruleId} (fausse hausse)`,
+        detail: `hausse ${pr.from} → ${pr.to} le ${pr.on}, au-dessus du niveau réel (${truth})`,
+        severity: "majeure",
+      }));
       const before = w.proposals.slice(0, i).concat(r.weeks.filter((x) => x.week < w.week).flatMap((x) => x.proposals));
       const recent = before.filter((b) => daysBetween(b.on, pr.on) < 14 && b.ruleId === pr.ruleId);
       j.check(recent.length === 0, () => ({
