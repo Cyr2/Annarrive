@@ -35,40 +35,77 @@ export function maintenanceWeek(
   return [q, ...easy, ...l];
 }
 
-/** P23, MA6: share of the usual volume in each of the two weeks after the race. */
-const POST_RACE_SHARE = { 1: 0.45, 2: 0.65 } as const;
-export type PostRaceWeek = keyof typeof POST_RACE_SHARE;
-/** MA6: the two post-race weeks start within 14 days of the race. */
-const POST_RACE_DAYS = 14;
+type RecoveryWeek = { share: number; runs: number };
+/**
+ * P23, MA6 (research 06 §4): days without a run after the race, then each easy week's share of the usual volume
+ * and number of runs, by race distance. Pfitzinger adds a week from 15 km; 3 runs in the 4 days left after a
+ * marathon's 3 days off would touch (Sherman 1984).
+ */
+type Recovery = { restDays: number; weeks: RecoveryWeek[] };
+const SHORT: Recovery = { restDays: 1, weeks: [{ share: 0.75, runs: 3 }] };
+const HALF: Recovery = {
+  restDays: 2,
+  weeks: [
+    { share: 0.5, runs: 3 },
+    { share: 0.75, runs: 3 },
+  ],
+};
+const FULL: Recovery = {
+  restDays: 3,
+  weeks: [
+    { share: 0.35, runs: 2 },
+    { share: 0.6, runs: 3 },
+    { share: 0.8, runs: 3 },
+  ],
+};
+const recoveryOf = (distM: number): Recovery => (distM < 15000 ? SHORT : distM < 30000 ? HALF : FULL);
+
+/** MA6: number of easy weeks after a race of `distM`. */
+export const recoveryWeeks = (distM: number): number => recoveryOf(distM).weeks.length;
+
+/** MA6: days without a run right after a race of `distM`. */
+export const recoveryRestDays = (distM: number): number => recoveryOf(distM).restDays;
+
+const COUNT = ["une semaine", "deux semaines", "trois semaines"];
+/** MA6, as the after-race screen and the banner say it: « deux semaines de footings faciles ». */
+export const recoveryText = (distM: number): string =>
+  `${COUNT[recoveryWeeks(distM) - 1] ?? "une semaine"} de footings faciles`;
 
 /**
- * P23, MA6: easy runs only, 45 % of the usual volume the first week after the race and 65 % the second, never
- * shorter than a 20 min footing.
+ * P23, MA6: week `week` (from 1) after a race of `distM`: easy runs only, its share of the usual volume, never shorter
+ * than a 20 min footing; the last easy week brings strides back once (Pfitzinger).
  */
-export function postRaceWeek(usualMin: number, paces: Paces, runs = 3, week: PostRaceWeek = 1): Session[] {
-  const each = Math.max(20, Math.floor((POST_RACE_SHARE[week] * usualMin) / runs));
+export function postRaceWeek(usualMin: number, paces: Paces, distM: number, week = 1): Session[] {
+  const weeks = recoveryOf(distM).weeks;
+  const { share, runs } = weeks[week - 1] ?? { share: 1, runs: 3 };
+  const each = Math.max(20, Math.floor((share * usualMin) / runs));
   const ctx: BuildCtx = { weeklyMin: usualMin, paces, phase: "base", progressionStep: 0, distM: 10000, durMin: each };
-  return [...Array(runs).keys()].map((i) => ({ ...buildSession("E", ctx), id: `post-race-${week}-${i}` }));
+  const strides = week === weeks.length;
+  return [...Array(runs).keys()].map((i) => ({
+    ...buildSession("E", { ...ctx, strides: strides && i === 0 }),
+    id: `post-race-${week}-${i}`,
+  }));
 }
+
+export type LastRace = { day: string; distM: number };
 
 /**
- * MA6: the day of the last race before `monday`: the goal's date once it is past, else the last run marked as the
- * goal race (« Garder la forme » clears the goal, not the two easy weeks).
+ * MA6: the last race before `monday`: the goal once its date is past, else the last run marked as the goal race
+ * (« Garder la forme » clears the goal, a new goal replaces it, neither clears the easy weeks).
  */
-export function lastRaceDay(goal: Goal, history: Activity[], monday: string): string | undefined {
-  if (goal && goal.date < monday) return goal.date;
-  return history
+export function lastRace(goal: Goal, history: Activity[], monday: string): LastRace | undefined {
+  if (goal && goal.date < monday) return { day: goal.date, distM: goal.distanceM };
+  const run = history
     .filter((a) => a.isRace && dateOf(a.start) < monday)
-    .map((a) => dateOf(a.start))
-    .sort()
+    .sort((a, b) => a.start.localeCompare(b.start))
     .at(-1);
+  return run && { day: dateOf(run.start), distM: run.distM };
 }
 
-/** MA6: which of the two post-race weeks starts on `monday`, or null outside them. */
-export function postRaceIndex(raceDay: string, monday: string): PostRaceWeek | null {
-  const days = daysBetween(raceDay, monday);
-  if (days <= 0 || days > POST_RACE_DAYS) return null;
-  return days <= 7 ? 1 : 2;
+/** MA6: which easy week after `race` starts on `monday` (from 1), or null outside them. */
+export function postRaceIndex(race: LastRace, monday: string): number | null {
+  const days = daysBetween(race.day, monday);
+  return days <= 0 || days > 7 * recoveryWeeks(race.distM) ? null : Math.ceil(days / 7);
 }
 
 /** MA7: V0 = mean of the maintenance weeks, plan from next Monday. */

@@ -106,6 +106,8 @@ export const raceResultSchema = z.object({
   previous: z.object({ timeMin: z.number().positive(), date: isoDate.optional() }).optional(),
   splits: z.array(z.object({ toKm: z.number().positive(), paceSKm: z.number().positive() })),
   reggie: z.string(),
+  /** « deux semaines de footings faciles »: what comes first, whatever she picks next (algo.md MA6). */
+  recovery: z.string(),
 });
 
 export const todaySchema = z.object({

@@ -578,14 +578,14 @@ export class PlanService {
 
   /**
    * « Garder la forme » after the goal race (MA6): no goal from now on. The current week stays (MA8); the next ones
-   * are the two easy weeks after the race, then maintenance (M9).
+   * are the easy weeks after the race (one to three by its distance), then maintenance (M9).
    */
   keepFit(): ChangeResponse {
     const before = this.coachState();
     const program: Program = { ...before.program, goal: null };
     const write: PlanWrite = { table: "program", id: CURRENT, after: { id: CURRENT, value: program } };
     return this.#rebuild(
-      "Mode entretien : deux semaines faciles pour commencer",
+      "Mode entretien : footings faciles pour commencer",
       [write],
       { ...before, program },
       before,

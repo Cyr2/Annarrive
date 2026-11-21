@@ -105,7 +105,7 @@ export class GarminService {
       const stored = this.#stores.activity.get(run.id);
       const sessionId = stored?.sessionId ?? this.#matchingSession(run)?.id;
       const laps = stored?.laps ?? (await this.#laps(run.id));
-      // RR1: the goal race, marked once, so the two easy weeks after it outlive the goal (MA6).
+      // RR1: the goal race, marked once, so the easy weeks after it outlive the goal (MA6).
       const isRace = stored?.isRace ?? (this.#review?.isGoalRace(run) || undefined);
       this.#stores.activity.put({ ...run, answeredFeel: stored?.answeredFeel, sessionId, laps, isRace });
       if (sessionId && !stored?.sessionId) this.#plan.markDone(sessionId);

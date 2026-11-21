@@ -110,8 +110,9 @@ Quand Garmin envoie la course du jour J (algo.md RR1), son résultat remplace Au
 | Élément | Au tap | Ce qui se passe |
 |---|---|---|
 | Carte du résultat | Rien : le temps, l'écart au chrono visé (« 28 s sous ton objectif » en vert, « 1 min 10 au-dessus de ton objectif » en neutre, « Course finie » sans chrono visé), l'allure moyenne et l'écart à sa dernière course à cette distance, l'allure par tranche en bleu, la phrase de Reggie, le dossard 14 | Rien ne change |
-| Une nouvelle course | Ouvre la feuille « Ton objectif » | Valider le nouvel objectif rend Aujourd'hui ; Annuler la feuille garde le résultat |
-| Garder la forme | Passe en mode entretien : deux semaines de footings faciles, puis trois courses par semaine sans objectif (algo.md MA6) | Aujourd'hui revient. Bandeau « Mode entretien : deux semaines faciles pour commencer » avec Annuler, qui ramène le résultat |
+| Ligne sous « Et maintenant ? » | Rien : elle informe. « D'abord une semaine de footings faciles, quelle que soit la suite. » (5 et 10 km), deux semaines (semi), trois (marathon), selon algo.md MA6 | Rien ne change |
+| Une nouvelle course | Ouvre la feuille « Ton objectif » | Valider le nouvel objectif rend Aujourd'hui ; le nouveau plan commence par les semaines de footings (ses premières semaines de base, algo.md MA6). Annuler la feuille garde le résultat |
+| Garder la forme | Passe en mode entretien : les semaines de footings, puis trois courses par semaine sans objectif (algo.md MA6). La carte dit « Ensuite trois courses par semaine, sans objectif. » | Aujourd'hui revient. Bandeau « Mode entretien : footings faciles pour commencer » avec Annuler, qui ramène le résultat |
 
 ## Semaine
 

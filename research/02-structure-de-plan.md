@@ -369,7 +369,7 @@ Paramètres en minutes sauf mention. `S` = semaines, `V` = volume hebdo (min), `
 9. Vérifier garde-fou séance R11 sur toutes les séances.
 10. Laisser le module agenda placer les séances en respectant R14 (et les contraintes muscu) ; s'il manque des créneaux, supprimer selon R15.
 11. Chaque semaine (ou après chaque séance) : replanifier à partir du réalisé (R24), réévaluer P0 si nouvel effort (R23).
-12. Après la course : 1 sem de récupération (V = 40-50 % `[OP]`) puis mode entretien (R30) jusqu'au prochain objectif.
+12. Après la course : 1 sem de récupération (V = 40-50 % `[OP]`) puis mode entretien (R30) jusqu'au prochain objectif. Remplacée le 21/11/2026 par la recherche 06 (récupération selon la distance).
 
 Le LLM n'intervient qu'aux points 2 (formulation du message de faisabilité), 10 (choix entre placements également valides) et 11 (explication d'un changement), sans modifier aucun paramètre ci-dessus.
 

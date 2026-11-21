@@ -111,13 +111,18 @@ describe("après la course objectif (RR)", () => {
     t.stores.activity.put({ id: "warmup", start: "2026-11-22T08:40", durMin: 12, distM: 2000 });
     expect(await race()).toBeUndefined();
     t.stores.activity.put(raceRun);
-    expect(await race()).toMatchObject({ date: "2026-11-22", timeMin: 107.53, previous: { timeMin: 112 } });
+    expect(await race()).toMatchObject({
+      date: "2026-11-22",
+      timeMin: 107.53,
+      previous: { timeMin: 112 },
+      recovery: "deux semaines de footings faciles",
+    });
     expect((await race())?.gapMin).toBeCloseTo(-0.47);
     t.setNow(paris("2026-11-24T08:00"));
     expect(await race()).toBeDefined();
 
     const kept = await t.call("POST", "/api/race/keep-fit");
-    expect(kept.json).toMatchObject({ change: { summary: "Mode entretien : deux semaines faciles pour commencer" } });
+    expect(kept.json).toMatchObject({ change: { summary: "Mode entretien : footings faciles pour commencer" } });
     expect(t.stores.program.get("current")?.value.goal).toBeNull();
     expect(await race()).toBeUndefined();
   });

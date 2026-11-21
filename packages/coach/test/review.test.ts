@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { Activity, ReviewInput, ReviewRun } from "../src/index.ts";
+import type { Activity, ReviewInput, ReviewRun, Session } from "../src/index.ts";
 import {
   addDays,
   isGoalRace,
-  lastRaceDay,
+  isHard,
+  lastRace,
   planWeek,
   postRaceIndex,
   postRaceWeek,
@@ -148,41 +149,82 @@ describe("après la course objectif (RR)", () => {
   });
 });
 
-describe("après la course : deux semaines faciles (MA6)", () => {
-  it("runs 45 % then 65 % of the usual volume in footings", () => {
-    const minutes = (w: ReturnType<typeof postRaceWeek>) => w.reduce((s, x) => s + x.durMin, 0);
-    expect(minutes(postRaceWeek(180, P40, 3, 1))).toBe(81);
-    expect(minutes(postRaceWeek(180, P40, 3, 2))).toBe(117);
-    expect(postRaceWeek(180, P40, 3, 2).every((s) => s.type === "E")).toBe(true);
+describe("après la course : les semaines faciles selon la distance (MA6)", () => {
+  const minutes = (w: { durMin: number }[]) => w.map((x) => x.durMin);
+  const strides = (w: Session[]) => w.filter((x) => x.steps.some((st) => st.kind === "strides")).length;
+
+  it("gives one week at 75 % after a 10 km, with strides (MA-5)", () => {
+    const w = postRaceWeek(180, P40, 10000, 1);
+    // The strides come on top of the footing (+2 min), as in every footing with strides.
+    expect(minutes(w)).toEqual([47, 45, 45]);
+    expect(w.every((s) => s.type === "E")).toBe(true);
+    expect(strides(w)).toBe(1);
   });
 
-  it("counts the two weeks from the goal's date, or from the race she ran once the goal is gone", () => {
-    expect(lastRaceDay({ distanceM: 10000, date: "2026-11-22" }, [], MONDAY)).toBe("2026-11-22");
+  it("gives two weeks at 50 % then 75 % after a half, strides in the second only (MA-8)", () => {
+    expect(minutes(postRaceWeek(180, P40, 21097.5, 1))).toEqual([30, 30, 30]);
+    expect(minutes(postRaceWeek(180, P40, 21097.5, 2))).toEqual([47, 45, 45]);
+    expect(strides(postRaceWeek(180, P40, 21097.5, 1))).toBe(0);
+    expect(strides(postRaceWeek(180, P40, 21097.5, 2))).toBe(1);
+  });
+
+  it("gives three weeks after a marathon, two runs the first, strides in the third (MA-11)", () => {
+    expect(minutes(postRaceWeek(240, P40, 42195, 1))).toEqual([42, 42]);
+    expect(minutes(postRaceWeek(240, P40, 42195, 2))).toEqual([48, 48, 48]);
+    expect(minutes(postRaceWeek(240, P40, 42195, 3))).toEqual([66, 64, 64]);
+    expect([1, 2, 3].map((k) => strides(postRaceWeek(240, P40, 42195, k)))).toEqual([0, 0, 1]);
+  });
+
+  it("counts the weeks from the goal's date, or from the race she ran once the goal is gone (MA-9)", () => {
+    expect(lastRace({ distanceM: 10000, date: "2026-11-22" }, [], MONDAY)).toEqual({ day: "2026-11-22", distM: 10000 });
     const ran = [race(50, { start: "2026-11-15T09:00", isRace: true }), race(30, { start: "2026-11-18T09:00" })];
-    expect(lastRaceDay(null, ran, MONDAY)).toBe("2026-11-15");
-    expect(lastRaceDay(null, [], MONDAY)).toBeUndefined();
-    expect([1, 7, 8, 14, 15, 0].map((d) => postRaceIndex(addDays(MONDAY, -d), MONDAY))).toEqual([
-      1,
-      1,
-      2,
-      2,
-      null,
-      null,
-    ]);
+    expect(lastRace(null, ran, MONDAY)).toEqual({ day: "2026-11-15", distM: 21240 });
+    expect(lastRace(null, [], MONDAY)).toBeUndefined();
+    const index = (distM: number, days: number[]) =>
+      days.map((d) => postRaceIndex({ day: addDays(MONDAY, -d), distM }, MONDAY));
+    expect(index(21097.5, [1, 7, 8, 14, 15, 0])).toEqual([1, 1, 2, 2, null, null]);
+    expect(index(10000, [1, 7, 8])).toEqual([1, 1, null]);
+    expect(index(42195, [14, 15, 21, 22])).toEqual([2, 3, 3, null]);
   });
 
-  it("plans footings only the second week after a race, even once she chose to keep fit", () => {
-    const week = planWeek({
-      monday: MONDAY,
-      now: `${addDays(MONDAY, -1)}T18:00`,
-      goal: null,
+  const build = (history: Activity[], goal: Parameters<typeof planWeek>[0]["goal"] = null, monday = MONDAY) =>
+    planWeek({
+      monday,
+      now: `${addDays(monday, -1)}T18:00`,
+      goal,
+      ...(goal ? { planStart: addDays(MONDAY, -1) } : {}),
       settings: SETTINGS,
-      history: [race(50, { start: `${addDays(MONDAY, -8)}T09:00`, distM: 10000, isRace: true })],
+      history,
       fitness: { vdot: 40 },
       cal: [],
       kept: [],
     });
-    expect(week.sessions.length).toBe(3);
-    expect(week.sessions.every((s) => s.type === "E")).toBe(true);
+  const ranOn = (daysBefore: number, distM: number) =>
+    race(distM / 200, { start: `${addDays(MONDAY, -daysBefore)}T09:00`, distM, isRace: true });
+
+  it("plans footings only after a half, even once she chose to keep fit; maintenance after a 10 km's week (MA-10)", () => {
+    const half = build([ranOn(8, 21240)]);
+    expect(half.sessions.length).toBe(3);
+    expect(half.sessions.every((s) => s.type === "E")).toBe(true);
+    expect(build([ranOn(8, 10000)]).sessions.some(isHard)).toBe(true);
+  });
+
+  it("keeps the days right after the race free: two after a half, three after a marathon (MA-12)", () => {
+    const days = (w: { sessions: Session[] }) => w.sessions.map((s) => s.start.slice(0, 10));
+    expect(days(build([ranOn(1, 21240)])).filter((d) => d <= addDays(MONDAY, 1))).toEqual([]);
+    const full = build([ranOn(1, 42195)]);
+    expect(full.sessions.length).toBe(2);
+    expect(days(full).filter((d) => d <= addDays(MONDAY, 2))).toEqual([]);
+  });
+
+  it("starts a new plan with the easy weeks, never a quality run nor a long run in them (MA-13)", () => {
+    const next = { distanceM: 10000 as const, date: addDays(MONDAY, 70) };
+    const history = [ranOn(1, 21240)];
+    for (const monday of [MONDAY, addDays(MONDAY, 7)]) {
+      const w = build(history, next, monday);
+      expect(w.sessions.length).toBe(3);
+      expect(w.sessions.every((s) => s.type === "E")).toBe(true);
+    }
+    expect(build(history, next, addDays(MONDAY, 14)).sessions.length).toBe(SETTINGS.runsPerWeek);
   });
 });

@@ -373,6 +373,8 @@ export const raceResultSchema = z.object({
   previous: z.object({ timeMin: z.number().positive(), date: localDateSchema.optional() }).optional(),
   splits: z.array(z.object({ toKm: z.number().positive(), paceSKm: z.number().positive() })),
   reggie: z.string(),
+  /** The easy weeks that come first, whatever she picks next (algo.md MA6): « deux semaines de footings faciles ». */
+  recovery: z.string(),
 });
 export type RaceResult = z.infer<typeof raceResultSchema>;
 
