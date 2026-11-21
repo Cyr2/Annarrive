@@ -12,6 +12,7 @@ import {
   type PlanWeek,
   type TemplateSlot,
   taperShares,
+  training,
   weekTemplate,
 } from "./plan.ts";
 import { fatigueDays } from "./readiness.ts";
@@ -21,6 +22,7 @@ import type {
   DailySignal,
   FeelLog,
   Goal,
+  GoalDistance,
   Health,
   Paces,
   Phase,
@@ -76,9 +78,11 @@ function pastWeeks(history: Activity[], monday: string, n: number): number[] {
   });
 }
 
-/** Longest run of the 30 days before `now`; unknown history leaves G1 and P14 uncapped. */
+/** Longest training run of the 30 days before `now`; unknown history leaves G1 and P14 uncapped. */
 function longest30d(history: Activity[], now: string): number {
-  const recent = history.filter((a) => a.start < now && daysBetween(a.start, now) <= 30).map((a) => a.durMin);
+  const recent = training(history)
+    .filter((a) => a.start < now && daysBetween(a.start, now) <= 30)
+    .map((a) => a.durMin);
   return recent.length ? Math.max(...recent) : Number.POSITIVE_INFINITY;
 }
 
@@ -165,13 +169,24 @@ function content(r: WeekRequest, p: Paces): Content {
       plan.weeks.find((w) => w.monday === r.monday) ??
       (first && r.monday < first.monday ? first : raceWeek(plan, r.monday, r.settings.runsPerWeek));
     const week = adjusted(found, r);
-    const racePace = goal.targetMin ? { racePaceSKm: (goal.targetMin * 60) / (goal.distanceM / 1000) } : {};
+    const racePace = goal.targetMin ? { racePaceSKm: targetPace(goal.targetMin, goal.distanceM, p) } : {};
     const ctx = { paces: p, distM: goal.distanceM, longest30dMin: longest30d(r.history, r.now), ...racePace };
     return { sessions: buildWeek(week, ctx), warnings: plan.warnings, phase: week.phase };
   }
   const weekIdx = Math.floor(daysBetween(EPOCH_MONDAY, r.monday) / 7) + 1;
   return { sessions: maintenanceWeek(history8w, r.settings, weekIdx, { paces: p }), warnings: [], phase: "dev" };
 }
+
+/**
+ * P21: the race-pace blocks aim at her target; from the half up, never faster than her T pace of the week, the
+ * pace she holds about an hour (Daniels): a half run faster than that is a race, not a session.
+ */
+function targetPace(targetMin: number, distM: GoalDistance, p: Paces): number {
+  const pace = (targetMin * 60) / (distM / 1000);
+  return distM >= HALF_M ? Math.max(pace, p.T) : pace;
+}
+
+const HALF_M = 21097.5;
 
 /** P24: a race less than a full week away has no plan week; it gets the taper template at the race-week share (P18). */
 function raceWeek(plan: Plan, monday: string, runsPerWeek: Settings["runsPerWeek"]): PlanWeek {

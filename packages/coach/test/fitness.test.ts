@@ -12,6 +12,7 @@ import {
   initialFitness,
   isEligibleEffort,
   lthrFromEffort,
+  observedHrMax,
   paces,
   pilotFor,
   predictTime,
@@ -21,6 +22,7 @@ import {
   vo2,
   vo2maxVersusRace,
 } from "../src/index.ts";
+import { marathonReturn } from "./marathon-return.ts";
 
 describe("vo2maxVersusRace (F19)", () => {
   it("agrees within 5 points of the race's VDOT, else says which way (F-33)", () => {
@@ -126,11 +128,16 @@ describe("isEligibleEffort (F9)", () => {
     });
   });
 
-  it("refuses a 240 min race (F-11)", () => {
-    expect(isEligibleEffort({ id: "a", start: NOW, durMin: 240, distM: 42195, isRace: true }, ctx)).toEqual({
-      ok: false,
-      reason: "duration",
+  it("reads a marked marathon up to Daniels' slowest, nothing longer (F-11)", () => {
+    expect(isEligibleEffort({ id: "a", start: NOW, durMin: 246, distM: 42400, isRace: true }, ctx)).toEqual({
+      ok: true,
     });
+    for (const a of [
+      { durMin: 300, distM: 42195, isRace: true },
+      { durMin: 246, distM: 50000, isRace: true },
+      { durMin: 246, distM: 42195, avgHr: 185 },
+    ])
+      expect(isEligibleEffort({ id: "a", start: NOW, ...a }, ctx)).toEqual({ ok: false, reason: "duration" });
   });
 
   it("refuses a 40 min run at 0.82 HRmax in the second half (F-12)", () => {
@@ -204,6 +211,17 @@ describe("initialFitness (F10)", () => {
       NOW,
     );
     expect(higher).toMatchObject({ vdot: expect.closeTo(40.38, 2), source: "declared" });
+  });
+
+  it("lets a test or race run after her declared time measure her, even lower (F-39)", () => {
+    const declared = { distM: 21097.5, tMin: 93 };
+    const test: Activity = { ...race("t", "2026-11-10T09:00", 48.4), isRace: undefined, isTest: true };
+    expect(initialFitness({ activities: [test], declared }, NOW)).toMatchObject({
+      vdot: expect.closeTo(48.4, 1),
+      status: "measured",
+    });
+    const dated = { ...declared, date: "2026-11-12" };
+    expect(initialFitness({ activities: [test], declared: dated }, NOW)).toMatchObject({ source: "declared" });
   });
 
   it("keeps the lower of VO2max and a declared time older than 6 months (F-25)", () => {
@@ -347,15 +365,67 @@ describe("initialFitness (F10)", () => {
     expect(reading?.vdot).toBeCloseTo(vdot(21270, 112.1), 6);
   });
 
-  it("takes her 11 km tempo of last week over her half of 7 weeks ago, detrained nothing (F-31)", () => {
+  it("takes the higher of her 11 km tempo of last week and her half of 7 weeks ago, detrained (F-31)", () => {
+    const halfNow = vdot(21270, 112.1) * detrainingFactor(6);
     const f = initialFitness(anna, "2026-11-19T08:00");
-    expect(f).toMatchObject({ status: "measured", source: "effort:garmin:25045694091" });
-    expect(f.vdot).toBeCloseTo(38.1, 1);
-    expect(formatPace(paces(f.vdot).T)).toBe("5:18");
-    // Without the tempo, the half counts, detrained only by her longest real break (6 days, since her last run).
-    const noTempo = initialFitness({ ...anna, activities: [...easyRuns, half, fiveK] }, "2026-11-19T08:00");
-    expect(noTempo).toMatchObject({ source: "effort:garmin:24514776474:detrained" });
-    expect(noTempo.vdot).toBeCloseTo(vdot(21270, 112.1) * detrainingFactor(6), 6);
+    expect(f).toMatchObject({ status: "measured", source: "effort:garmin:24514776474:detrained" });
+    expect(f.vdot).toBeCloseTo(halfNow, 6);
+    // Without the half, the tempo: T 5:18, the pace she held.
+    const noHalf = initialFitness({ ...anna, activities: [...easyRuns, fiveK, tempo11] }, "2026-11-19T08:00");
+    expect(noHalf).toMatchObject({ status: "measured", source: "effort:garmin:25045694091" });
+    expect(formatPace(paces(noHalf.vdot).T)).toBe("5:18");
+  });
+
+  // Audit of 21/11/2026: 4 weeks after a 4:06 marathon, heart rate drifting to 91 % of 192 over its last 17 km.
+  it("reads a marked marathon as a race, never its drifted laps as a threshold (F-34)", () => {
+    const h = { activities: marathonReturn(), hr: { hrMax: 192 }, vo2maxGarmin: 45 };
+    const marathon = effortReadings(h, "2026-11-21T10:00").find((r) => r.start.startsWith("2026-10-25"));
+    expect(marathon?.kind).toBe("race");
+    expect(marathon?.vdot).toBeCloseTo(vdot(marathon?.distM ?? 0, marathon?.durMin ?? 1), 6);
+    expect(initialFitness(h, "2026-11-21T10:00")).toMatchObject({ vdot: expect.closeTo(38.97, 2), status: "measured" });
+  });
+
+  it("keeps her threshold runs of 6 to 12 weeks over a lower marathon of 4 weeks (F-35)", () => {
+    const h = { activities: marathonReturn({ lastTempo: false }), hr: { hrMax: 192 }, vo2maxGarmin: 45 };
+    const f = initialFitness(h, "2026-11-21T10:00");
+    expect(f.status).toBe("measured");
+    expect(f.source).toMatch(/:detrained$/);
+    expect(f.vdot).toBeGreaterThan(38.5);
+  });
+
+  it("reads her real half as the race it was, not as a threshold from its first hour (F-36)", () => {
+    // Production, 21/11/2026 (rounded): HRmax 188, the half at 88.8 % then 90 %, laps on every run.
+    const laps = [
+      ...Array.from({ length: 12 }, () => annaLap(5.067, 1000, 167)),
+      ...Array.from({ length: 9 }, () => annaLap(5.517, 1000, 170)),
+      annaLap(1.49, 270, 171),
+    ];
+    const realHalf: Activity = { ...half, durMin: laps.reduce((t, l) => t + l.durMin, 0), avgHr: 168, laps };
+    const marathon: Activity = {
+      id: "garmin:m",
+      start: "2026-10-25T08:30",
+      distM: 42430,
+      durMin: 252.77,
+      avgHr: 160,
+      isRace: true,
+    };
+    const jogs = Array.from(
+      { length: 29 },
+      (_, i): Activity => ({
+        ...jog(`j${i}`, `${addDays("2026-08-25", 3 * i)}T18:00`),
+      }),
+    );
+    const now = "2026-11-21T10:00";
+    const h = { activities: [...jogs, realHalf, marathon, tempo11], hr: { hrMax: 188 }, vo2maxGarmin: 53.4 };
+    const readings = effortReadings(h, now);
+    expect(readings.find((r) => r.activityId === half.id)).toMatchObject({
+      kind: "race",
+      vdot: expect.closeTo(vdot(realHalf.distM, realHalf.durMin), 6),
+    });
+    expect(readings.find((r) => r.activityId === "garmin:m")?.kind).toBe("race");
+    const f = initialFitness(h, now);
+    expect(f).toMatchObject({ status: "measured", source: `effort:${half.id}:detrained` });
+    expect(f.vdot).toBeCloseTo(vdot(realHalf.distM, realHalf.durMin), 1);
   });
 
   it("reads the 51-day 'break' of a first sync that had stored her half and nothing after it (F-32)", () => {
@@ -385,6 +455,16 @@ describe("hrMax and zones (F12, F13)", () => {
     expect(hrMax(188, undefined)).toEqual({ value: 188, estimated: false });
   });
 
+  it("leaves out a maximum of a footing no other run confirms within 3 bpm (F-37)", () => {
+    const footing = (maxHr: number) => ({ maxHr, avgHr: 145 });
+    expect(observedHrMax([footing(150), footing(214), footing(190), footing(192)])).toBe(192);
+    expect(observedHrMax([footing(189), footing(192), footing(175)])).toBe(192);
+    // Her half: 187 at the end of 112 min at 166, far above her footings, is her maximum.
+    expect(observedHrMax([footing(170), { maxHr: 187, avgHr: 166 }])).toBe(187);
+    expect(observedHrMax([footing(188)])).toBe(188);
+    expect(observedHrMax([])).toBeUndefined();
+  });
+
   it("uses Karvonen without LTHR (F-21)", () => {
     expect(hrZones(195, 55)).toEqual({ method: "karvonen", E: [138, 159], T: [173, 178] });
   });
@@ -405,6 +485,16 @@ describe("lthrFromEffort (F14)", () => {
     expect(lthrFromEffort({ id: "r", start: NOW, durMin: 60, distM: 12000, isRace: true, hrSeries: series })).toBe(178);
     expect(lthrFromEffort({ id: "x", start: NOW, durMin: 40, distM: 8000, hrSeries: series })).toBeUndefined();
     expect(lthrFromEffort({ id: "y", start: NOW, durMin: 30, distM: 6000, isTest: true })).toBeUndefined();
+  });
+
+  it("takes 95 % of the 20 min lap of the app's test (F-38)", () => {
+    const laps = [
+      { durMin: 10, distM: 1600, avgHr: 140 },
+      { durMin: 20, distM: 4400, avgHr: 180 },
+      { durMin: 5, distM: 800, avgHr: 150 },
+    ];
+    expect(lthrFromEffort({ id: "t", start: NOW, durMin: 35, distM: 6800, isTest: true, laps })).toBe(171);
+    expect(lthrFromEffort({ id: "e", start: NOW, durMin: 35, distM: 6800, laps })).toBeUndefined();
   });
 });
 

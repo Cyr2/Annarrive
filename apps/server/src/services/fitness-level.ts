@@ -20,14 +20,16 @@ export function levelOf(stores: Stores, plan: PlanService, port: CoachPort, now:
     .findLast((d) => d.vo2max !== undefined);
   const declared = st.program.declaredTime;
   const runs = stores.activity.overlapping(`${addDays(today, -VOLUME_DAYS)}T00:00`, now).map((a) => {
-    // A run matched to a planned TEST is her 30 min test (F14).
+    // A run matched to a planned TEST is the app's test (F14).
     const session = a.sessionId ? stores.plannedSession.get(a.sessionId) : undefined;
     return session?.type === "TEST" ? { ...a, isTest: true } : a;
   });
   const longFrom = addDays(today, -LONG_RUN_DAYS);
+  // NV2: a race measures her, it is not the training a marathon time needs (G1).
+  const training = runs.filter((r) => !r.isRace);
   const volume = {
-    avgWeeklyMin: runs.reduce((sum, r) => sum + r.durMin, 0) / (VOLUME_DAYS / 7),
-    longestRunMin: Math.max(0, ...runs.filter((r) => dateOf(r.start) >= longFrom).map((r) => r.durMin)),
+    avgWeeklyMin: training.reduce((sum, r) => sum + r.durMin, 0) / (VOLUME_DAYS / 7),
+    longestRunMin: Math.max(0, ...training.filter((r) => dateOf(r.start) >= longFrom).map((r) => r.durMin)),
   };
   const tPace = coach.paces(st.fitness.vdot).T;
   const hr = coach.thresholdHr(runs, tPace, now);

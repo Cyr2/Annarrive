@@ -183,10 +183,8 @@ function perWeek(st: CoachState, now: string, run: (week: State) => Result, extr
 
 // ---------- Fitness ----------
 
-const hrMaxOf = (activities: Activity[]): number | undefined => {
-  const observed = activities.flatMap((a) => (a.maxHr === undefined ? [] : [a.maxHr]));
-  return observed.length ? coach.hrMax(Math.max(...observed), undefined)?.value : undefined;
-};
+const hrMaxOf = (activities: Activity[]): number | undefined =>
+  fitnessHistory(activities, undefined, undefined).hr?.hrMax;
 
 function initialFitness(st: CoachState, vo2max: number | undefined, now: string): coach.InitialFitness | null {
   try {

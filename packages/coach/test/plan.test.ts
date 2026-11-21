@@ -16,6 +16,7 @@ import {
   weekTemplate,
 } from "../src/index.ts";
 import { P40 } from "./fixtures.ts";
+import { marathonReturn } from "./marathon-return.ts";
 
 const NOW = "2026-11-16T09:00";
 const SEMI = { distanceM: 21097.5, date: "2027-03-21" } as const;
@@ -96,6 +97,13 @@ describe("longRunMin (P14)", () => {
     expect(longRunMin(5, 400, 42195, 300)).toBe(120);
     expect(longRunMin(3, 600, 42195, 300)).toBe(180);
   });
+
+  it("keeps the long run she already runs in a load week, up to Lmax (P14, P-33)", () => {
+    expect(longRunMin(4, 130, 21097.5, 62, true)).toBe(62);
+    expect(longRunMin(4, 130, 21097.5, 62)).toBeCloseTo(45.5, 6);
+    expect(longRunMin(4, 130, 21097.5, 150, true)).toBe(120);
+    expect(longRunMin(4, 130, 21097.5, Number.POSITIVE_INFINITY, true)).toBeCloseTo(45.5, 6);
+  });
 });
 
 describe("weekTemplate (P11 to P13)", () => {
@@ -169,6 +177,34 @@ describe("startingVolume (P2)", () => {
     const old = runs(4, 3, 50, "2026-10-05");
     expect(startingVolume(old, regular, NOW).v0).toBe(75);
   });
+
+  // Audit of 21/11/2026: 4 runs a week up to a marathon on 25/10, then 2 to 3 easy runs a week.
+  const back = marathonReturn().filter((a) => a.start < "2026-11-21");
+  const week = (from: string): number =>
+    back.filter((a) => a.start >= from && a.start < addDays(from, 7)).reduce((s, a) => s + a.durMin, 0);
+
+  it("reads her frequency on the 4 weeks before a race of the last 8 weeks, never the race as volume (P-29)", () => {
+    const start = startingVolume(back, regular, "2026-11-21");
+    expect(start.runsPerWeek).toBeGreaterThanOrEqual(3);
+    const recent = ["2026-10-19", "2026-10-26", "2026-11-02", "2026-11-09"].map(week);
+    // The marathon week counts only its training runs; V0 is her best week since, at most 80 % of her usual volume.
+    expect(recent[0]).toBeGreaterThan(300);
+    expect(start.v0).toBeCloseTo(Math.max(...recent.slice(1)), 6);
+    expect(start.v0).toBeLessThan(150);
+  });
+
+  it("keeps development weeks after a marathon and starts the curve from what she runs (P-30)", () => {
+    const plan = generatePlan(
+      { ...SEMI, date: "2027-04-04", targetMin: 108 },
+      regular,
+      back,
+      { vdot: 39 },
+      "2026-11-21",
+    );
+    expect(plan.split).toMatchObject({ base: 5, dev: 6, spe: 6, taper: 2 });
+    expect(plan.weeks[0]?.volumeMin).toBeLessThanOrEqual(1.1 * week("2026-11-09") + 1);
+    expect(plan.weeks.some((w) => w.template.includes("I"))).toBe(true);
+  });
 });
 
 describe("generatePlan (M2)", () => {
@@ -199,6 +235,14 @@ describe("generatePlan (M2)", () => {
     expect(peak(recent)).toBeLessThanOrEqual(1.2 * 180);
     expect(peak([...spring, ...recent])).toBeGreaterThan(1.2 * 180);
     expect(peak([...spring, ...recent])).toBeLessThanOrEqual(1.2 * 330);
+  });
+
+  it("runs the last long run at D-14 for a half and D-21 for a marathon (P18, P-31)", () => {
+    const longs = (p: typeof plan) => p.weeks.map((w) => w.template.includes("L"));
+    expect(longs(plan).slice(-3)).toEqual([true, false, true]);
+    const marathon = generatePlan({ distanceM: 42195, date: "2027-04-18" }, regular, runs(8, 4, 60), { vdot: 40 }, NOW);
+    expect(longs(marathon).slice(-4)).toEqual([true, false, false, true]);
+    expect(plan.weeks.at(-2)?.template.filter((s) => s === "E")).toHaveLength(2);
   });
 
   it("warns about a short plan and a low peak", () => {

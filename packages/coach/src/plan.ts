@@ -2,6 +2,7 @@ import { buildSession, MAX_E, scaleSession } from "./catalog.ts";
 import { addDays, daysBetween, mondayOf, nextMonday } from "./dates.ts";
 import { predictTime } from "./fitness.ts";
 import { enforceDistribution, longShare, trimTo } from "./guards.ts";
+import { recoveryShare } from "./maintenance.ts";
 import type { Activity, GoalDistance, Paces, Phase, RunType, Session, Warning } from "./types.ts";
 
 export type Profile = {
@@ -59,6 +60,8 @@ const PEAK: Record<GoalDistance, [number, number]> = {
   21097.5: [180, 330],
   42195: [240, 450],
 };
+/** P18: weeks from the end, race week included, that come after the last long run. */
+const LAST_LONG_WEEKS: Partial<Record<GoalDistance, number>> = { 21097.5: 2, 42195: 3 };
 const L_MAX: Record<GoalDistance, number> = { 5000: 90, 10000: 105, 21097.5: 120, 42195: 150 };
 
 export type Split = { base: number; dev: number; spe: number; taper: number; short: boolean };
@@ -174,16 +177,18 @@ export function weekTemplate(
   return runsPerWeek === 4 ? [q1, "E", q2, "L"] : [q1, "E", q2, "RECUP", "L"];
 }
 
-/** P14. */
+/** P14. `keepLongest` (a load week): never shorter than her longest run of 30 days, up to Lmax. */
 export function longRunMin(
   runsPerWeek: 3 | 4 | 5,
   weeklyMin: number,
   distM: GoalDistance,
   longest30dMin: number,
+  keepLongest = false,
 ): number {
   const pct = longShare(runsPerWeek);
   const lMax = distM === 42195 && weeklyMin >= 300 ? 180 : L_MAX[distM];
-  return Math.min(pct * weeklyMin, lMax, 1.1 * longest30dMin);
+  const kept = keepLongest && Number.isFinite(longest30dMin) ? Math.min(longest30dMin, lMax) : 0;
+  return Math.max(kept, Math.min(pct * weeklyMin, lMax, 1.1 * longest30dMin));
 }
 
 export type PlanWeek = {
@@ -220,13 +225,20 @@ const weekMinutes = (history: Activity[]): Map<string, { min: number; runs: numb
 
 const mean = (xs: number[]): number => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
 
+/** P2, P7: a race of the last 8 weeks bends the weeks after it (MA6): they are read against the weeks before it. */
+const RACE_DAYS = 56;
+
+/** A race is a test of her level, not training volume (P2, P8, P14, G1). */
+export const training = (history: Activity[]): Activity[] => history.filter((a) => a.isRace !== true);
+
 /** P2: V0 and whether the base is low (P7). */
 export function startingVolume(
   history: Activity[],
   profile: Profile,
   now: string,
 ): { v0: number; provisional: boolean; runsPerWeek: number } {
-  const weeks = weekMinutes(history);
+  const runs = training(history);
+  const weeks = weekMinutes(runs);
   const last = history
     .map((a) => a.start)
     .sort()
@@ -240,12 +252,30 @@ export function startingVolume(
   if (data.filter((d) => d.runs > 0).length < 2) {
     return { v0: Math.min(profile.declaredWeeklyMin ?? 150, 150), provisional: true, runsPerWeek };
   }
-  const avg = mean(data.slice(0, 4).map((d) => d.min));
-  return { v0: stopped ? 0.5 * avg : avg, provisional: false, runsPerWeek };
+  const recent = data.slice(0, 4).map((d) => d.min);
+  const avg = mean(recent);
+  const race = stopped
+    ? undefined
+    : history
+        .filter((a) => a.isRace && a.start < now && daysBetween(a.start, now) <= RACE_DAYS)
+        .sort((a, b) => a.start.localeCompare(b.start))
+        .at(-1);
+  if (!race) return { v0: stopped ? 0.5 * avg : avg, provisional: false, runsPerWeek };
+  // The recovery weeks lower the mean: she resumes from her best week since, up to MA6's last easy week.
+  const before = (days: number) => runs.filter((a) => a.start < race.start && daysBetween(a.start, race.start) < days);
+  const usual = before(RACE_DAYS).reduce((s, a) => s + a.durMin, 0) / (RACE_DAYS / 7);
+  return {
+    v0: Math.max(avg, Math.min(recoveryShare(race.distM) * usual, Math.max(...recent))),
+    provisional: false,
+    runsPerWeek: Math.max(runsPerWeek, before(28).length / 4),
+  };
 }
 
 const maxWeekly = (history: Activity[], now: string): number =>
-  Math.max(0, ...[...weekMinutes(history.filter((a) => daysBetween(a.start, now) <= 365)).values()].map((w) => w.min));
+  Math.max(
+    0,
+    ...[...weekMinutes(training(history).filter((a) => daysBetween(a.start, now) <= 365)).values()].map((w) => w.min),
+  );
 
 /** M2: from goal, profile, history and fitness to a periodised plan starting next Monday. */
 export function generatePlan(
@@ -284,6 +314,9 @@ export function generatePlan(
       ] ?? 0;
     const loadsBefore = [...Array(i - phaseStart).keys()].filter((k) => !isDeload(phaseStart + k, cycle)).length;
     const lastOfPhase = phaseAt(split, i + 1) !== phase;
+    const template = weekTemplate(phase, profile.runsPerWeek, d, i - phaseStart, lastOfPhase);
+    // P18: the last long run at D-14 (half) or D-21 (marathon): the weeks between it and the race week run an E.
+    const noLong = i < curve.length - 1 && i >= curve.length - (LAST_LONG_WEEKS[d] ?? 0);
     return {
       index: i,
       monday: addDays(first, 7 * i),
@@ -291,7 +324,7 @@ export function generatePlan(
       volumeMin,
       deload: phase !== "taper" && isDeload(i, cycle),
       progressionStep: loadsBefore,
-      template: weekTemplate(phase, profile.runsPerWeek, d, i - phaseStart, lastOfPhase),
+      template: noLong ? template.map((slot) => (slot === "L" ? "E" : slot)) : template,
     };
   });
   const p0 = predictTime(fitness.vdot, d);
@@ -331,9 +364,10 @@ export function buildWeek(week: PlanWeek, ctx: WeekCtx): Session[] {
   // A test keeps its length whatever the week (F10).
   const qFactor = (slot: TemplateSlot): number =>
     slot === "TEST" ? 1 : week.phase === "taper" ? 0.55 : week.deload ? 2 / 3 : 1;
-  // shortcut: P18 "last L at D-14/21" is not enforced; the taper volume already shrinks it. Last Q at D-4 is H12.
+  // P18's last Q at D-4 is H12; its last L at D-14/21 is the plan's template (generatePlan).
   // P9's L × 0.75 is already in a deload week's volume (× 0.75): applying it again would halve the long run.
-  const lMin = longRunMin(runsPerWeek, week.volumeMin, ctx.distM, ctx.longest30dMin);
+  const load = !week.deload && week.phase !== "taper";
+  const lMin = longRunMin(runsPerWeek, week.volumeMin, ctx.distM, ctx.longest30dMin, load);
   let qCount = 0;
   const fixed = week.template.map((slot, i): Session | null => {
     const id = `${week.monday}-${i}`;

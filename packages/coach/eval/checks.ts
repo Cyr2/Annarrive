@@ -130,6 +130,7 @@ function intensity(r: RunLog): Criterion {
 }
 
 const MIN_LONG: Record<number, number> = { 21097.5: 60, 42195: 90 };
+const LAST_LONG_DAYS: Record<number, number> = { 21097.5: 14, 42195: 21 };
 
 /** K3: P14 (share by runs per week), Daniels (the long run is the week's longest), S8 (her days), Pfitzinger/Hansons (length). */
 function longRun(r: RunLog): Criterion {
@@ -140,6 +141,17 @@ function longRun(r: RunLog): Criterion {
     if (isRaceWeek(r, w) || afterRace(r, w)) continue;
     const list = runs(w);
     const l = list.find((s) => s.type === "L");
+    // P18: the last long run comes at D-14 (half) or D-21 (marathon), none after it.
+    const pastLast = daysBetween(w.monday, p.goal.date) < (LAST_LONG_DAYS[p.goal.distanceM] ?? 0);
+    if (pastLast) {
+      j.check(l === undefined, () => ({
+        week: w.week,
+        rule: "P18",
+        detail: `sortie longue de ${r0(l?.durMin ?? 0)} min après J-${LAST_LONG_DAYS[p.goal.distanceM]}`,
+        severity: "majeure",
+      }));
+      continue;
+    }
     j.check(l !== undefined, () => ({
       week: w.week,
       rule: "P13",
@@ -154,10 +166,17 @@ function longRun(r: RunLog): Criterion {
       detail: `sortie longue de ${r0(l.durMin)} min, plus courte qu'une autre séance (${r0(longestOther)} min)`,
       severity: "majeure",
     }));
-    j.check(l.durMin <= pct * minutes(list) + 5, () => ({
+    // P14: past its share only to keep the long run she already ran in the 30 days before (load weeks).
+    const held = Math.max(
+      0,
+      ...allRuns(r)
+        .filter((a) => !a.isRace && a.start < w.monday && daysBetween(a.start, w.monday) <= 31)
+        .map((a) => a.durMin),
+    );
+    j.check(l.durMin <= Math.max(pct * minutes(list), held) + 5, () => ({
       week: w.week,
       rule: "P14",
-      detail: `sortie longue ${Math.round((100 * l.durMin) / minutes(list))} % du volume (plafond ${pct * 100} %)`,
+      detail: `sortie longue ${Math.round((100 * l.durMin) / minutes(list))} % du volume (plafond ${pct * 100} %, ou ${r0(held)} min déjà courues)`,
       severity: "mineure",
     }));
     const min = MIN_LONG[p.goal.distanceM];
@@ -527,12 +546,16 @@ const lastWeeks = (r: RunLog, w: WeekLog, days: number): WeekLog[] =>
   r.weeks.filter((x) => x.week <= w.week && daysBetween(x.monday, w.monday) < days);
 const AT_MOST_AMBITIOUS = ["conservateur", "réaliste", "ambitieux"];
 
-/** P21: race-pace blocks follow her target only when it is at most ambitious, else the time her level predicts. */
+/**
+ * P21: race-pace blocks follow her target only when it is at most ambitious, else the time her level predicts; from
+ * the half up, never faster than her T pace of the week (Daniels: T is the pace held about an hour).
+ */
 function racePace(r: RunLog, vdotNow: number): number {
   const g = r.persona.goal;
   const min =
     g.targetMin && AT_MOST_AMBITIOUS.includes(r.feasibility) ? g.targetMin : predictTime(vdotNow, g.distanceM);
-  return (min * 60) / (g.distanceM / 1000);
+  const pace = (min * 60) / (g.distanceM / 1000);
+  return g.distanceM >= 21097.5 ? Math.max(pace, daniels(vdotNow).T) : pace;
 }
 
 /** TR3: every pace a built session aims at comes from the level of that week (F7), race pace from P21. */

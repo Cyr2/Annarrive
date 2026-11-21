@@ -489,13 +489,23 @@ export class PlanService {
       const summary = "Allures recalculées avec ton chrono";
       return this.#commit(summary, [write], before, this.#coach.repace({ ...state, fitness }, this.#now()));
     }
+    const fitness = declaredChanged ? null : this.#startLevel({ ...before, program }, !sameGoal);
     return this.#rebuild(
       input.goal === undefined ? "Allures recalculées avec ton chrono" : "Objectif modifié",
       [write],
-      { ...before, program, fitness: declaredChanged ? null : before.fitness },
+      { ...before, program, fitness },
       before,
       declaredChanged || (program.goal !== null && emptyWeek) || raceSoon(program.goal) || raceSoon(old),
     );
+  }
+
+  /**
+   * F10: a new programme starts from her whole history. A level F10 set alone (no proposal she accepted) is read
+   * again, so a level read before the sync ended never outlives it.
+   */
+  #startLevel(state: CoachState, newGoal: boolean): CoachState["fitness"] {
+    const kept = !newGoal || state.program.goal === null || state.fitness?.source.startsWith("proposal:");
+    return kept ? state.fitness : (this.#estimate(state) ?? state.fitness);
   }
 
   /** After a run, when no level was known yet: estimates it and builds the weeks it was missing. */

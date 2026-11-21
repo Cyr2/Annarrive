@@ -1,6 +1,6 @@
 import { changeResponseSchema, profileSchema, todaySchema, weekSchema } from "@annarrive/protocol";
 import { describe, expect, it } from "vitest";
-import { session, setup } from "./helpers.ts";
+import { fakeCoach, session, setup } from "./helpers.ts";
 
 const strength = {
   kind: "strength",
@@ -367,6 +367,36 @@ describe("settings", () => {
     await undo(t, saved.change?.id);
     expect(t.stores.plannedSession.get("built-2026-11-23")).toBeUndefined();
     expect(t.services.plan.program().goal).toEqual({ distanceM: 10000, date: "2027-03-14" });
+  });
+
+  it("reads a level F10 set alone again when a programme starts, never one she accepted (F10)", async () => {
+    // Production, 21/11/2026: 34.2 read on 17/11 before the sync ended; the whole year now reads 38.1.
+    const t = setup({
+      coach: { ...fakeCoach, estimateFitness: () => ({ vdot: 38.1, source: "effort:tempo", provisional: false }) },
+    });
+    await t.login();
+    const stale = {
+      id: "2026-11-15",
+      date: "2026-11-15",
+      vdot: 34.2,
+      source: "effort:half:detrained",
+      provisional: false,
+    };
+    t.stores.fitnessEstimate.put(stale);
+    const level = () => t.stores.fitnessEstimate.list().at(-1);
+
+    await t.call("PUT", "/api/program", { goal: { distanceM: 21097.5, date: "2027-04-04", targetMin: 108 } });
+    expect(level()).toMatchObject({ vdot: 38.1, source: "effort:tempo" });
+
+    t.stores.fitnessEstimate.put({
+      id: "2026-11-16",
+      date: "2026-11-16",
+      vdot: 36,
+      source: "proposal:RC1",
+      provisional: false,
+    });
+    await t.call("PUT", "/api/program", { goal: { distanceM: 10000, date: "2027-03-14" } });
+    expect(level()).toMatchObject({ vdot: 36, source: "proposal:RC1" });
   });
 
   it("builds next week on Sunday through the coach", async () => {

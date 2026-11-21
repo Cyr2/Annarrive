@@ -4,6 +4,7 @@ import {
   feasibility,
   hrMax,
   initialFitness,
+  observedHrMax,
   type Phase,
   phaseSplit,
   predictTime,
@@ -186,14 +187,19 @@ export function slotFor(session: PlannedSession, start: string): Slot {
   return { start, end: addMinutes(start, session.durMin) };
 }
 
-/** M1 `initialFitness`'s input from what is stored: runs with their laps, the observed HRmax (F12), her last time. */
+/**
+ * M1 `initialFitness`'s input from what is stored: runs with their laps, the observed HRmax of the runs given, wrist
+ * spikes left out (F12), her last time.
+ */
 export function fitnessHistory(
   activities: Activity[],
   vo2maxGarmin: number | undefined,
   declared: DeclaredTime | undefined,
 ): FitnessHistory {
-  const observed = activities.flatMap((a) => (a.maxHr === undefined ? [] : [a.maxHr]));
-  const max = observed.length ? hrMax(Math.max(...observed), undefined)?.value : undefined;
+  const observed = observedHrMax(
+    activities.flatMap(({ maxHr, avgHr }) => (maxHr === undefined ? [] : [{ maxHr, avgHr }])),
+  );
+  const max = observed === undefined ? undefined : hrMax(observed, undefined)?.value;
   return {
     activities,
     ...(vo2maxGarmin === undefined ? {} : { vo2maxGarmin }),

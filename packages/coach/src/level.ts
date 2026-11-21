@@ -60,7 +60,7 @@ export function thresholdLapsHr(a: Activity, tPace: number): number | undefined 
 }
 
 /**
- * NV3: her threshold heart rate, from the latest 30 min test or 50 to 65 min race of 8 weeks (F14), else from her
+ * NV3: her threshold heart rate, from the latest test or 50 to 65 min race of 8 weeks (F14), else from her
  * laps at T pace in 2 runs of 8 weeks (the mean of the latest two). Unknown otherwise: never a share of HRmax.
  */
 export function thresholdHr(activities: Activity[], tPace: number, now: string): ThresholdHr | undefined {

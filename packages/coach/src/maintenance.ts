@@ -63,6 +63,9 @@ const recoveryOf = (distM: number): Recovery => (distM < 15000 ? SHORT : distM <
 /** MA6: number of easy weeks after a race of `distM`. */
 export const recoveryWeeks = (distM: number): number => recoveryOf(distM).weeks.length;
 
+/** MA6: the share of her usual volume her last easy week after a race of `distM` reaches (P2 starts from it). */
+export const recoveryShare = (distM: number): number => recoveryOf(distM).weeks.at(-1)?.share ?? 1;
+
 /** MA6: days without a run right after a race of `distM`. */
 export const recoveryRestDays = (distM: number): number => recoveryOf(distM).restDays;
 
