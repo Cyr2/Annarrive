@@ -11,6 +11,7 @@ export function fitnessRoutes({ fitness }: Services): Hono {
       return c.body(null, 204);
     })
     .get("/proposals", (c) => c.json(fitness.pending()))
+    .get("/progression", (c) => c.json(fitness.progression()))
     .post("/proposals/:id/accept", (c) => c.json(fitness.accept(c.req.param("id"))))
     .post("/proposals/:id/decline", (c) => c.json(fitness.decline(c.req.param("id"))));
 }

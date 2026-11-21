@@ -5,6 +5,7 @@ import { LoadFailed } from "../../ui/EmptyState.tsx";
 import { Screen } from "../../ui/Screen.tsx";
 import { Skeleton } from "../../ui/Skeleton.tsx";
 import { usePlan } from "../plan/store.ts";
+import { ProgressionCard } from "../progression/ProgressionCard.tsx";
 import { GoalCard } from "./GoalCard.tsx";
 import { Level } from "./Level.tsx";
 import { PlanPhases } from "./PlanPhases.tsx";
@@ -42,6 +43,7 @@ export default function ProgramScreen() {
       {program && today && <GoalCard program={program} today={today} />}
       {program && <PlanPhases program={program} />}
       {program && today && <Level program={program} today={today} />}
+      {program && <ProgressionCard />}
     </Screen>
   );
 }

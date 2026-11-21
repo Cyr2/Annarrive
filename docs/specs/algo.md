@@ -49,6 +49,7 @@ Reggie n'appelle que les fonctions de `events` et `readOnly` (lecture du plan, d
 | M9  | `maintenance` (mode entretien)                  | historique 8 sem., réglages                   | gabarit de semaine                                  | `maintenanceWeek`, `postRaceWeek`, `lastRaceDay`, `postRaceIndex`, `exitMaintenance`                                                               |
 | M10 | `adaptation` (le réalisé)                       | course synchronisée, séance rattachée, état   | lecture de la course, écart au plan, nouvel état    | `readRun`, `compareRun`, `paceRatio`, `feelLog`, `adaptToRun`                                                                                      |
 | M11 | `review` (bilan, course objectif)            | séances et courses de la semaine, objectif     | bilan, résultat de course                           | `weekReview`, `isGoalRace`, `previousRace`, `raceSplits`, `raceReport`                                                                             |
+| M12 | `progression` (lecture seule)                   | niveaux enregistrés, séances, courses, plan   | temps estimés, volumes, séances tenues, changements | `levelOn`, `weeklyEstimates`, `weekVolume`, `keptRuns`, `levelChanges`                                                                             |
 
 ### 1.1 Types communs (abrégés)
 
@@ -838,6 +839,40 @@ adaptToRun(st: State, run: Activity, now: string, ctx: { sessionId?; history: Ac
 | AD-7 | Footing couru comme prévu, en 25 min, ou plus lentement, T mercredi | rien ne change |
 | AD-8 | 4 semaines à 160 min ; lundi 45 min courus, 40 min en plus mercredi, E de 45 min vendredi, L de 60 min dimanche ; puis sans historique | E de vendredi à 31 min, L inchangée, change AD4 ; rien |
 | AD-9 | Footing noté `hard` couru en tempo ; couru à l'allure E | pas de SG4 ; SG4 |
+
+---
+
+## M12. `progression` : ce que Programme montre de sa progression
+
+Lecture seule : rien ne change dans le plan. Programme montre son temps estimé sur la distance de l'objectif, la courbe de ce temps semaine après semaine, le temps couru face au temps prévu, et les séances tenues ; le détail explique chaque changement de niveau en une ligne. Rien n'est inventé : la courbe ne montre que des niveaux enregistrés (`fitness_estimate`, un par jour de changement, gardé et annulable comme tout changement), le pointillé ne va que vers le chrono visé, et le mode entretien (sans objectif) n'a pas de bloc. Le temps de course est en minutes : prévu et couru se mesurent pareil (durées des séances, durées Garmin), alors qu'une distance prévue serait une estimation.
+
+### Signatures
+
+```ts
+levelOn(levels: LevelEntry[], day: string): LevelEntry | undefined
+weeklyEstimates(levels: LevelEntry[], mondays: string[], distM: number, today: string): (number | undefined)[]   // min
+weekVolume(sessions: Session[], runs: Activity[], monday: string, planMin?: number): { plannedMin; doneMin }
+keptRuns(sessions: Session[], runs: Activity[], from: string): { kept; total }
+levelChanges(levels: LevelEntry[], from: string, distM: number): (LevelEntry & { predictedMin; easyFrom?; easyTo })[]
+```
+
+### Règles
+
+| Id  | Règle | Paramètres | Source | Niveau |
+| --- | ----- | ---------- | ------ | ------ |
+| PR1 | Temps estimé d'une semaine : `predictTime` (F5) du niveau en service à la fin de la semaine (le dernier posé ce dimanche-là ou avant ; aujourd'hui pour la semaine en cours). Aucun pour une semaine à venir ni avant le premier niveau. La courbe se dessine à partir de deux semaines | | F5 ; décision produit (aucune donnée inventée) | OP |
+| PR2 | Temps de course de la semaine : prévu = somme des séances enregistrées sauf `cancelled` (sautées et ratées comprises : elles étaient prévues), ou le volume du plan (P9, P10) pour une semaine pas encore construite ; couru = somme des courses Garmin de la semaine, prévues ou non | | P9, P10 | OP |
+| PR3 | Séances tenues depuis le début du programme : parmi les séances au sort connu (`done`, `missed`, `skipped` ; une séance passée en attente de « Tu l'as faite ? » ne compte pas encore), une séance `done` est tenue quand ses courses rattachées font au moins 80 % de sa durée prévue (la même limite que la course « bien plus courte » d'Aujourd'hui, PR #84), ou quand Anna l'a confirmée sans course de la montre (EV21 : sa parole) | 80 % | AD2 (plus court ≤ 80 %) ; décision produit | OP |
+| PR4 | Allures ajustées : le niveau en service au début du programme (« Départ »), puis chaque changement après, chacun avec son temps prédit et l'allure E d'avant et d'après, expliqué en une ligne selon sa source (chrono déclaré, efforts de la montre, VO2max, RC1 à RC4, F10 relu par RC12) | | F7 ; M8 | OP |
+
+### Tests
+
+| #    | Entrée | Sortie attendue |
+| ---- | ------ | --------------- |
+| PR-1 | Niveaux 38 le 20/10, 40 le 01/11, 41 le 12/11 ; semi ; semaines des 02, 09, 16 et 23/11, aujourd'hui le 18/11 ; puis aucun niveau | 1:50:54 ; 1:48:35 ; 1:48:35 ; aucun. Aucun partout |
+| PR-2 | Semaine du 16/11 : E 45 min faite (47 min courues), Q 50 min ratée, L 80 min prévue, E 40 min `cancelled` ; 30 min courues en plus jeudi ; puis une semaine sans séance, plan à 200 min | prévu 175, couru 77 ; prévu 200, couru 0 |
+| PR-3 | Depuis le 02/11 : faites à 40/50 min, à 39/50 min, confirmée sans montre ; une ratée, une sautée, une prévue ; une faite le 30/10 | 2 tenues sur 5 |
+| PR-4 | Mêmes niveaux, programme commencé le 02/11 | Départ 40 (1:50:54, E 6'08) ; 41 le 12/11 (1:48:35, E 6'01 au lieu de 6'08) |
 
 
 ---

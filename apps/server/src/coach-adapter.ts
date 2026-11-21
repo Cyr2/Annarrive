@@ -298,6 +298,10 @@ export const coachAdapter: CoachPort = {
         { phase: "spe", weeks: spe },
         { phase: "taper", weeks: taper },
       ],
+      weeks: [
+        ...(early ? [{ monday: startMonday }] : []),
+        ...plan.weeks.map((w) => ({ monday: w.monday, volumeMin: w.volumeMin })),
+      ],
       feasibility: plan.feasibility.class,
       odds: {
         currentMin: coach.predictTime(st.fitness.vdot, goal.distanceM),

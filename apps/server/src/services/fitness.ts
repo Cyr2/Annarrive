@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
-import type { ChangeResponse, Feel, PlannedSession, Proposal } from "@annarrive/protocol";
+import type { ChangeResponse, Feel, PlannedSession, Progression, Proposal } from "@annarrive/protocol";
 import type { CoachPort } from "../coach-port.ts";
 import { NotFoundError, ReadOnlyError } from "../errors.ts";
 import type { Activity, Stores } from "../storage/stores.ts";
 import { addDays, type Clock, dateOf, toParisLocal } from "../time.ts";
 import type { ChangeService } from "./changes.ts";
 import type { PlanService } from "./plan.ts";
+import { progressionOf } from "./progression.ts";
 
 const KEY_DAYS = 28;
 
@@ -23,6 +24,11 @@ export class FitnessService {
     this.#changes = changes;
     this.#coach = coach;
     this.#clock = clock;
+  }
+
+  /** Programme's Progression block (algo.md M12). */
+  progression(): Progression {
+    return progressionOf(this.#stores, this.#plan, this.#coach, this.#now());
   }
 
   pending(): Proposal[] {

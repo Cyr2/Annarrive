@@ -6,6 +6,7 @@ import {
   healthSchema,
   moveSlotsSchema,
   profileViewSchema,
+  progressionSchema,
   proposalSchema,
   pushKeySchema,
   pushSubscriptionInputSchema,
@@ -250,6 +251,7 @@ export function createHttpApi(
       ]);
       return toProgram({ program, profile, lastSyncAt: status?.lastSyncAt, days, today: today(), watch: link });
     },
+    progression: () => get("/progression", progressionSchema),
 
     addEvent: (input) => change("POST", "/events", toEventInput(input)),
     updateEvent(eventId, patch) {

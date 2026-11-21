@@ -218,6 +218,33 @@ export const programViewSchema = programSchema.extend({
 export type ProgramView = z.infer<typeof programViewSchema>;
 export type TargetOdds = NonNullable<NonNullable<ProgramView["plan"]>["odds"]>;
 
+/** GET /api/progression (algo.md M12). Null without a goal (maintenance mode) or before her level is known. */
+export const progressionSchema = z
+  .object({
+    distanceM: goalSchema.shape.distanceM,
+    /** Her time on the goal's distance with the level in service today (PR1). */
+    currentMin: z.number().positive(),
+    targetMin: z.number().positive().optional(),
+    raceDate: localDateSchema,
+    /** Every week of the plan, from « Semaine 1 » to the race. */
+    weeks: z.array(
+      z.object({
+        monday: localDateSchema,
+        /** PR1: absent for the weeks ahead. */
+        estimateMin: z.number().positive().optional(),
+        /** PR2, in minutes. */
+        plannedMin: z.number().nonnegative(),
+        doneMin: z.number().nonnegative(),
+      }),
+    ),
+    /** PR3, since the programme started. */
+    kept: z.object({ kept: z.number().int().nonnegative(), total: z.number().int().nonnegative() }),
+    /** PR4, newest first; `start` is her level when the programme began. */
+    changes: z.array(z.object({ date: localDateSchema, start: z.boolean(), line: z.string() })),
+  })
+  .nullable();
+export type Progression = z.infer<typeof progressionSchema>;
+
 /** A level change the coach proposes (algo.md M8), accepted or declined in one tap. */
 export const proposalSchema = z.object({
   id: z.string(),
