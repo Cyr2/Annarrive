@@ -209,14 +209,7 @@ export class PlanService {
 
   /** The programme with the plan its weeks follow, for Programme and Semaine. */
   programView(): ProgramView {
-    const vo2max = this.#vo2max();
-    const declared = this.program().declaredTime;
-    const program: ProgramView = {
-      ...this.program(),
-      ...(vo2max && {
-        garmin: { vo2max, ...(declared && { versus: this.#coach.vo2maxVersusRace(vo2max, declared) }) },
-      }),
-    };
+    const program: ProgramView = this.program();
     const plan = this.#coach.programPlan(this.coachState(), this.#now());
     if (!plan) return program;
     const verdict = verdictOf(plan.feasibility);

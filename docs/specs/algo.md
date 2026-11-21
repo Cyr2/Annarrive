@@ -50,6 +50,7 @@ Reggie n'appelle que les fonctions de `events` et `readOnly` (lecture du plan, d
 | M10 | `adaptation` (le réalisé)                       | course synchronisée, séance rattachée, état   | lecture de la course, écart au plan, nouvel état    | `readRun`, `compareRun`, `paceRatio`, `feelLog`, `adaptToRun`                                                                                      |
 | M11 | `review` (bilan, course objectif)            | séances et courses de la semaine, objectif     | bilan, résultat de course                           | `weekReview`, `isGoalRace`, `previousRace`, `raceSplits`, `raceReport`                                                                             |
 | M12 | `progression` (lecture seule)                   | niveaux enregistrés, séances, courses, plan   | temps estimés, volumes, séances tenues, changements | `levelOn`, `weeklyEstimates`, `weekVolume`, `keptRuns`, `levelChanges`                                                                             |
+| M13 | `level` (lecture seule)                        | niveau en service, courses, VO2max Garmin     | chronos possibles, FC seuil                         | `racePredictions`, `thresholdLapsHr`, `thresholdHr`                                                                                                |
 
 ### 1.1 Types communs (abrégés)
 
@@ -174,7 +175,7 @@ hrPaceModel(segments: Segment[]): { a: number; b: number } | null     // FC = a 
 | F16 | Pilotage : E, RECUP, L → plafond FC (haut de E) ; M, T → allure avec garde FC ; I → allure ; R, strides et sprints → RPE ; chaleur > 20 °C, vent, trail, retour de douleur → FC ou RPE. Reggie peut seulement passer vers plus conservateur                                                                                                                                                       |                                   | Mann 2013 ; Gillinov 2017                                | CONS   |
 | F17 | VO2max Garmin : jamais modifiée en VDOT directement, sauf F10 (repli sans effort ni chrono récent) ; sert de déclencheur en M8                                                                                                                                                                                                                                                                                                 |                                   | Engel 2025                                               | ECR    |
 | F18 | Meilleurs efforts de l'entraînement, sur 12 semaines, sorties plates (dénivelé < 1 %) : la sortie entière (F9) et chaque suite de tours Garmin consécutifs **réguliers** (vitesses à 3 % les unes des autres : un effort continu, jamais des répétitions avec leurs récupérations) jusqu'à 60 min, FC moyenne pondérée par le temps. Un tour hors bornes (allure hors de 2:30 à 12:00 /km) coupe la suite. Aucune suite de tours n'est lue sur une séance prévue en fractionné (I, R, CRUISE, FARTLEK : `plannedType`). Lecture : FC ≥ 92 % FCmax, course ou test → `race`, `VDOT = F3(D, t)`, sur 10 min au moins quand elle vient des tours (une répétition de 3 min n'est pas 3 min à fond) ; FC de 88 % FCmax ou plus sur plus de 60 min → `race`, `VDOT = F3(D, t)` (au-delà d'une heure, l'allure tenue à la FC du seuil est une allure de course : un semi) ; FC de 88 à 92 % FCmax sur 15 à 60 min → `threshold`, l'allure tenue est l'allure T : `VDOT = max(F3, VO2(v) / 0,88)` ; autre segment ≥ 10 min → `training`, `VDOT = F3(D, t)`, un plancher (tout effort couru prouve au moins ce niveau). Garder la meilleure lecture par sortie (`race`/`threshold` avant `training`), VDOT hors de 20 à 85 écarté | 88 et 92 % FCmax ; 15 à 60 min ; 10 min ; 3 % | Daniels 2014 (T = 88 % du VDOT, 88 à 92 % FCmax ; T = effort continu de 20 à 60 min, l'allure qu'on tient environ une heure en course) ; recherche 01 §4.2 (un effort non maximal sous-estime toujours la forme) ; banc d'essai (fractionné lu comme effort maximal ou au seuil, `docs/eval/rapport-algo.md` problème 5) | OP |
-| F19 | « Ta montre » (Programme, Ton niveau) : la VO2max Garmin la plus récente (30 jours) comparée au VDOT de sa dernière course déclarée. Écart de moins de 5 points → « en accord avec ta course » ; sinon « au-dessus » ou « en dessous ». Information seulement : le niveau reste celui de F10 (F17) | 5 points | Engel 2025 (écart moyen de 4 à 5 ml/kg/min) | OP |
+| F19 | VO2max de la montre (Programme, détail de « Ton niveau », M13) : la VO2max Garmin la plus récente (30 jours) comparée au VDOT de sa dernière course déclarée. Écart de moins de 5 points → « en accord avec ta course » ; sinon « au-dessus » ou « en dessous ». Information seulement : le niveau reste celui de F10 (F17) | 5 points | Engel 2025 (écart moyen de 4 à 5 ml/kg/min) | OP |
 
 ### Tests
 
@@ -873,6 +874,41 @@ levelChanges(levels: LevelEntry[], from: string, distM: number): (LevelEntry & {
 | PR-2 | Semaine du 16/11 : E 45 min faite (47 min courues), Q 50 min ratée, L 80 min prévue, E 40 min `cancelled` ; 30 min courues en plus jeudi ; puis une semaine sans séance, plan à 200 min | prévu 175, couru 77 ; prévu 200, couru 0 |
 | PR-3 | Depuis le 02/11 : faites à 40/50 min, à 39/50 min, confirmée sans montre ; une ratée, une sautée, une prévue ; une faite le 30/10 | 2 tenues sur 5 |
 | PR-4 | Mêmes niveaux, programme commencé le 02/11 | Départ 40 (1:50:54, E 6'08) ; 41 le 12/11 (1:48:35, E 6'01 au lieu de 6'08) |
+
+---
+
+## M13. `level` : « Ton niveau » et ses chronos possibles
+
+Lecture seule : rien ne change dans le plan. Programme montre trois chiffres (VO2max de la montre, allure seuil, FC seuil) et, dans le détail, les chronos possibles sur 5 km, 10 km, semi et marathon. La VO2max est le seul chiffre Garmin : la vivoactive 4 n'a ni seuil lactique ni prédicteur de course, et le seuil Garmin exige une ceinture (recherche 07 §1). Les chronos et l'allure viennent du niveau en service (F10, RC1 à RC12), jamais de la VO2max Garmin (recherche 07 §2.2 ; F17).
+
+### Signatures
+
+```ts
+racePredictions(vdot: number, volume: { avgWeeklyMin; longestRunMin }): { distM; min?; bestCase? }[]   // min
+thresholdLapsHr(a: Activity, tPace: number): number | undefined                                        // bpm
+thresholdHr(activities: Activity[], tPace: number, now: string): { bpm; from: "test" | "race" | "laps"; date } | undefined
+```
+
+### Règles
+
+| Id  | Règle | Paramètres | Source | Niveau |
+| --- | ----- | ---------- | ------ | ------ |
+| NV1 | Chronos du 5 km, 10 km et semi : `predictTime` (F5) du niveau en service, la distance de l'objectif comprise (seule sa mise en avant change). Niveau `provisional` : chaque chrono précédé de « ≈ ». Sans niveau : pas de bloc | | Daniels 2014 ; recherche 07 §2.2, §2.3 | OBS |
+| NV2 | Marathon, selon le volume moyen des 8 dernières semaines (minutes courues / 8) et la plus longue sortie des 6 dernières : volume ≥ 240 min et sortie ≥ 1 h 45 → F5 ; volume < 150 min ou aucune sortie ≥ 1 h 15 → aucun chrono (« Pas encore ») ; sinon le plus lent de F5 et de Riegel 1,07 depuis le semi prédit (F6), affiché « au mieux » | 240 min (F6) ; 150 min, 1 h 15, 1 h 45 à calibrer | Vickers & Vertosick 2016 (Riegel trop rapide de 10 min en médiane au marathon) ; recherche 07 §2.3 | OBS/OP |
+| NV3 | Allure seuil = allure T de l'app (F7). FC seuil, dans l'ordre : le test de 30 min ou la course de 50 à 65 min la plus récente des 8 dernières semaines (F14) ; sinon la moyenne des 2 sorties les plus récentes de 8 semaines dont les tours consécutifs tiennent l'allure T à ±3 % pendant 15 min au moins, FC moyenne des tours qui commencent après la 5e minute (dérive et retard du capteur au poignet) ; sinon inconnue (« À mesurer »). Jamais un pourcentage de FCmax ou de FCR présenté comme une mesure : il reste dans les zones (F13) | 8 sem. ; ±3 % ; 15 min ; 5 min ; 2 sorties | Friel 2016 ; McGehee 2005 (test de 30 min, erreur-type 8 bpm) ; Fleckenstein 2023 (88 à 95 % FCmax au seuil) ; recherche 07 §3 | CONS/OP |
+| NV4 | VO2max : la plus récente des 30 derniers jours, avec sa lecture F19 face à sa course déclarée (« au-dessus » dès 5 points d'écart : 45 contre une course à VDOT 40 n'est jamais « en accord ») ; sans VO2max, la colonne disparaît | 30 j | F19 ; recherche 07 §4 | OP |
+
+### Tests
+
+| #    | Entrée | Sortie attendue |
+| ---- | ------ | --------------- |
+| NV-1 | VDOT 40, 260 min/sem., sortie la plus longue 2 h | 24:06 ; 50:01 ; 1:50:54 ; 3:49:37 |
+| NV-2 | VDOT 40, 260 min/sem. et sortie de 1 h 30 ; puis 180 min/sem. et sortie de 2 h | marathon 3:52:49 au mieux, les deux fois |
+| NV-3 | VDOT 40, 140 min/sem. et sortie de 2 h ; puis 200 min/sem. et sortie de 1 h 10 | marathon : aucun, les deux fois |
+| NV-4 | Tours de 1 km à l'allure T (VDOT 40) : 4 tours à FC 162, 172, 172, 172 ; 2 tours ; 4 tours 5 % plus lents ; un tour sans FC au milieu | 172 ; aucun ; aucun ; aucun |
+| NV-5 | Test de 30 min (FC 175) le 10/11, course de 60 min (FC 178) le 14/11, tempo le 18/11 ; aujourd'hui le 21/11 | 178, course, le 14/11 |
+| NV-6 | Deux tempos à FC 170 et 174 les 06 et 13/11 ; un seul tempo ; des efforts de plus de 8 semaines ; seulement des footings | 172, tours, le 13/11 ; inconnue ; inconnue ; inconnue |
+| NV-7 | VO2max 45, semi déclaré en 1:51 (VDOT 40,0) | « au-dessus », pas « en accord » |
 
 
 ---

@@ -186,10 +186,6 @@ export type ProgramInput = z.infer<typeof programInputSchema>;
 
 /** GET /api/program: the stored programme, with the plan the coach follows when there is a goal and a known form. */
 export const programViewSchema = programSchema.extend({
-  /** « Ta montre »: Garmin's latest VO2max, and how it reads next to her declared race (algo.md F19). */
-  garmin: z
-    .object({ vo2max: z.number().positive(), versus: z.enum(["agrees", "above", "below"]).optional() })
-    .optional(),
   plan: z
     .object({
       /** Monday of « Semaine 1 »: the week the programme starts in, which runs plan week 1 (P3) too. */
@@ -217,6 +213,40 @@ export const programViewSchema = programSchema.extend({
 });
 export type ProgramView = z.infer<typeof programViewSchema>;
 export type TargetOdds = NonNullable<NonNullable<ProgramView["plan"]>["odds"]>;
+
+/** GET /api/level (algo.md M13): Programme's « Ton niveau ». Null before her level is known. */
+export const levelSchema = z
+  .object({
+    /** F10: a level not yet measured by a race or a test. */
+    provisional: z.boolean(),
+    /** The day the level in service was set. */
+    since: localDateSchema,
+    /** Garmin's latest VO2max of 30 days, and how it reads next to her declared race (F19). */
+    vo2max: z
+      .object({
+        value: z.number().positive(),
+        date: localDateSchema,
+        versus: z.enum(["agrees", "above", "below"]).optional(),
+      })
+      .optional(),
+    /** The app's T pace (F7), s/km. */
+    thresholdPace: z.number().positive(),
+    /** NV3; absent when nothing measured it. */
+    thresholdHr: z
+      .object({ bpm: z.number().int().positive(), from: z.enum(["test", "race", "laps"]), date: localDateSchema })
+      .optional(),
+    /** NV1, NV2: 5 km, 10 km, half, marathon; a marathon without `min` waits for more volume. */
+    predictions: z.array(
+      z.object({
+        distanceM: z.number().positive(),
+        min: z.number().positive().optional(),
+        bestCase: z.literal(true).optional(),
+      }),
+    ),
+    goalDistanceM: z.number().positive().optional(),
+  })
+  .nullable();
+export type Level = z.infer<typeof levelSchema>;
 
 /** GET /api/progression (algo.md M12). Null without a goal (maintenance mode) or before her level is known. */
 export const progressionSchema = z

@@ -68,15 +68,6 @@ export function lastRaceLine(last: NonNullable<Program["lastTime"]>, today: stri
   return `${name} en ${time}, ${last.date ? `il y a ${ago}` : "estimé"}`;
 }
 
-const VERSUS = { agrees: "en accord avec", above: "au-dessus de", below: "en dessous de" } as const;
-
-/** « Ta montre »: what Garmin says of her level, next to her race (algo.md F19). */
-export function garminLine(garmin: Program["garmin"]): string {
-  if (!garmin) return "Pas encore de VO2max sur ta montre";
-  const line = `VO2max ${Math.round(garmin.vo2max)} selon Garmin`;
-  return garmin.versus ? `${line}, ${VERSUS[garmin.versus]} ta course` : line;
-}
-
 /** "Dimanche 17 janvier · J-62" */
 export function raceLine(program: Program, today: string): string {
   const date = longDate(program.goal.date);

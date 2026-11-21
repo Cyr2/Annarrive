@@ -3,9 +3,9 @@ import { banner, expect, onPlan, type Page, test } from "../support/test.ts";
 onPlan();
 
 const path = (page: Page) => new URL(page.url()).pathname;
-const gear = (page: Page) => page.getByRole("button", { name: "Réglages" });
+const settingsRow = (page: Page) => page.getByRole("button", { name: "Réglages" });
 
-test("la roue ouvre Réglages, l'onglet Programme reste allumé, et chaque retour ramène à Programme", async ({
+test("la ligne Réglages ouvre Réglages, l'onglet Programme reste allumé, et chaque retour ramène à Programme", async ({
   page,
 }) => {
   await page.goto("/programme");
@@ -13,7 +13,7 @@ test("la roue ouvre Réglages, l'onglet Programme reste allumé, et chaque retou
   // Programme is only the programme now: no setting on it.
   await expect(page.getByRole("button", { name: /^Courses par semaine/ })).toHaveCount(0);
 
-  await gear(page).click();
+  await settingsRow(page).click();
   await expect(page.getByRole("heading", { name: "Réglages", level: 1 })).toBeVisible();
   expect(path(page)).toBe("/programme/reglages");
   await expect(tab).toHaveAttribute("aria-current", "page");
@@ -22,13 +22,13 @@ test("la roue ouvre Réglages, l'onglet Programme reste allumé, et chaque retou
   expect(path(page)).toBe("/programme");
 
   // The system's Back pops Réglages too.
-  await gear(page).click();
+  await settingsRow(page).click();
   await expect(page.getByRole("button", { name: /^Courses par semaine/ })).toBeVisible();
   await page.goBack();
   await expect(page.getByRole("article", { name: "Ton objectif" })).toBeVisible();
 
   // The Programme tab touched again brings back its root, and Back then leaves Programme instead of reopening it.
-  await gear(page).click();
+  await settingsRow(page).click();
   await expect(page.getByRole("button", { name: /^Courses par semaine/ })).toBeVisible();
   await tab.click();
   await expect(page.getByRole("article", { name: "Ton objectif" })).toBeVisible();

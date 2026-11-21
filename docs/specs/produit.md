@@ -46,7 +46,7 @@ Barre d'onglets flottante : **Aujourd'hui**, **Semaine**, **Programme**, **Reggi
 | Semaine, glisser une séance | `design/Semaine.dc.html` |
 | Ajouter (bouton +), séance de muscu | `design/Ajouter.dc.html`, `design/Muscu.dc.html` |
 | Programme : objectif, frise des phases, Ton niveau (dernière course, ce que dit la montre), progression | `design/Programme.dc.html`, puis la maquette validée le 21/11/2026 (section 1) |
-| Réglages, page poussée depuis la roue de Programme ; feuille « Ta dernière course » | Maquette validée le 21/11/2026 (sections 2 et 3) |
+| Réglages, page poussée depuis la dernière ligne de Programme (au départ par une roue, remplacée le 21/11/2026, maquette `programme-v2`) ; feuille « Ta dernière course » | Maquette validée le 21/11/2026 (sections 2 et 3) |
 | Reggie, conversation et widgets | `design/Assistant.dc.html`, `design/ReggieWidgets.dc.html` |
 | Onboarding | Maquette validée (cinq questions) |
 

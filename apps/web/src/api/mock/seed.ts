@@ -167,6 +167,5 @@ export function seedProgram(raceDate: string, now: Date): Program {
     strength: STRENGTH,
     timetableCheckedAt: new Date(now.getTime() - 12 * 60_000).toISOString(),
     watch: { model: "vivoactive 4", connected: true, lastSync: new Date(now.getTime() - 4 * 60_000).toISOString() },
-    garmin: { vo2max: 45, versus: "agrees" },
   };
 }

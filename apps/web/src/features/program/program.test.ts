@@ -3,17 +3,7 @@ import { seedProgram } from "../../api/mock/seed.ts";
 import { EMPTY, issue, toPayload } from "../onboarding/onboarding.ts";
 import { runWindow } from "./DayWindow.tsx";
 import { raceTitle } from "./goal.ts";
-import {
-  clock,
-  garminLine,
-  lastRaceLine,
-  RACE_AGO,
-  raceAgoOf,
-  raceClock,
-  raceDateOf,
-  secondsOf,
-  settingValue,
-} from "./program.ts";
+import { clock, lastRaceLine, RACE_AGO, raceAgoOf, raceClock, raceDateOf, secondsOf, settingValue } from "./program.ts";
 import { skyPhase } from "./sky.ts";
 import { targetReasons } from "./TargetTag.tsx";
 
@@ -74,13 +64,6 @@ describe("ton niveau", () => {
     expect(lastRaceLine(semi, today)).toBe("Semi en 1:52, il y a 2 mois");
     expect(lastRaceLine({ ...semi, date: raceDateOf("0", today) }, today)).toBe("Semi en 1:52, il y a moins d'un mois");
     expect(lastRaceLine({ distanceM: 8000, minutes: 40.5 }, today)).toBe("8 km en 40:30, estimé");
-  });
-
-  it("says what Garmin reads, next to her race when there is one", () => {
-    expect(garminLine({ vo2max: 45.2, versus: "agrees" })).toBe("VO2max 45 selon Garmin, en accord avec ta course");
-    expect(garminLine({ vo2max: 50, versus: "above" })).toBe("VO2max 50 selon Garmin, au-dessus de ta course");
-    expect(garminLine({ vo2max: 40 })).toBe("VO2max 40 selon Garmin");
-    expect(garminLine(undefined)).toBe("Pas encore de VO2max sur ta montre");
   });
 });
 

@@ -13,6 +13,11 @@ const pushed = () => {
  * takes its place.
  */
 export function leaveSettings(navigate: (to: string, options: { replace: boolean }) => void) {
-  if (pushed()) history.back();
-  else navigate("/programme", { replace: true });
+  if (leaving) return;
+  if (!pushed()) return navigate("/programme", { replace: true });
+  // The tab bar may hand one tap over twice before the page changes: a second Back would leave the app.
+  leaving = true;
+  addEventListener("popstate", () => (leaving = false), { once: true });
+  history.back();
 }
+let leaving = false;

@@ -4,6 +4,7 @@ import {
   chatHistorySchema,
   chatStreamEventSchema,
   healthSchema,
+  levelSchema,
   moveSlotsSchema,
   profileViewSchema,
   progressionSchema,
@@ -252,6 +253,7 @@ export function createHttpApi(
       return toProgram({ program, profile, lastSyncAt: status?.lastSyncAt, days, today: today(), watch: link });
     },
     progression: () => get("/progression", progressionSchema),
+    level: () => get("/level", levelSchema),
 
     addEvent: (input) => change("POST", "/events", toEventInput(input)),
     updateEvent(eventId, patch) {

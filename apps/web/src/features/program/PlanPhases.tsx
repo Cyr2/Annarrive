@@ -1,6 +1,8 @@
+import { useLayoutEffect, useRef, useState } from "react";
 import type { Program } from "../../api/schemas.ts";
 import { cx } from "../../lib/cx.ts";
 import { Surface } from "../../ui/Surface.tsx";
+import { type Label, phaseLabels } from "./phaseLabels.ts";
 import { phaseBar } from "./program.ts";
 
 // One gradient across the whole plan, from easy green to race coral: each phase shows its own stretch of it.
@@ -49,17 +51,58 @@ export function PlanPhases({ program }: { program: Program }) {
           </span>
         ))}
       </div>
-      <ol className="t-cap m-0 flex list-none justify-between gap-2 p-0">
-        {segments.map((s) => (
-          <li
-            key={s.name}
-            aria-current={s.current ? "step" : undefined}
-            className={cx("last:text-right", s.current && "font-bold text-ink")}
-          >
-            {s.name}
-          </li>
-        ))}
-      </ol>
+      <PhaseNames phases={phases} />
     </Surface>
+  );
+}
+
+/** Each name under its own segment, placed once the real font is laid out: one line, so nothing below moves. */
+function PhaseNames({ phases }: { phases: ReturnType<typeof phaseBar> }) {
+  const ref = useRef<HTMLOListElement>(null);
+  const [labels, setLabels] = useState<Label[]>([]);
+  const current = phases.findIndex((p) => p.current);
+  const key = phases.map((p) => `${p.name}:${p.weeks}`).join() + current;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `key` stands for the phases it is built from
+  useLayoutEffect(() => {
+    const list = ref.current;
+    if (!list) return;
+    const context = document.createElement("canvas").getContext("2d");
+    const place = () => {
+      const style = getComputedStyle(list);
+      const measure = (text: string, bold: boolean) => {
+        if (!context) return Number.POSITIVE_INFINITY;
+        context.font = `${bold ? 700 : style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+        return context.measureText(text).width;
+      };
+      const input = { width: list.clientWidth, weeks: phases.map((p) => p.weeks), current, measure };
+      setLabels(phaseLabels({ ...input, names: phases.map((p) => p.name) }));
+    };
+    place();
+    // Outfit may arrive after the first layout: the names are placed again with its real widths.
+    void document.fonts.ready.then(place);
+    const resize = new ResizeObserver(place);
+    resize.observe(list);
+    return () => resize.disconnect();
+  }, [key]);
+  return (
+    <ol ref={ref} className="t-cap relative m-0 h-[1lh] list-none p-0">
+      {phases.map((p, i) => {
+        const label = labels[i];
+        return (
+          <li key={p.name} aria-current={p.current ? "step" : undefined}>
+            <span className="sr-only-label">{p.name}</span>
+            {label && (
+              <span
+                aria-hidden="true"
+                className={cx("absolute top-0 whitespace-nowrap", p.current && "font-bold text-ink")}
+                style={{ left: label.x }}
+              >
+                {label.text}
+              </span>
+            )}
+          </li>
+        );
+      })}
+    </ol>
   );
 }

@@ -13,6 +13,7 @@ import {
 import type { Api } from "../client.ts";
 import type { Activity, CalendarEvent, ChangeRow, Item, Program, Proposal, RaceResult, Run } from "../schemas.ts";
 import { chatDay, type ReggieMemory, reggie } from "./chat.ts";
+import { seedLevel } from "./level.ts";
 import { seedProgression } from "./progression.ts";
 import { applyChange, blockedDays, changeOptions, isRun, proposeSlots } from "./rules.ts";
 import { seedProgram, seedWeek, strengthEvent } from "./seed.ts";
@@ -191,6 +192,10 @@ export function createMockApi({
     async progression() {
       await wait();
       return state.program.maintenance ? null : seedProgression(monday, state.program.goal.date);
+    },
+    async level() {
+      await wait();
+      return seedLevel(monday);
     },
 
     addEvent: (input) =>
