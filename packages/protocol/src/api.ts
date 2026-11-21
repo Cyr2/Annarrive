@@ -88,10 +88,10 @@ export const profileSchema = z.object({
   runsPerWeek: z.union([z.literal(3), z.literal(4), z.literal(5)]),
   earliest: timeOfDaySchema,
   latestEnd: timeOfDaySchema,
-  noRunDays: z.array(z.number().int().min(1).max(7)),
+  noRunDays: z.array(z.number().int().min(1).max(7)).max(7),
   bedtime: timeOfDaySchema,
   /** Days her long run may go on (algo.md S8), 1 = Monday; the coach picks the freest of them each week. */
-  preferredLongDays: z.array(z.number().int().min(1).max(7)).min(1).optional(),
+  preferredLongDays: z.array(z.number().int().min(1).max(7)).min(1).max(7).optional(),
   preferredHour: timeOfDaySchema.optional(),
   useSleepHr: z.boolean(),
   /** How long before a class (or any calendar item) her run must end: shower, change, get there (H1). */
@@ -496,8 +496,8 @@ const PUSH_HOSTS =
 
 /** `PushSubscription.toJSON()` from the browser; extra fields are dropped. */
 export const pushSubscriptionInputSchema = z.object({
-  endpoint: z.url({ protocol: /^https$/, hostname: PUSH_HOSTS }),
-  keys: z.object({ p256dh: z.string().min(1), auth: z.string().min(1) }),
+  endpoint: z.url({ protocol: /^https$/, hostname: PUSH_HOSTS }).max(1000),
+  keys: z.object({ p256dh: z.string().min(1).max(200), auth: z.string().min(1).max(100) }),
 });
 export type PushSubscriptionInput = z.infer<typeof pushSubscriptionInputSchema>;
 export const pushUnsubscribeInputSchema = pushSubscriptionInputSchema.pick({ endpoint: true });

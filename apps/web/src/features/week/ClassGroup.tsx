@@ -15,6 +15,7 @@ export function ClassGroup({ items, past }: { items: CalendarEvent[]; past: bool
         type="button"
         aria-expanded={open}
         aria-controls={id}
+        data-crumb="Groupe de cours"
         onClick={() => setOpen(!open)}
         data-variant="inset"
         className={cx(

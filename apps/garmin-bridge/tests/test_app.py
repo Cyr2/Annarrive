@@ -14,12 +14,12 @@ from garmin_bridge.app import app, unofficial
 from garmin_bridge.session import get_garmin
 
 client = TestClient(app)
-AUTH = {"x-bridge-secret": "s3cret"}
+AUTH = {"x-bridge-secret": "s3cret" + "0" * 30}
 
 
 @pytest.fixture
 def garmin(monkeypatch):
-    monkeypatch.setenv("BRIDGE_SECRET", "s3cret")
+    monkeypatch.setenv("BRIDGE_SECRET", "s3cret" + "0" * 30)
     monkeypatch.delenv("GARMIN_API_KEY", raising=False)
     fake = MagicMock()
     app.dependency_overrides[get_garmin] = lambda: fake
@@ -33,10 +33,24 @@ def test_health_is_public():
 
 
 def test_protected_route_needs_the_shared_secret(monkeypatch):
-    monkeypatch.setenv("BRIDGE_SECRET", "s3cret")
+    monkeypatch.setenv("BRIDGE_SECRET", "s3cret" + "0" * 30)
     assert client.get("/whoami").status_code == 401
     assert client.get("/whoami", headers={"x-bridge-secret": "wrong"}).status_code == 401
     assert client.get("/whoami", headers=AUTH).json() == {"authorized": True}
+
+
+def test_non_ascii_secret_is_refused_not_a_crash(monkeypatch):
+    monkeypatch.setenv("BRIDGE_SECRET", "s3cret" + "0" * 30)
+    assert client.get("/whoami", headers={"x-bridge-secret": "é".encode("latin-1")}).status_code == 401
+
+
+def test_short_secret_never_authorizes(monkeypatch):
+    monkeypatch.setenv("BRIDGE_SECRET", "short")
+    assert client.get("/whoami", headers={"x-bridge-secret": "short"}).status_code == 401
+
+
+def test_no_openapi_schema():
+    assert client.get("/openapi.json").status_code == 404
 
 
 def test_unset_secret_never_authorizes(monkeypatch):

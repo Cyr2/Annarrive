@@ -5,6 +5,8 @@ import { type Clock, toParisLocal } from "../time.ts";
 
 /** Kept 30 days, then dropped by the nightly job (architecture.md, « Journal des incidents »). */
 export const INCIDENT_DAYS = 30;
+/** A looping or hostile client cannot fill the disk: only the latest rows stay. */
+export const MAX_INCIDENTS = 500;
 const DAY_MS = 86_400_000;
 
 /** The incident journal: what broke on Anna's phone or on the server, for Darius to read with `cli/incidents.ts`. */
@@ -57,6 +59,7 @@ export class IncidentService {
 
   #put(incident: Omit<Incident, "id" | "at">): void {
     this.#stores.incident.put({ ...incident, id: randomUUID().slice(0, 8), at: this.#clock().toISOString() });
+    this.#stores.incident.keepLatest(MAX_INCIDENTS);
   }
 }
 

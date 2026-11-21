@@ -1,6 +1,7 @@
 import type { WorkoutRequest } from "@annarrive/protocol";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  AUTH_PAUSE_MS,
   BridgeError,
   BridgeInvalidResponseError,
   BridgeUnreachableError,
@@ -119,6 +120,18 @@ describe("bridge client", () => {
     expect(fetchMock).not.toHaveBeenCalled();
     expect(await client.recentActivities()).toEqual([activity]);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("pauses every call for an hour after a refused login", async () => {
+    let t = 1000;
+    const fetcher = vi.fn<typeof fetch>(async () => json({ code: "garmin_auth" }, { status: 401 }));
+    const client = createBridgeClient({ baseUrl: "http://bridge.test", secret: "s", fetch: fetcher, now: () => t });
+    await expect(client.recentActivities()).rejects.toBeInstanceOf(GarminAuthError);
+    await expect(client.recentActivities()).rejects.toBeInstanceOf(GarminAuthError);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    t += AUTH_PAUSE_MS;
+    await expect(client.recentActivities()).rejects.toBeInstanceOf(GarminAuthError);
+    expect(fetcher).toHaveBeenCalledTimes(2);
   });
 
   it("maps a 401 to GarminAuthError", async () => {

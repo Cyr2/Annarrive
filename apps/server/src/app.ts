@@ -239,6 +239,11 @@ export type AppOptions = { services: Services; sessionSecret: string; webDist?: 
 export function createApp({ services, sessionSecret, webDist }: AppOptions): Hono {
   const app = new Hono();
   app.use(securityHeaders(inlineScriptHashes(webDist)));
+  // Personal data: no browser or proxy cache keeps an API answer.
+  app.use("/api/*", async (c, next) => {
+    await next();
+    c.header("Cache-Control", "no-store");
+  });
   const font = fontFace(webDist);
 
   app.onError((error, c) => {
@@ -368,6 +373,13 @@ export function createApp({ services, sessionSecret, webDist }: AppOptions): Hon
   });
   // Each message runs Reggie (paid model calls); each refresh downloads the ICS.
   app.post("/api/chat", rateLimit(30, 10 * 60_000));
+  // Garmin logins and plan rebuilds are costly: a stuck client or a stolen session stays bounded.
+  app.post("/api/watch/sync", rateLimit(6, 60_000));
+  app.on(["POST", "PUT"], ["/api/race/keep-fit", "/api/program"], rateLimit(30, 60_000));
+  app.on("GET", ["/api/level", "/api/progression"], rateLimit(30, 60_000));
+  // Everything else that changes state, one shared counter.
+  const writeLimit = rateLimit(300, 60_000);
+  app.use("/api/*", (c, next) => (c.req.method === "GET" || c.req.method === "HEAD" ? next() : writeLimit(c, next)));
   app.on(["POST", "PUT"], ["/api/timetable/refresh", "/api/timetable/url"], rateLimit(10, 60_000));
   // The phone's incident journal, counted per session (a hash of its cookie) so a looping client stops itself.
   const sessionKey = (c: Context) =>
