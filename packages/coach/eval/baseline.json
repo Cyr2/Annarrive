@@ -5,11 +5,11 @@
     "sortie-longue": 10,
     "espacement": 10,
     "allures": 8.8,
-    "sante": 9.6,
+    "sante": 10,
     "sautees": 10,
     "affutage": 10,
     "stabilite": 10,
-    "structure": 9.8,
+    "structure": 9.9,
     "trajectoire": 10,
     "adaptation": 10,
     "contenu": 10
@@ -167,7 +167,7 @@
   "retour-marathon": {
     "volume": 10,
     "intensite": 10,
-    "sortie-longue": 10,
+    "sortie-longue": 9.9,
     "espacement": 10,
     "allures": 7.7,
     "sante": 9.5,
@@ -182,7 +182,7 @@
   "retour-marathon-sans-seuil": {
     "volume": 10,
     "intensite": 10,
-    "sortie-longue": 10,
+    "sortie-longue": 9.9,
     "espacement": 10,
     "allures": 8.1,
     "sante": 9.6,
