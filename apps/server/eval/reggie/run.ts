@@ -1,7 +1,7 @@
 /**
- * Runs the core scenarios (or the ids given) against the real model (REGGIE_MODEL, default sonnet) and prints a pass/fail
- * table, with each reply's first-word and total time. Spends the account's quota: run it on purpose, never in CI.
- *   pnpm --filter @annarrive/server eval:reggie [scenario-id ...]
+ * Runs every scenario (or only the ids given) against the real model (REGGIE_MODEL, default sonnet) and prints a
+ * pass/fail table, with each reply's first-word and total time. Spends the account's quota: run it on purpose, never in CI.
+ *   pnpm --filter @annarrive/server eval:reggie [--only id,id...]
  */
 
 import type { ChatWidget } from "@annarrive/protocol";
@@ -12,7 +12,17 @@ import { createServices } from "../../src/services/index.ts";
 import { openDatabase } from "../../src/storage/db.ts";
 import { createStores } from "../../src/storage/stores.ts";
 import { grade, type Scenario, type Transcript, table } from "./grade.ts";
-import { BASE_WEEK, coreScenarioIds, FITNESS, NOW, PROGRAM, scenarios } from "./scenarios.ts";
+import { BASE_WEEK, FITNESS, NOW, PROGRAM, scenarios } from "./scenarios.ts";
+
+/** All scenarios, or those of `--only a,b`; an unknown id stops the run instead of quietly running fewer. */
+export function pick(all: Scenario[], args: string[]): Scenario[] {
+  const at = args.indexOf("--only");
+  if (at === -1) return all;
+  const ids = (args[at + 1] ?? "").split(",").filter(Boolean);
+  const unknown = ids.filter((id) => !all.some((s) => s.id === id));
+  if (ids.length === 0 || unknown.length > 0) throw new Error(`--only : scénario inconnu ${unknown.join(", ")}`);
+  return all.filter((s) => ids.includes(s.id));
+}
 
 /** Milliseconds from the message to Reggie's first word on screen, and to his whole reply. */
 export type Timing = { firstTextMs: number | null; totalMs: number };
@@ -64,8 +74,7 @@ export function seeded(scenario: Pick<Scenario, "seed" | "history">, reggie: Reg
 }
 
 if (import.meta.main) {
-  const only = process.argv.length > 2 ? process.argv.slice(2) : coreScenarioIds;
-  const selected = only.length > 0 ? scenarios.filter((s) => only.includes(s.id)) : scenarios;
+  const selected = pick(scenarios, process.argv.slice(2));
   const reggie = createReggie(query);
   const rows = [];
   for (const scenario of selected) {

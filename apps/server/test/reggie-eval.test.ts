@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { grade, type Scenario, type Transcript, table } from "../eval/reggie/grade.ts";
+import { pick, seeded } from "../eval/reggie/run.ts";
 import { scenarios } from "../eval/reggie/scenarios.ts";
 
 function scenario(id: string): Scenario {
@@ -21,10 +22,30 @@ const goodCalf = reply("J'ai noté ta douleur au mollet. Ce soir, footing facile
 ]);
 
 describe("Reggie's eval scenarios", () => {
-  it("has 46 scenarios with unique ids and something to check", () => {
-    expect(scenarios).toHaveLength(46);
-    expect(new Set(scenarios.map((s) => s.id)).size).toBe(46);
+  it("has 47 scenarios with unique ids and something to check", () => {
+    expect(scenarios).toHaveLength(47);
+    expect(new Set(scenarios.map((s) => s.id)).size).toBe(47);
     for (const s of scenarios) expect(Object.keys(s.expect).length).toBeGreaterThan(0);
+  });
+
+  it("runs every scenario by default, or only those of --only", () => {
+    expect(pick(scenarios, [])).toHaveLength(47);
+    expect(pick(scenarios, ["--only", "cotes,rhume"]).map((s) => s.id)).toEqual(["rhume", "cotes"]);
+    expect(() => pick(scenarios, ["--only", "cotes,nope"])).toThrow("nope");
+    expect(() => pick(scenarios, ["--only"])).toThrow();
+  });
+
+  // The model is not run here: the algorithm's answer is what makes each expectation right.
+  it("one run more fits the week of « demande-seance-en-plus », not that of its refused sibling", () => {
+    const silent = async function* () {} as never;
+    const ask = { type: "E", replace: "add" } as const;
+    const extra = seeded(scenario("demande-seance-en-plus"), silent).plan.requestSession(ask, false);
+    expect(extra.accepted).toBe(true);
+    const refused = seeded(scenario("demande-seance-en-plus-refusee"), silent).plan.requestSession(
+      { ...ask, days: ["2026-11-18"] },
+      false,
+    );
+    expect(refused).toMatchObject({ accepted: false, refused: "Une seule course en plus de tes réglages par semaine" });
   });
 });
 

@@ -191,15 +191,19 @@ function WeekHeader({ range = " ", offset, onOffset, onAdd, filter, onFilter, gr
           )}
         </p>
         <IconButton icon="chevronRight" label="Semaine suivante" onClick={() => onOffset(offset + 1)} />
-        <IconButton
-          icon="grid"
-          label="Vue calendrier"
-          variant="tinted"
-          tone="action"
-          className="ml-1"
+        {/* A plain icon beside the arrows, in their ink: it switches how the week reads, so blue says it is on. */}
+        <button
+          type="button"
+          aria-label="Vue calendrier"
           aria-pressed={grid.shown}
           onClick={grid.toggle}
-        />
+          className={cx(
+            "press flex size-11 flex-none items-center justify-center border-0 bg-transparent p-0",
+            grid.shown ? "text-action" : "text-ink",
+          )}
+        >
+          <Icon name="grid" size={22} stroke={2.25} />
+        </button>
         {onAdd && (
           <IconButton icon="plus" label="Ajouter" variant="tinted" tone="action" className="ml-1" onClick={onAdd} />
         )}
