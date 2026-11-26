@@ -21,9 +21,9 @@ const goodCalf = reply("J'ai noté ta douleur au mollet. Ce soir, footing facile
 ]);
 
 describe("Reggie's eval scenarios", () => {
-  it("has 39 scenarios with unique ids and something to check", () => {
-    expect(scenarios).toHaveLength(39);
-    expect(new Set(scenarios.map((s) => s.id)).size).toBe(39);
+  it("has 40 scenarios with unique ids and something to check", () => {
+    expect(scenarios).toHaveLength(40);
+    expect(new Set(scenarios.map((s) => s.id)).size).toBe(40);
     for (const s of scenarios) expect(Object.keys(s.expect).length).toBeGreaterThan(0);
   });
 });

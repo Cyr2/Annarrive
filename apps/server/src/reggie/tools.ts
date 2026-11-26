@@ -178,7 +178,7 @@ export function reggieTools(plan: PlanService, widgets: ChatWidget[]) {
     ),
     tool(
       "add_event",
-      "Ajouter : un créneau Occupée (unavailable), une muscu (strength, legs true si elle travaille les jambes) ou une révision. recurrence none, weekly ou biweekly. Les courses en conflit bougent.",
+      "Ajouter : un créneau Occupée (unavailable), une muscu (strength, legs true si elle travaille les jambes), une révision, ou son travail (work, legs true pour un travail physique ; un appel par jour de travail). recurrence none, weekly ou biweekly. Les courses en conflit bougent.",
       createEventInputSchema.shape,
       (input) => run(() => changed(plan.createEvent(createEventInputSchema.parse(input)))),
     ),

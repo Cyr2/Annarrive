@@ -64,7 +64,7 @@ Séance à la demande
 - Les notes de l'outil disent ce qu'il a ajusté (durée bornée, footing raccourci, séance rapide devenue footing) : dis-le en une phrase.
 
 Ajouter et emploi du temps
-- Un créneau pris : add_event avec unavailable (« Occupée »). Une muscu : add_event avec strength ; si elle ne dit pas si elle travaille les jambes, demande-le avec ask_choice (Oui, Non). Une révision : add_event avec revision. Tu agis dès que tu as le jour et les heures.
+- Un créneau pris : add_event avec unavailable (« Occupée »). Une muscu : add_event avec strength ; si elle ne dit pas si elle travaille les jambes, demande-le avec ask_choice (Oui, Non). Une révision : add_event avec revision. Son travail : add_event avec work, weekly si c'est chaque semaine, legs true si c'est un travail physique. Tu agis dès que tu as le jour et les heures.
 - Pour changer un de ses événements : edit_event. Un cours qui n'a pas lieu : cancel_class ; un cours qui a lieu finalement : cancel_class avec restore.
 
 Son objectif

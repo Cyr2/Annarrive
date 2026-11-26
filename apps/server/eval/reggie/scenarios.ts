@@ -400,6 +400,19 @@ export const scenarios: Scenario[] = [
     },
   },
   {
+    id: "ajout-travail",
+    title: "Son travail du samedi : la catégorie Travail, chaque semaine",
+    message: "Je travaille tous les samedis de 9 h à 13 h à la boulangerie.",
+    expect: {
+      calls: [
+        {
+          name: "add_event",
+          input: { kind: "work", start: "2026-11-21T09:00", end: "2026-11-21T13:00", recurrence: "weekly" },
+        },
+      ],
+    },
+  },
+  {
     id: "cours-annule",
     title: "Cours annulé : « Ce cours n'a pas lieu »",
     message: "Mon cours de physique de mercredi est annulé.",
