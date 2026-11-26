@@ -1,7 +1,9 @@
 import type { HookInput } from "@anthropic-ai/claude-agent-sdk";
 import { describe, expect, it, vi } from "vitest";
 import {
+  ACCOUNT_PAUSE_MS,
   createReggie,
+  credentialsOf,
   eventsOf,
   type QueryFn,
   type ReggieEvent,
@@ -15,6 +17,7 @@ import { reggieTools } from "../src/reggie/tools.ts";
 import { setup } from "./helpers.ts";
 
 const env = { ANTHROPIC_API_KEY: "test-key", CLAUDE_CODE_OAUTH_TOKEN: "", PATH: "/bin" };
+const key = { name: "ANTHROPIC_API_KEY", value: "test-key" } as const;
 const tools = () => reggieTools(setup().services.plan, []);
 
 function preToolUse(tool_name: string, tool_input: unknown): HookInput {
@@ -99,7 +102,7 @@ async function collect(run: AsyncIterable<ReggieEvent>) {
 
 describe("Reggie's SDK options", () => {
   it("allows only the app's tools and the guarded web tools, with no settings from disk", () => {
-    const options = reggieOptions(tools(), env);
+    const options = reggieOptions(tools(), env, key);
     expect(options).toMatchObject({
       model: "sonnet",
       effort: "medium",
@@ -119,21 +122,25 @@ describe("Reggie's SDK options", () => {
   });
 
   it("passes only the variables the model's process needs, never a secret or an unknown variable", () => {
-    const passed = sdkEnv({
-      ANTHROPIC_API_KEY: "k",
-      Path: "C:\bin",
-      HOME: "/home/node",
-      TZ: "Europe/Paris",
-      NODE_ENV: "production",
-      REGGIE_MODEL: "opus",
-      DARIUS_BRIDGE_SECRET: "d",
-      DARIUS_BRIDGE_URL: "https://bridge.test",
-      BRIDGE_SECRET: "b",
-      SESSION_SECRET: "s",
-      SOMETHING_ADDED_LATER: "x",
-    });
+    const passed = sdkEnv(
+      {
+        ANTHROPIC_API_KEY: "k",
+        CLAUDE_CODE_OAUTH_TOKEN: "a,b",
+        Path: "C:\bin",
+        HOME: "/home/node",
+        TZ: "Europe/Paris",
+        NODE_ENV: "production",
+        REGGIE_MODEL: "opus",
+        DARIUS_BRIDGE_SECRET: "d",
+        DARIUS_BRIDGE_URL: "https://bridge.test",
+        BRIDGE_SECRET: "b",
+        SESSION_SECRET: "s",
+        SOMETHING_ADDED_LATER: "x",
+      },
+      { name: "CLAUDE_CODE_OAUTH_TOKEN", value: "b" },
+    );
     expect(passed).toEqual({
-      ANTHROPIC_API_KEY: "k",
+      CLAUDE_CODE_OAUTH_TOKEN: "b",
       Path: "C:\bin",
       HOME: "/home/node",
       TZ: "Europe/Paris",
@@ -147,18 +154,27 @@ describe("Reggie's SDK options", () => {
   });
 
   it("takes the model from REGGIE_MODEL and rejects anything but sonnet or opus", () => {
-    expect(reggieOptions(tools(), { ...env, REGGIE_MODEL: "opus" }).model).toBe("opus");
-    expect(reggieOptions(tools(), { ...env, REGGIE_MODEL: "" }).model).toBe("sonnet");
-    expect(() => reggieOptions(tools(), { ...env, REGGIE_MODEL: "gpt" })).toThrow();
+    expect(reggieOptions(tools(), { ...env, REGGIE_MODEL: "opus" }, key).model).toBe("opus");
+    expect(reggieOptions(tools(), { ...env, REGGIE_MODEL: "" }, key).model).toBe("sonnet");
+    expect(() => reggieOptions(tools(), { ...env, REGGIE_MODEL: "gpt" }, key)).toThrow();
   });
 
   it("drops empty variables and needs one credential", () => {
-    expect(sdkEnv(env)).toEqual({ ANTHROPIC_API_KEY: "test-key", PATH: "/bin" });
-    expect(sdkEnv({ CLAUDE_CODE_OAUTH_TOKEN: "tok" })).toEqual({ CLAUDE_CODE_OAUTH_TOKEN: "tok" });
+    expect(sdkEnv(env, key)).toEqual({ ANTHROPIC_API_KEY: "test-key", PATH: "/bin" });
     const secrets = { SESSION_SECRET: "s", BRIDGE_SECRET: "b", GARMIN_PASSWORD: "p", VAPID_PRIVATE_KEY: "v" };
-    expect(sdkEnv({ ANTHROPIC_API_KEY: "k", ...secrets })).toEqual({ ANTHROPIC_API_KEY: "k" });
+    expect(sdkEnv(secrets, key)).toEqual({ ANTHROPIC_API_KEY: "test-key" });
+    expect(sdkEnv({ REGGIE_LOCAL_LOGIN: "1" })).toEqual({ REGGIE_LOCAL_LOGIN: "1" });
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    expect(() => sdkEnv({ ANTHROPIC_API_KEY: "" })).toThrow("Reggie ne répond pas pour l'instant");
+    expect(() => sdkEnv(env)).toThrow("Reggie ne répond pas pour l'instant");
+  });
+
+  it("lists the accounts in order: each comma-separated token, then the API key", () => {
+    expect(credentialsOf({ CLAUDE_CODE_OAUTH_TOKEN: " a , ,b ", ANTHROPIC_API_KEY: "k" })).toEqual([
+      { name: "CLAUDE_CODE_OAUTH_TOKEN", value: "a" },
+      { name: "CLAUDE_CODE_OAUTH_TOKEN", value: "b" },
+      { name: "ANTHROPIC_API_KEY", value: "k" },
+    ]);
+    expect(credentialsOf({ CLAUDE_CODE_OAUTH_TOKEN: "", ANTHROPIC_API_KEY: "" })).toEqual([]);
   });
 });
 
@@ -249,9 +265,133 @@ describe("Reggie's stream", () => {
     await expect(collect(run({ prompt: "x", tools: tools() }))).rejects.toThrow("error_max_turns");
   });
 
+  it("fails when the turn ended on an API error", async () => {
+    const run = createReggie(fakeQuery([{ type: "result", subtype: "success", is_error: true }]), env);
+    await expect(collect(run({ prompt: "x", tools: tools() }))).rejects.toThrow("Reggie stopped: success");
+  });
+
   it("ignores messages it does not know", () => {
     expect(eventsOf({ type: "rate_limit_event" })).toEqual([]);
+    expect(eventsOf({ type: "rate_limit_event", rate_limit_info: { status: "allowed_warning" } })).toEqual([]);
     expect(eventsOf(null)).toEqual([]);
     expect(eventsOf({ type: "stream_event", parent_tool_use_id: null, event: { type: "message_stop" } })).toEqual([]);
+  });
+});
+
+describe("backup accounts", () => {
+  const accounts = { CLAUDE_CODE_OAUTH_TOKEN: "tok-a,tok-b", ANTHROPIC_API_KEY: "", PATH: "/bin" };
+  const reset = 1_900_000_000;
+  const limited: unknown[] = [
+    { type: "rate_limit_event", rate_limit_info: { status: "rejected", resetsAt: reset } },
+    { type: "assistant", parent_tool_use_id: null, error: "rate_limit", message: { content: [] } },
+    { type: "result", subtype: "success", is_error: true, result: "You've hit your limit" },
+  ];
+  const answer: unknown[] = [
+    {
+      type: "stream_event",
+      parent_tool_use_id: null,
+      event: { type: "content_block_start", content_block: { type: "text" } },
+    },
+    {
+      type: "stream_event",
+      parent_tool_use_id: null,
+      event: { type: "content_block_delta", delta: { type: "text_delta", text: "Ok." } },
+    },
+    { type: "result", subtype: "success" },
+  ];
+
+  /** Answers with `byToken[token]`, the token being the one the run's env carries; records each run's env. */
+  function queryByToken(byToken: Record<string, unknown[]>, envs: Record<string, string>[]): QueryFn {
+    return ((params: { options: { env: Record<string, string> } }) => {
+      envs.push(params.options.env);
+      return fakeQuery(byToken[params.options.env.CLAUDE_CODE_OAUTH_TOKEN ?? ""] ?? answer)(params as never);
+    }) as unknown as QueryFn;
+  }
+
+  it("moves the question to the next account when one hits its limit, with one token per run", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const envs: Record<string, string>[] = [];
+    const run = createReggie(queryByToken({ "tok-a": limited }, envs), accounts);
+    expect(await collect(run({ prompt: "x", tools: tools() }))).toEqual([{ type: "text", delta: "Ok." }]);
+    expect(envs.map((e) => e.CLAUDE_CODE_OAUTH_TOKEN)).toEqual(["tok-a", "tok-b"]);
+    expect(envs.every((e) => !("ANTHROPIC_API_KEY" in e))).toBe(true);
+  });
+
+  it("lets a limited account rest until its reset, then tries it first again", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const envs: Record<string, string>[] = [];
+    let now = (reset - 60) * 1000;
+    const run = createReggie(queryByToken({ "tok-a": limited }, envs), accounts, undefined, () => now);
+    await collect(run({ prompt: "un", tools: tools() }));
+    await collect(run({ prompt: "deux", tools: tools() }));
+    now = reset * 1000 + 1;
+    await collect(run({ prompt: "trois", tools: tools() })).catch(() => undefined);
+    expect(envs.map((e) => e.CLAUDE_CODE_OAUTH_TOKEN)).toEqual(["tok-a", "tok-b", "tok-b", "tok-a", "tok-b"]);
+  });
+
+  it("rests an account without a reset time for the default pause, and ends on the API key", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const revoked = [
+      { type: "assistant", parent_tool_use_id: null, error: "authentication_failed", message: { content: [] } },
+      { type: "result", subtype: "success", is_error: true },
+    ];
+    const envs: Record<string, string>[] = [];
+    let now = 0;
+    const run = createReggie(
+      queryByToken({ "tok-a": revoked, "tok-b": revoked }, envs),
+      { ...accounts, ANTHROPIC_API_KEY: "k" },
+      undefined,
+      () => now,
+    );
+    expect(await collect(run({ prompt: "x", tools: tools() }))).toEqual([{ type: "text", delta: "Ok." }]);
+    expect(envs.at(-1)).toMatchObject({ ANTHROPIC_API_KEY: "k" });
+    expect(envs.at(-1)).not.toHaveProperty("CLAUDE_CODE_OAUTH_TOKEN");
+    now = ACCOUNT_PAUSE_MS - 1;
+    await collect(run({ prompt: "y", tools: tools() }));
+    now = ACCOUNT_PAUSE_MS + 1;
+    await collect(run({ prompt: "z", tools: tools() }));
+    expect(envs.map((e) => e.CLAUDE_CODE_OAUTH_TOKEN ?? "key")).toEqual([
+      "tok-a",
+      "tok-b",
+      "key",
+      "key",
+      "tok-a",
+      "tok-b",
+      "key",
+    ]);
+  });
+
+  it("answers that Reggie is unavailable when every account is at its limit", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const run = createReggie(queryByToken({ "tok-a": limited, "tok-b": limited }, []), accounts);
+    await expect(collect(run({ prompt: "x", tools: tools() }))).rejects.toThrow("Reggie ne répond pas pour l'instant");
+  });
+
+  it("does not ask again once Reggie has said or done something, so no action runs twice", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const envs: Record<string, string>[] = [];
+    const midway = [
+      {
+        type: "assistant",
+        parent_tool_use_id: null,
+        message: { content: [{ type: "tool_use", name: "mcp__annarrive__move_session", input: {} }] },
+      },
+      ...limited,
+    ];
+    const run = createReggie(queryByToken({ "tok-a": midway }, envs), accounts);
+    await expect(collect(run({ prompt: "x", tools: tools() }))).rejects.toThrow();
+    expect(envs).toHaveLength(1);
+  });
+
+  it("keeps the spare process for the account that answered only", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const started: string[] = [];
+    const startup = vi.fn(async (params: { options: { env: Record<string, string> } }) => {
+      started.push(params.options.env.CLAUDE_CODE_OAUTH_TOKEN ?? "");
+      return { query: () => fakeQuery(answer)({ prompt: "" } as never), close: vi.fn() };
+    }) as unknown as StartupFn;
+    const run = createReggie(queryByToken({ "tok-a": limited }, []), accounts, startup);
+    await collect(run({ prompt: "x", tools: tools() }));
+    expect(started).toEqual(["tok-b"]);
   });
 });
