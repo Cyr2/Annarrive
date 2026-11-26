@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { FeasibilityClass } from "@annarrive/coach";
+import { type FeasibilityClass, runWindowMin } from "@annarrive/coach";
 import type {
   ActivityView,
   CalendarEvent,
@@ -28,6 +28,7 @@ import type {
   Week,
 } from "@annarrive/protocol";
 import { agreeWith, DEFAULT_TRAVEL_MIN, sessionNames, sessionWhy } from "@annarrive/protocol";
+import { z } from "zod";
 import { type CoachPort, type CoachResult, type CoachState, type DailyDecisionResult, slotFor } from "../coach-port.ts";
 import { InvalidInputError, NotFoundError, ReadOnlyError } from "../errors.ts";
 import { WATCH_FAILING_SINCE, watchLink, watchStatus } from "../garmin/workout.ts";
@@ -84,6 +85,12 @@ const unavailableLabels: Record<Unavailable["reason"], string> = {
   sick: "Malade : footing tranquille jusqu'à ce que ça aille mieux",
   pain: "Douleur notée : pas de fractionné pour l'instant",
 };
+
+/** Skips that are hers: any other skip came from a replan and is put back (audit 26/11/2026). */
+const OWN_SKIPS = ["Séance sautée", ...Object.values(unavailableLabels)];
+const statusSchema = z.object({ status: z.string() });
+/** The shortest run her hours must hold: a footing at its catalogue floor (P15). */
+const SHORTEST_RUN_MIN = 30;
 
 /** What Reggie reads before answering about form or health. */
 export type RecentData = {
@@ -338,8 +345,8 @@ export class PlanService {
 
   moveSession(id: string, start: string): ChangeResponse {
     const before = this.coachState();
-    const session = this.#upcoming(before, id);
     const now = this.#now();
+    const session = this.#upcoming(before, id, now);
     if (start < now) throw new InvalidInputError("Ce moment est déjà passé : choisis un créneau à venir.");
     if (dateOf(start) >= addDays(mondayOf(dateOf(now)), WINDOW_DAYS)) {
       throw new InvalidInputError(
@@ -426,6 +433,10 @@ export class PlanService {
       ...patch,
       ...(preferredHour ? { preferredHour } : {}),
     };
+    if (runWindowMin(settings) < SHORTEST_RUN_MIN)
+      throw new InvalidInputError(
+        "Il reste moins de 30 min pour courir entre « Pas avant », « Pas après » et ton coucher : élargis ces horaires.",
+      );
     const write: PlanWrite = { table: "profile", id: CURRENT, after: { id: CURRENT, value: settings } };
     const onboarded = !this.#stores.profile.get(CURRENT) && this.#stores.program.get(CURRENT) !== undefined;
     const reshaped =
@@ -564,6 +575,36 @@ export class PlanService {
   repairPaceRanges(): ChangeResponse {
     const before = this.coachState();
     return this.#commit("Allures précisées", [], before, this.#coach.repaceRanges(before, this.#now()));
+  }
+
+  /**
+   * Run at each start: a run still ahead that a replan set to skipped (before only Anna could skip) is planned again,
+   * then placed with her current hours, as one change. A second start finds nothing and records nothing.
+   */
+  restoreReplanSkips(): ChangeResponse {
+    const before = this.coachState();
+    const now = this.#now();
+    const log = this.#stores.changeLog
+      .list()
+      .filter((e) => !e.undoneAt)
+      .sort((a, b) => a.at.localeCompare(b.at));
+    const skippedBy = (id: string) =>
+      log.findLast((e) =>
+        e.mutations.some(
+          (m) =>
+            m.table === "planned_session" && m.id === id && statusSchema.safeParse(m.after).data?.status === "skipped",
+        ),
+      )?.summary ?? "";
+    const restore = new Set(
+      before.sessions
+        .filter((s) => s.status === "skipped" && s.start > now)
+        .filter((s) => !OWN_SKIPS.some((own) => skippedBy(s.id).startsWith(own)))
+        .map((s) => s.id),
+    );
+    if (restore.size === 0) return { change: null, warnings: [] };
+    const sessions = before.sessions.map((s) => (restore.has(s.id) ? { ...s, status: "planned" as const } : s));
+    const result = this.#coach.updateSettings({ ...before, sessions }, before.settings, now);
+    return this.#commit("Séances remises au plan", [], before, result);
   }
 
   /** Lets FitnessService record an accepted proposal like any other change. */
@@ -762,11 +803,14 @@ export class PlanService {
     return [...fromRuns, ...fromSessions];
   }
 
-  #upcoming(state: CoachState, id: string): PlannedSession {
+  /** `movableFrom`: a skipped run still ahead can be moved, which plans it again. */
+  #upcoming(state: CoachState, id: string, movableFrom?: string): PlannedSession {
     const session = state.sessions.find((s) => s.id === id);
     if (!session)
       throw new NotFoundError("Cette séance est introuvable dans cette semaine ou la suivante : recharge l'écran.");
-    if (session.status !== "planned") throw new ReadOnlyError("Cette séance n'est plus à venir : elle ne change plus.");
+    const skippedAhead = movableFrom !== undefined && session.status === "skipped" && session.start > movableFrom;
+    if (session.status !== "planned" && !skippedAhead)
+      throw new ReadOnlyError("Cette séance n'est plus à venir : elle ne change plus.");
     return session;
   }
 

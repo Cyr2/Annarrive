@@ -15,6 +15,7 @@ import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { coachAdapter, toSession } from "../src/coach-adapter.ts";
 import { workoutHash } from "../src/garmin/workout.ts";
+import { defaultProfile } from "../src/services/plan.ts";
 import { addDays, addMinutes } from "../src/time.ts";
 import { fakeBridge, setup } from "./helpers.ts";
 
@@ -582,6 +583,78 @@ describe("coach adapter: Anna's actions", () => {
     t.stores.plannedSession.put(built("early", "E", "2026-11-18T07:00"));
     await change(t, "PATCH", "/api/profile", { earliest: "09:00" });
     expect(t.stores.plannedSession.get("early")?.start.slice(11)).not.toBe("07:00");
+  });
+});
+
+describe("coach adapter: her evening of 23 November (audit 26/11/2026)", () => {
+  /** Monday 23 November, 22:07 in Paris: she has just finished onboarding. */
+  const MONDAY_EVENING = new Date("2026-11-23T21:07:59Z");
+  const HER_RUNS: [string, PlannedSession["type"], string, number][] = [
+    ["2026-11-23-1", "E", "2026-11-26T18:00", 45],
+    ["2026-11-23-2", "L", "2026-11-29T16:00", 90],
+    ["2026-11-30-0", "E", "2026-12-01T18:00", 45],
+    ["2026-11-30-1", "E", "2026-12-03T18:00", 45],
+    ["2026-11-30-2", "L", "2026-12-06T16:00", 90],
+  ];
+
+  async function herWeek() {
+    const t = await ready({ onboarded: true });
+    t.setNow(MONDAY_EVENING);
+    t.stores.profile.put({ id: "current", value: { ...defaultProfile, earliest: "10:00", latestEnd: "21:30" } });
+    for (const [id, type, start, dur] of HER_RUNS) t.stores.plannedSession.put(built(id, type, start, dur));
+    return t;
+  }
+
+  it("reads « Pas après 0:00 » as midnight and keeps every run planned, then at 23:45 too", async () => {
+    const t = await herWeek();
+    await change(t, "PATCH", "/api/profile", { latestEnd: "00:00" });
+    await change(t, "PATCH", "/api/profile", { latestEnd: "23:45" });
+    for (const [id, , start] of HER_RUNS)
+      expect(t.stores.plannedSession.get(id)).toMatchObject({ status: "planned", start });
+  });
+
+  it("refuses hours that leave no room for a run, and saves nothing", async () => {
+    const t = await herWeek();
+    const r = await t.call("PATCH", "/api/profile", { earliest: "21:00", latestEnd: "21:20" });
+    expect(r.status).toBe(400);
+    expect(JSON.stringify(r.json)).toContain("moins de 30 min pour courir");
+    expect(t.stores.profile.get("current")?.value.latestEnd).toBe("21:30");
+  });
+
+  it("puts back at start the runs a settings change skipped, not the one she skipped, once", async () => {
+    const t = await herWeek();
+    const skip = (id: string) => {
+      const s = t.stores.plannedSession.get(id);
+      return { table: "planned_session" as const, id, after: s ? { ...s, status: "skipped" as const } : null };
+    };
+    const profile = { id: "current", value: { ...defaultProfile, earliest: "10:00", latestEnd: "00:00" } };
+    t.services.changes.record("Réglages enregistrés", [
+      { table: "profile", id: "current", after: profile },
+      ...HER_RUNS.slice(0, 4).map(([id]) => skip(id)),
+    ]);
+    t.services.changes.record("Ta semaine est prête", [skip("2026-11-30-2")]);
+    t.services.changes.record("Réglages enregistrés", [
+      { table: "profile", id: "current", after: { ...profile, value: { ...profile.value, latestEnd: "23:45" } } },
+    ]);
+    t.stores.plannedSession.put(built("own", "E", "2026-11-27T18:00"));
+    t.services.changes.record("Séance sautée", [skip("own")]);
+
+    const repaired = t.services.plan.restoreReplanSkips();
+
+    expect(repaired.change?.summary).toBe("Séances remises au plan");
+    for (const [id, , start] of HER_RUNS)
+      expect(t.stores.plannedSession.get(id)).toMatchObject({ status: "planned", start });
+    expect(t.stores.plannedSession.get("own")?.status).toBe("skipped");
+    expect(t.services.plan.restoreReplanSkips().change).toBeNull();
+  });
+
+  it("moves a run still ahead that was skipped, and it is planned again", async () => {
+    const t = await herWeek();
+    const thu = t.stores.plannedSession.get("2026-11-23-1");
+    if (thu) t.stores.plannedSession.put({ ...thu, status: "skipped" });
+    const moved = await change(t, "POST", "/api/sessions/2026-11-23-1/move", { start: "2026-11-27T18:00" });
+    expect(moved.status).toBe(200);
+    expect(t.stores.plannedSession.get("2026-11-23-1")).toMatchObject({ status: "planned", start: "2026-11-27T18:00" });
   });
 });
 

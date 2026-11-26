@@ -303,6 +303,16 @@ describe("onTimetableChange and updateSettings (EV14, EV15)", () => {
     expect(r.state.settings.bedtime).toBe("22:00");
   });
 
+  // Her evening of 23 November (EV-34): « Pas après 0:00 » then 23:45, from 10:00; her runs stay where they were.
+  it("keeps every run planned when « Pas après » is set to midnight, then to 23:45", () => {
+    const runs = [easy("thu", "2026-11-26T18:00"), long("sun", "2026-11-29T16:00", 90)];
+    const now = "2026-11-23T22:07";
+    const midnight = updateSettings(state(runs), { earliest: "10:00", latestEnd: "00:00", bedtime: "23:30" }, now);
+    expect(midnight.state.sessions).toEqual(runs);
+    const later = updateSettings(midnight.state, { latestEnd: "23:45" }, now);
+    expect(later.state.sessions).toEqual(runs);
+  });
+
   it("never moves a run from another day onto today (P25, EV-23)", () => {
     // Tuesday 8:00: Wednesday's late run breaks the new bedtime, Wednesday and Thursday are full of classes.
     const run = easy("w", "2026-11-25T20:30");

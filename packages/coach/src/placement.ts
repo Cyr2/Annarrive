@@ -39,8 +39,14 @@ export const slotOf = (s: Session): Slot => slotAt(s, s.start);
 const isRun = (s: Session): boolean => s.start !== "" && (s.status === "planned" || s.status === "done");
 const runsBut = (w: WeekState, id: string): Session[] => w.sessions.filter((s) => s.id !== id && isRun(s));
 const dayStart = (iso: string): number => toMin(dateOf(iso));
+type Hours = Pick<Settings, "earliest" | "latestEnd" | "bedtime">;
 /** A bedtime before noon is after midnight. */
-const bedMin = (s: Settings): number => clockMin(s.bedtime) + (clockMin(s.bedtime) < 720 ? DAY_MIN : 0);
+const bedMin = (s: Hours): number => clockMin(s.bedtime) + (clockMin(s.bedtime) < 720 ? DAY_MIN : 0);
+/** « Pas après 0:00 » is midnight, the end of the day (H2), never its start. */
+const latestMin = (s: Hours): number => clockMin(s.latestEnd) || DAY_MIN;
+/** H2 and H7: minutes of a day a run can fill, from `earliest` to `latestEnd` or 1 h before bed. */
+export const runWindowMin = (s: Hours): number =>
+  Math.max(0, Math.min(latestMin(s), bedMin(s) - 60) - clockMin(s.earliest));
 /** Only a session she marked as legs counts: a missing flag is not a legs day (owner decision, 17/11/2026). */
 const isLegs = (e: CalEvent): boolean => e.kind === "strength" && e.legs === true;
 export const isFrozen = (s: Session, now: string): boolean => s.frozen || hoursBetween(now, s.start) < FREEZE_H;
@@ -58,7 +64,7 @@ function h2(slot: Slot, s: Settings): Violation | null {
   if (s.noRunDays.includes(weekday(slot.start))) return v("H2", "Jour sans course");
   const start = toMin(slot.start) - dayStart(slot.start);
   const end = toMin(slot.end) - dayStart(slot.start);
-  if (start < clockMin(s.earliest) || end > clockMin(s.latestEnd)) return v("H2", "En dehors de tes horaires");
+  if (start < clockMin(s.earliest) || end > latestMin(s)) return v("H2", "En dehors de tes horaires");
   return null;
 }
 
@@ -131,7 +137,7 @@ export function checkHard(session: Session, slot: Slot, week: WeekState): Violat
 function grid(day: string, s: Settings, durMin: number): Slot[] {
   const slots: Slot[] = [];
   const base = `${day}T00:00`;
-  for (let t = clockMin(s.earliest); t + durMin <= clockMin(s.latestEnd); t += GRID_MIN) {
+  for (let t = clockMin(s.earliest); t + durMin <= latestMin(s); t += GRID_MIN) {
     slots.push({ start: addMin(base, t), end: addMin(base, t + durMin) });
   }
   return slots;
@@ -455,14 +461,17 @@ const withSession = (w: WeekState, s: Session): WeekState => ({
   sessions: w.sessions.map((x) => (x.id === s.id ? s : x)),
 });
 
-/** Repairs one conflicting movable session: move, else Q → E in place, else skip (A4). */
-function repair(s: Session, rest: WeekState, now: string, ruleId: string): Change {
+/**
+ * Repairs one conflicting movable session: move, else Q → E in place. Null when neither holds: the run stays
+ * planned where it is, with a warning (A4), since only Anna skips a run (EV7, EV21).
+ */
+function repair(s: Session, rest: WeekState, now: string, ruleId: string): Change | null {
   const slot = bestMove(s, rest, now);
   if (slot) return { ruleId, sessionId: s.id, before: s, after: { ...s, start: slot.start } };
   const easy = toEasy(s, s.durMin);
   if (isHard(s) && checkHard(easy, slotOf(easy), rest).length === 0)
     return { ruleId: "A4d", sessionId: s.id, before: s, after: easy };
-  return { ruleId: "A4c", sessionId: s.id, before: s, after: { ...s, status: "skipped" } };
+  return null;
 }
 
 /**
@@ -492,6 +501,10 @@ function replanOne(id: string, out: Replan, trigger: string, now: string, own: b
     return w;
   }
   const repaired = repair(s, { ...w, sessions: w.sessions.filter((x) => x.id !== id) }, now, trigger);
+  if (!repaired) {
+    out.warnings.push({ ruleId: "A4", message: "Une course n'a pas trouvé de place cette semaine", sessionId: id });
+    return w;
+  }
   // The rule it broke where it was: the banner says why it moved.
   const change = { ...repaired, detail: violations[0]?.message ?? "" };
   out.changes.push(change);

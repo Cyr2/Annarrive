@@ -14,8 +14,10 @@ const evening = (time: string) => (minutesOf(time) < 12 * 60 ? minutesOf(time) +
 /** When her runs can actually happen: from "pas avant" to "pas après", cut one hour before bedtime. */
 export function runWindow(notBefore: string, notAfter: string, bedtime: string) {
   const start = minutesOf(notBefore);
-  const end = Math.min(minutesOf(notAfter), evening(bedtime) - BEFORE_BED);
-  return { start, end, text: end > start ? `${timeOf(start)} à ${timeOf(end)}` : "Aucun créneau" };
+  // « Pas après 0:00 » is midnight, the end of the day.
+  const end = Math.min(minutesOf(notAfter) || TO, evening(bedtime) - BEFORE_BED);
+  const until = end === TO ? "minuit" : timeOf(end);
+  return { start, end, text: end > start ? `${timeOf(start)} à ${until}` : "Aucun créneau" };
 }
 
 /**
