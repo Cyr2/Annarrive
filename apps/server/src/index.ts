@@ -37,6 +37,8 @@ try {
   services.plan.repairPaceRanges();
   // A plan built before onboarding goes; the change it records takes its workouts off the watch (B2).
   services.plan.repairPreOnboarding();
+  // Runs a replan skipped before only Anna could skip (audit 26/11/2026): planned again, then sent to the watch.
+  services.plan.restoreReplanSkips();
 } catch (error) {
   console.error(`Réparation au démarrage en échec (${error instanceof Error ? error.message : "erreur inconnue"})`);
 }

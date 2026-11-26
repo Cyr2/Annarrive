@@ -10,6 +10,7 @@ import {
   placeWeek,
   proposeMoveSlots,
   replan,
+  runWindowMin,
   slotAt,
   slotReason,
   softPenalty,
@@ -49,6 +50,16 @@ describe("checkHard (H1 to H7)", () => {
 
   it("refuses a run before the earliest hour (PL-4)", () => {
     expect(ids(checkHard(e, at(e, "2026-11-23T06:30"), week([])))).toContain("H2");
+  });
+
+  // Her « Pas après 0:00 » of 23 November: midnight, not the start of the day (PL-26).
+  it("reads a latest end of 00:00 as midnight", () => {
+    const late = { ...SETTINGS, earliest: "10:00", latestEnd: "00:00", bedtime: "01:00" };
+    expect(checkHard(e, at(e, "2026-11-23T23:00"), week([], [], late))).toEqual([]);
+    expect(ids(checkHard(e, at(e, "2026-11-23T09:30"), week([], [], late)))).toEqual(["H2"]);
+    expect(runWindowMin(late)).toBe(14 * 60);
+    expect(runWindowMin({ ...late, latestEnd: "10:20" })).toBe(20);
+    expect(runWindowMin({ ...SETTINGS, earliest: "22:30" })).toBe(0);
   });
 
   it("refuses calendar overlaps with the 30 min buffer after, no-run days and two runs a day", () => {
@@ -269,10 +280,14 @@ describe("replan (A2, A3, A5, H9, H10)", () => {
     expect(r.week.sessions.find((s) => s.id === "q")?.type).toBe("E");
   });
 
-  it("skips an easy run that fits nowhere", () => {
+  // Audit 26/11/2026: a run that fit nowhere went « skipped » without a word, and never came back (PL-27).
+  it("keeps a run that fits nowhere planned at its place, with a warning", () => {
     const cal = blockDays(weekDates(MONDAY));
-    const r = replan(week([easy("e", "2026-11-26T18:00")], cal), "EV15", "2026-11-23T08:00");
-    expect(r.week.sessions[0]?.status).toBe("skipped");
+    const run = easy("e", "2026-11-26T18:00");
+    const r = replan(week([run], cal), "EV15", "2026-11-23T08:00");
+    expect(r.week.sessions).toEqual([run]);
+    expect(r.changes).toEqual([]);
+    expect(r.warnings).toContainEqual(expect.objectContaining({ ruleId: "A4", sessionId: "e" }));
   });
 });
 

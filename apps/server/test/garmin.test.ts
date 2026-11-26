@@ -107,6 +107,24 @@ describe("Garmin activities", () => {
     expect(t.stores.plannedSession.get("evening")?.status).toBe("planned");
   });
 
+  // Her week of 23 November: « Oui, je l'ai faite » at 18:54 for Wednesday's 18:00 footing, before her run of 18:19
+  // reached the app; Tuesday's free group run of 33 min had no session and stays extra.
+  it("attaches a run to its own day's session she confirmed before the sync, never a free run of another day", async () => {
+    const t = garminSetup();
+    t.stores.plannedSession.put({ ...session("2026-11-23-0", "2026-11-25T18:00"), status: "done" });
+    t.stores.plannedSession.put(session("2026-11-23-1", "2026-11-26T18:00"));
+    t.bridge.recentActivities.mockResolvedValue([
+      garminRun(1, "2026-11-24 18:08:00", { durationS: 33 * 60 }),
+      garminRun(2, "2026-11-25 18:19:00"),
+    ]);
+
+    await t.garmin.syncActivities();
+
+    expect(t.stores.activity.get("garmin:1")?.sessionId).toBeUndefined();
+    expect(t.stores.activity.get("garmin:2")?.sessionId).toBe("2026-11-23-0");
+    expect(t.stores.plannedSession.get("2026-11-23-1")?.status).toBe("planned");
+  });
+
   it("keeps a run without a planned session, and does not match twice on the next poll", async () => {
     const t = garminSetup();
     t.stores.plannedSession.put(session("evening", "2026-11-15T18:00"));

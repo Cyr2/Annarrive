@@ -329,9 +329,13 @@ export class GarminService {
   /** The planned session of the same day that starts closest to the run. */
   #matchingSession(run: Activity): PlannedSession | undefined {
     const day = dateOf(run.start);
+    const next = `${addDays(day, 1)}T00:00`;
+    const matched = new Set(this.#stores.activity.overlapping(`${day}T00:00`, next).map((a) => a.sessionId));
+    // A session she confirmed with « Oui, je l'ai faite » before her run synced is still that run's (audit 26/11).
+    const open = (s: PlannedSession) => s.status === "planned" || (s.status === "done" && !matched.has(s.id));
     return this.#stores.plannedSession
-      .overlapping(`${day}T00:00`, `${addDays(day, 1)}T00:00`)
-      .filter((s) => dateOf(s.start) === day && s.status === "planned")
+      .overlapping(`${day}T00:00`, next)
+      .filter((s) => dateOf(s.start) === day && open(s))
       .sort((a, b) => minutesApart(a.start, run.start) - minutesApart(b.start, run.start))[0];
   }
 

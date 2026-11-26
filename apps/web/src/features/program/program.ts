@@ -1,6 +1,6 @@
 import { icsUrlSchema } from "@annarrive/protocol";
 import type { Program, Settings } from "../../api/schemas.ts";
-import { addDays, daysBetween, decimal, duration, longDate, weekdayName } from "../../lib/date.ts";
+import { addDays, daysBetween, decimal, duration, longDate, minutesOf, weekdayName } from "../../lib/date.ts";
 import type { SettingKey } from "../sheets/store.ts";
 
 export const SETTING_LABELS: Record<SettingKey, string> = {
@@ -28,6 +28,8 @@ export function settingValue(key: SettingKey, settings: Settings): string {
     if (settings.preferredHour) return settings.preferredHour;
     return settings.usualHour ? `Automatique · vers ${settings.usualHour}` : "Automatique";
   }
+  // « Pas après 0:00 » is midnight, the end of the day (algo.md H2).
+  if (key === "notAfter" && minutesOf(settings.notAfter) === 0) return "Minuit";
   return settings[key];
 }
 

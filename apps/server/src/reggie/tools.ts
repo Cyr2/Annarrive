@@ -103,7 +103,7 @@ export function reggieTools(plan: PlanService, widgets: ChatWidget[]) {
     ),
     tool(
       "move_session",
-      "Déplacer, étape 2 : déplace la séance au créneau qu'Anna a choisi. Le contenu peut être adapté si le créneau casse une règle.",
+      "Déplacer, étape 2 : déplace la séance au créneau qu'Anna a choisi. Le contenu peut être adapté si le créneau casse une règle. Une séance à venir marquée sautée revient au plan ainsi.",
       { sessionId, start: localDateTimeSchema.describe("Début, heure de Paris, AAAA-MM-JJTHH:MM") },
       ({ sessionId, start }) => run(() => changed(plan.moveSession(sessionId, start))),
     ),

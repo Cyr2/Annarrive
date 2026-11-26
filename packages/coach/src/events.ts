@@ -82,7 +82,8 @@ export function moveSession(st: State, id: string, slot: Slot, now: string): Res
       warnings: [{ ruleId: blocking[0]?.ruleId ?? "EV1", message, sessionId: id }],
     };
   }
-  const moved: Session = { ...s, start: slot.start, manual: true };
+  // A run still ahead that was skipped and that she moves is planned again (EV1).
+  const moved: Session = { ...s, start: slot.start, manual: true, status: "planned" };
   const after = violations.length > 0 && isHard(s) ? { ...toEasy(moved, s.durMin), manual: true } : moved;
   const warnings = violations.slice(0, 1).map((v) => ({ ...v, sessionId: id }));
   return finish(st, put(st, after), [change("EV1", s, after)], warnings);

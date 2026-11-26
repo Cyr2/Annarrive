@@ -75,6 +75,7 @@ describe("réglages", () => {
     expect(settingValue("preferredHour", { ...settings, preferredHour: "7:30" })).toBe("7:30");
     expect(settingValue("travelMin", settings)).toBe("30 min");
     expect(settingValue("travelMin", { ...settings, travelMin: 90 })).toBe("1 h 30");
+    expect(settingValue("notAfter", { ...settings, notAfter: "0:00" })).toBe("Minuit");
   });
 });
 
@@ -84,6 +85,9 @@ describe("run window", () => {
     expect(runWindow("7:00", "21:30", "22:00").text).toBe("7:00 à 21:00");
     expect(runWindow("7:00", "21:30", "0:30").text).toBe("7:00 à 21:30");
     expect(runWindow("21:00", "7:00", "23:00").text).toBe("Aucun créneau");
+    // « Pas après 0:00 » is midnight (audit 26/11/2026).
+    expect(runWindow("10:00", "0:00", "1:30").text).toBe("10:00 à minuit");
+    expect(runWindow("10:00", "0:00", "23:30").text).toBe("10:00 à 22:30");
   });
 });
 
