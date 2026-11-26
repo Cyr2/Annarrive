@@ -209,6 +209,10 @@ Reggie répond avec du texte court et, quand il faut agir, avec des widgets tapa
 | Carte de changement | Après toute modification | Liste avant et après par jour, « Montre mise à jour », bouton Annuler (actif jusqu'au changement suivant) |
 | Raccourcis au-dessus du champ | Toujours | « Je suis malade », « Plus court », « Décaler à demain », « Pourquoi cette allure ? ». Ils lancent les mêmes parcours que les boutons de l'écran Aujourd'hui |
 
+### Quand Reggie ne peut pas répondre
+
+Tous ses comptes à leur limite, une erreur, ou rien reçu pendant 90 s : à la place des raccourcis, le champ affiche « Reggie ne peut pas répondre pour l'instant, réessaie dans un moment. » avec « Réessayer ». Son message reste dans la conversation, une seule fois : « Réessayer » le renvoie, et un nouveau message (le même ou « ? ») prend sa place au lieu de s'ajouter. Le serveur ne garde son message qu'avec la réponse de Reggie, sauf si Reggie avait déjà agi (une séance déplacée) : rien n'est enregistré en double. Chaque échec va au journal des incidents. Si Reggie est éteint sur le serveur, ou si le message est refusé, Reggie le dit dans une bulle, sans « Réessayer ».
+
 ### Questions de santé ou d'entraînement
 
 Pour une question comme « j'ai mal au tibia, c'est grave ? » ou « je mange quoi avant un semi ? », Reggie répond d'abord avec ce qu'il sait. S'il lui faut une source, il fait au plus 2 recherches sur une liste fermée de sites médicaux et sportifs reconnus, affiche « Je vérifie » pendant ce temps, puis répond en 2 ou 3 phrases avec le lien de la source. Il ne pose jamais de diagnostic.

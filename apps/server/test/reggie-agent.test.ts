@@ -6,6 +6,7 @@ import {
   credentialsOf,
   eventsOf,
   type QueryFn,
+  ReggieBusyError,
   type ReggieEvent,
   reggieOptions,
   type StartupFn,
@@ -361,10 +362,21 @@ describe("backup accounts", () => {
     ]);
   });
 
-  it("answers that Reggie is unavailable when every account is at its limit", async () => {
+  it("asks her to try again in a moment when every account is at its limit", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const run = createReggie(queryByToken({ "tok-a": limited, "tok-b": limited }, []), accounts);
-    await expect(collect(run({ prompt: "x", tools: tools() }))).rejects.toThrow("Reggie ne répond pas pour l'instant");
+    const failure = collect(run({ prompt: "x", tools: tools() }));
+    await expect(failure).rejects.toBeInstanceOf(ReggieBusyError);
+    await expect(failure).rejects.toThrow("Reggie ne peut pas répondre pour l'instant, réessaie dans un moment.");
+  });
+
+  it("takes a limit the SDK closes without an error result for a limit, not an empty answer", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const quiet = [limited[0], { type: "result", subtype: "success" }];
+    const envs: Record<string, string>[] = [];
+    const run = createReggie(queryByToken({ "tok-a": quiet }, envs), accounts);
+    expect(await collect(run({ prompt: "x", tools: tools() }))).toEqual([{ type: "text", delta: "Ok." }]);
+    expect(envs.map((e) => e.CLAUDE_CODE_OAUTH_TOKEN)).toEqual(["tok-a", "tok-b"]);
   });
 
   it("does not ask again once Reggie has said or done something, so no action runs twice", async () => {

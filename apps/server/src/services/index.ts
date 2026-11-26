@@ -65,16 +65,23 @@ export function createServices(deps: {
       );
     });
   });
+  const incidents = new IncidentService(stores, deps.clock);
   return {
     auth: new AuthService(stores, deps.clock, deps.publicUrl),
     changes,
-    chat: new ChatService(stores, plan, deps.reggie ?? createReggie(query, process.env, startup), deps.clock),
+    chat: new ChatService(
+      stores,
+      plan,
+      deps.reggie ?? createReggie(query, process.env, startup),
+      deps.clock,
+      incidents,
+    ),
     plan,
     timetable: new TimetableService(deps.db, stores, plan, deps.clock, deps.fetchIcs, deps.icsUrl),
     notifications,
     garmin,
     fitness,
-    incidents: new IncidentService(stores, deps.clock),
+    incidents,
     review,
   };
 }

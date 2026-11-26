@@ -90,4 +90,13 @@ describe("Scheduler", () => {
     stop();
     expect(s.refreshTimetable).toHaveBeenCalledTimes(1);
   });
+
+  it("logs a job that takes longer than a second, with its time", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    vi.spyOn(performance, "now").mockReturnValueOnce(0).mockReturnValueOnce(1500).mockReturnValue(0);
+    const slow = { name: "Montre", due: () => true, run: vi.fn() };
+    const fast = { name: "Sauvegarde", due: () => true, run: vi.fn() };
+    await new Scheduler([slow, fast], () => new Date("2026-11-25T17:55:00Z")).tick();
+    expect(warn.mock.calls).toEqual([["Tâche « Montre » : 1500 ms"]]);
+  });
 });

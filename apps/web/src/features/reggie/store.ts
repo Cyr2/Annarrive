@@ -12,13 +12,13 @@ export type Entry = ChatMessage & {
   answer?: string;
   /** The day of a stored message ("2026-11-16"); absent on what was said since the screen opened (today). */
   day?: string;
-  /** On a failed reply: the message to send again, and the bubble it came from (replaced by the retry). */
-  retry?: { text: string; from: string };
 };
 
 export type ChatState = {
   messages: Entry[];
   status: "idle" | "thinking" | "searching" | "writing";
+  /** Her message Reggie could not answer: the composer offers Réessayer, and her next message takes its place. */
+  failed?: Entry;
   /** What the conversation is about, "Fractionné, ce soir 18:00", shown above it. */
   context?: string;
   /** The same, for Reggie: the screen and the session. Sent with every message. */
@@ -39,8 +39,8 @@ export type ChatState = {
   answer: (messageId: string, answer: string) => Promise<void>;
   /** Marks a change card as undone. */
   undone: (messageId: string) => void;
-  /** Sends again the message a failed reply answered, in place of both. */
-  retry: (messageId: string) => Promise<void>;
+  /** Sends again the message Reggie could not answer, in place of it. */
+  retry: () => Promise<void>;
 };
 
 const WELCOME: Entry = {
@@ -48,12 +48,18 @@ const WELCOME: Entry = {
   role: "reggie",
   text: "Salut Anna ! Une question sur ton plan, ou un changement aujourd'hui ?",
 };
-const CANNOT_ANSWER = "Je n'arrive pas à répondre pour l'instant. Réessaie dans un moment.";
+export const CANNOT_ANSWER = "Reggie ne peut pas répondre pour l'instant, réessaie dans un moment.";
 
 /** A message whose id is already on screen replaces it: that is how the streamed text grows. */
 function upsert(messages: Entry[], message: ChatMessage): Entry[] {
   const at = messages.findIndex((m) => m.id === message.id);
   return at === -1 ? [...messages, message] : messages.map((m, i) => (i === at ? message : m));
+}
+
+/** One message waits for Reggie at a time: the one he could not answer gives way, with what he had begun. */
+function withoutFailed(messages: Entry[], failed: Entry | undefined): Entry[] {
+  const from = failed ? messages.findIndex((m) => m.id === failed.id) : -1;
+  return from === -1 ? messages : messages.slice(0, from);
 }
 
 export function createChatStore(getApi: () => Promise<Api>, onChange: (changeId: string) => Promise<void>) {
@@ -70,16 +76,15 @@ export function createChatStore(getApi: () => Promise<Api>, onChange: (changeId:
       const widget = event.message.widget;
       if (widget?.type === "change") await onChange(widget.change.changeId);
     };
-    const failed = (error: unknown, mine: Entry): Entry => ({
-      id: `e${++seq}`,
-      role: "reggie",
-      text: error instanceof ApiError && error.status !== 0 ? error.message : CANNOT_ANSWER,
-      // 503: Reggie is off on this server; 4xx: the message itself is refused. Sending it again would fail the same way.
-      retry:
-        error instanceof ApiError && (error.status === 503 || (error.status >= 400 && error.status < 500))
-          ? undefined
-          : { text: mine.text, from: mine.id },
-    });
+    // 503: Reggie is off on this server; 4xx but 429: the message itself is refused. Sending again fails the same way.
+    const final = (error: unknown): error is ApiError =>
+      error instanceof ApiError &&
+      (error.status === 503 || (error.status >= 400 && error.status < 500 && error.status !== 429));
+    const fail = (error: unknown, mine: Entry) => {
+      if (final(error))
+        set((s) => ({ messages: [...s.messages, { id: `e${++seq}`, role: "reggie", text: error.message }] }));
+      else set({ failed: mine });
+    };
 
     return {
       messages: [WELCOME],
@@ -121,12 +126,16 @@ export function createChatStore(getApi: () => Promise<Api>, onChange: (changeId:
         const trimmed = text.trim();
         if (!trimmed || get().status !== "idle") return;
         const mine: Entry = { id: `u${++seq}`, role: "user", text: trimmed };
-        set((s) => ({ messages: [...s.messages, mine], status: "thinking" }));
+        set((s) => ({
+          messages: [...withoutFailed(s.messages, s.failed), mine],
+          failed: undefined,
+          status: "thinking",
+        }));
         try {
           const client = await getApi();
           for await (const event of client.chat({ text: trimmed, context: get().about })) await receive(event);
         } catch (error) {
-          set((s) => ({ messages: [...s.messages, failed(error, mine)] }));
+          fail(error, mine);
         } finally {
           set({ status: "idle" });
         }
@@ -138,16 +147,9 @@ export function createChatStore(getApi: () => Promise<Api>, onChange: (changeId:
       undone(messageId) {
         set((s) => ({ messages: s.messages.map((m) => (m.id === messageId ? { ...m, answer: "undone" } : m)) }));
       },
-      async retry(messageId) {
-        const retry = get().messages.find((m) => m.id === messageId)?.retry;
-        if (!retry || get().status !== "idle") return;
-        // The failed pair goes, and the words Reggie had begun between them.
-        set((s) => {
-          const to = s.messages.findIndex((m) => m.id === messageId);
-          const from = s.messages.findIndex((m) => m.id === retry.from);
-          return { messages: s.messages.filter((_, i) => i < (from === -1 ? to : from) || i > to) };
-        });
-        await get().send(retry.text);
+      async retry() {
+        const failed = get().failed;
+        if (failed) await get().send(failed.text);
       },
     };
   });

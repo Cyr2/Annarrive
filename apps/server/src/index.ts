@@ -1,11 +1,12 @@
 import { join } from "node:path";
+import { monitorEventLoopDelay } from "node:perf_hooks";
 import { serve } from "@hono/node-server";
 import { sendNotification, setVapidDetails } from "web-push";
 import { createApp } from "./app.ts";
 import { coachAdapter } from "./coach-adapter.ts";
 import { loadConfig } from "./config.ts";
 import { createBridgeClient } from "./garmin/bridge-client.ts";
-import { createJobs, Scheduler } from "./scheduler.ts";
+import { createJobs, Scheduler, SLOW_JOB_MS } from "./scheduler.ts";
 import { createServices } from "./services/index.ts";
 import { icsFetcher } from "./services/timetable.ts";
 import { backupDatabase } from "./storage/backup.ts";
@@ -55,6 +56,15 @@ const jobs = createJobs({
   },
 });
 new Scheduler(jobs, systemClock).start();
+
+// 25/11: every call took 4 to 7 s, a constant one too. This says whether the process was blocked or the host was busy.
+const lag = monitorEventLoopDelay();
+lag.enable();
+setInterval(() => {
+  const maxMs = Math.round(lag.max / 1e6);
+  if (maxMs > SLOW_JOB_MS) console.warn(`Serveur bloqué jusqu'à ${maxMs} ms dans la dernière minute`);
+  lag.reset();
+}, 60_000).unref();
 
 serve({ fetch: app.fetch, port: config.PORT }, (info) => {
   console.info(`Annarrivé écoute sur le port ${info.port}`);
