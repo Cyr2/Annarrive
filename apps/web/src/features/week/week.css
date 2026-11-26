@@ -108,3 +108,171 @@
     animation: week-glow calc(var(--duration-fade) * 2) linear 1;
   }
 }
+
+/* ---- Vue calendrier (WeekGrid.tsx): the week over the whole screen, tab bar included, on the same sky ---- */
+.week-grid-view {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--sky);
+  padding: max(8px, env(safe-area-inset-top)) max(var(--spacing-gutter), env(safe-area-inset-right))
+    env(safe-area-inset-bottom) max(var(--spacing-gutter), env(safe-area-inset-left));
+}
+.week-grid-scroll {
+  --hour: var(--size-grid-hour);
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  container-type: size;
+  /* Upright, a sideways swipe lands on a day, the hours staying in view. */
+  scroll-snap-type: x mandatory;
+  scroll-padding-left: var(--size-grid-axis);
+}
+.week-grid-scroll[data-landscape="true"] {
+  /* The 15 hours of grid.ts fill the screen. */
+  --hour: max(var(--size-grid-hour-min), calc((100cqh - var(--size-grid-head)) / 15));
+  scroll-snap-type: none;
+}
+.week-grid {
+  display: grid;
+  grid-template-columns: var(--size-grid-axis) repeat(7, minmax(0, 1fr));
+  grid-template-rows: var(--size-grid-head) calc(15 * var(--hour));
+  /* Three days upright, seven on its side. */
+  width: calc(var(--size-grid-axis) + (100% - var(--size-grid-axis)) * 7 / 3);
+}
+[data-landscape="true"] > .week-grid {
+  width: 100%;
+}
+.week-grid-corner,
+.week-grid-head,
+.week-grid-axis {
+  position: sticky;
+  z-index: 2;
+  background: var(--color-sky-2);
+}
+.week-grid-corner,
+.week-grid-head {
+  top: 0;
+}
+.week-grid-corner,
+.week-grid-axis {
+  left: 0;
+}
+.week-grid-corner {
+  z-index: 3;
+}
+.week-grid-head {
+  scroll-snap-align: start;
+  text-align: center;
+  line-height: 1.1;
+}
+/* The first hour sits under the days, the last above the bottom edge: neither is cut. */
+.week-grid-axis > span:first-child {
+  translate: none;
+}
+.week-grid-axis > span:last-child {
+  translate: 0 -100%;
+}
+.week-grid-col {
+  position: relative;
+  border-left: 0.5px solid var(--color-hairline);
+  background: repeating-linear-gradient(to bottom, var(--color-hairline) 0 0.5px, transparent 0.5px var(--hour));
+}
+.week-grid-today {
+  background-color: var(--color-action-wash);
+}
+.week-grid-item {
+  position: absolute;
+  padding: 1px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  touch-action: manipulation;
+}
+.week-grid-block {
+  position: relative;
+  display: flex;
+  height: 100%;
+  min-height: var(--size-grid-hour-min);
+  flex-direction: column;
+  /* A line that does not fit wraps out of sight whole, never cut in half. */
+  flex-wrap: wrap;
+  align-content: flex-start;
+  column-gap: var(--spacing-gutter);
+  overflow: hidden;
+  border-radius: var(--radius-tile);
+  padding: 1px 4px;
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-inset);
+}
+.week-grid-block > span {
+  width: 100%;
+}
+.week-grid-halo {
+  position: absolute;
+  inset: 0;
+  mask-image: radial-gradient(120% 140% at 100% 0%, black, transparent 60%);
+}
+.week-grid-strength {
+  box-shadow:
+    inset 0 0 0 1px var(--color-strength-line),
+    var(--shadow-inset);
+}
+.week-grid-revision {
+  background: var(--color-revision-wash);
+}
+.week-grid-busy {
+  background: var(--color-class-wash);
+}
+/* Work, hatched: a block of her day the coach steps around, never read as something to do. */
+.week-grid-work {
+  background: repeating-linear-gradient(135deg, var(--color-work-wash) 0 6px, var(--color-work-stripe) 6px 9px);
+  box-shadow:
+    inset 0 0 0 1px var(--color-work-stripe),
+    var(--shadow-inset);
+}
+.week-grid-now {
+  position: absolute;
+  inset-inline: 0;
+  z-index: 1;
+  height: 1.5px;
+  background: var(--color-action);
+  pointer-events: none;
+}
+.week-grid-now::before {
+  content: "";
+  position: absolute;
+  left: -4px;
+  top: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-action);
+}
+/* While a session is held: a closed day steps back with its reason, a free one shows where it would land. */
+.week-grid-blocked > .week-grid-item {
+  opacity: 0.45;
+}
+.week-grid-reason {
+  position: absolute;
+  inset-inline: 2px;
+  top: 4px;
+  z-index: 2;
+  border-radius: var(--radius-tile);
+  padding: 2px 4px;
+  background: var(--surface-solid);
+  color: var(--color-ink);
+  text-align: center;
+}
+.week-grid-slot {
+  position: absolute;
+  inset-inline: 1px;
+  border-width: 1.5px;
+  border-style: dashed;
+  border-radius: var(--radius-tile);
+  transition: background-color var(--duration-select) var(--ease-out);
+}
