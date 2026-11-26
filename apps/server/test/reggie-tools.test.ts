@@ -41,6 +41,11 @@ describe("Reggie's tools", () => {
       "report_unavailable",
       "feel_better",
       "update_setting",
+      "request_session",
+      "add_event",
+      "edit_event",
+      "cancel_class",
+      "change_goal",
       "ask_choice",
       "ask_level",
     ]);
@@ -193,6 +198,97 @@ describe("Reggie's tools", () => {
     ]);
     for (const widget of t.widgets) expect(chatWidgetSchema.parse(widget)).toEqual(widget);
     await expect(t.call("ask_choice", { options: ["Seul"] })).rejects.toThrow();
+  });
+
+  /** A level and four weeks of 4 × 50 min, so the coach has her level and her usual week (M14 RQ5, RQ9). */
+  function withHistory(t: ReturnType<typeof prepare>) {
+    t.stores.fitnessEstimate.put({ id: "2026-11-01", date: "2026-11-01", vdot: 40, source: "test" });
+    for (let i = 0; i < 16; i++) {
+      const day = new Date(Date.UTC(2026, 10, 15 - 7 * Math.floor(i / 4) - (i % 4) * 2)).toISOString().slice(0, 10);
+      t.stores.activity.put({ id: `a${i}`, start: `${day}T08:00`, durMin: 50, distM: 8500 });
+    }
+  }
+
+  it("shows a requested session, records it only on apply, and Annuler takes it back (M14)", async () => {
+    const t = prepare();
+    withHistory(t);
+    const ask = { type: "E", days: ["2026-11-18"], durMin: 40 };
+    const shown = await t.call("request_session", { ...ask, apply: false });
+    expect(shown.json).toMatchObject({ accepted: true, session: { type: "E", durMin: 40, manual: true } });
+    expect(t.widgets.map((w) => w.type)).toEqual(["session_request"]);
+    expect(t.stores.plannedSession.list()).toHaveLength(1);
+
+    const applied = await t.call("request_session", { ...ask, apply: true });
+    expect(applied.json.change.summary).toBe("Footing prévu mercredi 8:00");
+    const added = t.stores.plannedSession.list().find((s) => s.id !== "tonight");
+    expect(added).toMatchObject({ type: "E", start: "2026-11-18T08:00", durMin: 40, manual: true });
+    const card = t.widgets[1];
+    if (card?.type !== "change") throw new Error("change card expected");
+    t.services.changes.undo(card.changeId);
+    expect(t.stores.plannedSession.list().map((s) => s.id)).toEqual(["tonight"]);
+    for (const widget of t.widgets) expect(chatWidgetSchema.parse(widget)).toEqual(widget);
+  });
+
+  it("relays a refusal with its reason and shows the coach's alternative (M14 RQ10)", async () => {
+    const t = prepare();
+    withHistory(t);
+    const next = await t.call("request_session", { type: "I", days: ["2026-11-17"], apply: true });
+    expect(next.json).toMatchObject({ accepted: false, refused: "Deux séances dures d'affilée" });
+    expect(next.json.alternative.ask.type).toBe("I");
+    expect(next.json.alternative.session.start.slice(0, 10)).not.toBe("2026-11-17");
+    expect(t.widgets.map((w) => w.type)).toEqual(["session_request"]);
+    expect(t.stores.plannedSession.list()).toHaveLength(1);
+
+    t.stores.health.put({ id: "current", value: { kind: "sick", since: "2026-11-16" } });
+    const sick = await t.call("request_session", { type: "E", apply: true });
+    expect(sick.json).toEqual({
+      accepted: false,
+      refused: "Repos tant que la fièvre dure : je n'ajoute aucune course",
+    });
+    const unknown = await t.call("request_session", { type: "E", apply: false });
+    expect(unknown.isError).toBe(false);
+  });
+
+  it("adds and edits her events, cancels and restores a class, and changes the goal, each undoable", async () => {
+    const t = prepare();
+    const busy = {
+      kind: "strength",
+      title: "Muscu",
+      start: "2026-11-19T12:00",
+      end: "2026-11-19T13:00",
+      legs: true,
+      recurrence: "none",
+    };
+    const added = await t.call("add_event", busy);
+    expect(added.json.change.summary).toBe("Muscu ajoutée");
+    const event = t.stores.calendarEvent.list()[0];
+    expect(event).toMatchObject({ kind: "strength", legs: true, manual: true });
+    await t.call("edit_event", { id: event?.id ?? "", patch: { legs: false } });
+    expect(t.stores.calendarEvent.get(event?.id ?? "")?.legs).toBe(false);
+
+    t.stores.calendarEvent.put({
+      id: "ics:1",
+      kind: "class",
+      title: "UE2 PHYS",
+      start: "2026-11-18T17:00",
+      end: "2026-11-18T19:00",
+      manual: false,
+      cancelled: false,
+      recurrence: "none",
+      exceptions: [],
+    });
+    await t.call("cancel_class", { id: "ics:1" });
+    expect(t.stores.calendarEvent.get("ics:1")?.cancelled).toBe(true);
+    await t.call("cancel_class", { id: "ics:1", restore: true });
+    expect(t.stores.calendarEvent.get("ics:1")?.cancelled).toBe(false);
+    const wrong = await t.call("cancel_class", { id: event?.id ?? "" });
+    expect(wrong.json.refused).toBe("Seuls les cours de l'emploi du temps peuvent être marqués annulés.");
+
+    const goal = { distanceM: 10000, date: "2027-03-14", targetMin: 50 };
+    const changed = await t.call("change_goal", { goal });
+    expect(changed.json.change.summary).toBe("Objectif modifié");
+    expect(t.services.plan.program().goal).toMatchObject(goal);
+    expect(t.widgets.filter((w) => w.type === "change")).toHaveLength(5);
   });
 
   it("lets unexpected errors through", async () => {

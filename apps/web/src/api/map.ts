@@ -29,6 +29,7 @@ import { agreeWith, paceLabel, sessionNames, sessionTitle, sessionWhy, stepBlock
 import {
   addDays,
   daysBetween,
+  dayTitle,
   decimal,
   duration,
   longDate,
@@ -655,6 +656,18 @@ function toWidget(widget: ChatWidget, question: string): Widget | undefined {
           intensity: intensityOf(widget.session.type),
         },
         alternative: "Garder la séance prévue",
+      };
+    case "session_request":
+      // The session Anna asked for (algo.md M14): its day and hour matter as much as its content.
+      return {
+        type: "preview",
+        sessionId: widget.session.id,
+        session: {
+          title: sessionTitle(widget.session),
+          detail: `${dayTitle(dateOf(widget.session.start))} · ${clockOf(widget.session.start)} · ${detail(widget.session)}`,
+          intensity: intensityOf(widget.session.type),
+        },
+        alternative: "Non merci",
       };
     case "change":
       return {

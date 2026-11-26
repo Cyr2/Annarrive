@@ -30,6 +30,8 @@ export const chatWidgetSchema = z.discriminatedUnion("type", [
     option: changeOptionSchema,
     session: plannedSessionSchema,
   }),
+  /** A session the coach accepted for her ask (algo.md M14), with "Prendre celle-ci" and "Non merci". */
+  z.object({ type: z.literal("session_request"), session: plannedSessionSchema }),
   /** After any change: Annuler stays active until the next change. */
   z.object({
     type: z.literal("change"),

@@ -22,6 +22,7 @@ import type {
   Profile,
   Program,
   Proposal,
+  SessionAsk,
   Slot,
   TargetOdds,
   Unavailable,
@@ -78,6 +79,14 @@ export type ProgramPlan = {
 export type CoachNote = { ruleId: string; message: string; sessionId?: string };
 /** `refusal` is set when the coach rejects the action (`ok: false` in algo.md): nothing is written. */
 export type CoachResult = { state: CoachState; changes: CoachNote[]; warnings: CoachNote[]; refusal?: string };
+/** M14's answer to her ask: the accepted session with the weeks it implies, or the reason and the closest ask. */
+export type SessionRequestResult =
+  | { ok: true; session: PlannedSession; result: CoachResult; notes: CoachNote[] }
+  | {
+      ok: false;
+      refusal: CoachNote;
+      alternative?: { ask: SessionAsk; session: PlannedSession; notes: CoachNote[] };
+    };
 /** The M5 `dailyDecision` action, with the state where today's session is already lightened. */
 export type DailyDecisionResult = CoachResult & {
   action: "keep" | "easier" | "shorter" | "proposeRest" | "none";
@@ -118,6 +127,11 @@ export interface CoachPort {
    * session harder (D9); the server freezes today's session afterwards (D7).
    */
   dailyDecision(st: CoachState, signals: DailySignal[], now: string): DailyDecisionResult;
+  /**
+   * M14 `requestSession`: a session she asks for, from the catalogue at her level, placed by M4 and checked against
+   * P11, G1 and G2, with what it changes in the week; else the rule's reason and the closest ask it accepts.
+   */
+  requestSession(st: CoachState, ask: SessionAsk, now: string): SessionRequestResult;
   /** M7 `changeOptions` (EV2 to EV6): none harder or longer than the planned session. */
   changeOptions(st: CoachState, id: string): ChangeOptions;
   /** M7 `applyChange`: the chosen option replaces the session, marked manual. */

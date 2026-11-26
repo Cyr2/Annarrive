@@ -2,6 +2,8 @@ import {
   type ChangeResponse,
   type ChatWidget,
   changeOptionSchema,
+  createEventInputSchema,
+  goalSchema,
   isoWeekSchema,
   localDateSchema,
   localDateTimeSchema,
@@ -9,7 +11,10 @@ import {
   paceLabel,
   painSiteSchema,
   profilePatchSchema,
+  programInputSchema,
+  sessionAskSchema,
   unavailableSchema,
+  updateEventInputSchema,
 } from "@annarrive/protocol";
 import { tool } from "@anthropic-ai/claude-agent-sdk";
 import { ZodError, z } from "zod";
@@ -151,6 +156,49 @@ export function reggieTools(plan: PlanService, widgets: ChatWidget[]) {
       "Modifie un réglage : courses par semaine, jours sans course (1 lundi à 7 dimanche), pas avant, fin au plus tard, coucher, jour de sortie longue, heure préférée (null : l'heure habituelle), sommeil et FC, temps entre une course et un cours (travelMin, en min).",
       { patch: settingPatch },
       ({ patch }) => run(() => changed(plan.updateProfile(patch))),
+    ),
+    tool(
+      "request_session",
+      "Séance à la demande : Anna demande une séance précise. type E footing, RECUP récupération, SPRINTS footing avec sprints, L sortie longue, T seuil, CRUISE seuil en fractions, I fractionné, R vitesse, SPE allure objectif, FARTLEK. days : jours acceptés (AAAA-MM-JJ, lus avec get_week ; absent : de demain à dimanche). replace : id de la séance à remplacer, \"add\" pour une course en plus. L'algorithme accepte, ajuste ou refuse avec sa raison et une alternative. apply false : montre la proposition ; apply true : l'enregistre, Annuler reste possible.",
+      { ...sessionAskSchema.shape, apply: z.boolean() },
+      ({ apply, ...ask }) =>
+        run(() => {
+          const answer = plan.requestSession(sessionAskSchema.parse(ask), apply);
+          if (answer.accepted && answer.change)
+            widgets.push({
+              type: "change",
+              changeId: answer.change.id,
+              summary: answer.change.summary,
+              warnings: answer.warnings ?? [],
+            });
+          else if (answer.accepted) widgets.push({ type: "session_request", session: answer.session });
+          else if (answer.alternative) widgets.push({ type: "session_request", session: answer.alternative.session });
+          return answer;
+        }),
+    ),
+    tool(
+      "add_event",
+      "Ajouter : un créneau Occupée (unavailable), une muscu (strength, legs true si elle travaille les jambes) ou une révision. recurrence none, weekly ou biweekly. Les courses en conflit bougent.",
+      createEventInputSchema.shape,
+      (input) => run(() => changed(plan.createEvent(createEventInputSchema.parse(input)))),
+    ),
+    tool(
+      "edit_event",
+      "Modifier un événement qu'Anna a ajouté (muscu, révision, Occupée) : horaires, titre, jambes. id lu avec get_week.",
+      { id: z.string().min(1), patch: updateEventInputSchema },
+      ({ id, patch }) => run(() => changed(plan.updateEvent(id, updateEventInputSchema.parse(patch)))),
+    ),
+    tool(
+      "cancel_class",
+      "« Ce cours n'a pas lieu » : libère le créneau d'un cours. restore true : « Le cours a lieu finalement ». id lu avec get_week.",
+      { id: z.string().min(1), restore: z.boolean().optional() },
+      ({ id, restore }) => run(() => changed(restore ? plan.restoreClass(id) : plan.cancelClass(id))),
+    ),
+    tool(
+      "change_goal",
+      "Modifier l'objectif comme la feuille Objectif de Programme : distance (5000, 10000, 21097.5, 42195), date, chrono visé en minutes (targetMin), heure de départ. goal null : plus d'objectif, mode entretien. Seulement sur une demande claire d'Anna.",
+      { goal: goalSchema.nullable() },
+      ({ goal }) => run(() => changed(plan.updateProgram(programInputSchema.parse({ goal })))),
     ),
     tool(
       "ask_choice",

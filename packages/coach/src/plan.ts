@@ -62,7 +62,7 @@ const PEAK: Record<GoalDistance, [number, number]> = {
 };
 /** P18: weeks from the end, race week included, that come after the last long run. */
 const LAST_LONG_WEEKS: Partial<Record<GoalDistance, number>> = { 21097.5: 2, 42195: 3 };
-const L_MAX: Record<GoalDistance, number> = { 5000: 90, 10000: 105, 21097.5: 120, 42195: 150 };
+export const L_MAX: Record<GoalDistance, number> = { 5000: 90, 10000: 105, 21097.5: 120, 42195: 150 };
 
 export type Split = { base: number; dev: number; spe: number; taper: number; short: boolean };
 

@@ -20,6 +20,7 @@ import type {
   Program,
   ProgramInput,
   ProgramView,
+  SessionAsk,
   SessionView,
   Today,
   Unavailable,
@@ -46,6 +47,11 @@ import {
 import { afterDelete, occurrences } from "./calendar.ts";
 import type { ChangeService, PlanWrite } from "./changes.ts";
 import type { NotificationService } from "./notifications.ts";
+
+/** What Reggie reads of an ask (M14): the session, what it implies, or the reason with the closest ask. */
+export type SessionRequestView =
+  | { accepted: true; session: PlannedSession; notes: string[]; change?: ChangeResponse["change"]; warnings?: string[] }
+  | { accepted: false; refused: string; alternative?: { ask: SessionAsk; session: PlannedSession; notes: string[] } };
 
 /** Defaults of algo.md section 4.2, used until onboarding stores a profile. */
 export const defaultProfile: Profile = {
@@ -382,6 +388,25 @@ export class PlanService {
       throw new NotFoundError("Cette séance est introuvable : recharge l'écran.");
     const proposal = this.#coach.proposeMoveSlots(id, state, this.#now());
     return { ...proposal, sideEffects: proposal.sideEffects.map((n) => n.message) };
+  }
+
+  /** M14: `apply` records the accepted session and what it implies as one change; else it is only shown. */
+  requestSession(ask: SessionAsk, apply: boolean): SessionRequestView {
+    const before = this.coachState();
+    const r = this.#coach.requestSession(before, ask, this.#now());
+    const messages = (notes: { message: string }[]) => notes.map((n) => n.message);
+    if (!r.ok) {
+      const alt = r.alternative;
+      return {
+        accepted: false,
+        refused: r.refusal.message,
+        ...(alt ? { alternative: { ask: alt.ask, session: alt.session, notes: messages(alt.notes) } } : {}),
+      };
+    }
+    const view = { accepted: true as const, session: r.session, notes: messages(r.notes) };
+    if (!apply) return view;
+    const summary = `${sessionNames[r.session.type]} ${agreeWith(r.session.type, "prévu")} ${frenchMoment(r.session.start)}`;
+    return { ...view, ...this.#commit(summary, [], before, r.result, r.session.id) };
   }
 
   changeOptions(id: string): ChangeOptions {

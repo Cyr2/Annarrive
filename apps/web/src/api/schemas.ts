@@ -255,7 +255,8 @@ export const widgetSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("preview"),
     sessionId: z.string(),
-    optionId: changeOptionIdSchema,
+    /** Absent for a session she asked for (M14): no Changer option behind it. */
+    optionId: changeOptionIdSchema.optional(),
     session: sessionPreviewSchema,
     alternative: z.string(),
   }),

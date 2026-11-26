@@ -56,6 +56,7 @@ export function seeded(scenario: Pick<Scenario, "seed" | "history">, reggie: Reg
   });
   if (scenario.seed?.profile) services.plan.updateProfile(scenario.seed.profile);
   if (scenario.seed?.health) stores.health.put({ id: "current", value: scenario.seed.health });
+  for (const e of scenario.seed?.events ?? []) stores.calendarEvent.put(e);
   for (const [i, m] of (scenario.history ?? []).entries())
     stores.chatMessage.put({ id: `h${i}`, at: `2026-11-16T06:5${i}:00.000Z`, role: m.role, text: m.text, widgets: [] });
   return services;
