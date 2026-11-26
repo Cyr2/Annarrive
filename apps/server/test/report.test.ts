@@ -44,6 +44,13 @@ function seeded() {
     sessionId: "mon",
   });
   stores.activity.put({ id: "walk", start: "2026-11-22T10:00", durMin: 60, distM: 4000 });
+  stores.activity.put({
+    id: "hot",
+    start: "2026-11-24T18:00",
+    durMin: 30,
+    distM: 5000,
+    setAside: { summary: "Il faisait 30 degrés", on: "2026-11-25" },
+  });
   stores.changeLog.put({
     id: "c1",
     // 17:00 in Paris: an hour before the session it marks done.
@@ -99,6 +106,7 @@ describe("weekly report (cli/rapport.ts)", () => {
     expect(text).toMatch(/mer 25\/11 18:00 {2}I 50 min {2}planned {2}montre sent/);
     expect(text).toContain("séance E lun 23/11 18:00");
     expect(text).toContain("écartée : allure hors bornes");
+    expect(text).toContain("mise de côté le 2026-11-25 : Il faisait 30 degrés");
   });
 
   it("gives each change its time and only the fields that moved", () => {

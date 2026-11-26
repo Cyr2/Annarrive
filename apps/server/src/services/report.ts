@@ -137,7 +137,9 @@ function runLine(stores: Stores, a: Activity): string {
   const feel = a.feel ?? a.answeredFeel ?? "?";
   const session = a.sessionId ? stores.plannedSession.get(a.sessionId) : undefined;
   const matched = session ? `séance ${session.type} ${moment(session.start)}` : aside(stores, a, pace);
-  return `${moment(a.start)}  ${clock(a.durMin)}  ${(a.distM / 1000).toFixed(2)} km  ${pace > 0 ? paceLabel(pace) : "?"}  FC ${a.avgHr ?? "?"}  ressenti ${feel}  ${matched}`;
+  // RC21: a run she explained is out of every reading; its reason is what Reggie summed up.
+  const setAside = a.setAside ? `  mise de côté le ${a.setAside.on} : ${a.setAside.summary}` : "";
+  return `${moment(a.start)}  ${clock(a.durMin)}  ${(a.distM / 1000).toFixed(2)} km  ${pace > 0 ? paceLabel(pace) : "?"}  FC ${a.avgHr ?? "?"}  ressenti ${feel}  ${matched}${setAside}`;
 }
 
 /** Why a run counts for no session, and whether the level reads it at all. */
