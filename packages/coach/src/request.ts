@@ -390,6 +390,7 @@ function withinVolume(
   return { ok: true, week: out };
 }
 
+/** The id of a run she asks for on top of her week (`isAddedRun`); a replacing run keeps the id it replaces. */
 function freshId(sessions: Session[], monday: string): string {
   const used = new Set(sessions.map((s) => s.id));
   let k = 0;

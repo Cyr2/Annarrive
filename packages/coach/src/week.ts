@@ -362,6 +362,9 @@ function withoutKept(built: Session[], kept: Session[]): Session[] {
   return left;
 }
 
+/** A run she asked for on top of her week (RQ2, `freshId` in request.ts): a replacing run keeps the id it replaces. */
+export const isAddedRun = (s: Session): boolean => /-r\d+$/.test(s.id);
+
 /** Days without a run before `monday`, counted from the last run before it. */
 function daysOff(history: Activity[], monday: string): number {
   const last = history
@@ -410,10 +413,15 @@ function capped(sessions: Session[], r: WeekRequest, phase: Phase, keepLongMin =
   const prev = pastWeeks(r.history, r.monday, LOOKBACK_WEEKS);
   // Without any run in those weeks there is no reference: the plan's starting volume (P2) already applies.
   if (prev.every((m) => m === 0)) return spiked;
+  // The runs the week keeps count in it: a week rebuilt mid-week stays under its cap as a whole (G2).
+  const fixedMin = r.kept
+    .filter((k) => (k.status === "planned" || k.status === "done") && k.type !== "RACE" && !staleRace(k, r))
+    .reduce((sum, k) => sum + k.durMin, 0);
   const sized = weeklyCaps(
     returning(spiked, r),
     prev.map((minutes) => ({ minutes })),
     keepLongMin,
+    fixedMin,
   ).week;
   return enforceDistribution(sized, phase).week;
 }
@@ -443,7 +451,12 @@ export function planWeek(r: WeekRequest): WeekPlan {
   const race = raceSession(r, p);
   const raceThisWeek = race !== null && dateOf(race.start) < addDays(r.monday, 7);
   // P24: the race replaces the week's long run, and is never capped like a planned rise.
-  const left = withoutKept(race && raceThisWeek ? [...sessions.filter((s) => s.type !== "L"), race] : sessions, kept);
+  // A run she asked for on top of her week replaces none of it (RQ2).
+  const replacing = kept.filter((k) => !isAddedRun(k));
+  const left = withoutKept(
+    race && raceThisWeek ? [...sessions.filter((s) => s.type !== "L"), race] : sessions,
+    replacing,
+  );
   const runs = left.filter((s) => s.type !== "RACE");
   const sized = capped(race ? fitHardRuns(runs, r, race, raceThisWeek, p) : runs, r, phase, keepLongMin);
   const built = [...sized, ...left.filter((s) => s.type === "RACE")];

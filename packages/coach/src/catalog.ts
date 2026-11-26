@@ -52,6 +52,19 @@ export type BuildCtx = {
 export const stepTotal = (s: Step): number => s.durMin * (s.reps ?? 1);
 const total = (steps: Step[]): number => steps.reduce((sum, s) => sum + stepTotal(s), 0);
 
+/** C1: a timed step lasts whole minutes, one under 2 min whole 10 s (strides, sprints); a distance step ends on its distance. */
+function wholeStep(st: Step): Step {
+  if (st.distM) return st;
+  const durMin = st.durMin >= 2 ? Math.round(st.durMin) : Math.max(1, Math.round(st.durMin * 6)) / 6;
+  return durMin === st.durMin ? st : { ...st, durMin };
+}
+
+/** The session with these steps timed as the watch counts them (C1), its duration their sum. */
+export function withSteps(s: Session, steps: Step[]): Session {
+  const whole = steps.map(wholeStep);
+  return { ...s, steps: whole, durMin: total(whole) };
+}
+
 /** C4: a recovery run sits under E, which runs at the band's fast end (F7): 30 s/km, about Daniels' table value + 15. */
 const RECOVERY_SLOWER_S = 30;
 
@@ -88,7 +101,7 @@ const step = (
 });
 
 export function makeSession(type: RunType, steps: Step[], base: Partial<Session> = {}): Session {
-  return {
+  const session: Session = {
     id: "",
     start: "",
     priority: PRIORITY[type],
@@ -98,10 +111,11 @@ export function makeSession(type: RunType, steps: Step[], base: Partial<Session>
     ...base,
     type,
     steps,
-    durMin: total(steps),
+    durMin: 0,
     rpeTarget: RPE[type],
     pilot: pilotFor(type),
   };
+  return withSteps(session, steps);
 }
 
 /** Q wrapper: 15 min E warm-up, body, 10 min E cool-down. */
@@ -451,7 +465,7 @@ export function scaleSession(s: Session, f: number, roundTo = 1): Session {
       : { ...st, durMin };
   };
   const steps = s.steps.map((st, i) => (i === main ? sized(st) : st));
-  return { ...s, steps, durMin: total(steps) };
+  return withSteps(s, steps);
 }
 
 /**
@@ -465,7 +479,7 @@ export function taperSession(s: Session, f: number): Session {
     const durMin = st.durMin * f;
     return st.distM ? { ...st, durMin, distM: Math.round((st.distM * f) / 100) * 100 } : { ...st, durMin };
   });
-  return { ...s, steps, durMin: total(steps) };
+  return withSteps(s, steps);
 }
 
 /** Sets the number of work fractions (at least 2) and the recoveries between them. */
@@ -474,7 +488,7 @@ export function withReps(s: Session, reps: number): Session {
   const steps = s.steps.map((st) =>
     st.reps === undefined || st.kind === "strides" ? st : { ...st, reps: st.kind === "work" ? n : n - 1 },
   );
-  return { ...s, steps, durMin: total(steps) };
+  return withSteps(s, steps);
 }
 
 /** Same steps, new paces (RC9). "race" blocks keep their own target. */
@@ -486,5 +500,5 @@ export function repace(s: Session, p: Paces): Session {
     const paced = { ...st, durMin, target: { ...st.target, paceSKm: pace } };
     return s.type === "RECUP" ? recovery(paced) : paced;
   });
-  return { ...s, steps, durMin: total(steps) };
+  return withSteps(s, steps);
 }

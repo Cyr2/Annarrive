@@ -183,6 +183,57 @@ describe("placeWeek (A1 to A4)", () => {
     expect(b.week.sessions).toEqual(a.week.sessions);
   });
 
+  it("keeps A1b when H4 is relaxed: no three days in a row while a relaxed week without them fits (PL-29)", () => {
+    // Jumeau, graine 18 : jambes lundi soir, ni lundi ni vendredi, la Q et la L fixées jeudi et dimanche.
+    const legs = { ...LEGS, start: "2026-11-23T18:00", end: "2026-11-23T19:00" };
+    const settings = { ...SETTINGS, noRunDays: [0, 4], latestEnd: "19:30" };
+    const fixed = [
+      hard("i", "2026-11-26T18:00", 45, { manual: true }),
+      long("l", "2026-11-29T09:00", 90, { manual: true }),
+    ];
+    const r = placeWeek([...fixed, hard("t", "", 45, { priority: 2 }), easy("e", "", 30)], [legs], settings, MONDAY);
+    expect(r.relaxations).toEqual(["A4a"]);
+    const days = r.week.sessions.map((s) => weekday(s.start)).sort();
+    expect(days).toHaveLength(4);
+    expect(days.some((d) => days.includes(d + 1) && days.includes(d + 2))).toBe(false);
+  });
+
+  it("runs the long run as a footing when every free day follows a legs session, never drops it (A4e, PL-31)", () => {
+    // Jumeau, graine 42 : la sortie longue de la semaine disparaissait à sa reconstruction du dimanche.
+    const free = "2026-11-25";
+    const cal = [
+      ...blockDays(weekDates(MONDAY).filter((d) => d !== free)),
+      { ...LEGS, start: `${free}T06:00`, end: `${free}T07:00` },
+    ];
+    const r = placeWeek([long("l", "", 60)], cal, SETTINGS, MONDAY);
+    expect(r.week.sessions).toEqual([expect.objectContaining({ id: "l", type: "E", durMin: 60 })]);
+    expect(r.week.sessions[0]?.start.slice(0, 10)).toBe(free);
+    expect(r.relaxations.at(-1)).toBe("A4e");
+  });
+
+  it("places what fits when the week has fewer free days than runs, the lowest priority left out (A4, PL-34)", () => {
+    // Jumeau, graine 64 : un seul jour libre pour deux courses, et la semaine reconstruite les perdait toutes les deux.
+    const free = "2026-11-25";
+    const r = placeWeek(
+      [long("l", ""), hard("q", "", 45, { priority: 3 })],
+      blockDays(weekDates(MONDAY).filter((d) => d !== free)),
+      SETTINGS,
+      MONDAY,
+    );
+    expect(r.week.sessions.filter((s) => s.start !== "").map((s) => [s.id, s.start.slice(0, 10)])).toEqual([
+      ["l", free],
+    ]);
+    expect(r.warnings.at(-1)?.ruleId).toBe("A4");
+  });
+
+  it("fits a run to her hours when they leave a shorter window, never drops it (A4f, PL-32)", () => {
+    // Jumeau, graine 37 : « Pas avant 21:00 », « Pas après 21:30 », une sortie longue de 45 min disparue.
+    const settings = { ...SETTINGS, earliest: "21:00", latestEnd: "21:30", bedtime: "23:30" };
+    const r = placeWeek([long("l", "", 45)], [], settings, MONDAY);
+    expect(r.week.sessions.map((s) => [s.id, s.durMin, s.start !== ""])).toEqual([["l", 30, true]]);
+    expect(r.relaxations.at(-1)).toBe("A4f");
+  });
+
   it("prefers the earliest of two equal slots (PL-6)", () => {
     const cal = [
       ...blockDays(weekDates(MONDAY).filter((d) => d !== "2026-11-24")),
@@ -306,6 +357,15 @@ describe("replan (A2, A3, A5, H9, H10)", () => {
     expect(r.week.sessions).toEqual([run]);
     expect(r.changes).toEqual([]);
     expect(r.warnings).toContainEqual(expect.objectContaining({ ruleId: "A4", sessionId: "e" }));
+  });
+
+  it("only moves after any change: a Q placed under A4a never turns easy in place (A4, PL-33)", () => {
+    // Jumeau, graine 25 : la L placée mardi contre la T de mercredi (A4a) devenait un footing, trois jours de suite.
+    const runs = [hard("q1", "2026-11-25T18:00", 45), hard("q2", "2026-11-26T18:00", 45)];
+    const cal = blockDays(weekDates(MONDAY).filter((d) => d !== "2026-11-25" && d !== "2026-11-26"));
+    const r = replan(week(runs, cal), "A4", "2026-11-23T08:00");
+    expect(r.week.sessions).toEqual(runs);
+    expect(r.changes).toEqual([]);
   });
 });
 

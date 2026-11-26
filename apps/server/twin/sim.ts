@@ -18,6 +18,8 @@ const AFTER_EVENT_MIN = 30;
 const WEEK_RISE = 1.1;
 /** G2b: the long run she already runs may pass G2 by 10 % of the cap, plus a minute of rounding. */
 const G2_SLACK = 1.1;
+/** G2b: the shortest an easy run gets under a load cap. */
+const G2B_FLOOR = 20;
 /** H9 (placement.ts `FREEZE_H`). */
 const FREEZE_MIN = 12 * 60;
 const QUALITY = new Set(["T", "CRUISE", "I", "R", "SPE", "FARTLEK", "TEST"]);
@@ -428,6 +430,17 @@ async function checkPlan(ctx: Context): Promise<void> {
       );
   }
   checkWeeks(ctx);
+  checkMinutes(ctx);
+}
+
+/** C1: what the watch counts down is whole minutes, or whole 10 s under 2 min; a distance step ends on its distance. */
+function checkMinutes(ctx: Context): void {
+  const whole = (min: number) => Math.abs(min * (min >= 2 ? 1 : 6) - Math.round(min * (min >= 2 ? 1 : 6))) < 1e-6;
+  for (const s of upcomingAll(ctx).filter((x) => x.status === "planned")) {
+    const bad = s.steps.find((st) => !st.distM && st.durMin !== undefined && !whole(st.durMin));
+    if (bad)
+      fail(ctx, "durées en minutes entières (C1)", `${s.type} ${s.start} [${s.id}] : étape de ${bad.durMin} min`);
+  }
 }
 
 /**
@@ -486,8 +499,11 @@ function checkWeeks(ctx: Context): void {
     );
     const cap = WEEK_RISE * Math.max(...ran);
     // What the coach built: a run she moved or asked for herself is hers (H10, RQ9 checks a request on its own).
-    const built = week.filter((s) => !s.manual).reduce((sum, s) => sum + s.durMin, 0);
-    if (cap > 0 && built > cap * G2_SLACK + 1)
+    const auto = week.filter((s) => !s.manual);
+    const built = auto.reduce((sum, s) => sum + s.durMin, 0);
+    // G2 never takes a run out: when every run but the long one is down to its 20 min (G2b), the cap cannot hold.
+    const floors = auto.every((s) => s.type === "L" || s.durMin <= G2B_FLOOR);
+    if (cap > 0 && built > cap * G2_SLACK + 1 && !floors)
       fail(
         ctx,
         "semaine sous G2 (+ 10 % de G2b)",

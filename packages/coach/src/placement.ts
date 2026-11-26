@@ -364,7 +364,7 @@ const lowestQ = (xs: Session[]): Session | undefined =>
     .sort(byPriority)
     .at(-1);
 
-const RELAXATIONS: { id: string; message: string; apply: (todo: Session[]) => Session[] | null }[] = [
+const RELAXATIONS: { id: string; message: string; apply: (todo: Session[], s: Settings) => Session[] | null }[] = [
   { id: "A4a", message: "Deux séances dures se suivent cette semaine, il manquait de la place", apply: (t) => t },
   {
     id: "A4b",
@@ -390,6 +390,24 @@ const RELAXATIONS: { id: string; message: string; apply: (todo: Session[]) => Se
       return q ? t.map((s) => (s === q ? toEasy(s, s.durMin) : s)) : null;
     },
   },
+  {
+    // The long run is hard (H4, H5): with every day after a legs session, it only fits as a footing.
+    id: "A4e",
+    message: "La sortie longue devient un footing tranquille pour que tout tienne",
+    apply: (t) => {
+      const l = t.find((s) => s.type === "L");
+      return l ? t.map((s) => (s === l ? toEasy(s, s.durMin) : s)) : null;
+    },
+  },
+  {
+    // Her hours leave a shorter window than the run (« Pas avant 21:00 », « Pas après 21:30 »): it runs that long.
+    id: "A4f",
+    message: "Une course raccourcie à tes horaires pour que tout tienne",
+    apply: (t, s) => {
+      const room = Math.floor(runWindowMin(s));
+      return t.some((x) => x.durMin > room) ? t.map((x) => (x.durMin > room ? toEasy(x, room) : x)) : null;
+    },
+  },
 ];
 
 export type Placement = { week: WeekState; relaxations: string[]; warnings: Warning[] };
@@ -411,13 +429,24 @@ export function placeWeek(
   const warnings: Warning[] = [];
   for (const r of RELAXATIONS) {
     if (placed) break;
-    todo = r.apply(todo) ?? todo;
+    const relaxed = r.apply(todo, s);
+    // A4a changes no session; any other step that finds nothing to change is no relaxation.
+    if (!relaxed) continue;
+    todo = relaxed;
     relaxations.push(r.id);
     warnings.push({ ruleId: r.id, message: r.message });
-    placed = search(todo, base, true);
+    // A1b holds under each relaxation too: three days in a row only when no relaxed week without them fits.
+    placed = search(todo, base, true, true) ?? search(todo, base, true);
   }
-  if (!placed) warnings.push({ ruleId: "A4", message: "Une course n'a pas trouvé de place cette semaine" });
-  return { week: { ...base, sessions: [...fixed, ...(placed ?? todo)] }, relaxations, warnings };
+  // Still nothing: the lowest priority runs stay unplaced one by one, so that the others keep their place (A4).
+  const unplaced: Session[] = [];
+  while (!placed) {
+    unplaced.unshift(...todo.slice(-1));
+    todo = todo.slice(0, -1);
+    warnings.push({ ruleId: "A4", message: "Une course n'a pas trouvé de place cette semaine" });
+    placed = search(todo, base, true, true) ?? search(todo, base, true);
+  }
+  return { week: { ...base, sessions: [...fixed, ...placed, ...unplaced] }, relaxations, warnings };
 }
 
 // ---------- Replanning ----------
@@ -468,11 +497,13 @@ const withSession = (w: WeekState, s: Session): WeekState => ({
 
 /**
  * Repairs one conflicting movable session: move, else Q → E in place. Null when neither holds: the run stays
- * planned where it is, with a warning (A4), since only Anna skips a run (EV7, EV21).
+ * planned where it is, with a warning (A4), since only Anna skips a run (EV7, EV21). The A4 pass after any change
+ * only moves: a week placed under A4a keeps its two hard days in a row rather than lose a Q in place.
  */
 function repair(s: Session, rest: WeekState, now: string, ruleId: string): Change | null {
   const slot = bestMove(s, rest, now);
   if (slot) return { ruleId, sessionId: s.id, before: s, after: { ...s, start: slot.start } };
+  if (ruleId === "A4") return null;
   const easy = toEasy(s, s.durMin);
   if (isHard(s) && checkHard(easy, slotOf(easy), rest).length === 0)
     return { ruleId: "A4d", sessionId: s.id, before: s, after: easy };

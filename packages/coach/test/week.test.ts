@@ -192,6 +192,27 @@ describe("planWeek (cycle 0.1 buildWeek)", () => {
     );
   });
 
+  it("counts the runs already in a week rebuilt mid-week under its G2 cap (G2, W-9)", () => {
+    // Jumeau, graine 28 : 5 courses au lieu de 4 un mercredi soir, deux footings déjà courus.
+    const now = `${addDays(MONDAY, 2)}T20:15`;
+    const kept = [
+      easy("d1", `${MONDAY}T18:00`, 30, { status: "done" }),
+      easy("d2", `${addDays(MONDAY, 1)}T18:00`, 30, { status: "done" }),
+    ];
+    const settings = { ...SETTINGS, runsPerWeek: 5 as const };
+    const r = request({ now, planStart: addDays(MONDAY, -21), history: runs(8, 3, 40), kept, settings });
+    const minutes = planWeek(r).sessions.reduce((sum, s) => sum + s.durMin, 0);
+    expect(minutes).toBeLessThanOrEqual(1.1 * 1.1 * 120 + 1);
+  });
+
+  it("keeps the run she asked for on top of her week: the rebuilt week still has all its own (RQ2, W-10)", () => {
+    // Jumeau, graine 39 : la reconstruction du dimanche retirait une séance pour la course qu'elle avait ajoutée.
+    const extra = { ...easy(`${MONDAY}-r0`, `${addDays(MONDAY, 3)}T07:00`, 40), manual: true };
+    const { sessions } = planWeek(request({ kept: [extra] }));
+    expect(sessions).toHaveLength(5);
+    expect(sessions).toContainEqual(extra);
+  });
+
   it("keeps her 50-min long run after a marathon instead of its 39.6-min share when G2 binds (P14, G2b, W-8)", () => {
     // Audit of 26/11/2026: V0 90 (her 4 weeks before), 3 runs a week, 50 min her longest of 30 days.
     const history = marathonHistory(3);
@@ -206,7 +227,7 @@ describe("planWeek (cycle 0.1 buildWeek)", () => {
     expect(sessions.map((s) => [s.type, s.durMin])).toEqual([
       ["L", 50],
       ["E", 29.5],
-      ["E", 29.9],
+      ["E", 30],
     ]);
   });
 

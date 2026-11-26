@@ -1,16 +1,13 @@
 name: Jumeau
 
 # The twin (apps/server/twin): three simulated weeks of Anna's gestures on the real server, invariants checked at
-# every step. Not a required check: random seeds still find known algorithm bugs (architecture.md, « Jumeau »).
+# every step. A required check on every pull request, with fixed seeds; the night explores random ones
+# (architecture.md, « Jumeau »).
 on:
   schedule:
     - cron: "30 2 * * *"
+  # No path filter: a required check must report on every pull request.
   pull_request:
-    paths:
-      - "packages/coach/**"
-      - "apps/server/src/services/**"
-      - "apps/server/twin/**"
-      - ".github/workflows/jumeau.yml"
   workflow_dispatch:
     inputs:
       seed:
@@ -40,10 +37,9 @@ jobs:
       - name: Build the server
         run: pnpm --filter @annarrive/server build
       # A pull request replays seeds that pass on main, so a red run is a regression of that change.
-      - name: Seeds 1, 2 and 5 (pull request)
+      - name: Seeds 1 to 10 (pull request)
         if: github.event_name == 'pull_request'
-        run: |
-          for seed in 1 2 5; do pnpm --filter @annarrive/server twin --seed "$seed" --budget 100; done
+        run: pnpm --filter @annarrive/server twin --seed 1 --seeds 10 --budget 300
       # The night explores: 10 new seeds, every broken invariant listed, the first one reduced to its shortest sequence.
       - name: Ten random seeds (night)
         if: github.event_name != 'pull_request'

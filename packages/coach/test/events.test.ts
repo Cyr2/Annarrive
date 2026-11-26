@@ -38,7 +38,7 @@ describe("moveSession (EV1)", () => {
   it("accepts a forced slot breaking H5 but turns the Q into an E of the same duration (EV-2)", () => {
     const r = moveSession(state([q]), "q", slotAt(q, "2026-11-25T17:00"), MON_8);
     const after = byId(r.state.sessions, "q");
-    expect(after).toMatchObject({ type: "E", durMin: q.durMin, manual: true });
+    expect(after).toMatchObject({ type: "E", durMin: Math.round(q.durMin), manual: true });
     expect(r.warnings[0]?.message).toBe("Moins de 24 h après ta séance jambes");
   });
 
@@ -59,7 +59,7 @@ describe("changeOptions and applyChange (EV2 to EV6)", () => {
   it("offers 4 × 800 m, the same time easy, 7 × 3 min and 30 min of E (EV-3)", () => {
     const o = changeOptions(state([sixBy800("q", "2026-11-26T18:00")]), "q");
     expect(work(o.shorter)?.reps).toBe(4);
-    expect(o.easier).toMatchObject({ type: "E", durMin: sixBy800().durMin });
+    expect(o.easier).toMatchObject({ type: "E", durMin: Math.round(sixBy800().durMin) });
     expect(work(o.equivalent)).toMatchObject({ reps: 7, durMin: 3 });
     expect(o.jog30).toMatchObject({ type: "E", durMin: 30 });
   });
