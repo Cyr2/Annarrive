@@ -76,6 +76,7 @@ export const passThroughCoach: CoachPort = {
     warnings: [],
   }),
   proposeMoveSlots: () => ({ best: [], forbidden: [], sideEffects: [] }),
+  requestSession: coachAdapter.requestSession,
   updateSettings: (st, settings) => ({
     state: { ...st, settings },
     changes: [],

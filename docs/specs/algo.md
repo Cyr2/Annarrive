@@ -30,7 +30,7 @@ Une déviation ne déclenche rien tant qu'elle n'est pas **claire et confirmée*
 
 ### 0.2 Reggie
 
-Reggie n'appelle que les fonctions de `events` et `readOnly` (lecture du plan, de la semaine, des signaux, `explain(ruleId)`). Tout résultat passe par `guards.validateWeek` avant d'être enregistré. Reggie ne reçoit jamais une fonction qui écrit une séance libre.
+Reggie n'appelle que les fonctions de `events`, `requestSession` (M14) et `readOnly` (lecture du plan, de la semaine, des signaux, `explain(ruleId)`). Tout résultat passe par `guards.validateWeek` avant d'être enregistré. Reggie ne reçoit jamais une fonction qui écrit une séance libre.
 
 ---
 
@@ -51,6 +51,7 @@ Reggie n'appelle que les fonctions de `events` et `readOnly` (lecture du plan, d
 | M11 | `review` (bilan, course objectif)            | séances et courses de la semaine, objectif     | bilan, résultat de course                           | `weekReview`, `isGoalRace`, `previousRace`, `raceSplits`, `raceReport`                                                                             |
 | M12 | `progression` (lecture seule)                   | niveaux enregistrés, séances, courses, plan   | temps estimés, volumes, séances tenues, changements | `levelOn`, `weeklyEstimates`, `weekVolume`, `keptRuns`, `levelChanges`                                                                             |
 | M13 | `level` (lecture seule)                        | niveau en service, courses, VO2max Garmin     | chronos possibles, FC seuil                         | `racePredictions`, `thresholdLapsHr`, `thresholdHr`                                                                                                |
+| M14 | `request` (séance demandée)                    | demande, semaines, agenda, santé, historique  | séance placée et changements, ou refus et alternative | `requestSession`, `weekFrame`                                                                                                                     |
 
 ### 1.1 Types communs (abrégés)
 
@@ -960,6 +961,66 @@ thresholdHr(activities: Activity[], tPace: number, now: string): { bpm; from: "t
 | NV-7 | VO2max 45, semi déclaré en 1:51 (VDOT 40,0) | « au-dessus », pas « en accord » |
 | NV-8 | 180 min par semaine en footings d'1 h, plus un marathon marqué de 4:06 il y a 4 semaines | marathon : aucun (« Pas encore ») |
 
+
+---
+
+## M14. `request` : une séance demandée par Anna
+
+Anna peut demander une séance à Reggie (« un fractionné jeudi », « une sortie longue d'1 h 30 ce week-end », « une séance de plus cette semaine », « remplace mon footing de demain par du seuil »). L'algorithme seul décide : il construit la séance depuis le catalogue (M3) à son niveau, la place avec les contraintes dures (M4) et vérifie la semaine (P11, G1, G2) ; sinon il refuse avec la règle et sa raison, et propose la demande la plus proche qu'il accepte. Reggie n'écrit jamais la séance lui-même (§0.2). Recherche : `research/09-seance-a-la-demande.md`.
+
+### Signatures
+
+```ts
+type SessionAsk = {
+  type: 'E' | 'RECUP' | 'SPRINTS' | 'L' | 'T' | 'CRUISE' | 'I' | 'R' | 'SPE' | 'FARTLEK';   // SPRINTS : footing avec sprints (P12)
+  days?: string[];          // jours acceptés ; absent : de demain à dimanche
+  durMin?: number;
+  reps?: number;            // I, R, CRUISE
+  replace?: string;         // id de la séance remplacée ; 'add' : une course de plus ; absent : la course automatique du jour, sinon une de plus
+};
+requestSession(input: WeekRequest sans monday ni kept & { sessions: Session[]; ask: SessionAsk }):
+  | { ok: true; session: Session; sessions: Session[]; changes: Change[]; notes: Warning[] }
+  | { ok: false; refusal: Warning; alternative?: { ok: true; ask; session; sessions; changes; notes } }
+weekFrame(r: WeekRequest, paces): WeekFrame   // semaine d'après course, semaine du plan (phase, volume, décharge) ou entretien
+```
+
+### Règles
+
+| Id   | Règle | Paramètres | Source | Niveau |
+| ---- | ----- | ---------- | ------ | ------ |
+| RQ1  | Moment : un jour de cette semaine ou de la suivante, jamais passé. Sans jour donné : le jour de la séance qu'elle remplace, sinon de demain à dimanche (depuis un dimanche, la semaine suivante). Aujourd'hui seulement si Anna le nomme et qu'un créneau reste avant `latestEnd` et son coucher (P25 : rien de nouveau aujourd'hui sans elle). Plusieurs jours acceptés : celui dont le créneau coûte le moins (contraintes souples, M4) | 14 j | P25 ; décision produit | OP |
+| RQ2  | Ce qu'elle remplace : une séance nommée encore à venir, ni faite, ni gelée, ni le jour J. Sans précision, la course automatique du jour (pas une L, un TEST ou le jour J, ni une course `manual`, gelée ou faite) ; une telle course ce jour-là refuse le jour (H3). `add` garde toutes les courses | | H9, H10 ; EV21 | OP |
+| RQ3  | Santé : fièvre (statut `malade`) → rien n'est ajouté. Rhume, douleur en cours, reprise après fièvre (jusqu'à `qEasierUntil`) ou après rhume (`easy`) → aucune séance dure ; un footing prend la taille de EV9 à EV13 | | EV9 à EV13 ; Schwellnus 2022 ; Silbernagel 2007 | CONS |
+| RQ4  | Phase : semaines d'après course (MA6, P23) et affûtage (P18) → aucune séance dure de plus (les rappels du plan restent) ; base → ni I, ni R, ni SPE (seuil, seuil en fractions et fartlek oui) ; sans objectif → pas d'allure objectif (SPE) | base : 1 Q | recherche 02 §1.2, §2.2 (base : 0 à 1 qualité, Z3 0 à 3 %, 0 % d'allure spécifique), §6 ; Bosquet 2007 ; recherche 06 §4 | CONS |
+| RQ5  | Taille : la dose du catalogue pour la semaine du plan (volume, phase, étape, décharge × 2/3, C1). Moins de fractions ou une séance plus courte (× 0,5 au moins) si elle le demande, jamais plus que la dose. Footing 20 à 75 min, récupération 20 à 40 min, footing avec sprints 30 à 75 min. Sortie longue ≤ min(Lmax de la distance (P14), 1,10 × sa plus longue course de 30 j (G1)) ; sans objectif ≤ 75 min (MA4). Sans durée donnée : celle de la séance remplacée ; une course de plus : 30 min (plancher E, P15) ; une sortie longue : celle de P14. Chaque borne appliquée est dite | voir texte | Daniels ; P14 ; P15 ; G1 (Frandsen 2025, recherche 03 §3.3) | CONS |
+| RQ6  | Placement : H1 à H7, H12, H13 (`checkHard`) ; la séance remplacée garde son heure si ces règles y tiennent, sinon le meilleur créneau du jour (A6). Muscu jambes (H5, H6), cours, travail, trajet (H1), horaires et coucher (H2, H7) s'appliquent comme pour toute séance | | M4 | OP |
+| RQ7  | Deux séances dures par semaine au plus (P11, une L avec bloc d'allure de course comptée ; une seule en base) : au-delà, la séance dure automatique de plus faible priorité encore à venir devient un footing de même durée ; sans séance à changer → refus. Une seule L par semaine : une L demandée un autre jour déplace celle de la semaine (refus si elle est fixée) | 2 ; base 1 | P11 ; recherche 02 R13 | CONS |
+| RQ8  | Courses : au plus `runsPerWeek` + 1 dans la semaine. La course en plus est ponctuelle, les réglages ne changent pas | +1 | décision produit | OP |
+| RQ9  | Volume de la semaine ≤ max(semaine prévue, 1,10 × la meilleure des 4 semaines courues avant, G2) ; aucune hausse en affûtage, en décharge ou après une course (P18, P9, MA6). Au-delà, les footings automatiques à venir raccourcissent d'abord jusqu'à leur plancher (ordre de G2b) ; sinon refus | 1,10 | G2 ; recherche 03 §3.2 ; Bosquet 2007 | CONS |
+| RQ10 | Refus : la règle et sa phrase. Alternative, la première acceptée parmi : les autres jours de la même semaine (si la règle tient au jour), plus court de l'excès (G2), un fartlek à la place d'une I ou d'une R en base, un seuil à la place de l'allure objectif sans objectif, puis un footing aux mêmes jours. Aucune alternative pendant une fièvre ni pour une séance qui ne change plus | | décision produit | OP |
+| RQ11 | Acceptée : la séance porte `manual: true` (une reconstruction la garde, EV19) ; elle et tout ce qu'elle change (séance remplacée, L déplacée, Q devenue footing, footings raccourcis) forment un seul changement du journal, annulable, envoyé à la montre. Reggie montre la proposition et n'applique qu'après son accord, sauf demande précise acceptée telle quelle | | §0.2 ; interactions.md | OP |
+
+### Tests
+
+Semaine de développement du semi (début du programme le 5 octobre), lundi 23 novembre 08:00, 4 courses de 60 min par semaine depuis 20 semaines : seuil mardi 18:00 (50 min), footings mercredi et vendredi 18:00 (45 min), L dimanche 10:00 (90 min).
+
+| #     | Entrée | Sortie attendue |
+| ----- | ------ | --------------- |
+| RQ-1  | Remplace le footing de vendredi par du seuil ; footing de 30 min à la place de celui de mercredi, sans jour dit | seuil vendredi 18:00, même id, `manual` ; aucune autre séance ne change. Footing mercredi 18:00, 30 min |
+| RQ-2  | Fractionné jeudi | ajouté jeudi, une course en plus (RQ8), footings à venir raccourcis (RQ9), semaine ≤ 1,10 × 240 min |
+| RQ-3  | Fractionné mercredi (lendemain du seuil) | refus H4 ; alternative : fractionné un autre jour de la semaine |
+| RQ-4  | Seuil lundi, fractionné mercredi (priorité 3), footing jeudi, L dimanche ; fractionné vendredi | accepté ; le fractionné de mercredi devient un footing (RQ7) ; deux Q dans la semaine |
+| RQ-5  | 10 km le 1er décembre ; fractionné jeudi | refus P18 ; alternative : footing |
+| RQ-6  | Fièvre ; footing. Rhume ; seuil à la place du footing de vendredi | refus EV9 sans alternative. Refus RQ3 ; alternative : footing de 20 min vendredi |
+| RQ-7  | Sortie longue de 2 h 30 samedi (plus longue course de 30 j : 60 min) | L de dimanche déplacée à samedi, 66 min ; notes « 1 h 06 au plus… » et « Ta sortie longue passe de dimanche à samedi » |
+| RQ-8  | 4 × 40 min courues, footings à 30 min ; footing jeudi. Puis 5 courses déjà prévues ; footing jeudi | refus G2. Refus RQ8 |
+| RQ-9  | Footing aujourd'hui à 22:15 | refus RQ1 « Plus de créneau ce jour-là » ; alternative un jour suivant |
+| RQ-10 | Cours jeudi 07:00 à 21:30 ; footing jeudi. Muscu jambes mercredi 17:00 à 18:30 ; seuil jeudi | refus H1 avec alternative. Seuil jeudi à 18:30 ou plus tard (H5) |
+| RQ-11 | Remplacer un footing gelé | refus RQ2, sans alternative |
+| RQ-12 | Programme commencé le 16 novembre (base) ; fractionné jeudi | refus RQ4 ; alternative : fartlek |
+| RQ-13 | Sans objectif ; allure objectif jeudi | refus « Sans objectif, il n'y a pas d'allure de course à travailler » ; alternative : seuil |
+| RQ-14 | Semi couru samedi 21, sans objectif ; seuil jeudi | refus MA6 ; alternative : footing |
+| RQ-15 | Footing d'1 h mercredi ; footing dans 15 jours | le footing de mercredi passe à 60 min (même id). Refus RQ1 |
 
 ---
 

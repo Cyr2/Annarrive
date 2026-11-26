@@ -301,7 +301,7 @@ export function softPenalty(session: Session, slot: Slot, week: WeekState): { to
 
 // ---------- Weekly placement ----------
 
-type Candidate = { slot: Slot; pts: number };
+export type Candidate = { slot: Slot; pts: number };
 
 /** Cost of `session` at `slot`, or null if a hard rule breaks. A4a turns H4 into 100 points. */
 function cost(session: Session, slot: Slot, week: WeekState, relaxH4: boolean): number | null {
@@ -561,6 +561,26 @@ export function bestSlotFrom(s: Session, week: WeekState, now: string, from: str
     .flatMap((day) => bestOfDay(s, day, week, now, ignored))
     .sort((a, b) => a.pts - b.pts || a.slot.start.localeCompare(b.slot.start))[0];
   return best?.slot ?? null;
+}
+
+/** Rules that hold for a whole day, the reason a day is barred rather than one of its hours (RQ4). */
+const DAY_RULES = new Set(["H2", "H3", "H4", "H5", "H12", "H13"]);
+
+/**
+ * RQ4: the best valid future slot of `day` by soft cost; else the rule that bars it, a day-wide one first (H3 says
+ * more than « Pris par un cours »).
+ */
+export function bestSlotOn(s: Session, week: WeekState, now: string, day: string): Candidate | Violation {
+  const best = bestOfDay(s, day, week, now, [])[0];
+  if (best) return best;
+  const firsts = grid(day, week.settings, s.durMin)
+    .filter((slot) => slot.start > now)
+    .flatMap((slot) => checkHard(s, slot, week).slice(0, 1));
+  return (
+    firsts.find((x) => DAY_RULES.has(x.ruleId)) ??
+    firsts[0] ??
+    (day <= dateOf(now) ? v("RQ1", "Plus de créneau ce jour-là") : v("H2", "En dehors de tes horaires"))
+  );
 }
 
 const NOON_MIN = 12 * 60;

@@ -14,6 +14,7 @@ import {
   type TemplateSlot,
   taperShares,
   training,
+  type WeekCtx,
   weekTemplate,
 } from "./plan.ts";
 import { fatigueDays } from "./readiness.ts";
@@ -76,7 +77,7 @@ const KEY_TYPES: TemplateSlot[] = ["T", "CRUISE", "I", "R", "SPE", "TEST", "RACE
 const mean = (xs: number[]): number => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
 
 /** Minutes run in each of the `n` weeks before `monday`, oldest first. */
-function pastWeeks(history: Activity[], monday: string, n: number): number[] {
+export function pastWeeks(history: Activity[], monday: string, n: number): number[] {
   return [...Array(n).keys()].map((k) => {
     const from = addDays(monday, -7 * (n - k));
     const to = addDays(from, 7);
@@ -101,7 +102,7 @@ const AFTER_RACE_LONG = 0.6;
  * training run of those weeks (Mujika and Padilla 2000: reduced training keeps endurance for weeks; Pfitzinger and
  * Douglas: the long runs come back within the weeks after a marathon). P14's share and P10's 10 % still bound it.
  */
-function spikeRef(history: Activity[], now: string): number {
+export function spikeRef(history: Activity[], now: string): number {
   const recent = history.filter((a) => a.start < now && daysBetween(a.start, now) <= RACE_LOOKBACK_DAYS);
   const l30 = longest30d(history, now);
   if (!recent.some((a) => a.isRace)) return l30;
@@ -133,7 +134,7 @@ export function programPlan(
 }
 
 /** P9: days of last week whose body signals were confirmed. Fever days are illness, not fatigue (B1, EV9). */
-function tiredLastWeek(r: WeekRequest): number {
+function tiredLastWeek(r: Omit<WeekRequest, "kept">): number {
   if (!r.signals) return 0;
   const sick = r.health ? sickDays(r.health, dateOf(r.now)) : [];
   const days = weekDates(addDays(r.monday, -7)).filter((d) => !sick.includes(d));
@@ -157,7 +158,7 @@ function withTest(w: PlanWeek): PlanWeek {
 }
 
 /** Last time her level was measured: a level change (a race, a test or her sessions, RC3), or a test or race she ran. */
-function lastMeasure(r: WeekRequest): string | undefined {
+function lastMeasure(r: Omit<WeekRequest, "kept">): string | undefined {
   const runs = r.history
     .filter((a) => a.isTest || a.isRace || a.plannedType === "TEST" || a.plannedType === "RACE")
     .map((a) => dateOf(a.start));
@@ -171,7 +172,7 @@ function lastMeasure(r: WeekRequest): string | undefined {
  * P26: a level unread for 6 weeks within the week is measured again, by a test, outside the taper, and never as the
  * first hard run of the programme: she has run a key session since it started.
  */
-function retestDue(w: PlanWeek, r: WeekRequest): boolean {
+function retestDue(w: PlanWeek, r: Omit<WeekRequest, "kept">): boolean {
   const last = lastMeasure(r);
   const start = r.planStart ?? r.now;
   const hardSinceStart = r.history.some(
@@ -186,7 +187,7 @@ function retestDue(w: PlanWeek, r: WeekRequest): boolean {
 }
 
 /** The plan week to build: P9 on confirmed fatigue, F10's test while the level is provisional, P26's every 4 weeks. */
-function adjusted(w: PlanWeek, r: WeekRequest): PlanWeek {
+function adjusted(w: PlanWeek, r: Omit<WeekRequest, "kept">): PlanWeek {
   const tired = tiredLastWeek(r) >= FATIGUE_DAYS ? deloaded(w) : w;
   const provisional = r.fitness.provisional === true;
   const testWeek = provisional ? w.index >= TEST_WEEKS[0] && w.index <= TEST_WEEKS[1] : retestDue(w, r);
@@ -196,19 +197,24 @@ function adjusted(w: PlanWeek, r: WeekRequest): PlanWeek {
 /** `keepLongMin`: P14's floor of a load week, which G2 keeps (G2b). */
 type Content = WeekPlan & { phase: Phase; keepLongMin?: number };
 
+/** What shapes a week before its sessions are sized: a post-race week, a plan week (M2) or maintenance (M9). */
+export type WeekFrame =
+  | { kind: "afterRace"; phase: "base"; distM: number; index: number; usualMin: number }
+  | { kind: "plan"; phase: Phase; week: PlanWeek; ctx: WeekCtx; warnings: Warning[] }
+  | { kind: "maintenance"; phase: "dev"; weekIdx: number; history8w: number[] };
+
 /**
- * The unplaced sessions the week calls for: post-race weeks (P23, MA6), before a new plan too (its base weeks absorb
+ * The frame of the week of `r.monday`: post-race weeks (P23, MA6), before a new plan too (its base weeks absorb
  * them, research 06 §4.2), else the plan week (M2) or maintenance (M9).
  */
-function content(r: WeekRequest, p: Paces): Content {
+export function weekFrame(r: Omit<WeekRequest, "kept">, p: Paces): WeekFrame {
   const goal = r.goal;
-  const history8w = pastWeeks(r.history, r.monday, LOOKBACK_WEEKS);
   const race = lastRace(goal, r.history, r.monday);
   const afterRace = race && postRaceIndex(race, r.monday);
   if (race && afterRace) {
     // The weeks up to race day: the reference stays put from one easy week to the next.
-    const usual = mean(pastWeeks(r.history, addDays(race.day, 1), LOOKBACK_WEEKS));
-    return { sessions: postRaceWeek(usual, p, race.distM, afterRace), warnings: [], phase: "base" };
+    const usualMin = mean(pastWeeks(r.history, addDays(race.day, 1), LOOKBACK_WEEKS));
+    return { kind: "afterRace", phase: "base", distM: race.distM, index: afterRace, usualMin };
   }
   if (goal && goal.date >= r.monday) {
     const plan = programPlan({ ...r, goal });
@@ -218,16 +224,27 @@ function content(r: WeekRequest, p: Paces): Content {
       plan.weeks.find((w) => w.monday === r.monday) ??
       (first && r.monday < first.monday ? first : raceWeek(plan, r.monday, r.settings.runsPerWeek));
     const week = adjusted(found, r);
-    const racePace = goal.targetMin ? { racePaceSKm: targetPace(goal.targetMin, goal.distanceM, p) } : {};
-    const ctx = {
+    const ctx: WeekCtx = {
       paces: p,
       distM: goal.distanceM,
       longest30dMin: longest30d(r.history, r.now),
       spikeRefMin: spikeRef(r.history, r.now),
       usualRunMin: usualRun(r.history, r.now),
-      ...racePace,
+      ...(goal.targetMin ? { racePaceSKm: targetPace(goal.targetMin, goal.distanceM, p) } : {}),
     };
-    const sessions = buildWeek(week, ctx);
+    return { kind: "plan", phase: week.phase, week, ctx, warnings: plan.warnings };
+  }
+  const weekIdx = Math.floor(daysBetween(EPOCH_MONDAY, r.monday) / 7) + 1;
+  return { kind: "maintenance", phase: "dev", weekIdx, history8w: pastWeeks(r.history, r.monday, LOOKBACK_WEEKS) };
+}
+
+/** The unplaced sessions the week calls for. */
+function content(r: WeekRequest, p: Paces): Content {
+  const f = weekFrame(r, p);
+  if (f.kind === "afterRace")
+    return { sessions: postRaceWeek(f.usualMin, p, f.distM, f.index), warnings: [], phase: f.phase };
+  if (f.kind === "plan") {
+    const sessions = buildWeek(f.week, f.ctx);
     const long = sessions.find((s) => s.type === "L");
     // In a load week the long run is built at least at min(her longest of 30 days, Lmax) (P14).
     const start = r.planStart ?? r.now;
@@ -237,12 +254,11 @@ function content(r: WeekRequest, p: Paces): Content {
       start,
     ).regular;
     // Only a regular runner (P6) keeps it: a beginner's chronic load would ratchet up with it.
-    const load = regular && !week.deload && week.phase !== "taper" && long && Number.isFinite(ctx.longest30dMin);
-    const keepLongMin = load ? Math.min(ctx.longest30dMin, long.durMin) : 0;
-    return { sessions, warnings: plan.warnings, phase: week.phase, keepLongMin };
+    const load = regular && !f.week.deload && f.phase !== "taper" && long && Number.isFinite(f.ctx.longest30dMin);
+    const keepLongMin = load ? Math.min(f.ctx.longest30dMin, long.durMin) : 0;
+    return { sessions, warnings: f.warnings, phase: f.phase, keepLongMin };
   }
-  const weekIdx = Math.floor(daysBetween(EPOCH_MONDAY, r.monday) / 7) + 1;
-  return { sessions: maintenanceWeek(history8w, r.settings, weekIdx, { paces: p }), warnings: [], phase: "dev" };
+  return { sessions: maintenanceWeek(f.history8w, r.settings, f.weekIdx, { paces: p }), warnings: [], phase: f.phase };
 }
 
 /**

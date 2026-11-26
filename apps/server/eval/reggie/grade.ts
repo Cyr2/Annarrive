@@ -1,4 +1,11 @@
-import type { ChatContext, ChatWidget, HealthStatus, PlannedSession, ProfilePatch } from "@annarrive/protocol";
+import type {
+  CalendarEvent,
+  ChatContext,
+  ChatWidget,
+  HealthStatus,
+  PlannedSession,
+  ProfilePatch,
+} from "@annarrive/protocol";
 
 /** A tool call to expect: input keys must match; an array lists the accepted values. */
 export type CallMatcher = { name: string; input?: Record<string, unknown> };
@@ -11,7 +18,7 @@ export type Scenario = {
   context?: ChatContext;
   /** Earlier turns of the thread, oldest first. */
   history?: { role: "anna" | "reggie"; text: string }[];
-  seed?: { sessions?: PlannedSession[]; profile?: ProfilePatch; health?: HealthStatus };
+  seed?: { sessions?: PlannedSession[]; profile?: ProfilePatch; health?: HealthStatus; events?: CalendarEvent[] };
   /** Longer than MAX_REPLY_CHARS only when she asks for it (a source, say). */
   maxChars?: number;
   expect: {
@@ -41,6 +48,11 @@ export const MODIFYING = [
   "report_unavailable",
   "feel_better",
   "update_setting",
+  "request_session",
+  "add_event",
+  "edit_event",
+  "cancel_class",
+  "change_goal",
 ] as const;
 
 const KNOWN = new Set([

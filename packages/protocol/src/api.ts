@@ -342,6 +342,20 @@ export const deleteEventQuerySchema = z.discriminatedUnion("scope", [
 ]);
 export type DeleteEventQuery = z.infer<typeof deleteEventQuerySchema>;
 
+/**
+ * A session Anna asks Reggie for (algo.md M14): the coach builds, places and checks it, or refuses with a reason.
+ * `SPRINTS` is a footing with sprints on the flat; `replace` names the session it takes the place of, "add" keeps
+ * every run.
+ */
+export const sessionAskSchema = z.object({
+  type: z.enum(["E", "RECUP", "SPRINTS", "L", "T", "CRUISE", "I", "R", "SPE", "FARTLEK"]),
+  days: z.array(localDateSchema).min(1).max(14).optional(),
+  durMin: z.number().int().min(10).max(240).optional(),
+  reps: z.number().int().min(1).max(30).optional(),
+  replace: z.string().min(1).max(100).optional(),
+});
+export type SessionAsk = z.infer<typeof sessionAskSchema>;
+
 export const moveSessionInputSchema = z.object({ start: localDateTimeSchema });
 /** The timetable link changes through `PUT /timetable/url`, which also re-reads the classes. */
 // `preferredHour: null` clears her hour: the coach goes back to the hour she usually runs at (S7).

@@ -190,6 +190,8 @@ Page poussée depuis la dernière ligne de Programme, en liste groupée iOS, dan
 
 Répondre à une question, expliquer une séance, et modifier le plan, mais seulement par les mêmes actions que les boutons : Déplacer, Changer, Pas dispo, réglages. Il ne crée jamais une séance hors des règles de l'algo.
 
+Il fait aussi ce que font Ajouter (Occupée, muscu avec ou sans jambes, révision, travail), « Ce cours n'a pas lieu » et son retour, la feuille Objectif, et la séance à la demande : Anna demande « un fractionné jeudi », « une sortie longue d'1 h 30 ce week-end », « une séance de plus cette semaine » ou « remplace mon footing de demain par du seuil », et l'algo décide (algo.md M14). Accepté : la séance à son niveau, au meilleur créneau, avec ce que ça change ailleurs (un footing raccourci, une séance rapide devenue footing), en un seul changement annulable envoyé à la montre. Refusé : Reggie dit la raison en une phrase et montre l'alternative de l'algo quand il y en a une. Une demande précise (type et jour) est enregistrée tout de suite, avec Annuler ; une demande vague s'affiche d'abord en aperçu, enregistrée sur « Prendre celle-ci ».
+
 ### L'historique
 
 L'écran montre la discussion du jour. Au-dessus, un lien discret « Voir la discussion d'hier » (puis « Voir la discussion du 13 novembre » pour un jour plus ancien) charge un seul jour à la fois, le plus récent d'abord, et le place au-dessus sans faire sauter la lecture. Dès qu'un jour plus ancien est affiché, chaque jour a son intertitre (« Vendredi 13 novembre », « Hier », « Aujourd'hui »). Le lien disparaît quand il n'y a plus rien avant. Reggie, lui, garde en mémoire les 20 derniers messages, quel que soit le jour.
@@ -208,6 +210,7 @@ Reggie répond avec du texte court et, quand il faut agir, avec des widgets tapa
 | Curseur 0 à 10 | Niveau de douleur ou de fatigue | Glisser puis « Envoyer » |
 | Créneaux | Proposition de déplacement | 3 cartes de créneaux, tap = choix, puis la carte de changement apparaît |
 | Aperçu de séance | Proposition de remplacement | Mini carte (nom, durée, allure) avec « Prendre celle-ci » |
+| Séance demandée | Séance à la demande, acceptée ou proposée en alternative | Mini carte (nom, jour, heure, durée, allure) avec « Prendre celle-ci » et « Non merci ». Le tap envoie la réponse ; « Prendre celle-ci » fait enregistrer la séance, puis la carte de changement apparaît |
 | Carte de changement | Après toute modification | Liste avant et après par jour, « Montre mise à jour », bouton Annuler (actif jusqu'au changement suivant) |
 | Raccourcis au-dessus du champ | Toujours | « Je suis malade », « Plus court », « Décaler à demain », « Pourquoi cette allure ? ». Ils lancent les mêmes parcours que les boutons de l'écran Aujourd'hui |
 

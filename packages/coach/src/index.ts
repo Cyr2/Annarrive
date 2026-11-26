@@ -12,6 +12,7 @@ export * from "./plan.ts";
 export * from "./progression.ts";
 export * from "./readiness.ts";
 export * from "./recalibration.ts";
+export * from "./request.ts";
 export * from "./review.ts";
 export type * from "./types.ts";
 export * from "./week.ts";

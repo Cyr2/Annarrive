@@ -341,6 +341,38 @@ export const coachAdapter: CoachPort = {
     return validated({ state: { ...st, sessions }, changes: [], warnings: plan.warnings }, now);
   },
 
+  requestSession(st, ask, now) {
+    if (!st.fitness) return { ok: false, refusal: { ruleId: "F10", message: NO_FITNESS } };
+    const r = coach.requestSession({
+      now,
+      goal: st.program.goal,
+      ...(st.program.startedOn ? { planStart: st.program.startedOn } : {}),
+      settings: toSettings(st.settings, st.activities),
+      history: withPlannedType(st),
+      fitness: { vdot: st.fitness.vdot, provisional: st.fitness.provisional === true, measuredOn: st.fitness.date },
+      cal: st.events.map(toCalEvent),
+      health: st.health,
+      signals: signalsOf(st),
+      feels: st.feels,
+      sessions: st.sessions.map(toSession),
+      ask,
+    });
+    const notes = (a: coach.Accepted): CoachNote[] => a.notes.map((n) => ({ ruleId: n.ruleId, message: n.message }));
+    if (!r.ok) {
+      const alt = r.alternative;
+      const alternative = alt && { ask: alt.ask, session: fromSession(alt.session), notes: notes(alt) };
+      return { ok: false, refusal: r.refusal, ...(alternative ? { alternative } : {}) };
+    }
+    // RQ11: what the ask implies (a footing shortened, a Q turned easy) is said on the change card.
+    const changes = r.changes.map((c) => ({
+      ruleId: c.ruleId,
+      message: "",
+      ...(c.sessionId ? { sessionId: c.sessionId } : {}),
+    }));
+    const result = validated({ state: { ...st, sessions: placed(r.sessions) }, changes, warnings: notes(r) }, now);
+    return { ok: true, session: fromSession(r.session), result, notes: notes(r) };
+  },
+
   moveSession(st, id, slot, now) {
     return fromResult(st, coach.moveSession(toState(st, mondayOf(dateOf(slot.start)), true), id, slot, now), now);
   },
