@@ -57,9 +57,9 @@ describe("buildSession (C1)", () => {
 
   it("progresses T by 5 min a load week, CRUISE in a new format each week, both within Daniels' 10 % (C-12)", () => {
     const big = { ...ctx, weeklyMin: 400 };
-    // 400 min at E 6:08 = 65 km: 10 % at T 5:06 is 33 min.
+    // 400 min at E 5:51 = 68 km: 10 % at T 5:06 is 34 min.
     expect(work(buildSession("T", { ...big, progressionStep: 2 }))[0]?.durMin).toBe(30);
-    expect(work(buildSession("T", { ...big, progressionStep: 6 }))[0]?.durMin).toBe(33);
+    expect(work(buildSession("T", { ...big, progressionStep: 6 }))[0]?.durMin).toBe(34);
     expect(work(buildSession("CRUISE", big))[0]).toMatchObject({ reps: 4, durMin: 5 });
     expect(buildSession("CRUISE", big).steps.find((s) => s.kind === "recover")).toMatchObject({ reps: 3, durMin: 1 });
     expect(work(buildSession("CRUISE", { ...big, progressionStep: 1 }))[0]).toMatchObject({ reps: 3, durMin: 8 });
@@ -252,10 +252,10 @@ describe("session transforms", () => {
     expect(downgrade(buildSession("T", ctx), P40).type).toBe("FARTLEK");
   });
 
-  it("gives each step one target pace, a recovery run 15 s/km under E, kept by a new level (C4)", () => {
+  it("gives each step one target pace, a recovery run 30 s/km under E, kept by a new level (C4)", () => {
     const recup = buildSession("RECUP", { ...ctx, durMin: 30 });
-    expect(recup.steps[0]?.target.paceSKm).toEqual([P40.E + 15, P40.E + 15]);
-    expect(repace(recup, paces(45)).steps[0]?.target.paceSKm).toEqual([paces(45).E + 15, paces(45).E + 15]);
+    expect(recup.steps[0]?.target.paceSKm).toEqual([P40.E + 30, P40.E + 30]);
+    expect(repace(recup, paces(45)).steps[0]?.target.paceSKm).toEqual([paces(45).E + 30, paces(45).E + 30]);
     expect(buildSession("L", ctx).steps[0]?.target.paceSKm).toEqual([P40.E, P40.E]);
   });
 

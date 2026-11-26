@@ -13,6 +13,7 @@ import {
   distributionCheck,
   hoursBetween,
   isHard,
+  longShare,
   predictTime,
   readRun,
   type Session,
@@ -205,7 +206,7 @@ function footingsAndRace(j: Judge, r: RunLog, w: WeekLog, l: Session, pct: numbe
 function longRun(r: RunLog): Criterion {
   const j = judge();
   const p = r.persona;
-  const pct = { 3: 0.4, 4: 0.35, 5: 0.3 }[p.settings.runsPerWeek];
+  const pct = longShare(p.settings.runsPerWeek);
   for (const w of r.weeks) {
     if (isRaceWeek(r, w) || afterRace(r, w)) continue;
     const list = runs(w);
@@ -364,12 +365,21 @@ function paces(r: RunLog): Criterion {
         detail: `${pr.ruleId} reproposé le ${pr.on} moins de 14 j après le précédent (${pr.from} → ${pr.to})`,
         severity: "critique",
       }));
+      // RC20, no yo-yo: never a change against one made less than 14 days before, on stable data with HR noise.
+      const sign = Math.sign(pr.to - pr.from);
+      const reverse = before.filter((b) => daysBetween(b.on, pr.on) < 14 && sign !== 0 && Math.sign(b.to - b.from) === -sign);
+      j.check(reverse.length === 0, () => ({
+        week: w.week,
+        rule: `${pr.ruleId} (yo-yo)`,
+        detail: `${pr.from} → ${pr.to} le ${pr.on}, moins de 14 j après un changement dans l'autre sens`,
+        severity: "critique",
+      }));
     });
   }
   return {
     id: "allures",
     label: "Allures et recalibrage",
-    source: "F7 Daniels ; RC3, RC4 Runna Pace Insights ; RC8",
+    source: "F7 Daniels ; RC3, RC4 Runna Pace Insights ; RC8 ; RC20 (pas de yo-yo)",
     ...j.done(),
   };
 }

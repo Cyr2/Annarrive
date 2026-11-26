@@ -105,22 +105,22 @@ describe("volumeCurve (P10, P18)", () => {
 });
 
 describe("longRunMin (P14)", () => {
-  it("takes min(40 % of V, Lmax, 1.10 × the longest of 30 days) (P-9)", () => {
+  it("takes min(40/38/35 % of V, Lmax, 1.10 × the longest of 30 days) (P-9)", () => {
     expect(longRunMin(3, 200, 21097.5, 80)).toBe(80);
-    expect(longRunMin(5, 400, 42195, 300)).toBe(120);
+    expect(longRunMin(5, 400, 42195, 300)).toBe(140);
     expect(longRunMin(3, 600, 42195, 300)).toBe(180);
   });
 
   it("keeps the long run she already runs in a load week, up to Lmax (P14, P-33)", () => {
     expect(longRunMin(4, 130, 21097.5, 62, true)).toBe(62);
-    expect(longRunMin(4, 130, 21097.5, 62)).toBeCloseTo(45.5, 6);
+    expect(longRunMin(4, 130, 21097.5, 62)).toBeCloseTo(49.4, 6);
     expect(longRunMin(4, 130, 21097.5, 150, true)).toBe(120);
-    expect(longRunMin(4, 130, 21097.5, Number.POSITIVE_INFINITY, true)).toBeCloseTo(45.5, 6);
+    expect(longRunMin(4, 130, 21097.5, Number.POSITIVE_INFINITY, true)).toBeCloseTo(49.4, 6);
   });
 
   it("follows its share after a race, from what the race left of her longest run, not her short footings (P-39)", () => {
     expect(longRunMin(4, 190, 21097.5, 50, true)).toBeCloseTo(55, 6);
-    expect(longRunMin(4, 190, 21097.5, 50, true, 123)).toBeCloseTo(66.5, 6);
+    expect(longRunMin(4, 190, 21097.5, 50, true, 123)).toBeCloseTo(72.2, 6);
     expect(longRunMin(4, 400, 21097.5, 50, true, 123)).toBe(120);
   });
 });
@@ -367,7 +367,7 @@ describe("buildWeek", () => {
     const deload = plan.weeks.find((w) => w.phase === "dev" && w.deload);
     if (!deload) throw new Error("no deload");
     const l = buildWeek(deload, { ...ctx, longest30dMin: 200 }).find((x) => x.type === "L");
-    expect(l?.durMin).toBe(Math.floor(0.35 * deload.volumeMin));
+    expect(l?.durMin).toBe(Math.floor(0.38 * deload.volumeMin));
   });
 
   it("never builds a deload week above its volume, race-pace blocks included (P9, P-28)", () => {
@@ -409,7 +409,7 @@ describe("buildWeek", () => {
     const big = { ...dev, volumeMin: 300 };
     const s = buildWeek(big, { ...ctx, spikeRefMin: 200 });
     const l = s.find((x) => x.type === "L")?.durMin ?? 0;
-    expect(l).toBeCloseTo(0.35 * 300, 0);
+    expect(l).toBeCloseTo(0.38 * 300, 0);
     expect(s.filter((x) => x.type === "E").every((x) => x.durMin <= 0.75 * l + 0.5)).toBe(true);
     // A long run G1 holds at 49.5 min: the footings keep her 45 min, under the long run.
     const base = plan.weeks[0];

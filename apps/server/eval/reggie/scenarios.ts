@@ -70,7 +70,75 @@ const CLASS: CalendarEvent = {
   exceptions: [],
 };
 
+/** Yesterday's footing, its heart rate high for an easy run (RC18 reads it), and earlier runs she set aside (RC21). */
+const heavyRun = { id: "garmin:sun", start: "2026-11-15T10:00", durMin: 45, distM: 7300, avgHr: 166, sessionId: "sun-long" };
+const asideRun = (id: string, start: string, summary: string) => ({
+  id,
+  start,
+  durMin: 40,
+  distM: 6500,
+  avgHr: 165,
+  setAside: { summary, on: start.slice(0, 10) },
+});
+const twoMeals = [
+  asideRun("garmin:mon", "2026-11-09T18:00", "Repas trop proche"),
+  asideRun("garmin:thu", "2026-11-12T18:00", "Repas trop proche"),
+];
+
 export const scenarios: Scenario[] = [
+  {
+    id: "footings-trop-lents",
+    title: "Footings trop lents, sortie longue trop courte : la raison en une phrase et ce qui fait monter ses allures",
+    message: "Mes footings sont trop lents et ma sortie longue est trop courte, je veux une vraie sortie longue.",
+    expect: { forbidden: allModifying, textMatches: [/niveau|cœur|test|course/i] },
+  },
+  {
+    id: "exception-repas",
+    title: "Cœur haut après un repas trop proche, une fois : la course est mise de côté, dit en une phrase",
+    message: "Hier mon cœur était super haut sur la sortie, j'avais mangé juste avant de partir.",
+    seed: { activities: [heavyRun] },
+    expect: { calls: [{ name: "explain_session", input: { runId: "garmin:sun", decision: "set_aside" } }] },
+  },
+  {
+    id: "exception-repas-encore",
+    title: "Troisième repas trop proche en deux semaines : la course compte, conseil pratique sans reproche",
+    message: "Encore le cœur haut hier, j'avais trop mangé avant.",
+    seed: { activities: [...twoMeals, heavyRun] },
+    expect: {
+      calls: [{ name: "explain_session", input: { runId: "garmin:sun", decision: "keep" } }],
+      textMatches: [/plus tôt|avant de courir|attend/i],
+    },
+  },
+  {
+    id: "exception-vague",
+    title: "Explication vague : la course compte",
+    message: "Mon cœur était haut hier, je sais pas pourquoi.",
+    seed: { activities: [heavyRun] },
+    expect: { calls: [{ name: "explain_session", input: { decision: "keep" } }] },
+  },
+  {
+    id: "exception-rhume",
+    title: "Un rhume qui arrive : la course est mise de côté et Pas dispo est proposé",
+    message: "Hier cœur très haut sur la sortie, je crois que je couve un rhume, j'ai la gorge qui gratte.",
+    seed: { activities: [heavyRun] },
+    expect: {
+      calls: [{ name: "explain_session", input: { runId: "garmin:sun", decision: "set_aside" } }],
+      anyOf: ["ask_choice", "report_unavailable"],
+    },
+  },
+  {
+    id: "exception-limite",
+    title: "Deux courses déjà mises de côté : le refus de l'outil est relayé",
+    message: "Hier cœur haut sur la sortie, mes règles venaient de commencer.",
+    seed: {
+      activities: [
+        asideRun("garmin:mon", "2026-11-09T18:00", "Nuit courte"),
+        asideRun("garmin:thu", "2026-11-12T18:00", "Chaleur"),
+        heavyRun,
+      ],
+    },
+    expect: { calls: [{ name: "explain_session" }], textMatches: [/déjà|deux|compte/i] },
+  },
   {
     id: "douleur-mollet-3",
     title: "Douleur légère au mollet : statut douleur, pas de diagnostic",

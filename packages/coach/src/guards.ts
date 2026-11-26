@@ -80,7 +80,8 @@ export function capWeekSpikes(
 }
 
 /** P14: the long run's share of the week, by runs per week. */
-export const longShare = (runs: number): number => (runs <= 3 ? 0.4 : runs === 4 ? 0.35 : 0.3);
+/** P14: the upper end of the reference plans (38 to 40 % of the week), lower with more runs to share it. */
+export const longShare = (runs: number): number => (runs <= 3 ? 0.4 : runs === 4 ? 0.38 : 0.35);
 
 const isEasy = (s: Session): boolean => s.type === "E" || s.type === "RECUP";
 const isQ = (s: Session): boolean => s.type !== "L" && s.type !== "RACE" && s.type !== "TEST" && !isEasy(s);

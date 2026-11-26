@@ -1,7 +1,16 @@
 import { FAST_RATIO } from "./adaptation.ts";
 import { buildSession, isHard, repace } from "./catalog.ts";
 import { addDays, dateOf, daysBetween } from "./dates.ts";
-import { effortReadings, type InitialFitness, isEligibleEffort, paces, speedForVo2, vdot, vo2 } from "./fitness.ts";
+import {
+  E_FRACTION,
+  effortReadings,
+  type InitialFitness,
+  isEligibleEffort,
+  paces,
+  speedForVo2,
+  vdot,
+  vo2,
+} from "./fitness.ts";
 import { checkHard, isFrozen, slotOf } from "./placement.ts";
 import { ranEasy } from "./readiness.ts";
 import type { Activity, DailySignal, FeelLog, Proposal, Result, Session, State } from "./types.ts";
@@ -64,7 +73,7 @@ export type KeySession = {
   fractions: number[];
   /** Observed HR minus the F15 prediction at that pace. */
   hrDelta?: number;
-  /** Heat, wind, hills, illness or a short night (SG2) on that day. */
+  /** Heat, wind, hills, illness or a short night (SG2) on that day, or a run she set aside (RC21): never read. */
   externalFactor?: boolean;
 };
 
@@ -234,7 +243,9 @@ export function evaluateKeySessions(
   hrMax?: number,
   lthr?: number,
 ): Proposal | null {
-  const keys = done
+  // RC21: a run set aside (a cause she gave) is read by no rule, up or down.
+  const read = done.filter((k) => !k.externalFactor);
+  const keys = read
     .filter((k) => ZONE_FRACTION[k.session.type] !== undefined)
     .filter((k) => lastChange === undefined || dateOf(k.activity.start) > lastChange)
     .sort((a, b) => a.activity.start.localeCompare(b.activity.start));
@@ -256,13 +267,133 @@ export function evaluateKeySessions(
   };
   const anchor = hrMax === undefined || lthr === undefined ? null : lthrRead(done, current, lastChange, hrMax, lthr);
   const relative = hrMax === undefined || anchor?.above ? null : hrRise(done, current, lastChange, hrMax);
-  const rise = byHeart("RC15", anchor) ?? byHeart("RC14", relative);
+  const rise =
+    byHeart("RC15", anchor) ??
+    byHeart("RC14", relative) ??
+    (hrMax === undefined ? null : byHeart("RC16", easyRise(read, current, lastChange, hrMax)));
   if (rise) return rise;
+  // RC20: never against the last change within 14 days of it, so stable data never makes a yo-yo.
+  if (days < REVERSE_DAYS) return null;
+  const felt = easyKeys(keys);
+  if (felt && !proposedRecently(history, "RC17", now)) return proposal("test", current, current, "RC17", felt, now);
+  const down = (ruleId: string, to: number, ids: string[]): Proposal | null =>
+    refusedRecently(history, false, now) || proposedRecently(history, ruleId, now)
+      ? null
+      : proposal("vdot", current, Math.max(to, current - 1), ruleId, ids, now);
   const lastTwo = keys.slice(-2);
-  const slow = lastTwo.length === 2 && lastTwo.every((k) => (ratio(k) ?? 1) < 0.97 && !k.externalFactor);
-  if (slow && !refusedRecently(history, false, now) && !proposedRecently(history, "RC4", now))
-    return proposal("vdot", current, current - 1, "RC4", evidence(lastTwo), now);
-  return null;
+  const slow = lastTwo.length === 2 && lastTwo.every((k) => (ratio(k) ?? 1) < 0.97);
+  if (slow) return down("RC4", current - 1, evidence(lastTwo));
+  const lastThree = keys.slice(-3);
+  const hard = lastThree.length === 3 && lastThree.every((k) => k.activity.feel === "hard" && (ratio(k) ?? 1) >= 0.97);
+  if (hard || anchor?.above) return down("RC19", current - 1, hard ? evidence(lastThree) : (anchor?.evidence ?? []));
+  const heavy = hrMax === undefined ? null : easyDrop(read, current, lastChange, hrMax);
+  return heavy && heavy.to <= current - HR_RISE_MIN ? down("RC18", heavy.to, heavy.evidence) : null;
+}
+
+/** RC20: a reading against the last change waits 14 days after it (no up then down on the same evidence). */
+const REVERSE_DAYS = 14;
+
+/**
+ * RC17: her last three T, CRUISE or I runs since the last change felt easy at the target pace (2 % slower at most),
+ * heart rate not above what F15 predicts when known: a test, like RC13. A feel says she is better, not by how much;
+ * a point given on it delayed the retest of P26 that measured 2.7 (bench, retour-marathon, 26/11/2026).
+ */
+const EASY_KEYS = 3;
+const HELD = 0.98;
+function easyKeys(keys: KeySession[]): string[] | null {
+  const last = keys.slice(-EASY_KEYS);
+  const easy = last.every(
+    (k) => k.activity.feel === "easy" && (ratio(k) ?? 0) >= HELD && (k.hrDelta === undefined || k.hrDelta <= 0),
+  );
+  return last.length === EASY_KEYS && easy ? last.map((k) => k.activity.id) : null;
+}
+
+/** Daniels: easy running is 59 to 74 % of VO2max, 65 to 79 % of HRmax; the top of both (F7, research 09). */
+const E_HR_TOP = 0.79;
+/** RC18: one typical error of exercise heart rate over the ceiling (Buchheit 2014: 1 to 3 %), not noise. */
+const E_HR_OVER = 3;
+/** RC16: clearly faster than her E pace, RC3's 2 %. */
+const E_FASTER = 1.02;
+const EASY_MIN = 20;
+/** Laps of 5 min or more: the strides and their jogs at the end of a footing do not count as its pace. */
+const EASY_LAP_MIN = 5;
+const EASY_UP_RUNS = 3;
+const EASY_DOWN_DAYS = 10;
+
+type EasyRead = { id: string; start: string; v: number; hr: number };
+
+/** Speed and heart rate of an easy run's steady part, flat and cool. */
+function easyRead(k: KeySession): EasyRead | null {
+  const a = k.activity;
+  const easy = k.session.type === "E" || k.session.type === "RECUP" || k.session.type === "L";
+  const flat = (a.elevGainM ?? 0) / a.distM < 0.01;
+  if (!easy || !flat || (a.tempC ?? 0) > HOT_C || a.durMin < EASY_MIN) return null;
+  const laps = (a.laps ?? []).filter((l) => l.durMin >= EASY_LAP_MIN && l.avgHr !== undefined);
+  const durMin = laps.reduce((t, l) => t + l.durMin, 0);
+  if (durMin > 0) {
+    const beats = laps.reduce((t, l) => t + (l.avgHr ?? 0) * l.durMin, 0);
+    return { id: a.id, start: a.start, v: laps.reduce((t, l) => t + l.distM, 0) / durMin, hr: beats / durMin };
+  }
+  return a.avgHr === undefined ? null : { id: a.id, start: a.start, v: a.distM / a.durMin, hr: a.avgHr };
+}
+
+const easyReads = (done: KeySession[], lastChange: string | undefined): EasyRead[] =>
+  done
+    .filter((k) => lastChange === undefined || dateOf(k.activity.start) > lastChange)
+    .sort((a, b) => a.activity.start.localeCompare(b.activity.start))
+    .flatMap((k) => easyRead(k) ?? []);
+
+/**
+ * RC16: her last three easy runs since the last change, 21 days apart at most, 2 % faster than her E pace with a
+ * heart rate under Daniels' easy ceiling: the pace she runs easy is at most the fast end of E (Daniels' paired bands),
+ * so it proves the level whose E it is, the smallest of the three.
+ */
+function easyRise(
+  done: KeySession[],
+  current: number,
+  lastChange: string | undefined,
+  hrMax: number,
+): { gain: number; evidence: string[] } | null {
+  const reads = easyReads(done, lastChange).slice(-EASY_UP_RUNS);
+  const [first, last] = [reads[0], reads.at(-1)];
+  if (reads.length < EASY_UP_RUNS || !first || !last || daysBetween(first.start, last.start) > PAIR_DAYS) return null;
+  const eSpeed = speedForVo2(E_FRACTION * current);
+  if (!reads.every((r) => r.hr <= E_HR_TOP * hrMax && r.v >= E_FASTER * eSpeed)) return null;
+  const gain = Math.min(...reads.map((r) => vo2(r.v) / E_FRACTION)) - current;
+  return { gain, evidence: reads.map((r) => r.id) };
+}
+
+/**
+ * RC18: her last two easy runs since the last change, 10 days apart at most, at her E pace or slower, each 3 bpm over
+ * Daniels' easy ceiling: the level whose E she would run at the ceiling, by Swain's slope as RC15, the higher of the
+ * two (the smaller drop).
+ */
+function easyDrop(
+  done: KeySession[],
+  current: number,
+  lastChange: string | undefined,
+  hrMax: number,
+): { to: number; evidence: string[] } | null {
+  const pair = easyReads(done, lastChange).slice(-2);
+  const [first, last] = pair;
+  if (!first || !last || daysBetween(first.start, last.start) > EASY_DOWN_DAYS) return null;
+  const cap = E_HR_TOP * hrMax;
+  const eSpeed = speedForVo2(E_FRACTION * current);
+  if (!pair.every((r) => r.hr >= cap + E_HR_OVER && r.v <= E_FASTER * eSpeed)) return null;
+  const atCap = (r: EasyRead): number => (vo2(r.v) - ((r.hr - cap) / hrMax / SWAIN.slope) * current) / E_FRACTION;
+  return { to: Math.max(...pair.map(atCap)), evidence: pair.map((r) => r.id) };
+}
+
+/** RC21: she sets aside a run of the last 7 days only, two in any 14 days at most: past that, a cause is a pattern. */
+const SET_ASIDE_DAYS = 7;
+const SET_ASIDE_MAX = 2;
+const SET_ASIDE_WINDOW = 14;
+
+/** RC21: why a run may not be set aside, or null. `setAside`: start of the runs already set aside. */
+export function setAsideRefusal(runStart: string, setAside: string[], now: string): "too_old" | "too_many" | null {
+  if (daysBetween(runStart, now) > SET_ASIDE_DAYS) return "too_old";
+  const recent = setAside.filter((start) => daysBetween(start, now) < SET_ASIDE_WINDOW);
+  return recent.length >= SET_ASIDE_MAX ? "too_many" : null;
 }
 
 export type FeelCtx = {
@@ -279,7 +410,8 @@ export type FeelCtx = {
  * days explains them: the week is lightened instead (P9).
  */
 export function evaluateFeels(feels: FeelLog[], current: number, now: string, ctx: FeelCtx = {}): Proposal | null {
-  const since = (f: FeelLog): boolean => ctx.lastChange === undefined || f.date > ctx.lastChange;
+  const since = (f: FeelLog): boolean =>
+    f.externalFactor !== true && (ctx.lastChange === undefined || f.date > ctx.lastChange);
   const last3 = (keep: (f: FeelLog) => boolean): FeelLog[] =>
     feels
       .filter((f) => keep(f) && since(f))
@@ -345,12 +477,17 @@ const hasRange = (s: Session): boolean =>
     (st) => st.zone && st.zone !== "race" && st.target.paceSKm && st.target.paceSKm[0] !== st.target.paceSKm[1],
   );
 
-/** C4 repair: sessions ahead that still hold a range take one pace each; frozen (12 h) and past ones stay as they are. */
+/**
+ * C4 repair: sessions ahead that still hold a range take one pace each, and automatic ones built with older paces
+ * (F7's E moved to the band's fast end on 26/11/2026) take today's; frozen (12 h) and past ones stay as they are.
+ */
 export function repaceRanges(st: State, now: string): Result {
   const p = paces(st.vdot);
   const changes: Result["changes"] = [];
   const sessions = st.sessions.map((s) => {
-    if (s.status !== "planned" || isFrozen(s, now) || !hasRange(s)) return s;
+    if (s.status !== "planned" || isFrozen(s, now)) return s;
+    const stale = !s.manual && JSON.stringify(repace(s, p).steps) !== JSON.stringify(s.steps);
+    if (!hasRange(s) && !stale) return s;
     const after = repace(s, p);
     changes.push({ ruleId: "C4", sessionId: s.id, before: s, after });
     return after;

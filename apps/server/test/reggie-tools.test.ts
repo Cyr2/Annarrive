@@ -8,7 +8,7 @@ function prepare(options: Parameters<typeof setup>[0] = {}) {
   const t = setup(options);
   t.stores.plannedSession.put(session("tonight", "2026-11-16T18:00", { type: "I", durMin: 60 }));
   const widgets: ChatWidget[] = [];
-  const tools = reggieTools(t.services.plan, widgets);
+  const tools = reggieTools(t.services.plan, t.services.fitness, widgets);
   const byName = (name: string): ReggieTool => {
     const found = tools.find((x) => x.name === name);
     if (!found) throw new Error(`no tool ${name}`);
@@ -46,6 +46,7 @@ describe("Reggie's tools", () => {
       "edit_event",
       "cancel_class",
       "change_goal",
+      "explain_session",
       "ask_choice",
       "ask_level",
     ]);
@@ -301,5 +302,54 @@ describe("Reggie's tools", () => {
       },
     });
     await expect(t.call("feel_better")).rejects.toThrow("bug");
+  });
+
+  it("sets aside a run she explains, withdraws the proposal it caused, two in 14 days at most, undoable (RC21)", async () => {
+    const t = prepare();
+    const runAt = (id: string, start: string) => t.stores.activity.put({ id, start, durMin: 40, distM: 6500, avgHr: 160 });
+    runAt("r1", "2026-11-14T18:00");
+    runAt("r2", "2026-11-15T18:00");
+    runAt("r3", "2026-11-15T19:00");
+    runAt("old", "2026-11-05T18:00");
+    t.stores.proposal.put({
+      id: "p1",
+      kind: "vdot",
+      from: 40,
+      to: 39,
+      ruleId: "RC18",
+      evidence: ["r0", "r1"],
+      expiresOn: "2026-11-30",
+      status: "pending",
+    });
+    expect((await t.call("explain_session", { runId: "r1", summary: "Repas trop proche", decision: "keep" })).json).toEqual(
+      { ok: true, kept: true },
+    );
+    expect(t.stores.activity.get("r1")?.setAside).toBeUndefined();
+
+    const done = await t.call("explain_session", { runId: "r1", summary: "Repas trop proche", decision: "set_aside" });
+    expect(done.json.change.summary).toBe("Course mise de côté : Repas trop proche");
+    expect(t.stores.activity.get("r1")?.setAside).toEqual({ summary: "Repas trop proche", on: "2026-11-16" });
+    expect(t.stores.proposal.get("p1")).toBeUndefined();
+
+    const old = await t.call("explain_session", { runId: "old", summary: "Chaleur", decision: "set_aside" });
+    expect(old).toMatchObject({ isError: true, json: { refused: "Je ne peux mettre de côté qu'une course des 7 derniers jours." } });
+    await t.call("explain_session", { runId: "r2", summary: "Nuit courte", decision: "set_aside" });
+    const third = await t.call("explain_session", { runId: "r3", summary: "Repas trop proche", decision: "set_aside" });
+    expect(third.isError).toBe(true);
+    expect(third.json.refused).toContain("Deux courses sont déjà mises de côté");
+
+    t.services.changes.undo(done.json.change.id);
+    expect(t.stores.activity.get("r1")?.setAside).toBeUndefined();
+    expect(t.stores.proposal.get("p1")?.status).toBe("pending");
+  });
+
+  it("« C'était une exception » sets aside the proposal's latest run, under the same limits (RC21)", () => {
+    const t = prepare();
+    t.stores.activity.put({ id: "r1", start: "2026-11-15T18:00", durMin: 40, distM: 6500, avgHr: 160 });
+    const proposal = { kind: "vdot", from: 40, to: 39, expiresOn: "2026-11-30", status: "pending" } as const;
+    t.stores.proposal.put({ ...proposal, id: "p1", ruleId: "RC19", evidence: ["r0", "r1"] });
+    expect(t.services.fitness.exception("p1").change?.summary).toBe("Course mise de côté : Exception signalée");
+    expect(t.stores.activity.get("r1")?.setAside?.summary).toBe("Exception signalée");
+    expect(t.stores.proposal.get("p1")).toBeUndefined();
   });
 });

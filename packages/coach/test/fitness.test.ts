@@ -102,13 +102,13 @@ describe("predictTime (F5, F6)", () => {
 describe("paces (F7, F8)", () => {
   it("gives the VDOT 40 paces (F-7)", () => {
     const p = paces(40);
-    expect(formatPace(p.E)).toBe("6:08");
+    expect(formatPace(p.E)).toBe("5:51");
     expect([p.M, p.T, p.I, p.R].map(formatPace)).toEqual(["5:27", "5:06", "4:41", "4:26"]);
   });
 
   it("gives the VDOT 50 paces (F-8)", () => {
     const p = paces(50);
-    expect(formatPace(p.E)).toBe("5:08");
+    expect(formatPace(p.E)).toBe("4:54");
     expect([p.M, p.T, p.I, p.R].map(formatPace)).toEqual(["4:31", "4:15", "3:55", "3:40"]);
   });
 

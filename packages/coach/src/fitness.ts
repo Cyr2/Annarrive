@@ -45,15 +45,17 @@ const paceOf = (vMpm: number): number => 60_000 / vMpm;
 
 /**
  * F7, s/km, one target pace per zone (C4). F8: T never faster than critical speed when known.
- * E, T and I at 69.65 %, 88 % and 97.5 % of VDOT: the fractions that reproduce Daniels' table 5.2 (3rd ed., one E
- * value) within 1 s/km for E and 3 s/km for T and I, from VDOT 30 to 85.
+ * T and I at 88 % and 97.5 % of VDOT: the fractions that reproduce Daniels' table 5.2 within 3 s/km, VDOT 30 to 85.
+ * E at the fast end of Daniels' easy band (59 to 74 %, research 09): a plan to race her best, still easy.
  */
+export const E_FRACTION = 0.74;
+
 export function paces(v: number, criticalSpeedMpm?: number): Paces {
   const I = paceOf(speedForVo2(0.975 * v));
   const tSpeed = speedForVo2(0.88 * v);
   const capped = criticalSpeedMpm !== undefined && tSpeed > criticalSpeedMpm ? criticalSpeedMpm : tSpeed;
   return {
-    E: paceOf(speedForVo2(0.6965 * v)),
+    E: paceOf(speedForVo2(E_FRACTION * v)),
     M: (predictTime(v, MARATHON_M) * 60) / (MARATHON_M / 1000),
     T: paceOf(capped),
     I,

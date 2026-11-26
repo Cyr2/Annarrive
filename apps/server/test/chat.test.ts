@@ -158,7 +158,7 @@ describe("POST /api/chat", () => {
       await new Promise(() => undefined);
     };
     const t = await ready(stuck);
-    const chat = new ChatService(t.stores, t.services.plan, stuck, () => MONDAY_8AM, t.services.incidents, 10);
+    const chat = new ChatService(t.stores, t.services.plan, t.services.fitness, stuck, () => MONDAY_8AM, t.services.incidents, 10);
     const events = [];
     for await (const event of chat.send({ text: "Salut" })) events.push(event);
     expect(events.at(-1)).toEqual({ type: "error", error: REGGIE_BUSY });

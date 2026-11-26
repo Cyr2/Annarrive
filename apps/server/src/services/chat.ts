@@ -1,3 +1,4 @@
+import type { FitnessService } from "./fitness.ts";
 import { randomUUID } from "node:crypto";
 import {
   type ChatContext,
@@ -119,6 +120,7 @@ export class ChatService {
   constructor(
     stores: Stores,
     plan: PlanService,
+    fitness: FitnessService,
     reggie: ReggieRun,
     clock: Clock,
     incidents: IncidentService,
@@ -129,7 +131,7 @@ export class ChatService {
     this.#clock = clock;
     this.#incidents = incidents;
     this.#silenceMs = silenceMs;
-    this.#tools = reggieTools(plan, this.#widgets);
+    this.#tools = reggieTools(plan, fitness, this.#widgets);
   }
 
   /** One Paris day of the conversation (today by default), and the day before it that has messages. */

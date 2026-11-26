@@ -72,6 +72,7 @@ export function createServices(deps: {
     chat: new ChatService(
       stores,
       plan,
+      fitness,
       deps.reggie ?? createReggie(query, process.env, startup),
       deps.clock,
       incidents,

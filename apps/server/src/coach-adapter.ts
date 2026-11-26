@@ -212,7 +212,9 @@ function keySession(session: PlannedSession, activity: Activity): coach.KeySessi
   const target = pace ? 2000 / (pace[0] + pace[1]) : 0;
   const fractions = target ? (activity.laps ?? []).map((l) => l.distM / (l.durMin * 60) / target) : [];
   const feel = activity.feel ?? activity.answeredFeel;
-  return { session: toSession(session), activity: { ...activity, ...(feel ? { feel } : {}) }, fractions };
+  const kept = { session: toSession(session), activity: { ...activity, ...(feel ? { feel } : {}) }, fractions };
+  // RC21: a run she set aside is read by no rule.
+  return activity.setAside ? { ...kept, externalFactor: true } : kept;
 }
 
 const NO_FITNESS =
@@ -492,7 +494,7 @@ export const coachAdapter: CoachPort = {
 
   evaluateRun(st, run, past, now) {
     const fitness = st.fitness;
-    if (!fitness) return null;
+    if (!fitness || run.setAside) return null;
     const history = answered(past);
     const reread = () => {
       const measured = initialFitness(st, undefined, now);
@@ -518,7 +520,9 @@ export const coachAdapter: CoachPort = {
     const tests = new Set(done.filter((d) => d.session.type === "TEST").map((d) => d.activity.id));
     const runs = st.activities.map((a) => (tests.has(a.id) ? { ...a, isTest: true } : a));
     const lthr = coach.thresholdHr(runs, coach.paces(st.fitness.vdot).T, now)?.bpm;
-    return coach.evaluateKeySessions(keys, st.fitness.vdot, st.fitness.date, answered(past), now, hrMax, lthr);
+    const p = coach.evaluateKeySessions(keys, st.fitness.vdot, st.fitness.date, answered(past), now, hrMax, lthr);
+    // RC16, RC18: the card says the easy pace the new level gives.
+    return p && (p.ruleId === "RC16" || p.ruleId === "RC18") ? { ...p, easySKm: coach.paces(p.to).E } : p;
   },
 
   evaluateFeels(st, past, now) {
@@ -577,6 +581,10 @@ export const coachAdapter: CoachPort = {
     const v = st.fitness.vdot;
     const same: coach.Proposal = { kind: "vdot", from: v, to: v, ruleId: "F10", evidence: [], expiresOn: dateOf(now) };
     return fromResult(st, coach.acceptProposal(toState(st, mondayOf(dateOf(now)), true), same, now), now);
+  },
+
+  setAsideRefusal(run, setAside, now) {
+    return coach.setAsideRefusal(run, setAside, now);
   },
 
   repaceRanges(st, now) {

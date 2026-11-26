@@ -177,6 +177,8 @@ export interface CoachPort {
   repace(st: CoachState, now: string): CoachResult;
   /** C4 repair: the sessions ahead stored with a [fast, slow] range take one pace each, except the frozen ones. */
   repaceRanges(st: CoachState, now: string): CoachResult;
+  /** RC21: why that run may not be set aside (older than 7 days, two already in 14 days), or null. */
+  setAsideRefusal(runStart: string, setAside: string[], now: string): "too_old" | "too_many" | null;
   /** M8 `acceptProposal` (RC9): new paces for future sessions, and the new estimate in `state.fitness`. */
   acceptProposal(st: CoachState, proposal: ProposalDraft, now: string): CoachResult;
   /**
