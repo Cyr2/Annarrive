@@ -123,6 +123,42 @@ describe("calendar events", () => {
     expect(t.stores.plannedSession.get("run")?.start).toBe("2026-11-18T18:00");
   });
 
+  it("adds work on several days as one change, moves the run it covers, and one Annuler takes it all back", async () => {
+    const t = await ready();
+    t.stores.plannedSession.put(session("run", "2026-11-18T18:00"));
+    const work = { kind: "work", title: "Coaching", recurrence: "weekly", legs: true };
+    const created = await change(t, "POST", "/api/events", [
+      { ...work, start: "2026-11-18T17:00", end: "2026-11-18T19:30", until: "2026-12-02", exceptions: ["2026-11-25"] },
+      { ...work, start: "2026-11-20T17:00", end: "2026-11-20T19:30" },
+    ]);
+    expect(created.change?.summary).toMatch(/^Travail ajouté · Footing passé à /);
+    expect(t.stores.calendarEvent.list()).toHaveLength(2);
+    expect(t.stores.plannedSession.get("run")?.start).not.toBe("2026-11-18T18:00");
+    const next = weekSchema.parse((await t.call("GET", "/api/weeks/2026-W48")).json);
+    expect(next.days[2]?.events).toEqual([]);
+    expect(next.days[4]?.events[0]).toMatchObject({ kind: "work", title: "Coaching", legs: true });
+
+    await undo(t, created.change?.id);
+    expect(t.stores.calendarEvent.list()).toHaveLength(0);
+    expect(t.stores.plannedSession.get("run")?.start).toBe("2026-11-18T18:00");
+  });
+
+  it("gives every occurrence of work new hours, its days unchanged", async () => {
+    const t = await ready();
+    await t.call("POST", "/api/events", { ...strength, kind: "work", title: "Coaching" });
+    const [event] = t.stores.calendarEvent.list();
+    const updated = await change(t, "PATCH", `/api/events/${event?.id}`, { hours: { start: "16:00", end: "19:00" } });
+    expect(updated.change?.summary).toBe("Travail modifié");
+    expect(t.stores.calendarEvent.get(event?.id ?? "")).toMatchObject({
+      start: "2026-11-17T16:00",
+      end: "2026-11-17T19:00",
+      legs: false,
+    });
+    expect(
+      (await t.call("PATCH", `/api/events/${event?.id}`, { hours: { start: "19:00", end: "16:00" } })).status,
+    ).toBe(400);
+  });
+
   it("updates an event and Annuler restores the exact previous version", async () => {
     const t = await ready();
     await t.call("POST", "/api/events", strength);

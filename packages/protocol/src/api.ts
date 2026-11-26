@@ -69,10 +69,10 @@ export type PlannedSession = z.infer<typeof plannedSessionSchema>;
 
 export const recurrenceSchema = z.enum(["none", "weekly", "biweekly"]);
 
-/** Classes, exams, strength, revision and unavailability, shaped like `CalEvent` in algo.md. */
+/** Classes, exams, strength, revision, unavailability and work, shaped like `CalEvent` in algo.md. */
 export const calendarEventSchema = z.object({
   id: z.string().min(1),
-  kind: z.enum(["class", "exam", "strength", "revision", "unavailable"]),
+  kind: z.enum(["class", "exam", "strength", "revision", "unavailable", "work"]),
   title: z.string(),
   start: localDateTimeSchema,
   end: localDateTimeSchema,
@@ -304,7 +304,7 @@ export const proposalSchema = z.object({
 export type Proposal = z.infer<typeof proposalSchema>;
 
 const eventFields = z.object({
-  kind: z.enum(["strength", "revision", "unavailable"]),
+  kind: z.enum(["strength", "revision", "unavailable", "work"]),
   title: z.string().trim().max(80),
   start: localDateTimeSchema,
   end: localDateTimeSchema,
@@ -316,10 +316,21 @@ const endAfterStart = (e: { start?: string | undefined; end?: string | undefined
   e.start === undefined || e.end === undefined || e.end > e.start;
 const endAfterStartMessage = { message: "La fin doit venir après le début.", path: ["end"] };
 
-export const createEventInputSchema = eventFields.refine(endAfterStart, endAfterStartMessage);
+export const createEventInputSchema = eventFields
+  // « Certaines semaines »: a weekly event that skips the weeks she left out.
+  .extend({ exceptions: z.array(localDateSchema).max(60).optional() })
+  .refine(endAfterStart, endAfterStartMessage);
 export type CreateEventInput = z.infer<typeof createEventInputSchema>;
+/** One event, or several added as one change (work on several days), so one Annuler takes them all back. */
+export const createEventsInputSchema = z.union([createEventInputSchema, z.array(createEventInputSchema).min(1).max(7)]);
 export const updateEventInputSchema = eventFields
   .omit({ kind: true })
+  .extend({
+    /** New hours for every occurrence of a recurring event, its days unchanged. */
+    hours: z
+      .object({ start: timeOfDaySchema, end: timeOfDaySchema })
+      .refine((h) => h.end > h.start, endAfterStartMessage),
+  })
   .partial()
   .refine(endAfterStart, endAfterStartMessage);
 export type UpdateEventInput = z.infer<typeof updateEventInputSchema>;

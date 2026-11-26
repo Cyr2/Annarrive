@@ -77,6 +77,24 @@ describe("checkHard (H1 to H7)", () => {
     expect(checkHard(e, at(e, "2026-11-25T09:15"), week([], [course]))).toEqual([]);
   });
 
+  it("keeps her travel time on both sides of work, and a hard run away from just before physical work (PL-28)", () => {
+    const work = block("w", "2026-11-26T14:00", "2026-11-26T17:00", "work");
+    const travel = { ...SETTINGS, travelMin: 45 };
+    expect(checkHard(e, at(e, "2026-11-26T12:30"), week([], [work], travel))).toEqual([]);
+    expect(ids(checkHard(e, at(e, "2026-11-26T12:45"), week([], [work], travel)))).toEqual(["H1"]);
+    expect(ids(checkHard(e, at(e, "2026-11-26T17:30"), week([], [work], travel)))).toEqual(["H1"]);
+    expect(checkHard(e, at(e, "2026-11-26T17:45"), week([], [work], travel))).toEqual([]);
+    const physical = { ...work, legs: true };
+    expect(checkHard(q, at(q, "2026-11-26T12:30"), week([], [physical]))).toContainEqual({
+      ruleId: "H6",
+      message: "Moins d'1 h entre ta course et ton travail physique",
+    });
+    expect(checkHard(e, at(e, "2026-11-26T12:30"), week([], [physical]))).toEqual([]);
+    expect(checkHard(q, at(q, "2026-11-26T08:00"), week([], [physical]))).toEqual([]);
+    expect(softPenalty(q, at(q, "2026-11-26T08:00"), week([], [physical])).items.map((i) => i.id)).toContain("S4");
+    expect(checkHard(q, at(q, "2026-11-27T08:00"), week([], [physical]))).toEqual([]);
+  });
+
   it("refuses consecutive hard days and a hard run less than 1 h before legs the same day", () => {
     expect(ids(checkHard(q, at(q, "2026-11-27T08:00"), week([long("l", "2026-11-28T09:00")])))).toEqual(["H4"]);
     expect(ids(checkHard(q, at(q, "2026-11-24T16:30"), week([])))).toEqual(["H6"]);

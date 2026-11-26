@@ -45,9 +45,10 @@ export type Session = {
 
 export type CalEvent = {
   id: string;
-  kind: "class" | "exam" | "strength" | "revision" | "unavailable";
+  kind: "class" | "exam" | "strength" | "revision" | "unavailable" | "work";
   start: string;
   end: string;
+  /** Strength: a legs session (H5, H6). Work: physical work, on her feet (H6). */
   legs?: boolean;
   light?: boolean;
   manual: boolean;

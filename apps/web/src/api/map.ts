@@ -90,6 +90,7 @@ const EVENT_KINDS: Record<ServerEvent["kind"], EventKind> = {
   strength: "strength",
   revision: "revision",
   unavailable: "busy",
+  work: "work",
 };
 const REPEATS: Record<Repeat, ServerEvent["recurrence"]> = { never: "none", weekly: "weekly", biweekly: "biweekly" };
 const RACES = new Map([
@@ -540,6 +541,8 @@ export function toEventInput(event: NewEvent): CreateEventInput {
     end: localAt(event.date, event.end),
     legs: event.legs,
     recurrence: REPEATS[event.repeat ?? "never"],
+    until: event.until,
+    exceptions: event.exceptions,
   };
 }
 

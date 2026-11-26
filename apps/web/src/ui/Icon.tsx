@@ -29,6 +29,13 @@ const PATHS = {
       <path d="M8 11V7a4 4 0 0 1 8 0v4" />
     </>
   ),
+  /** Work: a briefcase (the owner turned down the whistle, 26/11/2026). */
+  work: (
+    <>
+      <rect x="3" y="7" width="18" height="13" rx="2.5" />
+      <path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M3 12.5h18" />
+    </>
+  ),
   plus: <path d="M12 5v14M5 12h14" />,
   today: (
     <>

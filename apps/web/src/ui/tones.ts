@@ -3,7 +3,18 @@ import type { IconName } from "./Icon.tsx";
 
 /** What a session or a calendar item is. Its three tones come from tokens.css. */
 /** A class's teaching unit (lib/text.ts) is a tone too: its pill in a row, its dot in the week strip. */
-export type Tone = "hard" | "easy" | "long" | "class" | "revision" | "strength" | "busy" | "rest" | "other" | Ue;
+export type Tone =
+  | "hard"
+  | "easy"
+  | "long"
+  | "class"
+  | "revision"
+  | "strength"
+  | "work"
+  | "busy"
+  | "rest"
+  | "other"
+  | Ue;
 
 type ToneStyle = {
   /** Background of a row, a chip or a card corner. */ wash: string;
@@ -56,6 +67,14 @@ export const TONES: Record<Tone, ToneStyle> = {
     deep: "text-strength-deep",
     label: "Muscu",
     icon: "strength",
+  },
+  work: {
+    wash: "bg-work-wash",
+    mid: "bg-work",
+    color: "var(--color-work)",
+    deep: "text-work-deep",
+    label: "Travail",
+    icon: "work",
   },
   class: {
     wash: "bg-class-wash",

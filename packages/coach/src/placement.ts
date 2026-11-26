@@ -49,6 +49,8 @@ export const runWindowMin = (s: Hours): number =>
   Math.max(0, Math.min(latestMin(s), bedMin(s) - 60) - clockMin(s.earliest));
 /** Only a session she marked as legs counts: a missing flag is not a legs day (owner decision, 17/11/2026). */
 const isLegs = (e: CalEvent): boolean => e.kind === "strength" && e.legs === true;
+/** H6 and S4: physical work tires her legs that day, so a hard run keeps away from just before it (owner, 26/11/2026). */
+const isPhysicalWork = (e: CalEvent): boolean => e.kind === "work" && e.legs === true;
 export const isFrozen = (s: Session, now: string): boolean => s.frozen || hoursBetween(now, s.start) < FREEZE_H;
 const v = (ruleId: string, message: string): Violation => ({ ruleId, message });
 
@@ -56,7 +58,9 @@ const v = (ruleId: string, message: string): Violation => ({ ruleId, message });
 
 function h1(slot: Slot, cal: CalEvent[], s: Settings): Violation | null {
   const [a, b] = [toMin(slot.start), toMin(slot.end)];
-  const hit = cal.some((e) => a < toMin(e.end) + AFTER_EVENT_MIN && b > toMin(e.start) - s.travelMin);
+  // She travels back from work too: its buffer after is her travel time, never shorter than a class's.
+  const after = (e: CalEvent) => (e.kind === "work" ? Math.max(AFTER_EVENT_MIN, s.travelMin) : AFTER_EVENT_MIN);
+  const hit = cal.some((e) => a < toMin(e.end) + after(e) && b > toMin(e.start) - s.travelMin);
   return hit ? v("H1", "Pris par un cours ou un créneau occupé") : null;
 }
 
@@ -85,14 +89,15 @@ function h5(slot: Slot, cal: CalEvent[]): Violation | null {
 
 function h6(slot: Slot, cal: CalEvent[]): Violation | null {
   const end = toMin(slot.end);
-  const sameDay = cal.some(
+  const next = cal.find(
     (e) =>
-      isLegs(e) &&
+      (isLegs(e) || isPhysicalWork(e)) &&
       dateOf(e.start) === dateOf(slot.start) &&
       toMin(e.start) >= toMin(slot.start) &&
       toMin(e.start) - end < 60,
   );
-  return sameDay ? v("H6", "Moins d'1 h entre ta course et ta séance jambes") : null;
+  if (!next) return null;
+  return v("H6", `Moins d'1 h entre ta course et ${isLegs(next) ? "ta séance jambes" : "ton travail physique"}`);
 }
 
 const h7 = (slot: Slot, s: Settings): Violation | null =>
@@ -155,10 +160,10 @@ function legsPenalties(hard: boolean, slot: Slot, cal: CalEvent[]): Item[] {
   const start = toMin(slot.start);
   const end = toMin(slot.end);
   const items: Item[] = [];
-  for (const e of cal.filter(isLegs)) {
+  for (const e of cal.filter((x) => isLegs(x) || isPhysicalWork(x))) {
     const gapH = (start - toMin(e.end)) / 60;
-    if (hard && gapH >= 24 && gapH < 48) items.push({ id: "S2", pts: (40 * (48 - gapH)) / 24 });
-    if (!hard && gapH >= 0 && gapH < 6) items.push({ id: "S3", pts: 15 });
+    if (isLegs(e) && hard && gapH >= 24 && gapH < 48) items.push({ id: "S2", pts: (40 * (48 - gapH)) / 24 });
+    if (isLegs(e) && !hard && gapH >= 0 && gapH < 6) items.push({ id: "S3", pts: 15 });
     const after = (toMin(e.start) - end) / 60;
     if (hard && dateOf(e.start) === dateOf(slot.start) && after >= 0 && after < 6) items.push({ id: "S4", pts: 10 });
   }

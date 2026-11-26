@@ -1,6 +1,6 @@
 import {
   changeSessionInputSchema,
-  createEventInputSchema,
+  createEventsInputSchema,
   deleteEventQuerySchema,
   dismissReviewInputSchema,
   feasibilityInputSchema,
@@ -45,7 +45,7 @@ export function planRoutes({ plan, changes, timetable, garmin, fitness, review }
         });
       })
       .get("/weeks/:week", (c) => c.json(plan.week(isoWeekSchema.parse(c.req.param("week")))))
-      .post("/events", async (c) => c.json(plan.createEvent(await body(c, createEventInputSchema)), 201))
+      .post("/events", async (c) => c.json(plan.createEvent(await body(c, createEventsInputSchema)), 201))
       .patch("/events/:id", async (c) =>
         c.json(plan.updateEvent(c.req.param("id"), await body(c, updateEventInputSchema))),
       )
