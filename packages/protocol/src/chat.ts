@@ -1,6 +1,14 @@
 import { z } from "zod";
 import { changeOptionSchema, localDateSchema, plannedSessionSchema, slotSchema } from "./api.ts";
 
+/**
+ * French typography: a narrow no-break space keeps "?", "!", ":", ";" and a pace's "/km" with the word before them,
+ * added when missing ("Sources:"). Only before a space or the end, so a link's "?" or "https:" stays as it is.
+ */
+export function frenchSpaces(text: string): string {
+  return text.replace(/ ([?!:;]|\/km)/g, " $1").replace(/(\p{L})([?!:;])(?=\s|$)/gu, "$1 $2");
+}
+
 /** Where the conversation was opened from, so Reggie knows what "cette séance" means. */
 export const chatContextSchema = z.object({
   screen: z.enum(["today", "week", "program", "after_run", "session"]),

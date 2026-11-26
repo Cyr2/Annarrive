@@ -7,6 +7,7 @@ import {
   type ChatStreamEvent,
   type ChatWidget,
   chatWidgetSchema,
+  frenchSpaces,
 } from "@annarrive/protocol";
 import { AppError } from "../errors.ts";
 import { REGGIE_BUSY, ReggieBusyError, type ReggieEvent, type ReggieRun } from "../reggie/agent.ts";
@@ -43,6 +44,32 @@ function errorEvent(error: unknown): ChatStreamEvent {
 }
 
 const QUESTION_TOOLS = ["ask_choice", "ask_level"];
+
+/** The English list the web search tool appends under the answer, in Markdown. */
+const SEARCH_SOURCES = /\n+Sources?\s*:\s*(?:\n[ \t]*[-*].*)+\s*$/;
+
+/**
+ * The stored answer: the search tool's list dropped when Reggie already gave his link, a sentence said twice kept
+ * once (the question written before its buttons and again after them), French typography.
+ */
+export function cleanAnswer(text: string): string {
+  const sources = SEARCH_SOURCES.exec(text);
+  const cited = sources && /https?:\/\//.test(text.slice(0, sources.index)) ? text.slice(0, sources.index) : text;
+  const seen = new Set<string>();
+  // A sentence ends at a stop followed by a space or the end, so a link's dots never split it.
+  const once = cited.replace(/.+?(?:[.?!](?=\s|$)|$)/gm, (sentence) => {
+    const key = sentence.trim().toLowerCase();
+    if (seen.has(key)) return "";
+    seen.add(key);
+    return sentence;
+  });
+  return frenchSpaces(
+    once
+      .replace(/[ \t]+\n/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim(),
+  );
+}
 
 /** The events of `run`, until one takes longer than `ms` to come: then a ReggieBusyError. */
 async function* untilSilent<T>(run: AsyncIterable<T>, ms: number): AsyncGenerator<T> {
@@ -176,7 +203,7 @@ export class ChatService {
       return;
     }
     yield* screen.flush();
-    const answer = screen.text.trim();
+    const answer = cleanAnswer(screen.text);
     // A widget the model filled badly (an empty session, say) is dropped rather than failing the whole reply.
     const valid = widgets.filter((w) => chatWidgetSchema.safeParse(w).success);
     for (const widget of valid) yield { type: "widget", widget };

@@ -6,7 +6,7 @@ import {
 } from "@annarrive/protocol";
 import { describe, expect, it } from "vitest";
 import { REGGIE_BUSY, ReggieBusyError, type ReggieRun, ReggieUnavailableError } from "../src/reggie/agent.ts";
-import { ChatService } from "../src/services/chat.ts";
+import { ChatService, cleanAnswer } from "../src/services/chat.ts";
 import { MONDAY_8AM, session, setup } from "./helpers.ts";
 
 /** Plays a scripted turn: calls a tool through the real tool list, then writes. */
@@ -109,9 +109,35 @@ describe("POST /api/chat", () => {
     const events = parseSse(await (await t.request("POST", "/api/chat", { text: "Ajoute 3 h" })).text());
     expect(events.at(-1)).toMatchObject({
       type: "done",
-      message: { text: "Je garde mes règles.\n\nTu veux en parler ?" },
+      message: { text: "Je garde mes règles.\n\nTu veux en parler\u202f?" },
     });
     expect(events.some((e) => e.type === "retract")).toBe(false);
+  });
+
+  it("stores a question written before its buttons and again after them once", async () => {
+    // Eval « mieux-ambigu »: the words before ask_choice stay, and the model wrote the same question after it.
+    const reggie: ReggieRun = async function* () {
+      yield { type: "text", delta: "Tant mieux. Tu te sens guérie ?" };
+      yield { type: "tool_call", name: "ask_choice", input: { options: ["Oui", "Non"] } };
+      yield { type: "text", delta: "\n\n" };
+      yield { type: "text", delta: "Tu te sens guérie ?" };
+    };
+    const t = await ready(reggie);
+    const events = parseSse(await (await t.request("POST", "/api/chat", { text: "Ça va mieux" })).text());
+    expect(events.at(-1)).toMatchObject({ type: "done", message: { text: "Tant mieux. Tu te sens guérie\u202f?" } });
+  });
+
+  it("drops the search tool's English source list when Reggie already gave his link", () => {
+    // Eval « nutrition-source ».
+    const reply =
+      "Des pâtes la veille. Source : https://www.nhs.uk/live-well/exercise/running?x=1\n\nSources:\n- [Food for runners](https://www.nhs.uk/a)\n- [B](https://www.nhs.uk/b)";
+    expect(cleanAnswer(reply)).toBe(
+      "Des pâtes la veille. Source\u202f: https://www.nhs.uk/live-well/exercise/running?x=1",
+    );
+    // Without his own link, the list is the only source: it stays.
+    expect(cleanAnswer("Des pâtes.\n\nSources:\n- [A](https://www.nhs.uk/a)")).toBe(
+      "Des pâtes.\n\nSources\u202f:\n- [A](https://www.nhs.uk/a)",
+    );
   });
 
   it("ends with an error event, stores nothing and journals an incident when Reggie fails", async () => {

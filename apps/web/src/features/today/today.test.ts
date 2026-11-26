@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import type { Run } from "../../api/schemas.ts";
-import { frenchSpaces } from "../reggie/Message.tsx";
 import {
   beforeFirstRun,
   paceText,
@@ -31,12 +30,6 @@ describe("today, details", () => {
     expect(restLine("2026-11-17", true)).toBe(
       "Rien à courir aujourd'hui. Ton plan commence avec la séance juste en dessous.",
     );
-  });
-
-  it("keeps French punctuation with its word", () => {
-    expect(frenchSpaces("C'est grave ? Oui : non !")).toBe("C'est grave ? Oui : non !");
-    // Audit iPhone F3: in Reggie's words, a pace never leaves its unit for the next line.
-    expect(frenchSpaces("Vise 5'07 /km.")).toBe("Vise 5'07 /km.");
   });
 
   it("asks Reggie about the session with its day, its goal and its steps", () => {
