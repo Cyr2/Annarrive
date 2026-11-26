@@ -14,11 +14,19 @@ import { moveOptions } from "../useLoad.ts";
 
 const cancelledOf = (item: Item) => "cancelled" in item && Boolean(item.cancelled);
 
-/** Under the start time: a class or a busy slot ends at a time, anything else lasts. */
+/** Under the start time: a class, work or a busy slot ends at a time, anything else lasts. */
 function lasts(item: Item): string {
   if (item.kind === "run") return duration(item.durationMin);
-  if (item.kind === "class" || item.kind === "busy") return item.end;
+  if (item.kind === "class" || item.kind === "busy" || item.kind === "work") return item.end;
   return duration(minutesOf(item.end) - minutesOf(item.start));
+}
+
+/** The small line under the title: a run's main set, a class's codes, physical work, or that it is off. */
+function metaOf(item: Item, cancelled: boolean): string | undefined {
+  if (cancelled) return "N'a pas lieu";
+  if (item.kind === "run") return item.mainSet;
+  if (item.kind === "work") return item.legs ? "Travail physique" : undefined;
+  return nameOf(item).detail;
 }
 
 /**
@@ -31,8 +39,8 @@ export function ItemRow({ item, lifted = false }: { item: Item; lifted?: boolean
   const run = item.kind === "run";
   const quiet = item.kind === "class" || item.kind === "busy";
   const cancelled = cancelledOf(item);
-  const { title, detail, ue } = nameOf(item);
-  const meta = cancelled ? "N'a pas lieu" : run ? item.mainSet : detail;
+  const { title, ue } = nameOf(item);
+  const meta = metaOf(item, cancelled);
   return (
     <Surface
       variant="inset"

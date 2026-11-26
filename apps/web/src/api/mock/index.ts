@@ -211,16 +211,23 @@ export function createMockApi({
       return seedLevel(monday);
     },
 
-    addEvent: (input) =>
-      commit(`Ajouté à ta semaine : ${input.title}, ${dayName(input.date).toLowerCase()} ${input.start}`, () => {
-        put({ ...input, id: `e${Date.now()}${seq}` });
-        return clearConflicts(input.date, input.start, input.end);
-      }),
-    updateEvent: (id, patch) =>
+    // shortcut: the mock puts each event once, in its first week, without its repeats.
+    addEvent: (input) => {
+      const all = [input].flat();
+      const first = all[0];
+      const said = first ? `${first.title}, ${dayName(first.date).toLowerCase()} ${first.start}` : "";
+      return commit(`Ajouté à ta semaine : ${said}`, () =>
+        all.flatMap(({ until: _until, exceptions: _exceptions, repeat: _repeat, ...event }, i) => {
+          put({ ...event, id: `e${Date.now()}${seq}${i}` });
+          return clearConflicts(event.date, event.start, event.end);
+        }),
+      );
+    },
+    updateEvent: (id, { hours, ...patch }) =>
       commit(patch.cancelled ? "Cours marqué comme annulé, le créneau est libre" : "Modification enregistrée", () => {
         const item = find(id);
         if (isRun(item)) throw new Error("Une course se change avec Déplacer ou Changer");
-        put({ ...item, ...patch });
+        put({ ...item, ...patch, ...hours });
         return undefined;
       }),
     deleteEvent: (id, scope) =>

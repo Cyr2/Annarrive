@@ -20,9 +20,17 @@ import type {
 
 export type NewEvent = Omit<CalendarEvent, "id" | "cancelled" | "templateId"> & {
   repeat?: Strength["repeat"];
+  /** Last day of a recurring event, inclusive. */
+  until?: string;
+  /** Days a recurring event skips (« Certaines semaines »). */
+  exceptions?: string[];
 };
-export type EventPatch = Partial<Pick<CalendarEvent, "date" | "start" | "end" | "title" | "cancelled">>;
-export type DeleteScope = "one" | "all";
+export type EventPatch = Partial<Pick<CalendarEvent, "date" | "start" | "end" | "title" | "cancelled" | "legs">> & {
+  /** New hours for every occurrence of a recurring event, its days unchanged. */
+  hours?: { start: string; end: string };
+};
+/** "following": this occurrence and the next ones of a recurring event. */
+export type DeleteScope = "one" | "all" | "following";
 
 export type UnavailableReason = "time" | "tired" | "sick" | "pain" | "other";
 export type UnavailableInput = {
@@ -63,7 +71,8 @@ export interface Api {
   /** Programme's « Ton niveau » (algo.md M13); null before her level is known. */
   level(): Promise<Level>;
 
-  addEvent(input: NewEvent): Promise<ChangeResult>;
+  /** Several events (work on several days) are one change: one Annuler takes them all back. */
+  addEvent(input: NewEvent | NewEvent[]): Promise<ChangeResult>;
   updateEvent(id: string, patch: EventPatch): Promise<ChangeResult>;
   /** `date`: the occurrence tapped, so "one" skips only that day of a recurring event. */
   deleteEvent(id: string, scope: DeleteScope, date?: string): Promise<ChangeResult>;

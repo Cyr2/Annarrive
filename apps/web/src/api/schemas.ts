@@ -40,7 +40,7 @@ export const runSchema = z.object({
   lightened: z.string().optional(),
 });
 
-export const eventKindSchema = z.enum(["class", "strength", "revision", "busy"]);
+export const eventKindSchema = z.enum(["class", "strength", "revision", "busy", "work"]);
 
 export const eventSchema = z.object({
   id: z.string(),

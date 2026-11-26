@@ -78,10 +78,10 @@ type Session = {
 };
 type CalEvent = {
   id: string;
-  kind: "class" | "exam" | "strength" | "revision" | "unavailable";
+  kind: "class" | "exam" | "strength" | "revision" | "unavailable" | "work";
   start: string;
   end: string;
-  legs?: boolean;
+  legs?: boolean;                 // muscu : séance jambes (H5, H6) ; travail : travail physique, debout (H6)
   light?: boolean;
   manual: boolean;
 };
@@ -410,12 +410,12 @@ proposeMoveSlots(sessionId: string, week: WeekState, now: string): { best: SlotW
 
 | Id  | Règle                                                                                                                   | Paramètres                           | Source                    | Niveau |
 | --- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | ------------------------- | ------ |
-| H1  | Aucun chevauchement avec cours, examen, muscu, révision, indispo, tampons compris. `travelMin` est le temps qu'il lui faut entre la fin d'une course et le début d'un cours (douche, trajet), réglé dans Réglages (« Après une course, avant un cours ») ; 30 min pour un nouveau profil, un profil existant garde le sien | avant = `travelMin` (30 min par défaut) ; après = 30 min | Réglages                | OP     |
+| H1  | Aucun chevauchement avec cours, examen, muscu, révision, indispo, travail, tampons compris. `travelMin` est le temps qu'il lui faut entre la fin d'une course et le début d'un cours (douche, trajet), réglé dans Réglages (« Après une course, avant un cours ») ; 30 min pour un nouveau profil, un profil existant garde le sien. Le travail se traite comme un cours, avec le trajet des deux côtés : elle en revient aussi | avant = `travelMin` (30 min par défaut) ; après = 30 min, `max(30 min, travelMin)` après un travail | Réglages ; décision du 26/11/2026 | OP     |
 | H2  | Début ≥ `earliest`, fin ≤ `latestEnd`, jamais un jour de `noRunDays`. `latestEnd` 00:00 est minuit, la fin du jour. Des horaires qui laissent moins de 30 min (un E à son plancher) entre `earliest` et `latestEnd` ou 1 h avant `bedtime` (H7) sont refusés à l'enregistrement | réglages                             | choix d'Anna              | OP     |
 | H3  | Au plus 1 course par jour                                                                                               |                                      | Runna                     | CONS   |
 | H4  | Jamais deux séances dures des jours calendaires consécutifs                                                             | relâchable (R-a)                     | Seiler 2010               | CONS   |
 | H5  | Muscu jambes → séance dure (Q ou L) : `début(dure) - fin(jambes) ≥ 24 h` (12 h si bloc marqué léger)                    | 24 h                                 | Doma 2013 ; Robineau 2016 | ECR    |
-| H6  | Dure et jambes le même jour : la course avant, écart ≥ 1 h                                                              | 1 h                                  | Doma 2013                 | ECR    |
+| H6  | Dure et jambes le même jour : la course avant, écart ≥ 1 h. Un travail marqué physique (`work` avec `legs`, « Travail physique ») compte comme une séance jambes ici et pour S4, pas pour H5, S2 ni S3 | 1 h                                  | Doma 2013 ; décision du 26/11/2026 | ECR    |
 | H7  | Toute course finit ≥ 1 h avant `bedtime`                                                                                | 1 h                                  | Stutz 2019                | MA     |
 | H8  | L en un seul bloc                                                                                                       |                                      |                           | OP     |
 | H9  | Gel : une séance qui commence dans moins de 12 h n'est jamais déplacée automatiquement ; l'algo renvoie une proposition | 12 h                                 | décision produit          | OP     |
@@ -488,6 +488,7 @@ Contexte commun : `earliest` 07:00, `latestEnd` 22:30, `bedtime` 23:00, `travelM
 | PL-21 | `travelMin` 30, cours mercredi 10:15 à 12:15 : `checkHard` E 45 min mercredi 09:00, puis 09:15 ; puis 09:15 avec `travelMin` 0 | `[]` (fin 09:45) ; violation H1 (fin 10:00, 15 min avant le cours) ; `[]` |
 | PL-26 | `latestEnd` 00:00, `earliest` 10:00, `bedtime` 01:00 : `checkHard` E 45 min lundi 23:00, puis 09:30 | `[]` ; violation H2 ; fenêtre de 14 h |
 | PL-27 | `replan` d'un E jeudi 18:00, toute la semaine prise | E inchangé, toujours prévu ; aucun changement ; `warning` A4 |
+| PL-28 | `travelMin` 45, travail jeudi 14:00 à 17:00 : `checkHard` E 45 min jeudi 12:30, 12:45, 17:30, 17:45 ; puis `travelMin` 0 et travail physique : Q 60 min jeudi 12:30, E 12:30, Q 08:00 (et son `softPenalty`), Q vendredi 08:00 | `[]` ; H1 ; H1 (15 min après le travail) ; `[]` ; violation H6 « Moins d'1 h entre ta course et ton travail physique » ; `[]` ; `[]` avec S4 ; `[]` |
 | PL-25 | Semaine du 30 novembre de l'audit : 4 courses (L, 3 E), cours de la semaine A (jeudi jusqu'à 18:00, vendredi matin), `travelMin` 30, heures habituelles 18:30 et 9:30, sortie longue samedi ou dimanche, semaine d'avant mar, mer, ven, sam ; puis 4 courses, semaine d'avant lun, mar, mer, sam ; puis 3 E, jeudi à dimanche pris | jamais trois jours de course d'affilée ; idem ; lundi, mardi, mercredi (A1b relâché faute de place) |
 
 ---
@@ -989,7 +990,8 @@ thresholdHr(activities: Activity[], tPace: number, now: string): { bpm; from: "t
 | Événements ICS (début, fin, titre) → `class`                                                                             | H1                       | dernier ICS valide gardé ; s'il a plus de 7 jours : avertir, continuer |
 | Examens : titre contenant « examen », « partiel », « DS », « contrôle », « exam » (insensible à la casse et aux accents) | S5, S6, SG5              | aucun examen connu                                                     |
 | Cours marqué « n'a pas lieu » par Anna                                                                                   | H1 (créneau libéré)      |                                                                        |
-| Muscu (nom, `legs`, jour, heure, durée), révision, indispo : placés par Anna                                             | H1, H5, H6, S2 à S4, S11 | muscu sans `legs` explicite : pas jambes (décision du 17/11/2026 : seul l'interrupteur fait une séance jambes, un oubli du client ne doit pas bloquer ses séances dures) |
+| Muscu (nom, `legs`, jour, heure, durée), révision, indispo : placés par Anna                                             | H1, H5, H6, S2 à S4, S11 |
+| Travail (titre, jours, début, fin, répétition, `legs` pour « Travail physique ») : placé par Anna                        | H1, H6, S4               | travail sans `legs` : pas physique                                     | muscu sans `legs` explicite : pas jambes (décision du 17/11/2026 : seul l'interrupteur fait une séance jambes, un oubli du client ne doit pas bloquer ses séances dures) |
 | Réglages : courses/sem, pas avant, pas après, jours sans course, coucher, trajet                                         | H2, H7, S1, P13          | défauts : 3 courses, 07:00, 21:30, aucun, 23:00, 0 min                 |
 | Objectif : distance, date, chrono facultatif                                                                             | M2                       | M9                                                                     |
 | Douleur ou blessure en cours (onboarding)                                                                                | P9, EV11 à EV12          | non                                                                    |

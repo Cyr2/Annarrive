@@ -64,6 +64,10 @@
   --color-strength: #8c7bb0;
   --color-strength-deep: #4f4378; /* 8.7:1, 6.9:1 on wash */
   --color-strength-line: #cbc4db; /* the 1 px outline of a strength row: the mauve at 45 % on white */
+  /* Work: a warm hazelnut, greyer and pinker than UE4's ochre, far from coral, mauve and the greens. */
+  --color-work-wash: #f1e8e0;
+  --color-work: #a3836b;
+  --color-work-deep: #6b4b34; /* 7.8:1, 6.5:1 on wash */
   --color-class-wash: #f1f2f4;
   --color-class: #c4cad1;
   --color-class-deep: #434e5a; /* the secondary ink: classes are the backdrop of her week */

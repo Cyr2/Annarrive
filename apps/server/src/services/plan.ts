@@ -64,7 +64,15 @@ const eventLabels: Record<CalendarEvent["kind"], string> = {
   strength: "Muscu",
   revision: "Révision",
   unavailable: "Occupée",
+  work: "Travail",
 };
+/** An event as a change leaves it; null when it is gone. */
+type EventWrite = { id: string; after: CalendarEvent | null };
+/** « Muscu ajoutée », « Travail ajouté »: the past participle agrees with the label. */
+const eventSummary = (kind: CalendarEvent["kind"], done: string) =>
+  `${eventLabels[kind]} ${kind === "work" ? done.slice(0, -1) : done}`;
+/** "2026-11-26T14:00" at "17:30" gives "2026-11-26T17:30". */
+const atTime = (at: string, time: string) => `${at.slice(0, 11)}${time}`;
 
 /** P19: the coach's five classes shown as two, so a bold target never reads as a refusal. */
 function verdictOf(cls: FeasibilityClass | null): Feasibility["verdict"] {
@@ -303,29 +311,39 @@ export class PlanService {
     return { week: isoWeek, readOnly: addDays(monday, 7) <= dateOf(this.#now()), days: this.#days(monday, 7) };
   }
 
-  createEvent(input: CreateEventInput): ChangeResponse {
-    const event: CalendarEvent = {
-      ...input,
-      id: randomUUID(),
-      // Only the switch makes a legs day: a client that forgets it must not block her hard runs (H5).
-      legs: input.kind === "strength" ? (input.legs ?? false) : undefined,
-      manual: true,
-      cancelled: false,
-      exceptions: [],
-    };
-    return this.#changeEvent(`${eventLabels[event.kind]} ajoutée`, event.id, event);
+  /** One event, or work on several days as one change: one Annuler takes them all back. */
+  createEvent(input: CreateEventInput | CreateEventInput[]): ChangeResponse {
+    const events = [input].flat().map(
+      (one): CalendarEvent => ({
+        ...one,
+        id: randomUUID(),
+        // Only the switch makes a legs day: a client that forgets it must not block her hard runs (H5, H6).
+        legs: one.kind === "strength" || one.kind === "work" ? (one.legs ?? false) : undefined,
+        manual: true,
+        cancelled: false,
+        exceptions: one.exceptions ?? [],
+      }),
+    );
+    const kind = events[0]?.kind ?? "unavailable";
+    return this.#changeEvents(
+      eventSummary(kind, "ajoutée"),
+      events.map((e) => ({ id: e.id, after: e })),
+    );
   }
 
-  updateEvent(id: string, patch: UpdateEventInput): ChangeResponse {
+  updateEvent(id: string, { hours, ...patch }: UpdateEventInput): ChangeResponse {
     const event = this.#editableEvent(id);
     const updated = { ...event, ...patch };
+    // New hours keep the days: a recurring event stays where its series started.
+    if (hours)
+      Object.assign(updated, { start: atTime(updated.start, hours.start), end: atTime(updated.end, hours.end) });
     if (updated.end <= updated.start) throw new InvalidInputError("La fin doit venir après le début.");
-    return this.#changeEvent(`${eventLabels[event.kind]} modifiée`, id, updated);
+    return this.#changeEvent(eventSummary(event.kind, "modifiée"), id, updated);
   }
 
   deleteEvent(id: string, query: DeleteEventQuery): ChangeResponse {
     const event = this.#editableEvent(id);
-    return this.#changeEvent(`${eventLabels[event.kind]} supprimée`, id, afterDelete(event, query));
+    return this.#changeEvent(eventSummary(event.kind, "supprimée"), id, afterDelete(event, query));
   }
 
   /** "Ce cours n'a pas lieu": the class stays stored and survives the next sync, its slot is freed. */
@@ -815,10 +833,15 @@ export class PlanService {
   }
 
   #changeEvent(summary: string, id: string, after: CalendarEvent | null): ChangeResponse {
+    return this.#changeEvents(summary, [{ id, after }]);
+  }
+
+  #changeEvents(summary: string, events: EventWrite[]): ChangeResponse {
     const before = this.coachState();
     // Her own event: a run it now clashes with moves, even tonight (EV22).
-    const result = this.#coach.onTimetableChange(before, this.#windowEvents({ id, after }), this.#now(), true);
-    return this.#commit(summary, [{ table: "calendar_event", id, after }], before, result);
+    const result = this.#coach.onTimetableChange(before, this.#windowEvents(events), this.#now(), true);
+    const writes = events.map(({ id, after }) => ({ table: "calendar_event" as const, id, after }));
+    return this.#commit(summary, writes, before, result);
   }
 
   /** Records the trigger writes and every session the coach changed as one undoable change. */
@@ -854,13 +877,16 @@ export class PlanService {
     };
   }
 
-  /** Occurrences in the coach window, without cancelled classes, optionally with one event replaced. */
-  #windowEvents(override?: { id: string; after: CalendarEvent | null }): CalendarEvent[] {
+  /** Occurrences in the coach window, without cancelled classes, optionally with some events replaced. */
+  #windowEvents(overrides: EventWrite[] = []): CalendarEvent[] {
     const from = this.#windowStart();
     const to = addDays(from, WINDOW_DAYS);
     const stored = this.#stores.calendarEvent.overlapping(`${from}T00:00`, `${to}T00:00`);
-    const events = override ? stored.filter((e) => e.id !== override.id) : stored;
-    if (override?.after) events.push(override.after);
+    const replaced = new Set(overrides.map((o) => o.id));
+    const events = [
+      ...stored.filter((e) => !replaced.has(e.id)),
+      ...overrides.flatMap((o) => (o.after ? [o.after] : [])),
+    ];
     return events
       .flatMap((e) => occurrences(e, from, to))
       .filter((e) => !e.cancelled)

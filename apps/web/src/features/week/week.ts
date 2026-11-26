@@ -36,7 +36,7 @@ export function rowsOf(items: Item[]): Row[] {
   });
 }
 
-/** Semaine shows one kind at a time if she wants: her runs alone, or her classes. Busy slots only show in Tout. */
+/** Semaine shows one kind at a time if she wants: her runs alone, or her classes. Work and busy slots only show in Tout. */
 export const FILTERS = [
   { value: "all", label: "Tout" },
   { value: "run", label: "Courses" },
@@ -89,6 +89,7 @@ export function dayLabel(day: Day): string {
     ...count("run", "course", "courses"),
     ...count("strength", "muscu", "muscu"),
     ...count("revision", "révision", "révisions"),
+    ...count("work", "travail", "travail"),
     ...count("class", "cours", "cours"),
   ];
   return `${shortTitle(day)} : ${parts.length ? parts.join(", ") : "rien de prévu"}`;
@@ -112,7 +113,9 @@ function marksOf(day: Day): StripMark[] {
         return item.kind === "class" ? (nameOf(item).ue ?? "class") : item.kind;
       }),
   );
-  const others = (["revision", "strength", "ue1", "ue2", "ue3", "ue4", "class"] as const).filter((t) => kinds.has(t));
+  const others = (["revision", "strength", "work", "ue1", "ue2", "ue3", "ue4", "class"] as const).filter((t) =>
+    kinds.has(t),
+  );
   return [...runs, ...others.map((tone) => ({ id: tone, tone }))];
 }
 
@@ -165,9 +168,9 @@ export function classesSpan(items: CalendarEvent[]): string {
   return first && last ? span(first.start, last.end) : "";
 }
 
-/** Sessions, strength and revision move by drag. Classes are locked, past weeks are read-only. */
+/** Sessions, strength and revision move by drag. Classes and work are locked, past weeks are read-only. */
 export function isDraggable(item: Item, readOnly: boolean): boolean {
-  return !readOnly && item.kind !== "class" && !cancelled(item);
+  return !readOnly && item.kind !== "class" && item.kind !== "work" && !cancelled(item);
 }
 
 export type DropTarget = { date: string; start: string; blocked?: string };

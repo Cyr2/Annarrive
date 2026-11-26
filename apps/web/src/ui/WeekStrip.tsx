@@ -187,5 +187,7 @@ function Mark({ mark, scale }: { mark: StripMark; scale: number }) {
   // Strength is a small mauve ring, its outline as on its row; the rest a dot of its color (a class, of its UE).
   if (mark.tone === "strength")
     return <span className="size-1.5 flex-none rounded-full border-[1.5px] border-strength" />;
+  // Work, a short hazelnut dash: a block of her day, neither a run's bar nor a dot.
+  if (mark.tone === "work") return <span className="h-[3px] w-2.5 flex-none rounded-full bg-work" />;
   return <Dot className={TONES[mark.tone].mid} />;
 }

@@ -23,7 +23,7 @@ import {
 import { z } from "zod";
 import { addDays, addMinutes, isoWeek, minutesOf, mondayOf, toIso } from "../lib/date.ts";
 import { yieldToMain } from "../lib/idle.ts";
-import type { Api } from "./client.ts";
+import type { Api, DeleteScope } from "./client.ts";
 import { ApiError, OFFLINE } from "./errors.ts";
 import { apiCall, incident } from "./journal.ts";
 import {
@@ -213,11 +213,11 @@ export function createHttpApi(
     const date = addDays(thisMonday(), weekday);
     return date < today() ? addDays(date, 7) : date;
   };
-  const deleteQuery = (scope: "one" | "all", date: string | undefined, all: "all" | "following") => {
+  const deleteQuery = (scope: DeleteScope, date: string | undefined, all: "all" | "following") => {
     if (!date) return "scope=all";
     return scope === "one"
       ? `scope=occurrence&date=${date}`
-      : all === "all"
+      : all === "all" && scope === "all"
         ? "scope=all"
         : `scope=following&date=${date}`;
   };
@@ -255,13 +255,16 @@ export function createHttpApi(
     progression: () => get("/progression", progressionSchema),
     level: () => get("/level", levelSchema),
 
-    addEvent: (input) => change("POST", "/events", toEventInput(input)),
+    addEvent: (input) =>
+      change("POST", "/events", Array.isArray(input) ? input.map(toEventInput) : toEventInput(input)),
     updateEvent(eventId, patch) {
       if (patch.cancelled !== undefined)
         return change(patch.cancelled ? "POST" : "DELETE", `/events/${id(eventId)}/cancel`);
-      const { date, start, end } = patch;
+      const { date, start, end, hours, legs } = patch;
       const span = date && start && end ? { start: localAt(date, start), end: localAt(date, end) } : {};
-      return change("PATCH", `/events/${id(eventId)}`, { title: patch.title, ...span });
+      const clock = (time: string) => time.padStart(5, "0");
+      const shift = hours && { hours: { start: clock(hours.start), end: clock(hours.end) } };
+      return change("PATCH", `/events/${id(eventId)}`, { title: patch.title, legs, ...span, ...shift });
     },
     deleteEvent: (eventId, scope, date) =>
       change("DELETE", `/events/${id(eventId)}?${deleteQuery(scope, date, "all")}`),
