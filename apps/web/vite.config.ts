@@ -24,7 +24,8 @@ export default defineConfig({
         start_url: "/",
         scope: "/",
         display: "standalone",
-        orientation: "portrait",
+        // Semaine shows its calendar view on a phone turned on its side (Android follows the manifest).
+        orientation: "any",
         background_color: BACKGROUND,
         theme_color: BACKGROUND,
         icons: [

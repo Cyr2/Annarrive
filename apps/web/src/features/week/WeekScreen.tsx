@@ -19,10 +19,12 @@ import { useSheet } from "../sheets/store.ts";
 import { useTabRoot } from "../tabRoot.ts";
 import { useWeekFilter } from "./filter.ts";
 import { RefreshRow, refreshTimetable } from "./RefreshRow.tsx";
+import { useGridMode } from "./useGridMode.ts";
 import { useWeekDrag } from "./useWeekDrag.ts";
 import { useWeekMotion } from "./useWeekMotion.ts";
 import { useWeekSwipe } from "./useWeekSwipe.ts";
 import { WeekDay } from "./WeekDay.tsx";
+import { WeekGrid } from "./WeekGrid.tsx";
 import { ItemRow } from "./WeekItem.tsx";
 import { type Day, FILTERS, type Filter, stripOf, weekDays, weekHeading } from "./week.ts";
 
@@ -92,6 +94,42 @@ function Neighbour({ side, offset, today, filter }: { side: -1 | 1; offset: numb
   );
 }
 
+type RowsProps = {
+  days: Day[];
+  /** The week still on screen while the next is read: quieter, and nothing moves. */
+  stale: boolean;
+  readOnly: boolean;
+  drag: ReturnType<typeof useWeekDrag>;
+  rows: ReturnType<typeof useWeekMotion>;
+};
+
+/** The days as a list, each row lifted by a long press onto another day. */
+function WeekRows({ days, stale, readOnly, drag, rows }: RowsProps) {
+  return (
+    <DndContext {...drag.context}>
+      <div
+        ref={rows}
+        data-dragging={Boolean(drag.active)}
+        aria-busy={stale}
+        className={cx("flex flex-col gap-5", stale && "week-stale")}
+      >
+        {days.map((day) => (
+          <WeekDay
+            key={day.date}
+            day={day}
+            readOnly={readOnly}
+            dragging={Boolean(drag.active)}
+            target={drag.targets.find((t) => t.date === day.date)}
+          />
+        ))}
+      </div>
+      <DragOverlay dropAnimation={drag.dropAnimation}>
+        {drag.active && <ItemRow item={drag.active} lifted />}
+      </DragOverlay>
+    </DndContext>
+  );
+}
+
 /** Before the first week arrives: its place, or what failed and Réessayer. */
 function WeekWaiting({ failed, offset }: { failed: boolean; offset: number }) {
   if (!failed) return <Skeleton label="Chargement de la semaine" />;
@@ -112,13 +150,15 @@ type HeaderProps = {
   onAdd?: () => void;
   filter: Filter;
   onFilter: (filter: Filter) => void;
+  /** Vue calendrier: the button beside +, pressed while the grid is shown; the grid shows every kind. */
+  grid: { shown: boolean; toggle: () => void };
 };
 
 /**
  * The arrows around the week's range, +, and the kinds to show. The range is ink; on another week a small return
  * arrow comes before it and touching it leads back, so nothing is added or shifts. The Semaine tab leads back too.
  */
-function WeekHeader({ range = " ", offset, onOffset, onAdd, filter, onFilter }: HeaderProps) {
+function WeekHeader({ range = " ", offset, onOffset, onAdd, filter, onFilter, grid }: HeaderProps) {
   const chips = useRef<HTMLFieldSetElement>(null);
   // The kind kept from last time is in view on a narrow phone, not cut at the edge of its row.
   useEffect(() => {
@@ -136,7 +176,7 @@ function WeekHeader({ range = " ", offset, onOffset, onAdd, filter, onFilter }: 
           className="t-range m-0 flex min-h-11 min-w-0 flex-1 items-center justify-center text-center"
         >
           {offset === 0 ? (
-            <span className="truncate">{range}</span>
+            <span className="line-clamp-2 text-balance">{range}</span>
           ) : (
             // The range itself leads back, as a title does in iOS: nothing appears or moves around it.
             <button
@@ -145,12 +185,21 @@ function WeekHeader({ range = " ", offset, onOffset, onAdd, filter, onFilter }: 
               className="press flex min-h-11 max-w-full items-center gap-0.5 border-0 bg-transparent p-0 text-ink"
             >
               <Icon name="back" size={14} stroke={2.5} className="flex-none text-action" />
-              <span className="truncate">{range}</span>
+              <span className="line-clamp-2 text-balance">{range}</span>
               <span className="sr-only-label">, revenir à cette semaine</span>
             </button>
           )}
         </p>
         <IconButton icon="chevronRight" label="Semaine suivante" onClick={() => onOffset(offset + 1)} />
+        <IconButton
+          icon="grid"
+          label="Vue calendrier"
+          variant="tinted"
+          tone="action"
+          className="ml-1"
+          aria-pressed={grid.shown}
+          onClick={grid.toggle}
+        />
         {onAdd && (
           <IconButton icon="plus" label="Ajouter" variant="tinted" tone="action" className="ml-1" onClick={onAdd} />
         )}
@@ -158,7 +207,10 @@ function WeekHeader({ range = " ", offset, onOffset, onAdd, filter, onFilter }: 
       {/* Its own sideways scroll on a narrow phone: the week swipe leaves it alone (lib/swipe.ts). */}
       <fieldset
         ref={chips}
-        className="fade-x -mx-4 m-0 flex min-w-0 gap-2 overflow-x-auto overscroll-x-contain border-0 px-4 py-2 [scrollbar-width:none]"
+        className={cx(
+          "fade-x -mx-4 m-0 min-w-0 gap-2 overflow-x-auto overscroll-x-contain border-0 px-4 py-2 [scrollbar-width:none]",
+          grid.shown ? "hidden" : "flex",
+        )}
       >
         <legend className="sr-only-label">Afficher</legend>
         {FILTERS.map((f) => (
@@ -191,21 +243,33 @@ export default function WeekScreen() {
     if (focus && week) document.getElementById(`day-${focus}`)?.scrollIntoView({ block: "start" });
   }, [focus, week]);
 
+  const grid = useGridMode();
+  // A past week, or the one still on screen while the next is read: nothing moves.
+  const locked = !fresh || fresh.readOnly;
+
   const days = week ? weekDays(week, today, filter) : [];
   const heading = week && weekHeading(week, today);
   const add = () => show({ kind: "add", date: fresh?.monday });
+  const header = (
+    <WeekHeader
+      range={heading?.range}
+      offset={offset}
+      onOffset={setOffset}
+      onAdd={week?.readOnly ? undefined : add}
+      filter={filter}
+      onFilter={setFilter}
+      grid={grid}
+    />
+  );
+  if (grid.shown && week)
+    return (
+      <WeekGrid days={weekDays(week, today)} readOnly={locked} landscape={grid.landscape} drag={drag} header={header} />
+    );
   return (
     <Screen>
       <PullToRefresh onRefresh={refreshTimetable} />
       <div ref={swipe.ref} className="flex touch-pan-y flex-col gap-3">
-        <WeekHeader
-          range={heading?.range}
-          offset={offset}
-          onOffset={setOffset}
-          onAdd={week?.readOnly ? undefined : add}
-          filter={filter}
-          onFilter={setFilter}
-        />
+        {header}
 
         {/* The week and, while a finger swipes, the ones on each side: they move together, nothing blank. */}
         <motion.div style={{ x: swipe.x }} className="relative flex flex-col gap-6">
@@ -225,27 +289,7 @@ export default function WeekScreen() {
           )}
 
           {week && week.items.length > 0 && (
-            <DndContext {...drag.context}>
-              <div
-                ref={rows}
-                data-dragging={Boolean(drag.active)}
-                aria-busy={!fresh}
-                className={cx("flex flex-col gap-5", !fresh && "week-stale")}
-              >
-                {days.map((day) => (
-                  <WeekDay
-                    key={day.date}
-                    day={day}
-                    readOnly={week.readOnly || !fresh}
-                    dragging={Boolean(drag.active)}
-                    target={drag.targets.find((t) => t.date === day.date)}
-                  />
-                ))}
-              </div>
-              <DragOverlay dropAnimation={drag.dropAnimation}>
-                {drag.active && <ItemRow item={drag.active} lifted />}
-              </DragOverlay>
-            </DndContext>
+            <WeekRows days={days} stale={!fresh} readOnly={locked} drag={drag} rows={rows} />
           )}
 
           {week && !week.readOnly && week.items.length > 0 && (

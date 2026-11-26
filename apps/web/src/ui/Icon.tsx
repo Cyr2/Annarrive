@@ -36,6 +36,13 @@ const PATHS = {
       <path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M3 12.5h18" />
     </>
   ),
+  /** Vue calendrier: the week as a grid of days and hours. */
+  grid: (
+    <>
+      <rect x="3" y="4" width="18" height="17" rx="3" />
+      <path d="M3 9.5h18M3 15.25h18M9 9.5V21M15 9.5V21M8 2.5v3M16 2.5v3" />
+    </>
+  ),
   plus: <path d="M12 5v14M5 12h14" />,
   today: (
     <>
