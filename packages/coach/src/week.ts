@@ -10,6 +10,7 @@ import {
   generatePlan,
   type Plan,
   type PlanWeek,
+  startingVolume,
   type TemplateSlot,
   taperShares,
   training,
@@ -229,7 +230,14 @@ function content(r: WeekRequest, p: Paces): Content {
     const sessions = buildWeek(week, ctx);
     const long = sessions.find((s) => s.type === "L");
     // In a load week the long run is built at least at min(her longest of 30 days, Lmax) (P14).
-    const load = !week.deload && week.phase !== "taper" && long && Number.isFinite(ctx.longest30dMin);
+    const start = r.planStart ?? r.now;
+    const regular = startingVolume(
+      r.history.filter((a) => a.start < start),
+      { level: "regular", runsPerWeek: r.settings.runsPerWeek },
+      start,
+    ).regular;
+    // Only a regular runner (P6) keeps it: a beginner's chronic load would ratchet up with it.
+    const load = regular && !week.deload && week.phase !== "taper" && long && Number.isFinite(ctx.longest30dMin);
     const keepLongMin = load ? Math.min(ctx.longest30dMin, long.durMin) : 0;
     return { sessions, warnings: plan.warnings, phase: week.phase, keepLongMin };
   }

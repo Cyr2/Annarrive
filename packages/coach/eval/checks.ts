@@ -101,6 +101,14 @@ function volume(r: RunLog): Criterion {
       detail: `${r0(built)} min prévues, au-dessus de 1,10 × la meilleure des 3 semaines courues (${r0(chronic)} min)`,
       severity: "majeure",
     }));
+    // G2b keeps a regular runner's long run above the cap, by 10 % of it at most (a beginner's chronic load would ratchet).
+    const g2 = 1.1 * Math.max(...[1, 2, 3, 4].map((k) => ranIn(addDays(w.monday, -7 * k))));
+    j.check(built <= 1.1 * g2 + 1, () => ({
+      week: w.week,
+      rule: "G2b",
+      detail: `${r0(built)} min construites, au-dessus de 1,10 × le plafond G2 (${r0(g2)} min)`,
+      severity: "majeure",
+    }));
     // She ran what was asked last week: nothing justifies building less than the plan (P10, deloads included).
     const followed = done(prev) >= 0.9 * minutes(runs(prev));
     // A test week is lighter by design (research 02 §5.3: the week before a test is eased), not held down by a cap.
