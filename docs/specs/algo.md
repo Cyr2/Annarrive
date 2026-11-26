@@ -988,7 +988,7 @@ weekFrame(r: WeekRequest, paces): WeekFrame   // semaine d'après course, semain
 
 | Id   | Règle | Paramètres | Source | Niveau |
 | ---- | ----- | ---------- | ------ | ------ |
-| RQ1  | Moment : un jour de cette semaine ou de la suivante, jamais passé. Sans jour donné : de demain à dimanche (depuis un dimanche, la semaine suivante). Aujourd'hui seulement si Anna le nomme et qu'un créneau reste avant `latestEnd` et son coucher (P25 : rien de nouveau aujourd'hui sans elle). Plusieurs jours acceptés : celui dont le créneau coûte le moins (contraintes souples, M4) | 14 j | P25 ; décision produit | OP |
+| RQ1  | Moment : un jour de cette semaine ou de la suivante, jamais passé. Sans jour donné : le jour de la séance qu'elle remplace, sinon de demain à dimanche (depuis un dimanche, la semaine suivante). Aujourd'hui seulement si Anna le nomme et qu'un créneau reste avant `latestEnd` et son coucher (P25 : rien de nouveau aujourd'hui sans elle). Plusieurs jours acceptés : celui dont le créneau coûte le moins (contraintes souples, M4) | 14 j | P25 ; décision produit | OP |
 | RQ2  | Ce qu'elle remplace : une séance nommée encore à venir, ni faite, ni gelée, ni le jour J. Sans précision, la course automatique du jour (pas une L, un TEST ou le jour J, ni une course `manual`, gelée ou faite) ; une telle course ce jour-là refuse le jour (H3). `add` garde toutes les courses | | H9, H10 ; EV21 | OP |
 | RQ3  | Santé : fièvre (statut `malade`) → rien n'est ajouté. Rhume, douleur en cours, reprise après fièvre (jusqu'à `qEasierUntil`) ou après rhume (`easy`) → aucune séance dure ; un footing prend la taille de EV9 à EV13 | | EV9 à EV13 ; Schwellnus 2022 ; Silbernagel 2007 | CONS |
 | RQ4  | Phase : semaines d'après course (MA6, P23) et affûtage (P18) → aucune séance dure de plus (les rappels du plan restent) ; base → ni I, ni R, ni SPE (seuil, seuil en fractions et fartlek oui) ; sans objectif → pas d'allure objectif (SPE) | base : 1 Q | recherche 02 §1.2, §2.2 (base : 0 à 1 qualité, Z3 0 à 3 %, 0 % d'allure spécifique), §6 ; Bosquet 2007 ; recherche 06 §4 | CONS |
@@ -1006,7 +1006,7 @@ Semaine de développement du semi (début du programme le 5 octobre), lundi 23 n
 
 | #     | Entrée | Sortie attendue |
 | ----- | ------ | --------------- |
-| RQ-1  | Remplace le footing de vendredi par du seuil | seuil vendredi 18:00, même id, `manual` ; aucune autre séance ne change |
+| RQ-1  | Remplace le footing de vendredi par du seuil ; footing de 30 min à la place de celui de mercredi, sans jour dit | seuil vendredi 18:00, même id, `manual` ; aucune autre séance ne change. Footing mercredi 18:00, 30 min |
 | RQ-2  | Fractionné jeudi | ajouté jeudi, une course en plus (RQ8), footings à venir raccourcis (RQ9), semaine ≤ 1,10 × 240 min |
 | RQ-3  | Fractionné mercredi (lendemain du seuil) | refus H4 ; alternative : fractionné un autre jour de la semaine |
 | RQ-4  | Seuil lundi, fractionné mercredi (priorité 3), footing jeudi, L dimanche ; fractionné vendredi | accepté ; le fractionné de mercredi devient un footing (RQ7) ; deux Q dans la semaine |

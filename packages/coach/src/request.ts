@@ -89,9 +89,15 @@ const countsAsQ = (s: Session): boolean =>
 const isQAsk = (t: AskType): boolean => !["E", "RECUP", "SPRINTS", "L"].includes(t);
 const minutes = (xs: Session[]): number => xs.filter(isRun).reduce((sum, s) => sum + s.durMin, 0);
 
-/** RQ1: the days she named, else tomorrow to Sunday (next week's from a Sunday). Today only when she names it. */
-function candidateDays(ask: SessionAsk, now: string): string[] {
+/**
+ * RQ1: the days she named, else the replaced session's, else tomorrow to Sunday (next week's from a Sunday). Today
+ * only when she names it.
+ */
+function candidateDays(ask: SessionAsk, now: string, sessions: Session[]): string[] {
   if (ask.days?.length) return ask.days;
+  // A named session is replaced on its own day.
+  const target = sessions.find((s) => s.id === ask.replace);
+  if (target) return [dateOf(target.start)];
   const tomorrow = addDays(dateOf(now), 1);
   return weekDates(mondayOf(tomorrow)).filter((d) => d >= tomorrow);
 }
@@ -396,7 +402,7 @@ function evaluate(input: RequestInput): Try {
   const { ask, now } = input;
   const today = dateOf(now);
   const end = addDays(mondayOf(today), WINDOW_DAYS);
-  const days = candidateDays(ask, now);
+  const days = candidateDays(ask, now, input.sessions);
   const out = days.filter((d) => d < today || d >= end);
   if (out.length === days.length)
     return no(

@@ -56,6 +56,9 @@ describe("requestSession (M14)", () => {
     expect(r.session).toMatchObject({ id: "e2", type: "T", start: `${day(4)}T18:00`, manual: true });
     expect(r.changes).toHaveLength(1);
     expect(r.sessions.filter((s) => s.id !== "e2")).toEqual(DEV_WEEK.filter((s) => s.id !== "e2"));
+    // Named without a day, the footing of Wednesday is replaced on Wednesday, not moved to a cheaper day.
+    const wed = accept(requestSession(input({ type: "E", replace: "e1", durMin: 30 })));
+    expect(wed.session).toMatchObject({ id: "e1", start: `${day(2)}T18:00`, durMin: 30 });
   });
 
   it("RQ-2: adds intervals on a free Thursday as a run more, shortening footings ahead to keep the week under G2", () => {
