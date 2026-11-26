@@ -173,7 +173,34 @@ describe("planWeek (cycle 0.1 buildWeek)", () => {
     const oneShort = [...runs(7, 4, 45, addDays(MONDAY, -14)), ...runs(1, 2, 30)];
     const lowered = [...runs(4, 4, 45, addDays(MONDAY, -35)), ...runs(4, 2, 45)];
     expect(total(request({ planStart, history: oneShort }))).toBe(total(request({ planStart, history: steady })));
-    expect(total(request({ planStart, history: lowered }))).toBeLessThanOrEqual(1.1 * 90 + 1);
+    // G2b: her 45-min long run stays (P14), G2 is exceeded by its minutes above the 20 a hard cap would leave.
+    expect(total(request({ planStart, history: lowered }))).toBeLessThanOrEqual(1.1 * 90 + 1 + 45 - 20);
+    expect(planWeek(request({ planStart, history: lowered })).sessions.find((s) => s.type === "L")?.durMin).toBe(45);
+  });
+
+  it("keeps her 50-min long run after a marathon instead of its 39.6-min share when G2 binds (P14, G2b, W-8)", () => {
+    // Audit of 26/11/2026: V0 90 (her 4 weeks before), 3 runs a week, 50 min her longest of 30 days.
+    const history: Activity[] = [1, 2, 3, 4, 5, 6, 7, 8].flatMap((k) =>
+      (k === 1 ? [20, 20, 50] : [30, 30, 30]).map((durMin, i) => ({
+        id: `w${k}-${i}`,
+        start: `${addDays(MONDAY, -7 * k + 2 * i + 1)}T08:00`,
+        durMin,
+        distM: durMin * 160,
+      })),
+    );
+    const { sessions } = planWeek(
+      request({
+        goal: { distanceM: 21097.5, date: "2027-04-04" },
+        settings: { ...SETTINGS, runsPerWeek: 3 },
+        history,
+        fitness: { vdot: 39 },
+      }),
+    );
+    expect(sessions.map((s) => [s.type, s.durMin])).toEqual([
+      ["L", 50],
+      ["E", 29.5],
+      ["E", 29.9],
+    ]);
   });
 
   it("places a test in programme weeks 2 to 4 while the level is provisional (F10, W-2)", () => {

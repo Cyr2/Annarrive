@@ -99,6 +99,16 @@ describe("weeklyCaps (G2 to G5)", () => {
     expect([dur(hardCap, "e1"), dur(hardCap, "q"), dur(hardCap, "l")]).toEqual([20, 40, 40]);
   });
 
+  it("keeps the long run she already runs in a load week, G2 exceeded by its minutes above its share (G2b, G-13)", () => {
+    const w = [long("l", "", 50), easy("e1", "", 30), easy("e2", "", 30)];
+    expect(dur(weeklyCaps(w, weeks(90)).week, "l")).toBeCloseTo(39.6, 6);
+    const kept = weeklyCaps(w, weeks(90), 50).week;
+    expect(dur(kept, "l")).toBe(50);
+    expect(total(kept)).toBeCloseTo(99 + 50 - 39.6, 6);
+    // A hard cap (G3 here) never keeps it.
+    expect(dur(weeklyCaps(w, weeks(30, 60, 90), 50).week, "l")).toBeLessThan(50);
+  });
+
   it("never takes a threshold block under its 20 min: the next Q gives instead (G2b, P16, G-12)", () => {
     const w = [long("l", "", 70), hard("t", "", 24, { priority: 3 }), sixBy800("i"), easy("e", "", 30)];
     const r = trimTo(w, 175, "G2").week;

@@ -24,7 +24,7 @@
     "sautees": 10,
     "affutage": 7.5,
     "stabilite": 10,
-    "structure": 9.2,
+    "structure": 9.3,
     "trajectoire": 10,
     "adaptation": 10,
     "contenu": 10
@@ -60,7 +60,7 @@
     "contenu": 10
   },
   "sauteuse": {
-    "volume": 9.7,
+    "volume": 9.3,
     "intensite": 10,
     "sortie-longue": 9.9,
     "espacement": 10,

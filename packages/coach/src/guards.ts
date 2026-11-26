@@ -137,9 +137,15 @@ export function trimEasy(week: Session[], cap: number, ruleId: string): { week: 
 /**
  * Shortens the week until it fits `cap` minutes, in the order the research keeps sessions (02 §4.2, 03 §8.1):
  * easy runs down to the catalogue's 30 min (P15), then each Q by a third (P9's cut), then the long run down to its
- * share of the capped week (P14). Only then, when a hard cap still binds, easy runs and the long run go to 20 min.
+ * share of the capped week (P14), never under `keepLongMin`. Only then, when a hard cap still binds, easy runs and the
+ * long run go to 20 min.
  */
-export function trimTo(week: Session[], cap: number, ruleId: string): { week: Session[]; changes: Change[] } {
+export function trimTo(
+  week: Session[],
+  cap: number,
+  ruleId: string,
+  keepLongMin = 0,
+): { week: Session[]; changes: Change[] } {
   const easy = trimEasy(week, cap, ruleId);
   let out = easy.week;
   const changes: Change[] = [...easy.changes];
@@ -152,11 +158,15 @@ export function trimTo(week: Session[], cap: number, ruleId: string): { week: Se
   const lowestFirst = (f: (s: Session) => boolean): Session[] =>
     out.filter(f).sort((a, b) => b.priority - a.priority || b.durMin - a.durMin);
   for (const s of lowestFirst(isQ)) if (excess() > 0) set(s, shortenQ(s, excess()));
-  const lFloor = Math.max(MIN_EASY, longShare(out.length) * cap);
+  const shareFloor = Math.max(MIN_EASY, longShare(out.length) * cap);
+  const lFloor = Math.max(shareFloor, keepLongMin);
   for (const s of lowestFirst((x) => x.type === "L"))
     if (excess() > 0) set(s, resize(s, Math.max(lFloor, s.durMin - excess())));
+  // The long run she already runs (P14) may exceed soft G2 by its minutes above its share, never more (G2b).
+  const over = lFloor - shareFloor;
   for (const s of lowestFirst(isContinuous))
-    if (excess() > 0) set(s, resize(s, Math.max(MIN_EASY, s.durMin - excess())));
+    if (excess() > over)
+      set(s, resize(s, Math.max(MIN_EASY, s.type === "L" ? keepLongMin : 0, s.durMin - excess() + over)));
   return { week: out, changes };
 }
 
@@ -168,9 +178,14 @@ export type WeekActual = { minutes: number };
  * weeks given), G4 (3
  * rising weeks to above the peak before them → -25 %). A deload, an illness or a skipped run lowers one week, not the
  * chronic load: the week after returns to the plan (Pfitzinger, Daniels; Frandsen 2025 finds no link between
- * week-to-week ratios and injury, research 03 §3.3).
+ * week-to-week ratios and injury, research 03 §3.3). G2 is soft: it never takes the long run under `keepLongMin`, the
+ * long run she already runs (P14, G2b).
  */
-export function weeklyCaps(week: Session[], prev: WeekActual[]): { week: Session[]; changes: Change[] } {
+export function weeklyCaps(
+  week: Session[],
+  prev: WeekActual[],
+  keepLongMin = 0,
+): { week: Session[]; changes: Change[] } {
   const back = prev.map((p) => p.minutes).reverse();
   const [w1, w2, w3, w4] = back;
   const caps: [string, number][] = [];
@@ -187,7 +202,7 @@ export function weeklyCaps(week: Session[], prev: WeekActual[]): { week: Session
   const tightest = caps.sort((a, b) => a[1] - b[1])[0];
   if (!tightest || totalMin(week) <= tightest[1]) return { week, changes: [] };
   // Whole minutes; the epsilon absorbs float noise such as 1.1 × 190 = 209.00000000000003.
-  return trimTo(week, Math.floor(tightest[1] + 1e-9), tightest[0]);
+  return trimTo(week, Math.floor(tightest[1] + 1e-9), tightest[0], tightest[0] === "G2" ? keepLongMin : 0);
 }
 
 const zoneTime = (week: Session[], test: (rpe: number) => boolean): number =>
