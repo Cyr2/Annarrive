@@ -4,8 +4,20 @@ import {
   chatRequestSchema,
   chatStreamEventSchema,
   chatWidgetSchema,
+  frenchSpaces,
   unavailableSchema,
 } from "../src/index.ts";
+
+describe("frenchSpaces", () => {
+  it("keeps French punctuation with its word, adds a missing space and leaves links alone", () => {
+    expect(frenchSpaces("C'est grave ? Oui : non !")).toBe("C'est grave ? Oui : non !");
+    // Audit iPhone F3: in Reggie's words, a pace never leaves its unit for the next line.
+    expect(frenchSpaces("Vise 5'07 /km.")).toBe("Vise 5'07 /km.");
+    expect(frenchSpaces("Sources: https://www.ameli.fr/page?id=3 Ok!")).toBe(
+      "Sources : https://www.ameli.fr/page?id=3 Ok !",
+    );
+  });
+});
 
 describe("chat schemas", () => {
   it("trims a message and refuses an empty one", () => {

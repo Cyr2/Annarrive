@@ -88,6 +88,7 @@ const STYLE: [RegExp, string][] = [
   [/\d['’]\d\d\s*(\/km\s*)?(-|à)\s*\d['’]\d\d/, "fourchette d'allure au lieu d'une cible"],
   [/\b\d{1,2}:\d\d\b|\b\d{1,2} h 00\b/, "heure mal notée (« 18 h 30 », « 7 h »)"],
   [/tu (aurais|n'aurais pas) dû|c'est dommage|tu as (raté|manqué)|rattrap(er|ons)/i, "culpabilisation"],
+  [/\benrichie?s?\b/i, "mot hors sujet (« Je te note enrichie »)"],
   [/VO2 ?max|\bVMA\b|\bRPE\b|\bzone [1-5]\b|lactique|endurance fondamentale|séance de qualité/i, "jargon"],
 ];
 const MAX_REPLY_CHARS = 400;

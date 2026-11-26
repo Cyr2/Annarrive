@@ -107,6 +107,13 @@ describe("grade", () => {
     expect(reasons("Reste en zone 2.").reasons).toEqual(["style : jargon"]);
     expect(reasons("Vendredi à 7 h 00.").reasons).toEqual(["style : heure mal notée (« 18 h 30 », « 7 h »)"]);
     expect(reasons("Vendredi à 7 h ou 1 h 06 de course.").pass).toBe(true);
+    expect(reasons("Je te note enrichie d'un rhume.").reasons).toEqual([
+      "style : mot hors sujet (« Je te note enrichie »)",
+    ]);
+    const meal = [{ name: "explain_session", input: { runId: "garmin:sun", decision: "keep" } }];
+    expect(
+      grade(scenario("exception-repas-encore"), reply("Essaie de finir ton repas 2 h 30 avant de partir.", meal)).pass,
+    ).toBe(true);
     const slots = [{ name: "propose_move_slots", input: { sessionId: "tue-easy" } }];
     const eve = reply("Ton footing tombe la veille de ton examen.", slots, [
       { type: "slots", sessionId: "tue-easy", slots: [] },

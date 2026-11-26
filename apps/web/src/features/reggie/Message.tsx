@@ -1,3 +1,4 @@
+import { frenchSpaces } from "@annarrive/protocol";
 import { Icon } from "../../ui/Icon.tsx";
 import { Surface } from "../../ui/Surface.tsx";
 import { usePlan } from "../plan/store.ts";
@@ -5,11 +6,6 @@ import { ReggieAvatar } from "../today/parts.tsx";
 import { ChangeCard } from "./ChangeCard.tsx";
 import { type Entry, useChat } from "./store.ts";
 import { Choices, Preview, Scale, Slots } from "./widgets.tsx";
-
-/** French typography: a no-break space keeps "?", "!", ":", ";" and a pace's "/km" with the word before them. */
-export function frenchSpaces(text: string): string {
-  return text.replace(/ ([?!:;]|\/km)/g, " $1");
-}
 
 /** One message: hers in the action blue on the right, Reggie's on a surface edged in his green on the left, then his widget 60 ms later. */
 export function Message({ entry, today }: { entry: Entry; today: string }) {

@@ -113,7 +113,7 @@ export const scenarios: Scenario[] = [
     seed: { activities: [...twoMeals, heavyRun] },
     expect: {
       calls: [{ name: "explain_session", input: { runId: "garmin:sun", decision: "keep" } }],
-      textMatches: [/plus tôt|avant de courir|attend/i],
+      textMatches: [/plus tôt|avant (de (courir|partir|sortir)|ta (sortie|course|séance))|attend/i],
     },
   },
   {
@@ -438,6 +438,10 @@ export const scenarios: Scenario[] = [
     id: "demande-sortie-longue",
     title: "Sortie longue d'1 h 30 ce week-end : l'algorithme la borne et le dit",
     message: "Je voudrais faire une sortie longue d'1 h 30 ce week-end.",
+    // A Sunday long run of 1 h: with the base week's 1 h 30 already planned, there was nothing left to ask for.
+    seed: {
+      sessions: BASE_WEEK.map((s) => (s.id === "sun-long" ? run(s.id, s.start, "L", [at("work", 60, "E", EASY)]) : s)),
+    },
     expect: { calls: [{ name: "request_session", input: { type: "L", durMin: 90 } }], forbidden: allButRequest },
   },
   {
