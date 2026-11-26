@@ -71,7 +71,14 @@ const CLASS: CalendarEvent = {
 };
 
 /** Yesterday's footing, its heart rate high for an easy run (RC18 reads it), and earlier runs she set aside (RC21). */
-const heavyRun = { id: "garmin:sun", start: "2026-11-15T10:00", durMin: 45, distM: 7300, avgHr: 166, sessionId: "sun-long" };
+const heavyRun = {
+  id: "garmin:sun",
+  start: "2026-11-15T10:00",
+  durMin: 45,
+  distM: 7300,
+  avgHr: 166,
+  sessionId: "sun-long",
+};
 const asideRun = (id: string, start: string, summary: string) => ({
   id,
   start,
@@ -89,7 +96,7 @@ export const scenarios: Scenario[] = [
   {
     id: "footings-trop-lents",
     title: "Footings trop lents, sortie longue trop courte : la raison en une phrase et ce qui fait monter ses allures",
-    message: "Mes footings sont trop lents et ma sortie longue est trop courte, je veux une vraie sortie longue.",
+    message: "Mes footings sont trop lents et ma sortie longue est trop courte.",
     expect: { forbidden: allModifying, textMatches: [/niveau|cœur|test|course/i] },
   },
   {

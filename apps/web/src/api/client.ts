@@ -96,6 +96,8 @@ export interface Api {
   undo(changeId: string): Promise<void>;
   acceptProposal(id: string): Promise<ChangeResult>;
   declineProposal(id: string): Promise<ChangeResult>;
+  /** RC21: « C'était une exception », the run behind a proposal to ease no longer counts. */
+  exceptionProposal(id: string): Promise<ChangeResult>;
 
   refreshTimetable(): Promise<RefreshResult>;
   /** Saves the ICS link, then reads it at once. */

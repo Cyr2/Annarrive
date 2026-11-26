@@ -19,6 +19,11 @@ export function ProposalCard({ proposal }: { proposal: Proposal }) {
         <Button variant="tinted" tone="reggie" onClick={() => void apply((api) => api.acceptProposal(proposal.id))}>
           Accepter
         </Button>
+        {proposal.exception && (
+          <Button className="col-span-2" onClick={() => void apply((api) => api.exceptionProposal(proposal.id))}>
+            C'était une exception
+          </Button>
+        )}
       </div>
     </Surface>
   );

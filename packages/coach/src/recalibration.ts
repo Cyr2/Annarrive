@@ -265,8 +265,8 @@ export function evaluateKeySessions(
     if (!due || refusedRecently(history, true, now) || proposedRecently(history, ruleId, now)) return null;
     return proposal("vdot", current, current + Math.min(r.gain, 1), ruleId, r.evidence, now);
   };
-  const anchor = hrMax === undefined || lthr === undefined ? null : lthrRead(done, current, lastChange, hrMax, lthr);
-  const relative = hrMax === undefined || anchor?.above ? null : hrRise(done, current, lastChange, hrMax);
+  const anchor = hrMax === undefined || lthr === undefined ? null : lthrRead(read, current, lastChange, hrMax, lthr);
+  const relative = hrMax === undefined || anchor?.above ? null : hrRise(read, current, lastChange, hrMax);
   const rise =
     byHeart("RC15", anchor) ??
     byHeart("RC14", relative) ??
@@ -274,19 +274,48 @@ export function evaluateKeySessions(
   if (rise) return rise;
   // RC20: never against the last change within 14 days of it, so stable data never makes a yo-yo.
   if (days < REVERSE_DAYS) return null;
+  return easing({
+    read,
+    keys,
+    current,
+    lastChange,
+    history,
+    now,
+    hrMax,
+    above: anchor?.above ? anchor.evidence : null,
+  });
+}
+
+type Easing = {
+  read: KeySession[];
+  keys: KeySession[];
+  current: number;
+  lastChange: string | undefined;
+  history: PastProposal[];
+  now: string;
+  hrMax: number | undefined;
+  /** RC19: the two threshold runs over her threshold heart rate (RC15), if any. */
+  above: string[] | null;
+};
+
+/** RC17's test, then RC4, RC19 and RC18: what makes the plan easier, one point at most, never within RC20's 14 days. */
+function easing(e: Easing): Proposal | null {
+  const { keys, current, history, now } = e;
   const felt = easyKeys(keys);
   if (felt && !proposedRecently(history, "RC17", now)) return proposal("test", current, current, "RC17", felt, now);
   const down = (ruleId: string, to: number, ids: string[]): Proposal | null =>
     refusedRecently(history, false, now) || proposedRecently(history, ruleId, now)
       ? null
       : proposal("vdot", current, Math.max(to, current - 1), ruleId, ids, now);
+  const ids = (ks: KeySession[]): string[] => ks.map((k) => k.activity.id);
   const lastTwo = keys.slice(-2);
-  const slow = lastTwo.length === 2 && lastTwo.every((k) => (ratio(k) ?? 1) < 0.97);
-  if (slow) return down("RC4", current - 1, evidence(lastTwo));
+  if (lastTwo.length === 2 && lastTwo.every((k) => (ratio(k) ?? 1) < 0.97))
+    return down("RC4", current - 1, ids(lastTwo));
   const lastThree = keys.slice(-3);
   const hard = lastThree.length === 3 && lastThree.every((k) => k.activity.feel === "hard" && (ratio(k) ?? 1) >= 0.97);
-  if (hard || anchor?.above) return down("RC19", current - 1, hard ? evidence(lastThree) : (anchor?.evidence ?? []));
-  const heavy = hrMax === undefined ? null : easyDrop(read, current, lastChange, hrMax);
+  if (hard) return down("RC19", current - 1, ids(lastThree));
+  if (e.above) return down("RC19", current - 1, e.above);
+  const heavy = e.hrMax === undefined ? null : easyDrop(e.read, current, e.lastChange, e.hrMax);
   return heavy && heavy.to <= current - HR_RISE_MIN ? down("RC18", heavy.to, heavy.evidence) : null;
 }
 

@@ -367,7 +367,9 @@ function paces(r: RunLog): Criterion {
       }));
       // RC20, no yo-yo: never a change against one made less than 14 days before, on stable data with HR noise.
       const sign = Math.sign(pr.to - pr.from);
-      const reverse = before.filter((b) => daysBetween(b.on, pr.on) < 14 && sign !== 0 && Math.sign(b.to - b.from) === -sign);
+      const reverse = before.filter(
+        (b) => daysBetween(b.on, pr.on) < 14 && sign !== 0 && Math.sign(b.to - b.from) === -sign,
+      );
       j.check(reverse.length === 0, () => ({
         week: w.week,
         rule: `${pr.ruleId} (yo-yo)`,

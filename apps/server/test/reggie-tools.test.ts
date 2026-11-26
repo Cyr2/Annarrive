@@ -306,7 +306,8 @@ describe("Reggie's tools", () => {
 
   it("sets aside a run she explains, withdraws the proposal it caused, two in 14 days at most, undoable (RC21)", async () => {
     const t = prepare();
-    const runAt = (id: string, start: string) => t.stores.activity.put({ id, start, durMin: 40, distM: 6500, avgHr: 160 });
+    const runAt = (id: string, start: string) =>
+      t.stores.activity.put({ id, start, durMin: 40, distM: 6500, avgHr: 160 });
     runAt("r1", "2026-11-14T18:00");
     runAt("r2", "2026-11-15T18:00");
     runAt("r3", "2026-11-15T19:00");
@@ -321,9 +322,9 @@ describe("Reggie's tools", () => {
       expiresOn: "2026-11-30",
       status: "pending",
     });
-    expect((await t.call("explain_session", { runId: "r1", summary: "Repas trop proche", decision: "keep" })).json).toEqual(
-      { ok: true, kept: true },
-    );
+    expect(
+      (await t.call("explain_session", { runId: "r1", summary: "Repas trop proche", decision: "keep" })).json,
+    ).toEqual({ ok: true, kept: true });
     expect(t.stores.activity.get("r1")?.setAside).toBeUndefined();
 
     const done = await t.call("explain_session", { runId: "r1", summary: "Repas trop proche", decision: "set_aside" });
@@ -332,7 +333,10 @@ describe("Reggie's tools", () => {
     expect(t.stores.proposal.get("p1")).toBeUndefined();
 
     const old = await t.call("explain_session", { runId: "old", summary: "Chaleur", decision: "set_aside" });
-    expect(old).toMatchObject({ isError: true, json: { refused: "Je ne peux mettre de côté qu'une course des 7 derniers jours." } });
+    expect(old).toMatchObject({
+      isError: true,
+      json: { refused: "Je ne peux mettre de côté qu'une course des 7 derniers jours." },
+    });
     await t.call("explain_session", { runId: "r2", summary: "Nuit courte", decision: "set_aside" });
     const third = await t.call("explain_session", { runId: "r3", summary: "Repas trop proche", decision: "set_aside" });
     expect(third.isError).toBe(true);

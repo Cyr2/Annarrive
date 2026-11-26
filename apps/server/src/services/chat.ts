@@ -1,4 +1,3 @@
-import type { FitnessService } from "./fitness.ts";
 import { randomUUID } from "node:crypto";
 import {
   type ChatContext,
@@ -14,6 +13,7 @@ import { REGGIE_BUSY, ReggieBusyError, type ReggieEvent, type ReggieRun } from "
 import { type ReggieTool, reggieTools } from "../reggie/tools.ts";
 import type { Stores } from "../storage/stores.ts";
 import { addDays, type Clock, dateOf, frenchMoment, toParisLocal } from "../time.ts";
+import type { FitnessService } from "./fitness.ts";
 import type { IncidentService } from "./incidents.ts";
 import type { PlanService } from "./plan.ts";
 

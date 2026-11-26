@@ -15,7 +15,8 @@ const KEY_DAYS = 42;
 const SET_ASIDE_LOOKBACK = 14;
 const SET_ASIDE_REFUSALS = {
   too_old: "Je ne peux mettre de côté qu'une course des 7 derniers jours.",
-  too_many: "Deux courses sont déjà mises de côté ces 14 derniers jours : celle-ci compte, c'est peut-être un vrai signal.",
+  too_many:
+    "Deux courses sont déjà mises de côté ces 14 derniers jours : celle-ci compte, c'est peut-être un vrai signal.",
 } as const;
 
 /** Level proposals (algo.md M8): raised after each run, accepted or declined in one tap, both undoable. */

@@ -333,6 +333,11 @@ export function createMockApi({
         state.proposals = state.proposals.filter((p) => p.id !== id);
         return undefined;
       }),
+    exceptionProposal: (id) =>
+      commit("Course mise de côté : Exception signalée", () => {
+        state.proposals = state.proposals.filter((p) => p.id !== id);
+        return undefined;
+      }),
     async undo(changeId) {
       await wait();
       const before = log.get(changeId);

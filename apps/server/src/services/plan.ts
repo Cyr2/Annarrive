@@ -841,7 +841,16 @@ export class PlanService {
         const ran = session && vdot !== undefined ? this.#coach.readFeel(session, a, vdot) : {};
         const aside = a.setAside ? { externalFactor: true } : {};
         return feel && session
-          ? [{ sessionId: session.id, date: dateOf(session.start), feel, rpeTarget: session.rpeTarget, ...ran, ...aside }]
+          ? [
+              {
+                sessionId: session.id,
+                date: dateOf(session.start),
+                feel,
+                rpeTarget: session.rpeTarget,
+                ...ran,
+                ...aside,
+              },
+            ]
           : [];
       });
     const seen = new Set(fromRuns.map((f) => f.sessionId));

@@ -200,13 +200,17 @@ export function reggieTools(plan: PlanService, fitness: FitnessService, widgets:
       "Modifier l'objectif comme la feuille Objectif de Programme : distance (5000, 10000, 21097.5, 42195), date, chrono visé en minutes (targetMin), heure de départ. goal null : plus d'objectif, mode entretien. Seulement sur une demande claire d'Anna.",
       { goal: goalSchema.nullable() },
       ({ goal }) => run(() => changed(plan.updateProgram(programInputSchema.parse({ goal })))),
-      ),
+    ),
     tool(
       "explain_session",
       "Une course qu'Anna explique (repas trop proche, règles, nuit courte, chaleur, stress, rhume qui arrive...). set_aside : cette course ne compte dans aucune lecture de son niveau ni de ses allures. keep : elle compte. Ne change jamais un niveau ni une allure. Courses des 7 derniers jours, deux mises de côté en 14 jours au plus.",
       {
         runId: z.string().min(1).describe("Identifiant de la course, lu avec get_recent"),
-        summary: z.string().min(1).max(200).describe("Ton résumé de son explication, en quelques mots, jamais ses propres mots"),
+        summary: z
+          .string()
+          .min(1)
+          .max(200)
+          .describe("Ton résumé de son explication, en quelques mots, jamais ses propres mots"),
         decision: z.enum(["set_aside", "keep"]),
       },
       ({ runId, summary, decision }) =>
