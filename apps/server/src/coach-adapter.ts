@@ -127,12 +127,15 @@ function sessionName(r: Result, id: string): string {
   return s ? `${sessionNames[s.type]} de ${coach.DAY_NAMES[coach.weekday(s.start)]}` : "Une séance proche";
 }
 
-const toNotes = (r: Result): { changes: CoachNote[]; warnings: CoachNote[] } => ({
-  changes: r.changes.map((c) => ({
+const changeNotes = (changes: coach.Change[]): CoachNote[] =>
+  changes.map((c) => ({
     ruleId: c.ruleId,
     message: c.detail ?? "",
     ...(c.sessionId ? { sessionId: c.sessionId } : {}),
-  })),
+  }));
+
+const toNotes = (r: Result): { changes: CoachNote[]; warnings: CoachNote[] } => ({
+  changes: changeNotes(r.changes),
   warnings: [
     ...r.warnings.map((w) => ({ ruleId: w.ruleId, message: w.message })),
     // H9: a session starting within 12 h is never moved without her say.
@@ -143,8 +146,26 @@ const toNotes = (r: Result): { changes: CoachNote[]; warnings: CoachNote[] } => 
   ],
 });
 
+/**
+ * A4: a run left where a rule bars it, for want of a slot, moves as soon as a change gives it one, whatever the
+ * change. Runs within 12 h, hers and done ones stay (H9, H10).
+ */
+function replaced(result: CoachResult, now: string): CoachResult {
+  let { state } = result;
+  const changes: CoachNote[] = [];
+  for (const monday of mondays(now)) {
+    const r = coach.replan(toState(state, monday), "A4", now);
+    const ids = new Set(r.changes.map((c) => c.sessionId));
+    const moved = new Map(placed(r.week.sessions.filter((s) => ids.has(s.id))).map((s) => [s.id, s]));
+    state = { ...state, sessions: state.sessions.map((s) => moved.get(s.id) ?? s) };
+    changes.push(...changeNotes(r.changes));
+  }
+  return changes.length === 0 ? result : { ...result, state, changes: [...result.changes, ...changes] };
+}
+
 /** G8 on each week of the result: what breaks a rule and was not already said becomes a warning. */
-function validated(result: CoachResult, now: string): CoachResult {
+function validated(raw: CoachResult, now: string): CoachResult {
+  const result = replaced(raw, now);
   const said = new Set(result.warnings.map((w) => w.ruleId));
   const extra: CoachNote[] = [];
   for (const monday of mondays(now)) {

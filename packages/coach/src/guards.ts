@@ -1,4 +1,14 @@
-import { EASY_TO_LONG, isHard, MAX_E, sessionLoad, stepTotal, T_FLOOR, toEasy, withReps } from "./catalog.ts";
+import {
+  EASY_TO_LONG,
+  isHard,
+  MAX_E,
+  sessionLoad,
+  stepTotal,
+  T_FLOOR,
+  toEasy,
+  withReps,
+  withSteps,
+} from "./catalog.ts";
 import { checkHard, slotOf } from "./placement.ts";
 import type { Change, Phase, Session, Step, WeekState } from "./types.ts";
 
@@ -34,7 +44,7 @@ function resize(s: Session, durMin: number): Session {
       : { ...st, durMin: dur };
   };
   const steps = s.steps.map((st, i) => (i === main ? sized(st) : st));
-  return { ...s, steps, durMin: steps.reduce((sum, st) => sum + stepTotal(st), 0) };
+  return withSteps(s, steps);
 }
 
 const plannedKm = (s: Session): number =>
@@ -112,7 +122,7 @@ function shortenQ(s: Session, excess: number): Session {
     left -= cut;
     return { ...st, durMin: st.durMin - cut };
   });
-  const warmed = { ...s, steps, durMin: steps.reduce((sum, st) => sum + stepTotal(st), 0) };
+  const warmed = withSteps(s, steps);
   if (reps > 1 || warmed.durMin <= target) return warmed;
   const work = steps.filter((st) => st.kind === "work").reduce((sum, st) => sum + stepTotal(st), 0);
   const cut = Math.min(work / 3, isThreshold(s) ? Math.max(0, work - T_FLOOR) : work);
@@ -172,6 +182,20 @@ export function trimTo(
         s,
         resize(s, Math.max(MIN_EASY, s.type === "L" ? Math.min(keepLongMin, lFloor) : 0, s.durMin - excess() + over)),
       );
+  return ruleId.startsWith("G") ? easierQs(out, changes, cap + over, ruleId) : { week: out, changes };
+}
+
+/** A load cap the Q's third cannot meet (a chronic load lowered by an illness): the lowest priority Q runs easy (A4d). */
+function easierQs(week: Session[], before: Change[], limit: number, ruleId: string) {
+  let out = week;
+  const changes = [...before];
+  for (const s of week.filter(isQ).sort((a, b) => b.priority - a.priority || b.durMin - a.durMin)) {
+    const excess = totalMin(out) - limit;
+    const after = toEasy(s, Math.max(MIN_EASY, s.durMin - excess));
+    if (excess <= 0 || after.durMin >= s.durMin) continue;
+    out = out.map((x) => (x.id === s.id ? after : x));
+    changes.push({ ruleId, sessionId: s.id, before: s, after });
+  }
   return { week: out, changes };
 }
 
@@ -184,12 +208,13 @@ export type WeekActual = { minutes: number };
  * rising weeks to above the peak before them → -25 %). A deload, an illness or a skipped run lowers one week, not the
  * chronic load: the week after returns to the plan (Pfitzinger, Daniels; Frandsen 2025 finds no link between
  * week-to-week ratios and injury, research 03 §3.3). G2 is soft: it never takes the long run under `keepLongMin`, the
- * long run she already runs (P14, G2b).
+ * long run she already runs (P14, G2b). `fixedMin`: the minutes of the week's runs kept as they are.
  */
 export function weeklyCaps(
   week: Session[],
   prev: WeekActual[],
   keepLongMin = 0,
+  fixedMin = 0,
 ): { week: Session[]; changes: Change[] } {
   const back = prev.map((p) => p.minutes).reverse();
   const [w1, w2, w3, w4] = back;
@@ -205,9 +230,11 @@ export function weeklyCaps(
   const fromLight = w4 !== undefined && w4 < LIGHT * peakBefore;
   if (rising && w1 > w2 && w2 > w3 && w3 > w4 && w1 > peakBefore && !fromLight) caps.push(["G4", 0.75 * w1]);
   const tightest = caps.sort((a, b) => a[1] - b[1])[0];
-  if (!tightest || totalMin(week) <= tightest[1]) return { week, changes: [] };
+  // What the week already holds (runs done, today's, hers) leaves the rest of the cap to the new sessions.
+  const room = (tightest?.[1] ?? 0) - fixedMin;
+  if (!tightest || totalMin(week) <= room) return { week, changes: [] };
   // Whole minutes; the epsilon absorbs float noise such as 1.1 × 190 = 209.00000000000003.
-  return trimTo(week, Math.floor(tightest[1] + 1e-9), tightest[0], tightest[0] === "G2" ? keepLongMin : 0);
+  return trimTo(week, Math.floor(room + 1e-9), tightest[0], tightest[0] === "G2" ? keepLongMin : 0);
 }
 
 const zoneTime = (week: Session[], test: (rpe: number) => boolean): number =>
@@ -251,7 +278,7 @@ function cutLongBlock(s: Session): Session | null {
   const i = s.steps.findIndex((st) => st.kind === "work" && st.zone === "race");
   const block = s.steps[i];
   if (s.type !== "L" || !block || block.durMin <= MIN_BLOCK) return null;
-  const cut = Math.min(Math.max(1, 0.1 * block.durMin), block.durMin - MIN_BLOCK);
+  const cut = Math.min(Math.max(1, Math.round(0.1 * block.durMin)), block.durMin - MIN_BLOCK);
   const steps = s.steps.map((st, k) =>
     k === i
       ? { ...st, durMin: st.durMin - cut }
@@ -259,7 +286,7 @@ function cutLongBlock(s: Session): Session | null {
         ? { ...st, durMin: st.durMin + cut }
         : st,
   );
-  return { ...s, steps };
+  return withSteps(s, steps);
 }
 
 /**

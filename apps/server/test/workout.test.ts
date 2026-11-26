@@ -18,6 +18,14 @@ describe("toWorkoutRequest", () => {
     }
   });
 
+  it("sends a cut session in whole minutes, never 28 min 32 s (C1, jumeau graine 28)", () => {
+    const paces = coach.paces(38.5);
+    const e = coach.buildSession("E", { weeklyMin: 200, paces, phase: "dev", progressionStep: 0, distM: 21097.5 });
+    const [cut] = coach.trimEasy([{ ...e, id: "e" }], 28.54, "G2").week;
+    const request = toWorkoutRequest(session("e", "2026-11-25T18:00", { type: "E", steps: cut?.steps ?? [] }));
+    expect(request.steps.map((s) => (s.kind === "repeat" ? 0 : (s.durationS ?? 0) % 60))).toEqual([0]);
+  });
+
   it("gives the watch a narrow zone around the one target: ±10 s/km easy, ±5 s/km faster (C4)", () => {
     const request = toWorkoutRequest(
       session("e", "2026-11-18T18:00", {

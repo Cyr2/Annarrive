@@ -222,7 +222,11 @@ describe("après la course : les semaines faciles selon la distance (MA6)", () =
     const half = build([ranOn(8, 21240)]);
     expect(half.sessions.length).toBe(3);
     expect(half.sessions.every((s) => s.type === "E")).toBe(true);
-    expect(build([ranOn(8, 10000)]).sessions.some(isHard)).toBe(true);
+    // Her usual weeks before the race: with the race alone, G2 (55 min) would turn the Q easy (G2b).
+    const usual = [10, 12, 14, 17, 19, 21].map((d, i) =>
+      race(45, { id: `u${i}`, start: `${addDays(MONDAY, -d)}T18:00` }),
+    );
+    expect(build([...usual, ranOn(8, 10000)]).sessions.some(isHard)).toBe(true);
   });
 
   it("keeps the days right after the race free: two after a half, three after a marathon (MA-12)", () => {

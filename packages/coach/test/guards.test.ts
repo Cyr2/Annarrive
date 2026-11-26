@@ -103,10 +103,11 @@ describe("weeklyCaps (G2 to G5)", () => {
 
   it("keeps the long run she already runs in a load week, G2 exceeded by its minutes above its share (G2b, G-13)", () => {
     const w = [long("l", "", 50), easy("e1", "", 30), easy("e2", "", 30)];
-    expect(dur(weeklyCaps(w, weeks(90)).week, "l")).toBeCloseTo(39.6, 6);
+    // Its share, 39.6 min, in whole minutes (C1).
+    expect(dur(weeklyCaps(w, weeks(90)).week, "l")).toBe(40);
     const kept = weeklyCaps(w, weeks(90), 50).week;
     expect(dur(kept, "l")).toBe(50);
-    expect(total(kept)).toBeCloseTo(99 + 50 - 39.6, 6);
+    expect(total(kept)).toBe(99 + 50 - 40);
     // A hard cap (G3 here) never keeps it.
     expect(dur(weeklyCaps(w, weeks(30, 60, 90), 50).week, "l")).toBeLessThan(50);
   });
@@ -116,6 +117,23 @@ describe("weeklyCaps (G2 to G5)", () => {
     const r = trimTo(w, 175, "G2").week;
     expect(dur(r, "t")).toBe(20);
     expect(r.find((s) => s.id === "i")?.steps.find((st) => st.kind === "work")?.reps).toBe(4);
+  });
+
+  it("turns the lowest priority Q easy when its third is not enough: never over G2 + 10 % (G2b, G-14)", () => {
+    // Jumeau, graine 22 : la semaine d'après un rhume, construite un mercredi, charge chronique 99 min.
+    const w = [sixBy800("i"), easy("e", "", 30), hard("t", "", 45, { priority: 2 }), long("l", "", 65)];
+    const r = weeklyCaps(w, weeks(333, 59, 117, 130, 86, 0, 25, 99), 55);
+    expect(total(r.week)).toBeLessThanOrEqual(1.1 * 1.1 * 99 + 1);
+    expect(r.week.find((s) => s.id === "i")?.type).toBe("E");
+    expect(dur(r.week, "l")).toBe(53);
+  });
+
+  it("times every step in whole minutes, a short one in whole 10 s, whatever the cap (C1, G-15)", () => {
+    // Jumeau, graine 28 : un footing de 28,54 min envoyé à la montre en 28 min 32 s.
+    const w = [long("l", "", 50), easy("e1", "", 30), easy("e2", "", 30), sixBy800("i")];
+    for (const s of weeklyCaps(w, weeks(117)).week)
+      for (const st of s.steps.filter((x) => !x.distM))
+        expect(Number.isInteger(st.durMin >= 2 ? st.durMin : Math.round(st.durMin * 6 * 1e6) / 1e6)).toBe(true);
   });
 });
 

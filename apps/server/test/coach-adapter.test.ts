@@ -667,6 +667,19 @@ describe("coach adapter: her evening of 23 November (audit 26/11/2026)", () => {
     expect(t.services.plan.restoreReplanSkips().change).toBeNull();
   });
 
+  it("moves a run left on a day without runs as soon as any change finds it a slot (A4, PL-30)", async () => {
+    const t = await herWeek();
+    // A settings change found no slot for Sunday's long run: it stayed there, with the A4 warning.
+    t.stores.profile.put({
+      id: "current",
+      value: { ...defaultProfile, earliest: "10:00", latestEnd: "21:30", noRunDays: [7] },
+    });
+    await change(t, "POST", "/api/sessions/2026-11-23-1/skip");
+    const long = t.stores.plannedSession.get("2026-11-23-2");
+    expect(long?.status).toBe("planned");
+    expect(new Date(`${long?.start.slice(0, 10)}T00:00Z`).getUTCDay()).not.toBe(0);
+  });
+
   it("moves a run still ahead that was skipped, and it is planned again", async () => {
     const t = await herWeek();
     const thu = t.stores.plannedSession.get("2026-11-23-1");
