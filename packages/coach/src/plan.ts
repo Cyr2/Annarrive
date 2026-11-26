@@ -247,12 +247,13 @@ export type Plan = {
   warnings: Warning[];
 };
 
+/** Minutes and runs a week. A race counts as a run day (P7) but not as training minutes (P2). */
 const weekMinutes = (history: Activity[]): Map<string, { min: number; runs: number }> => {
   const m = new Map<string, { min: number; runs: number }>();
   for (const a of history) {
     const k = mondayOf(a.start);
     const cur = m.get(k) ?? { min: 0, runs: 0 };
-    m.set(k, { min: cur.min + a.durMin, runs: cur.runs + 1 });
+    m.set(k, { min: cur.min + (a.isRace === true ? 0 : a.durMin), runs: cur.runs + 1 });
   }
   return m;
 };
@@ -275,7 +276,7 @@ export function startingVolume(
   now: string,
 ): { v0: number; provisional: boolean; runsPerWeek: number; regular: boolean } {
   const runs = training(history);
-  const weeks = weekMinutes(runs);
+  const weeks = weekMinutes(history);
   const last = history
     .map((a) => a.start)
     .sort()
@@ -286,8 +287,9 @@ export function startingVolume(
   if (stopped) mondays.unshift(anchor);
   const data = mondays.map((m) => weeks.get(m) ?? { min: 0, runs: 0 });
   const runsPerWeek = mean(data.map((d) => d.runs));
-  const regularBefore = (end: string): boolean =>
-    runs.filter((a) => a.start < end && daysBetween(a.start, end) < RACE_DAYS).length >= (REGULAR_RUNS * RACE_DAYS) / 7;
+  const ranBefore = (end: string, days: number): number =>
+    history.filter((a) => a.start < end && daysBetween(a.start, end) < days).length;
+  const regularBefore = (end: string): boolean => ranBefore(end, RACE_DAYS) >= (REGULAR_RUNS * RACE_DAYS) / 7;
   if (data.filter((d) => d.runs > 0).length < 2) {
     return { v0: Math.min(profile.declaredWeeklyMin ?? 150, 150), provisional: true, runsPerWeek, regular: false };
   }
@@ -307,7 +309,7 @@ export function startingVolume(
   return {
     v0: Math.max(avg, Math.min(recoveryShare(race.distM) * usual, Math.max(...recent))),
     provisional: false,
-    runsPerWeek: Math.max(runsPerWeek, before(28).length / 4),
+    runsPerWeek: Math.max(runsPerWeek, ranBefore(race.start, 28) / 4),
     regular: regularBefore(now) || regularBefore(race.start),
   };
 }

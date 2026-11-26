@@ -261,6 +261,30 @@ describe("startingVolume (P2)", () => {
     expect(plan.weeks[0]?.volumeMin).toBeLessThanOrEqual(1.1 * week("2026-11-09") + 1);
     expect(plan.weeks.some((w) => w.template.includes("I"))).toBe(true);
   });
+
+  it("counts a race as a run day for her frequency, not as volume (P7, P-43)", () => {
+    // 3 runs a week before a marathon on 25/10, one of them a half on 04/10; 2 easy runs a week since: V0 90.
+    const before = [0, 1, 2, 3, 4, 5, 6, 7].flatMap((k) => {
+      const m = addDays("2026-08-31", 7 * k);
+      const days = k === 7 ? [1, 3, 5] : [1, 3, 6];
+      return days.map((d) => ({ id: `b${k}-${d}`, start: `${addDays(m, d)}T08:00`, durMin: d === 6 ? 90 : 45 }));
+    });
+    const after = ["2026-11-03", "2026-11-08", "2026-11-12", "2026-11-15", "2026-11-18", "2026-11-22"];
+    const history: Activity[] = [
+      ...before.map((a) => ({
+        ...a,
+        distM: a.durMin * 160,
+        ...(a.start.startsWith("2026-10-04") ? { isRace: true } : {}),
+      })),
+      { id: "m", start: "2026-10-25T08:00", durMin: 250, distM: 42195, isRace: true },
+      ...after.map((d, i) => ({ id: `a${i}`, start: `${d}T08:00`, durMin: 45, distM: 7200 })),
+    ];
+    const start = startingVolume(history, regular, "2026-11-23");
+    expect(start.runsPerWeek).toBe(3);
+    expect(start.regular).toBe(true);
+    const plan = generatePlan({ ...SEMI, date: "2027-04-04" }, regular, history, { vdot: 39 }, "2026-11-23");
+    expect(plan.split.base).toBe(2);
+  });
 });
 
 describe("generatePlan (M2)", () => {

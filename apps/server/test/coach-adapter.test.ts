@@ -122,6 +122,25 @@ describe("coach adapter: building weeks", () => {
     return next.reduce((sum, s) => sum + s.durMin, 0);
   }
 
+  it("rebuilds on Sunday a week already built under older rules, and keeps what Anna moved (cycle 0.1)", async () => {
+    const t = await ready({ onboarded: true });
+    t.setNow(SUNDAY_6PM);
+    history(t, "2026-11-16");
+    t.stores.fitnessEstimate.put({ id: "2026-11-01", date: "2026-11-01", vdot: 40, source: "test" });
+    await t.call("PUT", "/api/program", { goal: { distanceM: 21097.5, date: "2027-03-14" } });
+    const week = () => t.services.plan.coachState().sessions.filter((s) => s.start >= "2026-11-16");
+    const fresh = week();
+    const long = fresh.find((s) => s.type === "L");
+    const easy = fresh.find((s) => s.type === "E");
+    if (!long || !easy) throw new Error("no long or easy run");
+    // A long run sized by older rules, and an easy run she set herself.
+    t.stores.plannedSession.put({ ...long, durMin: 20 });
+    t.stores.plannedSession.put({ ...easy, durMin: 33, manual: true });
+    await t.services.plan.buildNextWeek();
+    expect(week().find((s) => s.type === "L")?.durMin).toBe(long.durMin);
+    expect(week().find((s) => s.id === easy.id)?.durMin).toBe(33);
+  });
+
   it("turns next week into a deload after three mornings of confirmed fatigue (P9)", async () => {
     expect(await nextWeekAfter(true)).toBeLessThan(0.85 * (await nextWeekAfter(false)));
   });

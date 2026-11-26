@@ -192,7 +192,8 @@ function adjusted(w: PlanWeek, r: WeekRequest): PlanWeek {
   return testWeek ? withTest(tired) : tired;
 }
 
-type Content = WeekPlan & { phase: Phase };
+/** `keepLongMin`: P14's floor of a load week, which G2 keeps (G2b). */
+type Content = WeekPlan & { phase: Phase; keepLongMin?: number };
 
 /**
  * The unplaced sessions the week calls for: post-race weeks (P23, MA6), before a new plan too (its base weeks absorb
@@ -225,7 +226,12 @@ function content(r: WeekRequest, p: Paces): Content {
       usualRunMin: usualRun(r.history, r.now),
       ...racePace,
     };
-    return { sessions: buildWeek(week, ctx), warnings: plan.warnings, phase: week.phase };
+    const sessions = buildWeek(week, ctx);
+    const long = sessions.find((s) => s.type === "L");
+    // In a load week the long run is built at least at min(her longest of 30 days, Lmax) (P14).
+    const load = !week.deload && week.phase !== "taper" && long && Number.isFinite(ctx.longest30dMin);
+    const keepLongMin = load ? Math.min(ctx.longest30dMin, long.durMin) : 0;
+    return { sessions, warnings: plan.warnings, phase: week.phase, keepLongMin };
   }
   const weekIdx = Math.floor(daysBetween(EPOCH_MONDAY, r.monday) / 7) + 1;
   return { sessions: maintenanceWeek(history8w, r.settings, weekIdx, { paces: p }), warnings: [], phase: "dev" };
@@ -375,7 +381,7 @@ function restAfterRace(r: WeekRequest): CalEvent[] {
 }
 
 /** G1 and G2 to G4 on the new sessions against the weeks actually run, then P16 on what is left. */
-function capped(sessions: Session[], r: WeekRequest, phase: Phase): Session[] {
+function capped(sessions: Session[], r: WeekRequest, phase: Phase, keepLongMin = 0): Session[] {
   const spiked = capWeekSpikes(sessions, spikeRef(r.history, r.now)).week;
   const prev = pastWeeks(r.history, r.monday, LOOKBACK_WEEKS);
   // Without any run in those weeks there is no reference: the plan's starting volume (P2) already applies.
@@ -383,6 +389,7 @@ function capped(sessions: Session[], r: WeekRequest, phase: Phase): Session[] {
   const sized = weeklyCaps(
     returning(spiked, r),
     prev.map((minutes) => ({ minutes })),
+    keepLongMin,
   ).week;
   return enforceDistribution(sized, phase).week;
 }
@@ -393,7 +400,7 @@ function capped(sessions: Session[], r: WeekRequest, phase: Phase): Session[] {
  */
 export function planWeek(r: WeekRequest): WeekPlan {
   const p = paces(r.fitness.vdot);
-  const { sessions, warnings, phase } = content(r, p);
+  const { sessions, warnings, phase, keepLongMin } = content(r, p);
   const kept = r.kept.filter((k) => !staleRace(k, r));
   const used = new Set(kept.map((k) => k.id));
   let n = 0;
@@ -414,7 +421,7 @@ export function planWeek(r: WeekRequest): WeekPlan {
   // P24: the race replaces the week's long run, and is never capped like a planned rise.
   const left = withoutKept(race && raceThisWeek ? [...sessions.filter((s) => s.type !== "L"), race] : sessions, kept);
   const runs = left.filter((s) => s.type !== "RACE");
-  const sized = capped(race ? fitHardRuns(runs, r, race, raceThisWeek, p) : runs, r, phase);
+  const sized = capped(race ? fitHardRuns(runs, r, race, raceThisWeek, p) : runs, r, phase, keepLongMin);
   const built = [...sized, ...left.filter((s) => s.type === "RACE")];
   const withIds = built.map((s) => ({ ...s, id: nextId() }));
   const fixed = kept.map((k) => ({ ...k, frozen: true }));
