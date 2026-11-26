@@ -11,6 +11,7 @@ import {
   toMoveOptions,
   toPreviewRows,
   toProfilePatch,
+  toProposal,
   toRun,
   toUnavailable,
 } from "./map.ts";
@@ -969,5 +970,22 @@ describe("push over the server", () => {
     await expect(api.subscribePush({ endpoint: "http://x" })).rejects.toThrow("illisible");
     await api.unsubscribePush("https://web.push.apple.com/x");
     expect(sent("DELETE /api/push/subscriptions")).toEqual({ endpoint: "https://web.push.apple.com/x" });
+  });
+});
+
+describe("toProposal (RC16, RC18, RC19, RC21)", () => {
+  const base = { kind: "vdot" as const, evidence: ["a1"], expiresOn: "2026-11-30", status: "pending" as const };
+  it("names the easy pace of a footing proposal, and offers « C'était une exception » only to ease", () => {
+    const up = toProposal({ ...base, id: "p1", from: 40, to: 41, ruleId: "RC16", easySKm: 344 });
+    expect(up).toEqual({
+      id: "p1",
+      text: "Tes footings vont plus vite que prévu avec un cœur bas : ils peuvent passer à 5'44\u00a0/km, et tes autres allures suivent.",
+    });
+    const down = toProposal({ ...base, id: "p2", from: 40, to: 39, ruleId: "RC18", easySKm: 358 });
+    expect(down.text).toContain("ralentir à 5'58\u00a0/km");
+    expect(down.exception).toBe(true);
+    expect(toProposal({ ...base, id: "p3", from: 40, to: 39, ruleId: "RC19" }).exception).toBe(true);
+    expect(toProposal({ ...base, id: "p4", from: 40, to: 39, ruleId: "RC4" }).exception).toBe(true);
+    expect(toProposal({ ...base, id: "p5", from: 40, to: 41, ruleId: "RC3" }).exception).toBeUndefined();
   });
 });

@@ -142,6 +142,8 @@ export type FeelLog = {
   rpeDone?: number;
   /** Her speed over the session's target speed (RC13). */
   paceRatio?: number;
+  /** A run she set aside with a cause (RC21): no rule reads its feel. */
+  externalFactor?: boolean;
 };
 
 export type PainSite = "mollet" | "genou" | "cheville" | "hanche" | "pied" | "autre";

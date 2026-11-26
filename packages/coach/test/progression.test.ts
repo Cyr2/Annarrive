@@ -91,8 +91,8 @@ describe("progression (M12)", () => {
         c.easyFrom && Math.round(c.easyFrom),
       ]),
     ).toEqual([
-      ["2026-11-01", "effort:a1", "1:50:54", 368, undefined],
-      ["2026-11-12", "proposal:RC3", "1:48:35", 361, 368],
+      ["2026-11-01", "effort:a1", "1:50:54", 351, undefined],
+      ["2026-11-12", "proposal:RC3", "1:48:35", 344, 351],
     ]);
     expect(levelChanges(LEVELS.slice(2), "2026-11-02", SEMI).map((c) => c.easyFrom)).toEqual([undefined]);
   });

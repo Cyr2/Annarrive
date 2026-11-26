@@ -11,6 +11,7 @@ import {
   predictTime,
   proposeMeasured,
   repaceRanges,
+  setAsideRefusal,
   vdot,
 } from "../src/index.ts";
 import { easy, hard, long, sixBy800, state } from "./fixtures.ts";
@@ -250,12 +251,14 @@ describe("evaluateKeySessions by heart rate (RC14)", () => {
     expect(anchored([tRun(17, 165), { ...slow, activity: { ...slow.activity, laps } }])).toBeNull();
   });
 
-  it("never lowers the level, and a heart rate over her threshold stops a rise by heart rate (RC-30)", () => {
-    expect(anchored([tRun(17, 176), tRun(20, 176)])).toBeNull();
-    // RC14 sees 5 bpm under her usual 180, but both runs stay over her threshold heart rate: to review, not a rise.
+  it("proposes easing when two T runs sit 5 bpm over her threshold heart rate, never a rise (RC-30, RC19)", () => {
+    expect(anchored([tRun(17, 176), tRun(20, 176)])).toMatchObject({ ruleId: "RC19", from: 40, to: 39 });
+    // RC14 sees 5 bpm under her usual 180, but both runs stay over her threshold heart rate: easing, not a rise.
     const fading = [tRun(1, 180), tRun(8, 180), tRun(17, 175), tRun(20, 175)];
     expect(at(fading)?.ruleId).toBe("RC14");
-    expect(anchored(fading)).toBeNull();
+    expect(anchored(fading)?.ruleId).toBe("RC19");
+    // RC20: within 14 days of the last change, nothing goes against it.
+    expect(anchored([tRun(17, 176), tRun(20, 176)], "2026-11-12")).toBeNull();
   });
 });
 
@@ -363,6 +366,19 @@ describe("repaceRanges (C4)", () => {
     expect(r.changes.map((c) => c.sessionId)).toEqual(["ahead"]);
     expect(repaceRanges(r.state, NOW).changes).toEqual([]);
   });
+
+  it("gives today's E to automatic sessions built with the old one, never to hers (C-11b, F7)", () => {
+    // Built on 25/11 at Daniels' table value, 6:08 at VDOT 40.
+    const old = (s: ReturnType<typeof easy>) => ({
+      ...s,
+      steps: s.steps.map((st) => ({ ...st, target: { ...st.target, paceSKm: [368, 368] as [number, number] } })),
+    });
+    const auto = old(easy("auto", "2026-11-27T18:00"));
+    const hers = old(easy("hers", "2026-11-28T18:00", 45, { manual: true }));
+    const r = repaceRanges(state([auto, hers], undefined, { vdot: 40 }), NOW);
+    expect(r.state.sessions.map((s) => s.steps[0]?.target.paceSKm?.[0])).toEqual([paces(40).E, 368]);
+    expect(r.changes.map((c) => c.sessionId)).toEqual(["auto"]);
+  });
 });
 
 describe("proposeMeasured (F10, RC11)", () => {
@@ -394,5 +410,89 @@ describe("proposeMeasured (F10, RC11)", () => {
     const refused = [{ proposal: p, decision: "refused" as const, on: "2026-11-10" }];
     expect(proposeMeasured(34, measured, NOW, { riseOnly: true, history: refused })).toBeNull();
     expect(proposeMeasured(34, measured, "2026-11-25T08:00", { riseOnly: true, history: refused })).not.toBeNull();
+  });
+});
+
+describe("the plan follows her data both ways (RC16 to RC20)", () => {
+  const HR_MAX = 190;
+  const ago = (days: number) => addDays("2026-11-23", -days);
+  /** An easy run of 40 min at that pace (s/km) and heart rate, flat and cool, no laps. */
+  const easyRun = (day: number, paceSKm: number, hr: number, extra: Partial<KeySession> = {}): KeySession => {
+    const start = `2026-11-${String(day).padStart(2, "0")}T18:00`;
+    return {
+      session: easy(`e${day}`, start, 40),
+      activity: { id: `a${day}`, start, durMin: 40, distM: (40 * 60_000) / paceSKm, avgHr: hr, tempC: 12 },
+      fractions: [],
+      ...extra,
+    };
+  };
+  const at = (keys: KeySession[], lastChange = ago(30), current = 40, hrMax = HR_MAX) =>
+    evaluateKeySessions(keys, current, lastChange, [], NOW, hrMax);
+
+  it("proposes faster footings when three easy runs are 2 % faster than E under the easy ceiling (RC-31, RC16)", () => {
+    // E at VDOT 40 is 5:51 (351 s); 5:40 at 145 bpm (76 % of 190) is the E of VDOT 41.6: one point at most.
+    const fast = [easyRun(10, 340, 145), easyRun(14, 340, 145), easyRun(18, 340, 145)];
+    expect(at(fast)).toMatchObject({ ruleId: "RC16", from: 40, to: 41, evidence: ["a10", "a14", "a18"] });
+    expect(at([easyRun(10, 340, 145), easyRun(14, 340, 152), easyRun(18, 340, 145)])).toBeNull();
+    expect(at([...fast.slice(0, 2), easyRun(18, 340, 145, { externalFactor: true })])).toBeNull();
+    expect(at([easyRun(10, 348, 145), easyRun(14, 348, 145), easyRun(18, 348, 145)])).toBeNull();
+    expect(at(fast, ago(10))).toBeNull();
+  });
+
+  it("finds nothing to raise in her real week of 22 to 25/11: E already at 5'55 (RC-32)", () => {
+    // VDOT 39.42, HRmax 195: 50 min at 6'27 (142), 33 min at 6'25 (131), 31 min at 6'04 (150, strides included).
+    const runs = [
+      { ...easyRun(22, 387, 142), activity: { ...easyRun(22, 387, 142).activity, durMin: 50, distM: 50 * 155.04 } },
+      easyRun(24, 385, 131),
+      easyRun(25, 364, 150),
+    ];
+    expect(evaluateKeySessions(runs, 39.42, ago(30), [], "2026-11-26T08:00", 195)).toBeNull();
+  });
+
+  it("proposes slower footings when two easy runs at E sit 3 bpm over the easy ceiling (RC-33, RC18)", () => {
+    // Ceiling 79 % of 190 = 150; 156 bpm at 5:51: the E she would run at 150 bpm is that of VDOT 37.4, one point at most.
+    const heavy = [easyRun(17, 351, 156), easyRun(20, 351, 156)];
+    expect(at(heavy)).toMatchObject({ ruleId: "RC18", from: 40, to: 39, evidence: ["a17", "a20"] });
+    expect(at([easyRun(17, 351, 152), easyRun(20, 351, 152)])).toBeNull();
+    expect(at([easyRun(7, 351, 156), easyRun(20, 351, 156)], ago(40))).toBeNull();
+    // Faster than her E on her own: a heart rate over the ceiling is her choice of pace, not her level.
+    expect(at([easyRun(17, 330, 156), easyRun(20, 330, 156)])).toBeNull();
+    expect(at([easyRun(17, 351, 156), easyRun(20, 351, 156, { externalFactor: true })])).toBeNull();
+    // RC20: 10 days after a rise, nothing goes against it.
+    expect(at(heavy, ago(10))).toBeNull();
+  });
+
+  const key = (day: number, feel: Activity["feel"], ratio = 1, extra: Partial<KeySession> = {}): KeySession => ({
+    session: hard(`t${day}`, `2026-11-${day}T18:00`),
+    activity: { id: `a${day}`, start: `2026-11-${day}T18:00`, durMin: 50, distM: 10000, ...(feel ? { feel } : {}) },
+    fractions: [ratio],
+    ...extra,
+  });
+
+  it("proposes a test when her last three key runs felt easy at the target pace (RC-34, RC17)", () => {
+    const easyKeys = [key(10, "easy"), key(14, "easy"), key(18, "easy")];
+    expect(at(easyKeys)).toMatchObject({ kind: "test", ruleId: "RC17", from: 40, to: 40 });
+    expect(at(easyKeys, ago(10))).toBeNull();
+    expect(at([key(10, "easy"), key(14, "ok"), key(18, "easy")])).toBeNull();
+    expect(at([key(10, "easy"), key(14, "easy"), key(18, "easy", 1, { hrDelta: 3 })])).toBeNull();
+    expect(at([key(10, "easy"), key(14, "easy"), key(18, "easy", 0.96)])).toBeNull();
+  });
+
+  it("proposes easing when her last three key runs felt hard at the target pace, never within 14 days (RC-36, RC19)", () => {
+    const hardKeys = [key(10, "hard"), key(14, "hard"), key(18, "hard")];
+    expect(at(hardKeys)).toMatchObject({ ruleId: "RC19", from: 40, to: 39 });
+    expect(at(hardKeys, ago(10))).toBeNull();
+    expect(at([key(10, "hard"), key(14, "ok"), key(18, "hard")])).toBeNull();
+    expect(at([key(10, "hard"), key(14, "hard"), key(18, "hard", 1, { externalFactor: true })])).toBeNull();
+  });
+});
+
+describe("setAsideRefusal (RC21)", () => {
+  it("sets aside a run of the last 7 days, two in 14 days at most (RC-37)", () => {
+    expect(setAsideRefusal("2026-11-20T18:00", [], NOW)).toBeNull();
+    expect(setAsideRefusal("2026-11-15T18:00", [], NOW)).toBe("too_old");
+    expect(setAsideRefusal("2026-11-20T18:00", ["2026-11-12T18:00"], NOW)).toBeNull();
+    expect(setAsideRefusal("2026-11-20T18:00", ["2026-11-12T18:00", "2026-11-18T18:00"], NOW)).toBe("too_many");
+    expect(setAsideRefusal("2026-11-20T18:00", ["2026-11-05T18:00", "2026-11-18T18:00"], NOW)).toBeNull();
   });
 });

@@ -36,6 +36,7 @@ export class ChangeService {
       health: stores.health,
       fitness_estimate: stores.fitnessEstimate,
       proposal: stores.proposal,
+      activity: stores.activity,
     };
   }
 

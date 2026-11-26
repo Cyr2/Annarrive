@@ -141,7 +141,14 @@ export class GarminService {
       const laps = stored?.laps ?? (await this.#laps(run.id));
       // RR1: the goal race, marked once, so the easy weeks after it outlive the goal (MA6).
       const isRace = stored?.isRace ?? (run.isRace || this.#review?.isGoalRace(run) || undefined);
-      this.#stores.activity.put({ ...run, answeredFeel: stored?.answeredFeel, sessionId, laps, isRace });
+      this.#stores.activity.put({
+        ...run,
+        answeredFeel: stored?.answeredFeel,
+        setAside: stored?.setAside,
+        sessionId,
+        laps,
+        isRace,
+      });
       if (sessionId && !stored?.sessionId) this.#plan.markDone(sessionId);
       if (!stored) fresh.push({ ...run, sessionId, laps, isRace });
     }

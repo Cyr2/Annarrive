@@ -19,6 +19,7 @@ import {
 import { tool } from "@anthropic-ai/claude-agent-sdk";
 import { ZodError, z } from "zod";
 import { AppError } from "../errors.ts";
+import type { FitnessService } from "../services/fitness.ts";
 import type { PlanService } from "../services/plan.ts";
 import { frenchDay, isoWeekOf } from "../time.ts";
 
@@ -65,7 +66,7 @@ const settingPatch = profilePatchSchema.strict();
 /** The timetable link is a secret (anyone holding it reads her week): it never goes to the model. */
 const withoutLink = ({ icsUrl: _, ...settings }: Profile) => settings;
 
-export function reggieTools(plan: PlanService, widgets: ChatWidget[]) {
+export function reggieTools(plan: PlanService, fitness: FitnessService, widgets: ChatWidget[]) {
   const run = (work: () => unknown) => answer(work, plan.todayDate());
   const changed = (response: ChangeResponse) => {
     const { change, warnings } = response;
@@ -199,6 +200,21 @@ export function reggieTools(plan: PlanService, widgets: ChatWidget[]) {
       "Modifier l'objectif comme la feuille Objectif de Programme : distance (5000, 10000, 21097.5, 42195), date, chrono visé en minutes (targetMin), heure de départ. goal null : plus d'objectif, mode entretien. Seulement sur une demande claire d'Anna.",
       { goal: goalSchema.nullable() },
       ({ goal }) => run(() => changed(plan.updateProgram(programInputSchema.parse({ goal })))),
+    ),
+    tool(
+      "explain_session",
+      "Une course qu'Anna explique (repas trop proche, règles, nuit courte, chaleur, stress, rhume qui arrive...). set_aside : cette course ne compte dans aucune lecture de son niveau ni de ses allures. keep : elle compte. Ne change jamais un niveau ni une allure. Courses des 7 derniers jours, deux mises de côté en 14 jours au plus.",
+      {
+        runId: z.string().min(1).describe("Identifiant de la course, lu avec get_recent"),
+        summary: z
+          .string()
+          .min(1)
+          .max(200)
+          .describe("Ton résumé de son explication, en quelques mots, jamais ses propres mots"),
+        decision: z.enum(["set_aside", "keep"]),
+      },
+      ({ runId, summary, decision }) =>
+        run(() => (decision === "keep" ? { ok: true, kept: true } : changed(fitness.setAside(runId, summary)))),
     ),
     tool(
       "ask_choice",

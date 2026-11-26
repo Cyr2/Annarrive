@@ -28,6 +28,7 @@ export const planTables = [
   "health",
   "fitness_estimate",
   "proposal",
+  "activity",
 ] as const;
 export type PlanTable = (typeof planTables)[number];
 
@@ -62,6 +63,11 @@ export const activitySchema = z.object({
   sessionId: z.string().optional(),
   /** Garmin laps, read once per run: the best efforts of F18 are found in them. */
   laps: z.array(z.object({ durMin: z.number(), distM: z.number(), avgHr: z.number().optional() })).optional(),
+  /**
+   * RC21: set aside from every reading, with Reggie's summary of her reason (never her own words), shown to her
+   * only and never sent to Garmin.
+   */
+  setAside: z.object({ summary: z.string().max(200), on: localDateSchema }).optional(),
 });
 export type Activity = z.infer<typeof activitySchema>;
 

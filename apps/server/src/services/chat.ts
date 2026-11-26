@@ -13,6 +13,7 @@ import { REGGIE_BUSY, ReggieBusyError, type ReggieEvent, type ReggieRun } from "
 import { type ReggieTool, reggieTools } from "../reggie/tools.ts";
 import type { Stores } from "../storage/stores.ts";
 import { addDays, type Clock, dateOf, frenchMoment, toParisLocal } from "../time.ts";
+import type { FitnessService } from "./fitness.ts";
 import type { IncidentService } from "./incidents.ts";
 import type { PlanService } from "./plan.ts";
 
@@ -119,6 +120,7 @@ export class ChatService {
   constructor(
     stores: Stores,
     plan: PlanService,
+    fitness: FitnessService,
     reggie: ReggieRun,
     clock: Clock,
     incidents: IncidentService,
@@ -129,7 +131,7 @@ export class ChatService {
     this.#clock = clock;
     this.#incidents = incidents;
     this.#silenceMs = silenceMs;
-    this.#tools = reggieTools(plan, this.#widgets);
+    this.#tools = reggieTools(plan, fitness, this.#widgets);
   }
 
   /** One Paris day of the conversation (today by default), and the day before it that has messages. */

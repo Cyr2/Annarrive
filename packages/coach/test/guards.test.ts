@@ -96,7 +96,9 @@ describe("weeklyCaps (G2 to G5)", () => {
     expect([dur(r.week, "e1"), dur(r.week, "q"), dur(r.week, "l")]).toEqual([30, 40, 65]);
     // Only a hard cap that the floors cannot meet takes the easy runs and the long run further.
     const hardCap = trimTo(w200, 120, "G3").week;
-    expect([dur(hardCap, "e1"), dur(hardCap, "q"), dur(hardCap, "l")]).toEqual([20, 40, 40]);
+    expect([dur(hardCap, "e1"), dur(hardCap, "q"), dur(hardCap, "l")].map((d) => Math.round(d ?? 0))).toEqual([
+      20, 40, 40,
+    ]);
   });
 
   it("keeps the long run she already runs in a load week, G2 exceeded by its minutes above its share (G2b, G-13)", () => {

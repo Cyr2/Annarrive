@@ -297,6 +297,8 @@ export const proposalSchema = z.object({
   evidence: z.array(z.string()),
   /** F10: the run that shows the new level, with the T pace it gives, for « ton 11 km du 11 novembre ». */
   proof: z.object({ date: localDateSchema, distanceM: z.number(), thresholdSKm: z.number() }).optional(),
+  /** RC16, RC18: the easy pace the new level gives, for « tes footings peuvent passer à 5'48 /km ». */
+  easySKm: z.number().optional(),
   expiresOn: localDateSchema,
   status: z.enum(["pending", "accepted", "declined"]),
   decidedOn: localDateSchema.optional(),

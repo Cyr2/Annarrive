@@ -179,4 +179,10 @@ describe("evaluateFeels: too easy (RC13)", () => {
     const tempos = feels(1.1, "hard").map((f) => ({ ...f, rpeDone: 5 }));
     expect(evaluateFeels(tempos, 40, now)).toBeNull();
   });
+
+  it("reads no feel of a run she set aside (RC21, RC-35)", () => {
+    const [a, b, c] = feels(1.04);
+    if (!a || !b || !c) throw new Error("three feels");
+    expect(evaluateFeels([a, b, { ...c, externalFactor: true }], 40, now)).toBeNull();
+  });
 });

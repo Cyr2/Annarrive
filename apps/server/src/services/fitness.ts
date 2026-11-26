@@ -11,6 +11,13 @@ import { progressionOf } from "./progression.ts";
 
 /** Key sessions of the last 6 weeks, a retest's interval (P26): RC14 reads her usual heart rate in the earlier ones. */
 const KEY_DAYS = 42;
+/** RC21 counts the runs set aside in 14 days; runs older than that cannot count. */
+const SET_ASIDE_LOOKBACK = 14;
+const SET_ASIDE_REFUSALS = {
+  too_old: "Je ne peux mettre de côté qu'une course des 7 derniers jours.",
+  too_many:
+    "Deux courses sont déjà mises de côté ces 14 derniers jours : celle-ci compte, c'est peut-être un vrai signal.",
+} as const;
 
 /** Level proposals (algo.md M8): raised after each run, accepted or declined in one tap, both undoable. */
 export class FitnessService {
@@ -100,6 +107,39 @@ export class FitnessService {
       { table: "proposal", id, after: this.#decided(this.#pending(id), "declined") },
     ]);
     return { change: entry && { id: entry.id, summary: entry.summary }, warnings: [] };
+  }
+
+  /**
+   * RC21: one run of the last 7 days set aside from every reading, two in 14 days at most, with Reggie's summary of
+   * why. A pending proposal that read it is withdrawn: its rule no longer holds without it. Undone like any change.
+   */
+  setAside(activityId: string, summary: string): ChangeResponse {
+    const run = this.#stores.activity.get(activityId);
+    if (!run) throw new NotFoundError("Cette course est introuvable : recharge l'écran.");
+    if (run.setAside) throw new ReadOnlyError("Cette course est déjà mise de côté.");
+    const now = this.#now();
+    const others = this.#stores.activity
+      .overlapping(`${addDays(dateOf(now), -SET_ASIDE_LOOKBACK)}T00:00`, now)
+      .filter((a) => a.setAside)
+      .map((a) => a.start);
+    const refusal = this.#coach.setAsideRefusal(run.start, others, now);
+    if (refusal) throw new ReadOnlyError(SET_ASIDE_REFUSALS[refusal]);
+    const withdrawn = this.pending()
+      .filter((p) => p.evidence.includes(activityId))
+      .map((p) => ({ table: "proposal" as const, id: p.id, after: null }));
+    const after = { ...run, setAside: { summary, on: dateOf(now) } };
+    const entry = this.#changes.record(`Course mise de côté : ${summary}`, [
+      { table: "activity", id: activityId, after },
+      ...withdrawn,
+    ]);
+    return { change: entry && { id: entry.id, summary: entry.summary }, warnings: [] };
+  }
+
+  /** « C'était une exception » on a proposal to ease: its latest run is set aside (RC21), the proposal goes with it. */
+  exception(id: string): ChangeResponse {
+    const last = this.#pending(id).evidence.at(-1);
+    if (!last) throw new ReadOnlyError("Cette proposition ne repose sur aucune course.");
+    return this.setAside(last, "Exception signalée");
   }
 
   #pending(id: string): Proposal {

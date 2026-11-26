@@ -19,7 +19,10 @@ import { setup } from "./helpers.ts";
 
 const env = { ANTHROPIC_API_KEY: "test-key", CLAUDE_CODE_OAUTH_TOKEN: "", PATH: "/bin" };
 const key = { name: "ANTHROPIC_API_KEY", value: "test-key" } as const;
-const tools = () => reggieTools(setup().services.plan, []);
+const tools = () => {
+  const { services } = setup();
+  return reggieTools(services.plan, services.fitness, []);
+};
 
 function preToolUse(tool_name: string, tool_input: unknown): HookInput {
   return {

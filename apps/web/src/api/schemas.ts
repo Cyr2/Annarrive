@@ -76,8 +76,11 @@ export const activitySchema = z.object({
   feel: z.enum(["easy", "fine", "hard"]).optional(),
 });
 
-/** A level change the coach proposes (new paces, a test, a new target), accepted or declined in one tap. */
-export const proposalSchema = z.object({ id: z.string(), text: z.string() });
+/**
+ * A level change the coach proposes (new paces, a test, a new target), accepted or declined in one tap. `exception`:
+ * a proposal to ease, which « C'était une exception » withdraws by setting its latest run aside (RC21).
+ */
+export const proposalSchema = z.object({ id: z.string(), text: z.string(), exception: z.boolean().optional() });
 
 /** Le bilan du dimanche: the week in numbers, its highlight, Reggie's word, then the next week's runs. */
 export const weekReviewSchema = z.object({

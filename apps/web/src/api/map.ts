@@ -275,6 +275,24 @@ export function toProposal(proposal: ServerProposal): Proposal {
       id: proposal.id,
       text: "Tes dernières courses donnent un autre chrono pour ton objectif. Je te propose de l'ajuster, ou tu gardes le tien.",
     };
+  const easy = proposal.easySKm === undefined ? "" : paceLabel(proposal.easySKm);
+  if (proposal.ruleId === "RC16")
+    return {
+      id: proposal.id,
+      text: `Tes footings vont plus vite que prévu avec un cœur bas : ils peuvent passer à ${easy}, et tes autres allures suivent.`,
+    };
+  if (proposal.ruleId === "RC18")
+    return {
+      id: proposal.id,
+      text: `Sur tes derniers footings, ton cœur dépasse la zone facile : je te propose de les ralentir à ${easy}, et tes autres allures avec.`,
+      exception: true,
+    };
+  if (proposal.ruleId === "RC19")
+    return {
+      id: proposal.id,
+      text: "Tes dernières séances rapides ont été dures à l'allure prévue : je te propose des allures un peu plus douces.",
+      exception: true,
+    };
   const proof = proposal.proof;
   if (proof && proposal.to > proposal.from)
     return {
@@ -287,6 +305,7 @@ export function toProposal(proposal: ServerProposal): Proposal {
       proposal.to > proposal.from
         ? "Tes dernières séances rapides sont bien passées : je te propose des allures un peu plus vives."
         : "Tes dernières séances rapides ont été dures : je te propose des allures un peu plus douces.",
+    ...(proposal.to < proposal.from ? { exception: true } : {}),
   };
 }
 

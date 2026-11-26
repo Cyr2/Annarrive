@@ -120,6 +120,7 @@ export const passThroughCoach: CoachPort = {
   acceptProposal: (st) => ({ state: st, changes: [], warnings: [] }),
   repace: (st) => ({ state: st, changes: [], warnings: [] }),
   repaceRanges: (st) => ({ state: st, changes: [], warnings: [] }),
+  setAsideRefusal: coachAdapter.setAsideRefusal,
   adaptToRun: (st) => ({ state: st, changes: [], warnings: [] }),
   readFeel: () => ({}),
 };

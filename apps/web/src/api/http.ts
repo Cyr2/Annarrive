@@ -308,6 +308,7 @@ export function createHttpApi(
     feelBetter: () => change("POST", "/feel-better"),
     acceptProposal: (proposalId) => change("POST", `/proposals/${id(proposalId)}/accept`),
     declineProposal: (proposalId) => change("POST", `/proposals/${id(proposalId)}/decline`),
+    exceptionProposal: (proposalId) => change("POST", `/proposals/${id(proposalId)}/exception`),
     async undo(changeId) {
       await call("POST", `/changes/${id(changeId)}/undo`, changeSchema);
     },

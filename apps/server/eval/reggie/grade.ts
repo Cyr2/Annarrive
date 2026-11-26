@@ -6,6 +6,7 @@ import type {
   PlannedSession,
   ProfilePatch,
 } from "@annarrive/protocol";
+import type { Activity } from "../../src/storage/stores.ts";
 
 /** A tool call to expect: input keys must match; an array lists the accepted values. */
 export type CallMatcher = { name: string; input?: Record<string, unknown> };
@@ -18,7 +19,13 @@ export type Scenario = {
   context?: ChatContext;
   /** Earlier turns of the thread, oldest first. */
   history?: { role: "anna" | "reggie"; text: string }[];
-  seed?: { sessions?: PlannedSession[]; profile?: ProfilePatch; health?: HealthStatus; events?: CalendarEvent[] };
+  seed?: {
+    sessions?: PlannedSession[];
+    profile?: ProfilePatch;
+    health?: HealthStatus;
+    events?: CalendarEvent[];
+    activities?: Activity[];
+  };
   /** Longer than MAX_REPLY_CHARS only when she asks for it (a source, say). */
   maxChars?: number;
   expect: {
@@ -53,6 +60,7 @@ export const MODIFYING = [
   "edit_event",
   "cancel_class",
   "change_goal",
+  "explain_session",
 ] as const;
 
 const KNOWN = new Set([

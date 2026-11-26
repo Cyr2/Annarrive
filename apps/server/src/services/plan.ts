@@ -110,7 +110,15 @@ const SHORTEST_RUN_MIN = 30;
 export type RecentData = {
   health: HealthStatus;
   signals: { id: string; rhr?: number; sleepMin?: number; bodyBatteryWake?: number; stressAvg?: number }[];
-  activities: { id: string; start: string; durMin: number; distM: number; avgHr?: number; feel?: string }[];
+  activities: {
+    id: string;
+    start: string;
+    durMin: number;
+    distM: number;
+    avgHr?: number;
+    feel?: string;
+    setAside?: { summary: string; on: string };
+  }[];
 };
 
 const CURRENT = "current";
@@ -831,8 +839,18 @@ export class PlanService {
         const session = a.sessionId ? this.#stores.plannedSession.get(a.sessionId) : undefined;
         const feel = a.feel ?? a.answeredFeel;
         const ran = session && vdot !== undefined ? this.#coach.readFeel(session, a, vdot) : {};
+        const aside = a.setAside ? { externalFactor: true } : {};
         return feel && session
-          ? [{ sessionId: session.id, date: dateOf(session.start), feel, rpeTarget: session.rpeTarget, ...ran }]
+          ? [
+              {
+                sessionId: session.id,
+                date: dateOf(session.start),
+                feel,
+                rpeTarget: session.rpeTarget,
+                ...ran,
+                ...aside,
+              },
+            ]
           : [];
       });
     const seen = new Set(fromRuns.map((f) => f.sessionId));

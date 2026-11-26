@@ -14,5 +14,6 @@ export function fitnessRoutes({ fitness }: Services): Hono {
     .get("/progression", (c) => c.json(fitness.progression()))
     .get("/level", (c) => c.json(fitness.level()))
     .post("/proposals/:id/accept", (c) => c.json(fitness.accept(c.req.param("id"))))
-    .post("/proposals/:id/decline", (c) => c.json(fitness.decline(c.req.param("id"))));
+    .post("/proposals/:id/decline", (c) => c.json(fitness.decline(c.req.param("id"))))
+    .post("/proposals/:id/exception", (c) => c.json(fitness.exception(c.req.param("id"))));
 }

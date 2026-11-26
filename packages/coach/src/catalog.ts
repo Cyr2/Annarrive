@@ -52,8 +52,8 @@ export type BuildCtx = {
 export const stepTotal = (s: Step): number => s.durMin * (s.reps ?? 1);
 const total = (steps: Step[]): number => steps.reduce((sum, s) => sum + stepTotal(s), 0);
 
-/** C4: a recovery run sits a little under E (Daniels: the slow end of E). */
-const RECOVERY_SLOWER_S = 15;
+/** C4: a recovery run sits under E, which runs at the band's fast end (F7): 30 s/km, about Daniels' table value + 15. */
+const RECOVERY_SLOWER_S = 30;
 
 /** One target pace, as a [fast, slow] pair the watch widens into its zone (C4). */
 export function paceFor(zone: PaceZone, p: Paces, race?: number): [number, number] {

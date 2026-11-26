@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { paces, vdot } from "../src/index.ts";
+import { paces, speedForVo2, vdot } from "../src/index.ts";
 
 // Daniels' Running Formula, 3rd ed., tables 5.1 and 5.2, as transcribed in two independent copies
 // (SD Track Mag "Daniels One Sheet" and the runvdot repo) that agree on every row kept here.
@@ -32,7 +32,9 @@ const TOL_R = TOL + 1.25;
 describe("paces against Daniels' table 5.2 (F7, issue #17)", () => {
   it.each(TRAINING)("VDOT %i", (v, e, m, t, i, r400) => {
     const p = paces(v);
-    expect(Math.abs(p.E - s(e))).toBeLessThanOrEqual(TOL);
+    // F7: E runs at the fast end of the easy band (74 %), faster than the table's single value, never past the band.
+    expect(p.E).toBeLessThan(s(e));
+    expect(p.E).toBeCloseTo(60_000 / speedForVo2(0.74 * v), 6);
     expect(Math.abs(p.M - s(m))).toBeLessThanOrEqual(TOL);
     expect(Math.abs(p.T - s(t))).toBeLessThanOrEqual(TOL);
     expect(Math.abs(p.I - s(i))).toBeLessThanOrEqual(TOL);

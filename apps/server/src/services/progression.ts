@@ -16,6 +16,9 @@ const REASONS: Record<string, string> = {
   "proposal:RC4": "Seuil et fractionné plus lents que prévu",
   "proposal:RC14": "Même allure au seuil, cœur plus bas",
   "proposal:RC15": "Allure seuil courue sous ta FC seuil",
+  "proposal:RC16": "Footings plus rapides, cœur toujours bas",
+  "proposal:RC18": "Cœur au-dessus de la zone facile en footing",
+  "proposal:RC19": "Séances rapides dures ou cœur au-dessus de ta FC seuil",
   "proposal:F10": "Une course récente au-dessus de ton niveau",
 };
 
@@ -37,7 +40,7 @@ function reason(stores: Stores, source: string): string {
   return effort[2] ? `${what}, moins la coupure` : what;
 }
 
-/** « Ton dernier chrono : temps estimé 1:53:30. », « Seuil et fractionné plus rapides que prévu : footing à 6'01 /km au lieu de 6'08 /km. » */
+/** « Ton dernier chrono : temps estimé 1:53:30. », « Seuil et fractionné plus rapides que prévu : footing à 5'44 /km au lieu de 5'51 /km. » */
 function line(stores: Stores, change: coach.LevelChange): string {
   const why = reason(stores, change.source);
   if (change.easyFrom === undefined) return `${why} : temps estimé ${clock(change.predictedMin)}.`;
