@@ -9,16 +9,19 @@ import {
   chatWidgetSchema,
 } from "@annarrive/protocol";
 import { AppError } from "../errors.ts";
-import type { ReggieEvent, ReggieRun } from "../reggie/agent.ts";
+import { REGGIE_BUSY, ReggieBusyError, type ReggieEvent, type ReggieRun } from "../reggie/agent.ts";
 import { type ReggieTool, reggieTools } from "../reggie/tools.ts";
 import type { Stores } from "../storage/stores.ts";
 import { addDays, type Clock, dateOf, frenchMoment, toParisLocal } from "../time.ts";
+import type { IncidentService } from "./incidents.ts";
 import type { PlanService } from "./plan.ts";
 
 // shortcut: Reggie sees the last messages as text, not the SDK session; switch to `resume` if answers lose the thread.
 const MEMORY_SIZE = 20;
 /** Longer than a narration line (« Je regarde ta semaine. »): a reply without tools streams once it gets this long. */
 const NARRATION_CHARS = 100;
+/** Longer than a reply with two web searches takes: past it, a silent model process is stuck, not thinking. */
+export const SILENCE_MS = 90_000;
 
 const screens: Record<ChatContext["screen"], string> = {
   today: "Aujourd'hui",
@@ -30,16 +33,37 @@ const screens: Record<ChatContext["screen"], string> = {
 
 const parisDay = (message: ChatMessage): string => dateOf(toParisLocal(new Date(message.at)));
 
-/** The one global conversation with Reggie, stored in `chat_message`. */
 /** What Anna reads when Reggie fails; `retry: false` when Reggie is off on this server (503). */
 function errorEvent(error: unknown): ChatStreamEvent {
-  if (!(error instanceof AppError)) return { type: "error", error: "Reggie ne répond pas : réessaie dans un instant." };
+  if (!(error instanceof AppError)) return { type: "error", error: REGGIE_BUSY };
   return error.status === 503
     ? { type: "error", error: error.message, retry: false }
     : { type: "error", error: error.message };
 }
 
 const QUESTION_TOOLS = ["ask_choice", "ask_level"];
+
+/** The events of `run`, until one takes longer than `ms` to come: then a ReggieBusyError. */
+async function* untilSilent<T>(run: AsyncIterable<T>, ms: number): AsyncGenerator<T> {
+  const events = run[Symbol.asyncIterator]();
+  let timer: NodeJS.Timeout | undefined;
+  const silence = () =>
+    new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new ReggieBusyError()), ms);
+    });
+  try {
+    while (true) {
+      const next = await Promise.race([events.next(), silence()]);
+      clearTimeout(timer);
+      if (next.done) return;
+      yield next.value;
+    }
+  } finally {
+    clearTimeout(timer);
+    // shortcut: a stuck model process ends with its own SDK query, not killed here; kill it if they pile up.
+    events.return?.().catch(() => undefined);
+  }
+}
 
 /**
  * What Anna sees of a Reggie turn as it is written. Only the words after the last tool call are the answer; what
@@ -79,20 +103,32 @@ class Screen {
   }
 }
 
+/** The one global conversation with Reggie, stored in `chat_message`. */
 export class ChatService {
   readonly #stores: Stores;
   readonly #reggie: ReggieRun;
   readonly #clock: Clock;
+  readonly #incidents: IncidentService;
+  readonly #silenceMs: number;
   // The same tools for every message, so Reggie's next process can start before Anna writes (agent.ts).
   // shortcut: one reply's widgets at a time; two messages sent at once would share them.
   readonly #widgets: ChatWidget[] = [];
   readonly #tools: ReggieTool[];
   #sequence = 0;
 
-  constructor(stores: Stores, plan: PlanService, reggie: ReggieRun, clock: Clock) {
+  constructor(
+    stores: Stores,
+    plan: PlanService,
+    reggie: ReggieRun,
+    clock: Clock,
+    incidents: IncidentService,
+    silenceMs = SILENCE_MS,
+  ) {
     this.#stores = stores;
     this.#reggie = reggie;
     this.#clock = clock;
+    this.#incidents = incidents;
+    this.#silenceMs = silenceMs;
     this.#tools = reggieTools(plan, this.#widgets);
   }
 
@@ -109,19 +145,31 @@ export class ChatService {
     return { day, messages, ...(earlier ? { earlier: parisDay(earlier) } : {}) };
   }
 
-  /** Typing, then the text as it comes, then the widgets, then the stored message. */
+  /**
+   * Typing, then the text as it comes, then the widgets, then the stored message. Her message is stored with the
+   * answer: a reply that fails before Reggie did anything leaves nothing behind, so Réessayer never stores it twice.
+   */
   async *send(request: ChatRequest): AsyncGenerator<ChatStreamEvent> {
     const earlier = this.#stores.chatMessage.list().slice(-MEMORY_SIZE);
-    this.#save("anna", request.text, [], request.context);
+    const asked = this.#clock().toISOString();
     yield { type: "typing" };
     const widgets = this.#widgets;
     widgets.length = 0;
     const screen = new Screen();
+    let acted = false;
     try {
       const prompt = this.#prompt(earlier, request);
-      for await (const event of this.#reggie({ prompt, tools: this.#tools })) yield* screen.see(event);
+      for await (const event of untilSilent(this.#reggie({ prompt, tools: this.#tools }), this.#silenceMs)) {
+        acted ||= event.type === "tool_call";
+        yield* screen.see(event);
+      }
+      // A turn that ends with nothing to show is a failure, never a bubble she cannot see.
+      if (!screen.text.trim() && widgets.length === 0) throw new ReggieBusyError();
     } catch (error) {
       console.error(`Reggie a échoué : ${error instanceof Error ? error.name : "inconnu"}`);
+      this.#incidents.recordServerError("POST /api/chat", error instanceof Error ? error : new Error(String(error)));
+      // A tool already ran (a session moved, say): her message stays, so the change keeps its question.
+      if (acted) this.#save("anna", request.text, [], request.context, asked);
       yield errorEvent(error);
       return;
     }
@@ -130,11 +178,17 @@ export class ChatService {
     // A widget the model filled badly (an empty session, say) is dropped rather than failing the whole reply.
     const valid = widgets.filter((w) => chatWidgetSchema.safeParse(w).success);
     for (const widget of valid) yield { type: "widget", widget };
+    this.#save("anna", request.text, [], request.context, asked);
     yield { type: "done", message: this.#save("reggie", answer, valid) };
   }
 
-  #save(role: ChatMessage["role"], text: string, widgets: ChatWidget[], context?: ChatContext): ChatMessage {
-    const at = this.#clock().toISOString();
+  #save(
+    role: ChatMessage["role"],
+    text: string,
+    widgets: ChatWidget[],
+    context?: ChatContext,
+    at = this.#clock().toISOString(),
+  ): ChatMessage {
     // Two messages can share a millisecond: the id breaks the tie so the list keeps their order.
     const id = `${at}-${String(this.#sequence++).padStart(6, "0")}-${randomUUID().slice(0, 8)}`;
     return this.#stores.chatMessage.put({ id, at, role, text, widgets, context });

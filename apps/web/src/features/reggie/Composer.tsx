@@ -6,7 +6,7 @@ import { Chip, IconButton, Input } from "../../ui/controls.tsx";
 import { notify } from "../../ui/toast.ts";
 import { useVisibleArea } from "../../ui/useVisibleArea.ts";
 import { frenchSpaces } from "./Message.tsx";
-import { useChat } from "./store.ts";
+import { CANNOT_ANSWER, useChat } from "./store.ts";
 
 /** The same journeys as the buttons of Aujourd'hui, one tap away. */
 export const SHORTCUTS = ["Je suis malade", "Plus court", "Décaler à demain", "Pourquoi cette allure ?"];
@@ -32,6 +32,8 @@ type Props = { onHeight: (height: number) => void; onTyping: (typing: boolean) =
 export function Composer({ onHeight, onTyping, shortcuts }: Props) {
   const send = useChat((s) => s.send);
   const busy = useChat((s) => s.status !== "idle");
+  const failed = useChat((s) => s.failed !== undefined);
+  const retry = useChat((s) => s.retry);
   const [text, setText] = useState("");
   const [focused, setFocused] = useState(false);
   const box = useRef<HTMLElement>(null);
@@ -118,8 +120,17 @@ export function Composer({ onHeight, onTyping, shortcuts }: Props) {
       onPointerDown={keepFocus}
       onMouseDown={keepFocus}
     >
+      {/* In place of the shortcuts: her message stays where she wrote it, one tap sends it again. */}
+      {failed && (
+        <div role="status" className="ui-glass flex items-center gap-3 rounded-3xl py-1.5 pr-1.5 pl-4">
+          <p className="t-sub m-0 min-w-0 flex-1 text-ink">{CANNOT_ANSWER}</p>
+          <Chip icon="change" disabled={busy} onClick={() => void retry()}>
+            Réessayer
+          </Chip>
+        </div>
+      )}
       {/* Hidden while Reggie answers or waits for her reply: his own buttons are the answers then. */}
-      {shortcuts && (
+      {shortcuts && !failed && (
         <div className="fade-x -mx-4 -my-2 flex gap-2 overflow-x-auto overscroll-x-contain px-4 py-2 [scrollbar-width:none]">
           {SHORTCUTS.map((label) => (
             <Chip key={label} onClick={() => submit(label)}>

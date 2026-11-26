@@ -214,25 +214,28 @@ describe("chat store", () => {
     expect(chat.getState().messages.at(-1)?.text).toBe("Jeudi.");
   });
 
-  it("ignores empty messages and says when Reggie cannot answer", async () => {
-    const broken: Pick<Api, "chat"> = {
-      chat: () => ({
-        [Symbol.asyncIterator]: () => ({ next: () => Promise.reject(new Error("offline")) }),
-      }),
+  it("ignores empty messages, and keeps one message waiting when Reggie cannot answer", async () => {
+    let calls = 0;
+    const flaky: Pick<Api, "chat"> = {
+      async *chat() {
+        calls += 1;
+        if (calls < 4) throw new Error("offline");
+        yield { type: "message", message: { id: "r", role: "reggie", text: "Oui." } } as const;
+      },
     };
-    const chat = createChatStore(async () => broken as Api, vi.fn());
+    const chat = createChatStore(async () => flaky as Api, vi.fn());
     await chat.getState().send("   ");
     expect(chat.getState().messages).toHaveLength(1);
     await chat.getState().send("Salut");
-    const failed = chat.getState().messages.at(-1);
-    expect(failed?.text).toMatch(/^Je n'arrive pas/);
-    // Réessayer sends the same words again, in place of the failed pair.
-    await chat.getState().retry(failed?.id ?? "");
-    expect(chat.getState().messages.map((m) => m.text)).toEqual([
-      expect.stringMatching(/^Salut/),
-      "Salut",
-      expect.stringMatching(/^Je n'arrive pas/),
-    ]);
+    expect(chat.getState().failed?.text).toBe("Salut");
+    // Sent again, or followed by « ? »: still one message of hers waiting, never a pile of copies.
+    await chat.getState().send("Salut");
+    await chat.getState().send("?");
+    expect(chat.getState().messages.map((m) => m.text)).toEqual([expect.stringMatching(/^Salut/), "?"]);
+    expect(chat.getState().failed?.text).toBe("?");
+    await chat.getState().retry();
+    expect(chat.getState().failed).toBeUndefined();
+    expect(chat.getState().messages.map((m) => m.text)).toEqual([expect.stringMatching(/^Salut/), "?", "Oui."]);
   });
 
   it("grows the streamed message in place, sends the context, and shows the server's own error", async () => {
@@ -242,7 +245,7 @@ describe("chat store", () => {
         sent.push(input);
         yield { type: "message", message: { id: "r1", role: "reggie", text: "Je " } };
         yield { type: "message", message: { id: "r1", role: "reggie", text: "Je regarde." } };
-        throw new ApiError(502, "Reggie ne répond pas : réessaie dans un instant.");
+        throw new ApiError(400, "Message refusé.");
       },
     };
     const chat = createChatStore(async () => api as Api, vi.fn());
@@ -253,7 +256,7 @@ describe("chat store", () => {
       expect.stringMatching(/^Salut/),
       "Plus court",
       "Je regarde.",
-      "Reggie ne répond pas : réessaie dans un instant.",
+      "Message refusé.",
     ]);
   });
 
@@ -267,10 +270,8 @@ describe("chat store", () => {
     };
     const chat = createChatStore(async () => off as Api, vi.fn());
     await chat.getState().send("Salut");
-    expect(chat.getState().messages.at(-1)).toMatchObject({
-      text: "Reggie ne répond pas pour l'instant.",
-      retry: undefined,
-    });
+    expect(chat.getState().messages.at(-1)?.text).toBe("Reggie ne répond pas pour l'instant.");
+    expect(chat.getState().failed).toBeUndefined();
   });
 
   // Audit robustesse-2, 3: a reply cut before its end; Réessayer takes the cut words away with the failed pair.
@@ -289,9 +290,8 @@ describe("chat store", () => {
     };
     const chat = createChatStore(async () => cut as Api, vi.fn());
     await chat.getState().send("Salut");
-    const failed = chat.getState().messages.at(-1);
-    expect(failed).toMatchObject({ text: "Reggie a été coupé.", retry: { text: "Salut" } });
-    await chat.getState().retry(failed?.id ?? "");
+    expect(chat.getState().failed?.text).toBe("Salut");
+    await chat.getState().retry();
     expect(chat.getState().messages.map((m) => m.text)).toEqual([expect.stringMatching(/^Salut/), "Salut", "Bonjour."]);
   });
 
@@ -304,7 +304,8 @@ describe("chat store", () => {
     };
     const chat = createChatStore(async () => refused as Api, vi.fn());
     await chat.getState().send("Salut");
-    expect(chat.getState().messages.at(-1)).toMatchObject({ text: "Trop long.", retry: undefined });
+    expect(chat.getState().messages.at(-1)?.text).toBe("Trop long.");
+    expect(chat.getState().failed).toBeUndefined();
   });
 
   it("loads the stored conversation once, under the welcome line", async () => {

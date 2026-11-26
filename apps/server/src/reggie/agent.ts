@@ -33,6 +33,15 @@ export class ReggieUnavailableError extends AppError {
   }
 }
 
+export const REGGIE_BUSY = "Reggie ne peut pas répondre pour l'instant, réessaie dans un moment.";
+
+/** Every account at its limit, or a reply that never came: the same message later can get its answer. */
+export class ReggieBusyError extends AppError {
+  constructor() {
+    super(429, REGGIE_BUSY);
+  }
+}
+
 const isAllowedHost = (url: string) => {
   const host = URL.parse(url)?.hostname ?? "";
   return SOURCE_DOMAINS.some((d) => host === d || host.endsWith(`.${d}`));
@@ -277,6 +286,8 @@ export function createReggie(
     for await (const message of await open(prompt, tools, account)) {
       for (const event of eventsOf(message)) yield* shown(event, state);
     }
+    // A limit the SDK closed without an error result is still a limit, not an empty answer.
+    if (state.limited && !state.acted) throw new AccountLimitError(state.resetsAt);
   }
 
   const rest = (account: number, error: AccountLimitError) => {
@@ -306,7 +317,7 @@ export function createReggie(
       }
     }
     console.error("Reggie : tous les comptes sont à leur limite");
-    throw new ReggieUnavailableError();
+    throw new ReggieBusyError();
   };
 }
 

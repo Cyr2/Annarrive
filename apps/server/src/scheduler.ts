@@ -4,6 +4,9 @@ import { type Clock, dateOf, toParisLocal, weekdayOf } from "./time.ts";
 export type ParisMinute = { weekday: number; hour: number; minute: number };
 export type Job = { name: string; due: (t: ParisMinute) => boolean; run: () => unknown };
 
+/** A job longer than this is logged with its time. */
+export const SLOW_JOB_MS = 1000;
+
 /** Polls twice a minute and runs each due job at most once per Paris minute. */
 export class Scheduler {
   readonly #jobs: Job[];
@@ -29,11 +32,17 @@ export class Scheduler {
     for (const job of this.#jobs) {
       if (!job.due(t) || this.#lastRun.get(job.name) === local) continue;
       this.#lastRun.set(job.name, local);
+      const started = performance.now();
       try {
         await job.run();
       } catch (error) {
         console.error(`Tâche « ${job.name} » en échec : ${error instanceof Error ? error.message : "erreur inconnue"}`);
       }
+      const ms = Math.round(performance.now() - started);
+      // A slow job is the first suspect when every screen is slow at once (25/11, 17:57 UTC).
+      if (ms > SLOW_JOB_MS) console.warn(`Tâche « ${job.name} » : ${ms} ms`);
+      // Lets the requests that arrived meanwhile run before the next job.
+      await new Promise((resolve) => setImmediate(resolve));
     }
   }
 

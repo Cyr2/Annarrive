@@ -5,8 +5,9 @@ import {
   chatStreamEventSchema,
 } from "@annarrive/protocol";
 import { describe, expect, it } from "vitest";
-import { type ReggieRun, ReggieUnavailableError } from "../src/reggie/agent.ts";
-import { session, setup } from "./helpers.ts";
+import { REGGIE_BUSY, ReggieBusyError, type ReggieRun, ReggieUnavailableError } from "../src/reggie/agent.ts";
+import { ChatService } from "../src/services/chat.ts";
+import { MONDAY_8AM, session, setup } from "./helpers.ts";
 
 /** Plays a scripted turn: calls a tool through the real tool list, then writes. */
 function scripted(prompts: string[]): ReggieRun {
@@ -113,15 +114,64 @@ describe("POST /api/chat", () => {
     expect(events.some((e) => e.type === "retract")).toBe(false);
   });
 
-  it("ends with an error event and keeps Anna's message when Reggie fails", async () => {
+  it("ends with an error event, stores nothing and journals an incident when Reggie fails", async () => {
     const failing: ReggieRun = async function* () {
       yield { type: "text", delta: "Je" };
       throw new Error("network");
     };
     const t = await ready(failing);
-    const events = parseSse(await (await t.request("POST", "/api/chat", { text: "Salut" })).text());
-    expect(events.at(-1)).toEqual({ type: "error", error: "Reggie ne répond pas : réessaie dans un instant." });
-    expect(t.stores.chatMessage.list().map((m) => m.role)).toEqual(["anna"]);
+    for (let i = 0; i < 3; i++) {
+      const events = parseSse(await (await t.request("POST", "/api/chat", { text: "Salut" })).text());
+      expect(events.at(-1)).toEqual({ type: "error", error: REGGIE_BUSY });
+    }
+    // Tapped three times, sent three times: nothing to show twice in her history.
+    expect(t.stores.chatMessage.list()).toEqual([]);
+    expect(t.services.incidents.list(new Date(0)).map((i) => i.message)).toEqual([
+      "Error: network",
+      "Error: network",
+      "Error: network",
+    ]);
+  });
+
+  it("says Reggie cannot answer for now, with Réessayer, when every account is at its limit", async () => {
+    // biome-ignore lint/correctness/useYield: the run fails before its first event.
+    const limited: ReggieRun = async function* () {
+      throw new ReggieBusyError();
+    };
+    const t = await ready(limited);
+    const events = parseSse(await (await t.request("POST", "/api/chat", { text: "?" })).text());
+    expect(events.at(-1)).toEqual({ type: "error", error: REGGIE_BUSY });
+  });
+
+  it("takes a reply with nothing to show for a failure, never an empty bubble", async () => {
+    // biome-ignore lint/correctness/useYield: an account at its limit used to end like this.
+    const empty: ReggieRun = async function* () {};
+    const t = await ready(empty);
+    const events = parseSse(await (await t.request("POST", "/api/chat", { text: "?" })).text());
+    expect(events.map((e) => e.type)).toEqual(["typing", "error"]);
+    expect(t.stores.chatMessage.list()).toEqual([]);
+  });
+
+  it("gives up on a reply that stays silent", async () => {
+    const stuck: ReggieRun = async function* () {
+      yield { type: "text", delta: "Je" };
+      await new Promise(() => undefined);
+    };
+    const t = await ready(stuck);
+    const chat = new ChatService(t.stores, t.services.plan, stuck, () => MONDAY_8AM, t.services.incidents, 10);
+    const events = [];
+    for await (const event of chat.send({ text: "Salut" })) events.push(event);
+    expect(events.at(-1)).toEqual({ type: "error", error: REGGIE_BUSY });
+  });
+
+  it("keeps her message when a tool already ran before the failure", async () => {
+    const midway: ReggieRun = async function* () {
+      yield { type: "tool_call", name: "move_session", input: {} };
+      throw new Error("network");
+    };
+    const t = await ready(midway);
+    await (await t.request("POST", "/api/chat", { text: "Décale ce soir" })).text();
+    expect(t.stores.chatMessage.list().map((m) => [m.role, m.text])).toEqual([["anna", "Décale ce soir"]]);
   });
 
   it("says when Reggie has no credentials", async () => {

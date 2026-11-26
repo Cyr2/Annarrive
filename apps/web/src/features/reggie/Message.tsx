@@ -1,4 +1,3 @@
-import { Chip } from "../../ui/controls.tsx";
 import { Icon } from "../../ui/Icon.tsx";
 import { Surface } from "../../ui/Surface.tsx";
 import { usePlan } from "../plan/store.ts";
@@ -31,7 +30,6 @@ function UserBubble({ text }: { text: string }) {
 }
 
 function ReggieBubble({ entry }: { entry: Entry }) {
-  const busy = useChat((s) => s.status !== "idle");
   return (
     <div className="flex max-w-[94%] items-end gap-2 self-start">
       <ReggieAvatar size="md" />
@@ -47,16 +45,6 @@ function ReggieBubble({ entry }: { entry: Entry }) {
             <Icon name="info" size={16} className="flex-none" />
             <span className="min-w-0">Source : {entry.source.label}</span>
           </a>
-        )}
-        {entry.retry && (
-          <Chip
-            icon="change"
-            disabled={busy}
-            className="self-start"
-            onClick={() => void useChat.getState().retry(entry.id)}
-          >
-            Réessayer
-          </Chip>
         )}
       </Surface>
     </div>
