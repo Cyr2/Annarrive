@@ -48,20 +48,33 @@ function useShownWeek(offset: number) {
 }
 
 /** The strip with the week's load and where it stands in the plan. */
-function StripCard({ week, today, days }: { week: Week; today: string; days: Day[] }) {
+function StripCard({ week, today, days, onExpand }: { week: Week; today: string; days: Day[]; onExpand?: () => void }) {
   const heading = weekHeading(week, today);
   return (
     <WeekStrip
       days={stripOf(days, (day) => `#day-${day.date}`)}
       label="Jours de la semaine"
       footer={
-        <p className="t-sub m-0 flex flex-wrap justify-between gap-x-3 px-4">
-          <span className="t-label font-semibold text-ink">
-            {heading.load}
-            {heading.time && <span className="font-normal text-ink-2"> · {heading.time}</span>}
-          </span>
-          <span>{week.readOnly ? "Semaine passée" : heading.position}</span>
-        </p>
+        <div className="flex items-end gap-1 pr-1 pl-4">
+          <p className="t-sub m-0 flex min-w-0 flex-1 flex-wrap justify-between gap-x-3 py-2">
+            <span className="t-label font-semibold text-ink">
+              {heading.load}
+              {heading.time && <span className="font-normal text-ink-2"> · {heading.time}</span>}
+            </span>
+            <span>{week.readOnly ? "Semaine passée" : heading.position}</span>
+          </p>
+          {onExpand && (
+            <button
+              type="button"
+              aria-label="Vue calendrier"
+              aria-pressed="false"
+              onClick={onExpand}
+              className="press -my-1 flex size-11 flex-none items-center justify-center border-0 bg-transparent p-0 text-ink"
+            >
+              <Icon name="expand" size={22} />
+            </button>
+          )}
+        </div>
       }
     />
   );
@@ -150,7 +163,7 @@ type HeaderProps = {
   onAdd?: () => void;
   filter: Filter;
   onFilter: (filter: Filter) => void;
-  /** Vue calendrier: the button beside +, pressed while the grid is shown; the grid shows every kind. */
+  /** Vue calendrier: opened from the strip card, closed by the cross at the header's start; the grid shows every kind. */
   grid: { shown: boolean; toggle: () => void };
 };
 
@@ -170,6 +183,17 @@ function WeekHeader({ range = " ", offset, onOffset, onAdd, filter, onFilter, gr
     <header className="flex flex-col gap-1">
       <h1 className="sr-only-label">Semaine</h1>
       <div className="flex items-center gap-0.5">
+        {grid.shown && (
+          <IconButton
+            icon="close"
+            label="Vue calendrier"
+            variant="tinted"
+            tone="action"
+            className="mr-1"
+            aria-pressed
+            onClick={grid.toggle}
+          />
+        )}
         <IconButton icon="chevronLeft" label="Semaine précédente" onClick={() => onOffset(offset - 1)} />
         <p
           aria-live="polite"
@@ -191,19 +215,6 @@ function WeekHeader({ range = " ", offset, onOffset, onAdd, filter, onFilter, gr
           )}
         </p>
         <IconButton icon="chevronRight" label="Semaine suivante" onClick={() => onOffset(offset + 1)} />
-        {/* A plain icon beside the arrows, in their ink: it switches how the week reads, so blue says it is on. */}
-        <button
-          type="button"
-          aria-label="Vue calendrier"
-          aria-pressed={grid.shown}
-          onClick={grid.toggle}
-          className={cx(
-            "press flex size-11 flex-none items-center justify-center border-0 bg-transparent p-0",
-            grid.shown ? "text-action" : "text-ink",
-          )}
-        >
-          <Icon name="grid" size={22} stroke={2.25} />
-        </button>
         {onAdd && (
           <IconButton icon="plus" label="Ajouter" variant="tinted" tone="action" className="ml-1" onClick={onAdd} />
         )}
@@ -279,7 +290,7 @@ export default function WeekScreen() {
         <motion.div style={{ x: swipe.x }} className="relative flex flex-col gap-6">
           {swipe.active && <Neighbour side={-1} offset={offset} today={today} filter={filter} />}
           {swipe.active && <Neighbour side={1} offset={offset} today={today} filter={filter} />}
-          {week && <StripCard week={week} today={today} days={days} />}
+          {week && <StripCard week={week} today={today} days={days} onExpand={grid.toggle} />}
           {!week && <WeekWaiting failed={failed} offset={offset} />}
 
           {week && week.items.length === 0 && (
