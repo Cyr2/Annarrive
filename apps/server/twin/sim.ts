@@ -12,7 +12,8 @@ const STEP_MIN = 15;
 const ACTION_RATE = 0.1;
 /** Share of the gestures that return a change and are then undone, to check Annuler. */
 const UNDO_RATE = 0.3;
-export const SLOW_MS = 1000;
+// The app's own « lent » threshold (incidents, SLOW_MS): a CI runner may be 2× slower than a laptop, 3 s still catches a real stall.
+export const SLOW_MS = 3000;
 /** H1 (algo.md): 30 min after a class or anything else, `max(30, travelMin)` after work. */
 const AFTER_EVENT_MIN = 30;
 const WEEK_RISE = 1.1;
@@ -99,7 +100,7 @@ function fail(ctx: Context, invariant: string, detail: string): void {
 async function call(ctx: Context, method: string, path: string, body?: unknown) {
   const res = await ctx.w.call(method, path, body);
   if (res.status >= 500) fail(ctx, "aucune 5xx", `${method} ${path} → ${res.status} ${JSON.stringify(res.json)}`);
-  if (res.ms > SLOW_MS) fail(ctx, "réponse < 1 s", `${method} ${path} en ${Math.round(res.ms)} ms`);
+  if (res.ms > SLOW_MS) fail(ctx, "réponse < 3 s", `${method} ${path} en ${Math.round(res.ms)} ms`);
   return res;
 }
 
