@@ -159,14 +159,18 @@ export function trimTo(
     out.filter(f).sort((a, b) => b.priority - a.priority || b.durMin - a.durMin);
   for (const s of lowestFirst(isQ)) if (excess() > 0) set(s, shortenQ(s, excess()));
   const shareFloor = Math.max(MIN_EASY, longShare(out.length) * cap);
-  const lFloor = Math.max(shareFloor, keepLongMin);
+  // G2 is exceeded by the long run's minutes above its share, by 10 % of the cap at most (+ 1 min of rounding).
+  const over = Math.min(Math.max(0, keepLongMin - shareFloor), 0.1 * cap + 1);
+  const lFloor = shareFloor + over;
   for (const s of lowestFirst((x) => x.type === "L"))
     if (excess() > 0) set(s, resize(s, Math.max(lFloor, s.durMin - excess())));
   // The long run she already runs (P14) may exceed soft G2 by its minutes above its share, never more (G2b).
-  const over = lFloor - shareFloor;
   for (const s of lowestFirst(isContinuous))
     if (excess() > over)
-      set(s, resize(s, Math.max(MIN_EASY, s.type === "L" ? keepLongMin : 0, s.durMin - excess() + over)));
+      set(
+        s,
+        resize(s, Math.max(MIN_EASY, s.type === "L" ? Math.min(keepLongMin, lFloor) : 0, s.durMin - excess() + over)),
+      );
   return { week: out, changes };
 }
 
