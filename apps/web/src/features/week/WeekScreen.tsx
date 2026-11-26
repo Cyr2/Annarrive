@@ -56,7 +56,7 @@ function StripCard({ week, today, days, onExpand }: { week: Week; today: string;
       label="Jours de la semaine"
       footer={
         <div className="flex items-end gap-1 pr-1 pl-4">
-          <p className="t-sub m-0 flex min-w-0 flex-1 flex-wrap justify-between gap-x-3 py-2">
+          <p className="t-sub m-0 flex min-w-0 flex-1 flex-wrap justify-between gap-x-3">
             <span className="t-label font-semibold text-ink">
               {heading.load}
               {heading.time && <span className="font-normal text-ink-2"> · {heading.time}</span>}
@@ -69,7 +69,7 @@ function StripCard({ week, today, days, onExpand }: { week: Week; today: string;
               aria-label="Vue calendrier"
               aria-pressed="false"
               onClick={onExpand}
-              className="press -my-1 flex size-11 flex-none items-center justify-center border-0 bg-transparent p-0 text-ink"
+              className="press -my-3 flex size-11 flex-none items-center justify-center border-0 bg-transparent p-0 text-ink"
             >
               <Icon name="expand" size={22} />
             </button>
