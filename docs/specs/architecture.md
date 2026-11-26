@@ -109,9 +109,10 @@ Pourquoi ce découpage :
 ### Reggie
 
 - Construit avec le Claude Agent SDK TypeScript (`@anthropic-ai/claude-agent-sdk`) dans `apps/server`. Le SDK embarque son binaire, pas d'installation à part.
-- **Authentification, une variable au choix** :
-  - `CLAUDE_CODE_OAUTH_TOKEN` : l'abonnement Claude de Darius (jeton créé avec `claude setup-token`, valable un an). Choix de Darius au démarrage.
-  - `ANTHROPIC_API_KEY` : une clé API facturée à l'usage. Bascule sans changer de code.
+- **Authentification, plusieurs comptes possibles** :
+  - `CLAUDE_CODE_OAUTH_TOKEN` : un ou plusieurs jetons d'abonnement Claude, séparés par des virgules (chacun créé avec `claude setup-token` sur son compte, valable un an). Choix de Darius au démarrage.
+  - `ANTHROPIC_API_KEY` : une clé API facturée à l'usage, essayée après les jetons.
+  - Chaque question part sur le premier compte disponible, avec ce seul identifiant dans l'environnement du SDK (vu ensemble, le SDK prendrait la clé API avant un jeton). Un compte qui répond par une limite d'usage, un jeton refusé ou un problème de facturation, avant que Reggie ait écrit ou fait quoi que ce soit, se repose jusqu'à l'heure de reset donnée par le SDK (15 min sans heure) et la question passe au suivant. Une action déjà lancée n'est jamais redemandée ailleurs. Tous les comptes au repos : « Reggie ne répond pas pour l'instant ». Les journaux nomment le compte par sa position, jamais par son jeton.
   - Les conditions d'Anthropic (code.claude.com/docs/en/legal-and-compliance) n'autorisent pas à faire passer par un abonnement Pro ou Max les requêtes d'autres personnes. Reggie sert Anna : la clé API est la voie conforme si Darius veut éviter ce risque sur son compte.
 - **Options du SDK** : `tools` limité à WebSearch et WebFetch, avec des règles de permission par domaine autorisé, `disallowedTools` sur Bash, Read, Write, Edit par sécurité, `permissionMode: "dontAsk"`, `settingSources: []`, `mcpServers` avec un serveur interne (`createSdkMcpServer`) qui expose les actions de l'app, `allowedTools` limité à ces actions, `maxTurns` bas, `effort` réglé par l'évaluation.
 - **Recherche web encadrée** pour les questions de santé et d'entraînement (douleur, maladie, nutrition, matériel) :
